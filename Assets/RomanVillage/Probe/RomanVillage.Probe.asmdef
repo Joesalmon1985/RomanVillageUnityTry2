@@ -1,0 +1,14 @@
+{
+    "name": "RomanVillage.Probe",
+    "rootNamespace": "RomanVillage.Probe",
+    "references": ["Bedsit.Core", "Bedsit.Sims2", "OpenTS2"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

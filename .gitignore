@@ -1,0 +1,37 @@
+# Unity
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/.vs/
+*.csproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.pidb
+*.pdb
+*.mdb
+*.opendb
+*.apk
+*.aab
+sysinfo.txt
+__pycache__/
+
+# Local machine config (paths to the user's own Sims 2 install)
+/config.json
+
+# ---- EA / Maxis copyrighted material and anything derived from it: NEVER commit ----
+/LocalData/
+/LocalAssets/
+/Assets/LocalBaked/
+/Assets/LocalBaked.meta
+*.package
+*.simpkg
+*.dbpf
+# Screenshots/captures of the game contain EA assets: keep local
+/Evidence/screenshots/
+/Evidence/raw/

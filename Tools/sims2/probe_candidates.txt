@@ -1,0 +1,63 @@
+# Candidate original Sims 2 ANIM names to probe (one per line; '#' = comment). Names from LocalData/m0/anim_inventory.csv.
+# --- locomotion
+a-male-walk-alt0-normal_anim
+a-male-walkShort-alt0-normal_anim
+a-male-run-alt0-normal_anim
+a-female-walk-alt0-normal_anim
+a-female-walkShort-alt0-normal_anim
+a-female-run-alt0-normal_anim
+a-walk-alt8-lope_anim
+a-run-alt9-lope_anim
+a-male-walk-alt4-happy_anim
+a-female-walk-alt8-sneak_anim
+a-walkPose_anim
+# --- carry
+a-generic-standing-carry_anim
+a2o-brick-carry_anim
+a2o-marketBasket-carry_anim
+a2o-hydroponicPlant-carry_anim
+a2o-hydroponicPlant-grasp_anim
+a2o-hydroponicPlant-put_anim
+a-reaper-scythe-carryPose_anim
+a2o-trashBag-carry_anim
+# --- forester
+a2o-garden-plant_anim
+a2o-garden-water_anim
+a2o-garden-fertilize_anim
+a2o-garden-tend-start_anim
+a2o-garden-tend-loop1_anim
+a2o-garden-tend-stop_anim
+a2o-garden-harvest-start_anim
+a2o-garden-harvest-loop1_anim
+a2o-diggingForStuff-dig-start_anim
+a2o-diggingForStuff-dig-loop_anim
+a2o-diggingForStuff-dig-end_anim
+a2o-leafPile-rake-loop1_anim
+# --- woodcutter / sawyer stand-ins
+a2o-axeThrowing-throw_anim
+a2o-axeThrowing-gatherAxes-low_anim
+a2o-counter-chop-start-noDrawer_anim
+a2o-counter-chop-loopNormal_anim
+a2o-counter-chop-loopExpert_anim
+a2o-toyBench-build-getin_anim
+a2o-toyBench-build-medSkill-loop_anim
+a2o-hobby-trainTable-build-loop1_anim
+# --- pair interactions (solo pass first: measures duration/targets; pairing offsets come later)
+a2a-giveGiftHeavy-giver-give_anim
+a2a-giveGiftHeavy-givee-accept_anim
+a2a-giveGift-giver-neutral_anim
+a2a-giveGift-givee-neutral_anim
+a2a-soc-shakeHands-leadIn_anim
+a2a-soc-shakeHands-shaker_anim
+a2a-soc-shakeHands-shakee_anim
+a2a-greetManly-greet-greeter_anim
+a2a-greetManly-greet-greetee_anim
+a2a-greetHighFive-greet-greeter_anim
+a2a-soc-wave-wavee_anim
+a-soc-greet-nod_anim
+a2a-soc-tossFootball-throwSoft_anim
+a2a-soc-tossFootball-catchSoft_anim
+# --- idle variety
+a-idle-neutral-armsHips-wtC-breatheLoop_anim
+a-idle-neutral-armsHips-wtC-headScratch_anim
+a-idle-knit-standing-loopLookAround_anim

@@ -1,0 +1,14 @@
+{
+    "name": "Bedsit.Sims2",
+    "rootNamespace": "Bedsit.Sims2",
+    "references": ["Bedsit.Core", "OpenTS2"],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
