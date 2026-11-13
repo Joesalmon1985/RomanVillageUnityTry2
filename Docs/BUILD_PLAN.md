@@ -50,7 +50,7 @@ Rule: `World.Game` never writes to `WorldState`. It reads snapshots, sends `Comm
 
 ## 3. Simulation model
 
-**Board.** Pointy-top axial hexes, radius 2 (19 hexes, 54 vertices, 72 edges). A vertex is a *flag*: it can hold one of a city, a building, an outpost, or nothing. An edge can hold a road. World scale: 20 m per edge (map about 170 m across; crossing on foot takes about 35 s at 5 m/s). Terrain per hex: forest (timber), hills (stone), fields (grain), mountain (ore), meadow (none). Each resource hex carries a production number 1 to 4.
+**Board.** Pointy-top axial hexes, radius 2 (19 hexes, 54 vertices, 72 edges). A vertex is a *flag*: it can hold one of a city, a building, an outpost, or nothing. An edge can hold a road. World scale: 20 m per edge (map about 170 m across; crossing on foot takes about 35 s at 5 m/s). Terrain per hex: forest (timber), hills (stone), fields (grain), mountain (ore), meadow (none). Each resource hex carries a production number 1 to 4. **Superseded 13 Nov 2026 (ECONOMY_DESIGN section 10, Map row):** radius 4 (61 hexes), 60 m hex edges split into three 20 m road segments; cities on hex corners, buildings on any flag (corners and the two intermediate points per hex edge), territory 80 m; Pasture terrain added. See CONTRACTS (Board) and MAP_MIGRATION.
 
 **Clocks.** `GameClock` advances the sim at 10 ticks per second while no pause reason is set. Pause reasons are a set: `Encounter`, `Menu`, `Draft`. Encounters own their clocks (duel: unscaled time; rhythm: DSP time).
 

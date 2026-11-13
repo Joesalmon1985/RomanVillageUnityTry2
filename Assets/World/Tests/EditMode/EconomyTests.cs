@@ -35,7 +35,12 @@ namespace World.Sim.Tests
             var e = s.Economy;
             Assert.AreEqual(1, e.Round);
             Assert.AreEqual(s.Board.StorehouseVertex, e.Buildings[e.StorehouseId].Vertex);
-            Assert.AreEqual(2, e.Roads.Count(r => r), "demonstration road of 2 edges");
+            Assert.AreEqual(2, e.Roads.Count(r => r), "demonstration road of 2 segments");
+            var topo = s.Board.Topology;
+            Assert.AreEqual(1, topo.Distance(s.Board.StorehouseVertex, e.DemoVertexA));
+            Assert.AreEqual(2, topo.Distance(s.Board.StorehouseVertex, e.DemoVertexB));
+            Assert.IsTrue(topo.VertexHexes(e.DemoVertexB).Any(h => s.Board.HexTerrain[h] == Terrain.Forest), "the forester site touches the forest");
+            Assert.AreNotEqual(s.Board.WarehouseVertex, e.DemoVertexA);
             var site = e.Buildings[1];
             Assert.AreEqual(BuildingType.Forester, site.Type);
             Assert.AreEqual(BuildingState.Site, site.State);
@@ -60,7 +65,8 @@ namespace World.Sim.Tests
                 planks -= t.Def(bt).Cost[(int)Ware.Planks];
                 stone -= t.Def(bt).Cost[(int)Ware.Stone];
             }
-            planks -= 3 * t.RoadCost[(int)Ware.Planks];
+            // About 3 road segments to connect them; one RoadCost pays for RoadSegmentsPerCost segments.
+            planks -= (3 + t.RoadSegmentsPerCost - 1) / t.RoadSegmentsPerCost * t.RoadCost[(int)Ware.Planks];
             Assert.GreaterOrEqual(planks, 0);
             Assert.GreaterOrEqual(stone, 0);
             Assert.Less(planks, 10, "the commission needs real production");
@@ -482,7 +488,7 @@ namespace World.Sim.Tests
             int outside = -1;
             for (int v = 0; v < topo.VertexCount && outside < 0; v++) if (!EconomyApi.IsInTerritory(s, 0, v)) outside = v;
             var r4 = sim.Submit(new PlaceBuilding { Type = BuildingType.Sawmill, Vertex = outside });
-            Assert.AreEqual("That flag is outside your territory.", r4.Message);
+            Assert.AreEqual("That flag is outside your territory (more than 4 road segments, 80 m, from your cities).", r4.Message);
 
             var r5 = sim.Submit(new PlaceRoad { Edge = s.Economy.Roads.ToList().IndexOf(true) });
             Assert.AreEqual(EconomyRefusals.RoadExists, r5.Reason);
@@ -492,22 +498,75 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void RoadsCostPlanks_AndRefuseWithoutStock()
+        public void RoadsCostPlanks_OnePlankPerThreeSegments_AndRefuseWithoutStock()
         {
             var sim = NewSim();
             var s = sim.State;
+            var topo = s.Board.Topology;
+            Assert.AreEqual(3, s.Economy.Tuning.RoadSegmentsPerCost);
             int store = s.Board.StorehouseVertex;
-            int e = s.Board.Topology.VertexEdges(store).First(x => !s.Economy.Roads[x]);
-            int planks = s.Economy.Buildings[0].Stock[(int)Ware.Planks];
-            EconomyTestKit.Submit(sim, new PlaceRoad { Edge = e });
-            sim.Step();
-            Assert.IsTrue(s.Economy.Roads[e]);
-            Assert.LessOrEqual(s.Economy.Buildings[0].Stock[(int)Ware.Planks], planks - 1);
+            // Walk a fresh hex edge out of the home corner, one segment per tick.
+            int he = topo.CornerHexEdges(store).First(x => topo.HexEdgeSegments(x).All(seg => !s.Economy.Roads[seg]));
+            var flags = topo.HexEdgeFlags(he);
+            if (flags[0] != store) flags = flags.Reverse().ToArray();
+            int consumed0 = s.Economy.Ledger.Consumed[(int)Ware.Planks];
+            CollectionAssert.AreEqual(EconomyTuning.W(Ware.Planks, 1), EconomyApi.RoadCostFor(s, 1));
+            CollectionAssert.AreEqual(EconomyTuning.W(Ware.Planks, 2), EconomyApi.RoadCostFor(s, 4));
+            for (int k = 0; k < 3; k++)
+            {
+                EconomyTestKit.Submit(sim, new PlaceRoad { Edge = topo.EdgeBetween(flags[k], flags[k + 1]) });
+                sim.Step();
+                Assert.IsTrue(s.Economy.Roads[topo.EdgeBetween(flags[k], flags[k + 1])]);
+            }
+            Assert.AreEqual(consumed0 + 1, s.Economy.Ledger.Consumed[(int)Ware.Planks], "one hex edge (3 segments) cost 1 planks");
+            Assert.AreEqual(0, s.Economy.RoadCredit);
+
+            // Next segment pays again; with no planks it is refused, but a paid credit still builds.
             EconomyApi.TrySpendFromStorehouse(s, Ware.Planks, EconomyApi.StorehouseCount(s, Ware.Planks));
-            int e2 = s.Board.Topology.VertexEdges(store).First(x => !s.Economy.Roads[x]);
-            var r = sim.Submit(new PlaceRoad { Edge = e2 });
+            int next = topo.VertexEdges(flags[3]).First(x => !s.Economy.Roads[x]);
+            var r = sim.Submit(new PlaceRoad { Edge = next });
             Assert.AreEqual(EconomyRefusals.NotEnoughWares, r.Reason);
-            Assert.AreEqual("A road needs 1 planks in the storehouse.", r.Message);
+            Assert.AreEqual("A road needs 1 planks in the storehouse (it pays for 3 segments).", r.Message);
+            s.Economy.RoadCredit = 1;
+            Assert.IsTrue(sim.Submit(new PlaceRoad { Edge = next }).Ok, "paid-for segment needs no stock");
+            sim.Step();
+            Assert.AreEqual(0, s.Economy.RoadCredit);
+        }
+
+        [Test]
+        public void Territory_FourSegmentsBuildable_FiveRefusedWithASentence()
+        {
+            var sim = NewSim();
+            var s = sim.State;
+            var topo = s.Board.Topology;
+            int home = s.Board.HomeCityVertex;
+            Assert.AreEqual(4, s.Economy.Tuning.TerritorySegments);
+            int at4 = -1, at5 = -1;
+            for (int v = 0; v < topo.VertexCount; v++)
+            {
+                int d = topo.Distance(home, v);
+                if (d == 4 && at4 < 0 && !EconomyApi.IsVertexOccupied(s, v)) at4 = v;
+                if (d == 5 && at5 < 0) at5 = v;
+            }
+            Assert.IsTrue(EconomyApi.IsInTerritory(s, 0, at4));
+            Assert.IsFalse(EconomyApi.IsInTerritory(s, 0, at5));
+            Assert.IsTrue(sim.Check(new PlaceBuilding { Type = BuildingType.Sawmill, Vertex = at4 }).Ok, "80 m from the city corner is buildable");
+            var r = sim.Check(new PlaceBuilding { Type = BuildingType.Sawmill, Vertex = at5 });
+            Assert.AreEqual(Reasons.InvalidSite, r.Reason);
+            Assert.AreEqual("That flag is outside your territory (more than 4 road segments, 80 m, from your cities).", r.Message);
+
+            // The home territory is a compact cluster: 16 flags, all within 80 m walking.
+            Assert.AreEqual(16, Enumerable.Range(0, topo.VertexCount).Count(v => EconomyApi.IsInTerritory(s, 0, v)));
+            // Intermediate flags can hold buildings; terrain comes from the hexes of their hex edge.
+            int mid = Enumerable.Range(topo.CornerCount, topo.VertexCount - topo.CornerCount)
+                .First(v => EconomyApi.IsInTerritory(s, 0, v) && !EconomyApi.IsVertexOccupied(s, v) && v != s.Board.WarehouseVertex
+                    && topo.VertexHexes(v).Any(h => s.Board.HexTerrain[h] == Terrain.Hills));
+            Assert.IsTrue(sim.Check(new PlaceBuilding { Type = BuildingType.Quarry, Vertex = mid }).Ok);
+            // A flag holding a city cannot hold a building (the home corner also holds the storehouse).
+            Assert.AreEqual(Reasons.InvalidSite, sim.Check(new PlaceBuilding { Type = BuildingType.Sawmill, Vertex = home }).Reason);
+            int corner1 = topo.CornerNeighbours(home)[0];
+            EconomyApi.AddCity(s, 0, corner1);
+            Assert.AreEqual("That flag is taken by a city.", sim.Check(new PlaceBuilding { Type = BuildingType.Sawmill, Vertex = corner1 }).Message);
         }
 
         // ---------------- External requests ----------------

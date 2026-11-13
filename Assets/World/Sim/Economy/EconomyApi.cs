@@ -41,7 +41,7 @@ namespace World.Sim.Economy
 
         // ---- Cities and territory ----
 
-        /// <summary>Add a city on a free vertex (strategy validates its own rules). Returns the city id or -1 if the flag is taken.</summary>
+        /// <summary>Add a city on a free flag (strategy validates its own rules, e.g. corners only). Returns the city id or -1 if the flag is taken.</summary>
         public static int AddCity(WorldState s, int player, int vertex)
         {
             if (vertex < 0 || vertex >= s.Board.Topology.VertexCount) return -1;
@@ -51,8 +51,14 @@ namespace World.Sim.Economy
             return c.Id;
         }
 
-        /// <summary>True when the vertex is within Tuning.TerritoryRadius edges of one of the player's cities.</summary>
+        /// <summary>True when the flag is within Tuning.TerritorySegments segments (fine graph, roads not needed) of one of the player's cities.</summary>
         public static bool IsInTerritory(WorldState s, int player, int vertex) => EconomyLogic.IsInTerritory(s, player, vertex);
+
+        /// <summary>
+        /// Storehouse wares needed to build the next <paramref name="segments"/> road segments, counting the road
+        /// credit already paid (1 RoadCost covers Tuning.RoadSegmentsPerCost segments).
+        /// </summary>
+        public static int[] RoadCostFor(WorldState s, int segments) => EconomyLogic.RoadCostFor(s, segments);
 
         /// <summary>True when a city, building or site occupies the vertex.</summary>
         public static bool IsVertexOccupied(WorldState s, int vertex) =>
@@ -137,6 +143,14 @@ namespace World.Sim.Economy
 
         public static bool TrySpendFromStorehouse(WorldState s, Ware ware, int count) =>
             TryConsume(s, s.Economy.StorehouseId, ware, count);
+
+        /// <summary>Add an idle carrier at the storehouse (strategy: each new city brings carriers). Returns its id.</summary>
+        public static int AddCarrier(WorldState s)
+        {
+            var c = new Carrier { Id = s.Economy.Carriers.Count, State = CarrierState.Idle, AtVertex = EconomyLogic.Storehouse(s).Vertex };
+            s.Economy.Carriers.Add(c);
+            return c.Id;
+        }
 
         /// <summary>Add wares to the storehouse from outside the economy (trade, card rewards).</summary>
         public static void AddToStorehouse(WorldState s, Ware ware, int count)

@@ -46,11 +46,13 @@ namespace World.Sim
         Hills = 2,
         Fields = 3,
         Mountain = 4,
+        /// <summary>Grazing land. Yields no ware yet (the ware rework adds Sheep); it already gets production numbers.</summary>
+        Pasture = 5,
     }
 
     public static class TerrainInfo
     {
-        /// <summary>Raw ware a terrain yields, or null for Meadow.</summary>
+        /// <summary>Raw ware a terrain yields, or null for Meadow and (for now) Pasture.</summary>
         public static Ware? RawWare(Terrain t)
         {
             switch (t)
@@ -63,6 +65,7 @@ namespace World.Sim
             }
         }
 
+        /// <summary>True for terrains that receive production numbers (every terrain except Meadow, Pasture included).</summary>
         public static bool IsResource(Terrain t) => t != Terrain.Meadow;
     }
 }

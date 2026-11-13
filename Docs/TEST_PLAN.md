@@ -15,7 +15,7 @@ A gate passes only when its tests pass, the console shows 0 errors, and the capt
 
 | Check | Kind | Pass when |
 |---|---|---|
-| Board topology | EditMode | Radius 2 gives 19 hexes, 54 vertices, 72 edges; centre hex has 6 vertices; every vertex has degree 2 or 3; an interior vertex touches 3 hexes |
+| Board topology | EditMode | Radius 4 gives 61 hexes, 150 corners, 210 hex edges, 570 flags, 630 segments; corners have degree 2 or 3, intermediate flags 2; corner neighbours are 3 segments apart; an interior corner touches 3 hexes, an intermediate flag the 1-2 hexes of its hex edge (was radius 2: 19 hexes, 54 vertices, 72 edges) |
 | Scene boots | PlayMode | Startup scene loads with one avatar, one sim, three NPCs, storehouse, market, warehouse |
 | Walk to hosts | PlayMode | Scripted walk from spawn reaches Mira and the party host in under 15 s each; greeting shows inside 4 m |
 | View toggle | PlayMode | Tab while walking and while a building is inspected: avatar position and facing are identical before and after to 1 mm and 0.1 degree; same sim instance; inspected object stays selected |

@@ -31,7 +31,7 @@ namespace World.Sim.Economy
 
         /// <summary>
         /// Starting economy: home city and storehouse (starter stock), carriers at the storehouse, a
-        /// 2-edge demonstration road from the storehouse along the home forest hex, a Forester site at
+        /// 2-segment demonstration road from the storehouse along a home hex edge bordering the forest, a Forester site at
         /// its end, and that site's first Planks already on a carrier walking the first edge at tick 0.
         /// </summary>
         public static void InitState(WorldState s)
@@ -54,30 +54,27 @@ namespace World.Sim.Economy
             for (int i = 0; i < e.Tuning.Carriers; i++)
                 e.Carriers.Add(new Carrier { Id = i, State = CarrierState.Idle, AtVertex = store.Vertex });
 
-            // Demonstration road: storehouse -> A -> B along the home forest hex (avoiding the warehouse flag).
-            int forest = -1;
-            foreach (int h in topo.VertexHexes(store.Vertex)) if (s.Board.HexTerrain[h] == Terrain.Forest) forest = h;
-            if (forest >= 0)
+            // Demonstration road: storehouse -> A -> B, two segments along a home hex edge that borders the
+            // home forest (lowest hex edge id first, avoiding the warehouse flag). B touches the forest.
+            int a = -1, b = -1;
+            if (topo.IsCorner(store.Vertex))
             {
-                var corners = topo.HexVertices(forest);
-                int k = -1;
-                for (int i = 0; i < 6; i++) if (corners[i] == store.Vertex) k = i;
-                int[] dirs = { 1, 5 };
-                int a = -1, b = -1;
-                foreach (int d in dirs)
+                foreach (int he in topo.CornerHexEdges(store.Vertex))
                 {
-                    int ca = corners[(k + d) % 6];
-                    int cb = corners[(k + 2 * d) % 6];
-                    if (ca == s.Board.WarehouseVertex || cb == s.Board.WarehouseVertex) continue;
-                    a = ca;
-                    b = cb;
+                    var flags = topo.HexEdgeFlags(he);
+                    bool fromA = flags[0] == store.Vertex;
+                    int fa = fromA ? flags[1] : flags[2], fb = fromA ? flags[2] : flags[1];
+                    if (fa == s.Board.WarehouseVertex || fb == s.Board.WarehouseVertex) continue;
+                    bool forest = false;
+                    foreach (int h in topo.VertexHexes(fb)) if (s.Board.HexTerrain[h] == Terrain.Forest) forest = true;
+                    if (!forest) continue;
+                    a = fa;
+                    b = fb;
                     break;
                 }
-                if (a < 0)
-                {
-                    a = corners[(k + 1) % 6];
-                    b = corners[(k + 2) % 6];
-                }
+            }
+            if (a >= 0)
+            {
                 e.DemoVertexA = a;
                 e.DemoVertexB = b;
                 e.Roads[topo.EdgeBetween(store.Vertex, a)] = true;

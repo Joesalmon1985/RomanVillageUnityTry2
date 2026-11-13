@@ -26,18 +26,19 @@ namespace World.Sim.Tests
             return list;
         }
 
-        /// <summary>Shortest all-edge path from v to the network (null if v is on it).</summary>
+        /// <summary>Shortest all-segment path from v to the nearest network flag (lowest id on ties); [v] if v is on it.</summary>
         public static int[] PathToNetwork(WorldState s, int v)
         {
             var topo = s.Board.Topology;
-            int[] best = null;
+            var dist = topo.DistancesFrom(v);
+            int best = -1;
             foreach (int n in NetworkVertices(s))
-            {
-                var p = topo.FindPath(v, n);
-                if (p != null && (best == null || p.Length < best.Length)) best = p;
-            }
-            return best;
+                if (dist[n] >= 0 && (best < 0 || dist[n] < dist[best])) best = n;
+            return best < 0 ? null : topo.FindPath(v, best);
         }
+
+        /// <summary>Planks for a building's road connection of n new segments (road credit counted).</summary>
+        public static int RoadPlanks(WorldState s, int segments) => EconomyApi.RoadCostFor(s, segments)[(int)Ware.Planks];
 
         /// <summary>Best free vertex for a building: valid placement, filter ok, fewest new roads, then lowest id.</summary>
         public static int ChooseVertex(WorldState s, BuildingType type, Func<int, bool> filter = null)

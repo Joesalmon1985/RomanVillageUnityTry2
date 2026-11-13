@@ -92,8 +92,10 @@ namespace World.Sim.Economy
         /// <summary>Per hex id: raw units still to harvest.</summary>
         public int[] HexBatchRemaining = new int[0];
 
-        /// <summary>Per edge id: true when the player has a road there.</summary>
+        /// <summary>Per road segment id (BoardTopology fine edge): true when the player has a road there.</summary>
         public bool[] Roads = new bool[0];
+        /// <summary>Road segments already paid for (see EconomyTuning.RoadSegmentsPerCost); used before paying again.</summary>
+        public int RoadCredit;
 
         public List<City> Cities = new List<City>();
         /// <summary>Index = building id. Cancelled sites stay with State = Removed.</summary>
@@ -105,7 +107,7 @@ namespace World.Sim.Economy
         public List<Carrier> Carriers = new List<Carrier>();
 
         public int StorehouseId;
-        /// <summary>Demonstration road flags: storehouse -> DemoVertexA -> DemoVertexB (pre-placed Forester site).</summary>
+        /// <summary>Demonstration road flags (2 segments along the home forest hex edge): storehouse -> DemoVertexA -> DemoVertexB (pre-placed Forester site).</summary>
         public int DemoVertexA = -1;
         public int DemoVertexB = -1;
 
@@ -113,7 +115,7 @@ namespace World.Sim.Economy
         public CommissionState Commission = new CommissionState();
     }
 
-    /// <summary>A city: occupies a vertex, extends territory and brings its touching hexes into production. No store.</summary>
+    /// <summary>A city: occupies a hex corner flag, extends territory and brings its touching hexes into production. No store.</summary>
     public sealed class City
     {
         public int Id;

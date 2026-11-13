@@ -1,6 +1,9 @@
 namespace World.Sim.Economy
 {
-    /// <summary>Build a road on an edge. Must touch the player's network; costs Tuning.RoadCost from the storehouse.</summary>
+    /// <summary>
+    /// Build a road on one segment (BoardTopology fine edge). Must touch the player's network. Every
+    /// Tuning.RoadSegmentsPerCost segments cost Tuning.RoadCost from the storehouse, paid on the first of them.
+    /// </summary>
     public sealed class PlaceRoad : Command { public int Edge; }
 
     /// <summary>Remove a road. Carriers on it stop at the next flag and wait for a route.</summary>
@@ -54,16 +57,17 @@ namespace World.Sim.Economy
             int a = topo.EdgeVertexA(c.Edge), b = topo.EdgeVertexB(c.Edge);
             if (!EconomyLogic.OnNetwork(s, c.PlayerId, a) && !EconomyLogic.OnNetwork(s, c.PlayerId, b))
                 return CommandResult.Reject(EconomyRefusals.NotConnected, "A road must connect to your roads, city or buildings.");
-            var cost = s.Economy.Tuning.RoadCost;
+            var cost = EconomyLogic.RoadCostFor(s, 1);
             if (!EconomyLogic.CanPay(EconomyLogic.Storehouse(s), cost))
                 return CommandResult.Reject(EconomyRefusals.NotEnoughWares,
-                    "A road needs " + EconomyLogic.CostText(cost) + " in the storehouse.");
+                    "A road needs " + EconomyLogic.CostText(cost) + " in the storehouse (it pays for "
+                    + s.Economy.Tuning.RoadSegmentsPerCost + " segments).");
             return CommandResult.Accept();
         }
 
         protected override CommandResult Apply(WorldState s, PlaceRoad c, EventBuffer ev)
         {
-            EconomyLogic.Pay(s, EconomyLogic.Storehouse(s), s.Economy.Tuning.RoadCost);
+            EconomyLogic.PayRoadSegment(s);
             s.Economy.Roads[c.Edge] = true;
             ev.Add(new RoadPlaced { Edge = c.Edge, PlayerId = c.PlayerId });
             return CommandResult.Accept();
@@ -170,6 +174,11 @@ namespace World.Sim.Economy
             if (!p.Ok) return p;
             if (s.Economy.RoundStartPending)
                 return CommandResult.Reject(EconomyRefusals.RoundStarting, "The new round is still starting.");
+            foreach (var g in _hooks.EndRoundGuards)
+            {
+                var r = g(s);
+                if (!r.Ok) return r;
+            }
             return CommandResult.Accept();
         }
 
