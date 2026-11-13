@@ -100,7 +100,8 @@ namespace World.Game
             var rends = new List<Renderer> { ring.GetComponent<Renderer>(), v._pillar.GetComponent<Renderer>() };
             if (v._runes != null) rends.Add(v._runes.GetComponent<Renderer>());
             v._glow = rends.ToArray();
-            LandLook.PickBox(go, Vector3.up * 0.2f, strip ? new Vector3(6f, 0.4f, 50f) : new Vector3((float)r * 2, 0.4f, (float)r * 2));
+            // A thin trigger on the ground (5 cm high), so a hit on it is a hit on the ground of the press area.
+            LandLook.PickBox(go, Vector3.up * 0.05f, strip ? new Vector3(6f, 0.1f, 50f) : new Vector3((float)r * 2, 0.1f, (float)r * 2));
             return v;
         }
 

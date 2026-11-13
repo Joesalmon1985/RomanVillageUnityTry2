@@ -218,10 +218,10 @@ namespace World.Game
             _smoke = LandLook.Part(transform, "Smoke", LandLook.Cached("camp/smoke", mb =>
             {
                 // A thin column of grey puffs drifting up from the cold hearth.
-                for (int i = 0; i < 7; i++)
+                for (int i = 0; i < 6; i++)
                 {
-                    float y = 0.4f + i * 1.15f, r = 0.25f + i * 0.12f;
-                    mb.Box(new Vector3(Mathf.Sin(i * 1.7f) * 0.3f * i * 0.3f, y, 0), new Vector3(r * 2, r * 1.6f, r * 2), new Color(0.30f, 0.28f, 0.30f) * (1f + i * 0.06f), i * 25f);
+                    float y = 0.4f + i * 0.75f, r = 0.14f + i * 0.06f;
+                    mb.Box(new Vector3(0.25f * i * 0.25f, y, -0.1f * i), new Vector3(r * 2, r * 1.5f, r * 2), new Color(0.42f, 0.40f, 0.42f) * (1f + i * 0.05f), i * 25f);
                 }
             }), LandLook.Unlit, false);
             _smoke.SetActive(false);

@@ -38,7 +38,7 @@ namespace World.Game
             string key = kind + "/" + faction;
             var mesh = LandLook.Cached("person/" + key, mb =>
             {
-                if (kind == Kind.Demon) LandShapes.Person(mb, new Color(0.22f, 0.05f, 0.08f), new Color(0.08f, 0.02f, 0.03f), false, true);
+                if (kind == Kind.Demon) LandShapes.Person(mb, new Color(0.45f, 0.08f, 0.12f), new Color(0.12f, 0.02f, 0.04f), false, true);
                 else LandShapes.Person(mb, LandLook.People(faction), LandLook.PeopleTrim(faction), kind == Kind.Warrior);
             });
             LandLook.Part(body, "Mesh", mesh, null, false);

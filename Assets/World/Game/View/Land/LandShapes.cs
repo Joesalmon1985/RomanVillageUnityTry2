@@ -366,7 +366,7 @@ namespace World.Game
         /// <summary>A standing person (1.75 m) in a tunic of the given colour, facing +Z. Arms hang down.</summary>
         public static void Person(MeshBuilder mb, Color tunic, Color trim, bool warrior = false, bool demon = false)
         {
-            var skin = demon ? new Color(0.16f, 0.06f, 0.07f) : LandLook.Skin;
+            var skin = demon ? new Color(0.38f, 0.07f, 0.09f) : LandLook.Skin;
             var leg = demon ? new Color(0.10f, 0.04f, 0.05f) : new Color(0.38f, 0.27f, 0.18f);
             mb.Box(new Vector3(-0.12f, 0.42f, 0), new Vector3(0.15f, 0.84f, 0.18f), leg);
             mb.Box(new Vector3(0.12f, 0.42f, 0), new Vector3(0.15f, 0.84f, 0.18f), leg);

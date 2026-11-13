@@ -18,6 +18,7 @@ namespace World.Game
 
         private readonly List<LandFigure> _figures = new List<LandFigure>();
         private TextMesh _count;
+        private Transform _token;
         private GameObject _spire;
         private Vector3 _along = Vector3.forward;
 
@@ -55,7 +56,17 @@ namespace World.Game
                 LandShapes.FadeBeam(mb, Vector3.up * 2.5f, 1.0f, 0.3f, 22f, 8, new Color(0.55f, 0.05f, 0.10f));
                 LandShapes.FadeBeam(mb, Vector3.up * 2.5f, 0.45f, 0.1f, 30f, 6, new Color(0.85f, 0.15f, 0.12f));
             }), LandLook.Additive, false);
-            v._count = Signs.Text(go.transform, "1", new Vector3(0, 4.6f, 0), 1.3f, new Color(1f, 0.35f, 0.25f), 0f);
+            // The count on a dark token that turns to the viewer (like the hex numbers).
+            v._token = new GameObject("CountToken").transform;
+            v._token.SetParent(go.transform, false);
+            // Over a camp the token floats above the totem (8.5 m on a city); on a road at 4.4 m.
+            v._token.localPosition = new Vector3(0, kind == DemonSiteKind.Corner ? 10.2f : 4.4f, 0);
+            LandLook.Part(v._token, "Disc", LandLook.Cached("demon/token", mb =>
+            {
+                LandShapes.Beam(mb, new Vector3(0, 0, -0.04f), new Vector3(0, 0, 0.04f), 0.75f, 18, new Color(0.10f, 0.02f, 0.04f));
+                LandShapes.Beam(mb, new Vector3(0, 0, -0.03f), new Vector3(0, 0, 0.03f), 0.85f, 18, new Color(0.75f, 0.12f, 0.10f));
+            }), LandLook.Unlit, false);
+            v._count = Signs.Text(v._token, "1", new Vector3(0, 0.04f, -0.08f), 1.1f, new Color(1f, 0.55f, 0.35f), 0f);
             v._count.name = "Count";
             LandLook.PickBox(go, Vector3.up * 1.2f, new Vector3(9f, 2.6f, 9f));
             return v;
@@ -70,7 +81,7 @@ namespace World.Game
             while (_figures.Count < n)
             {
                 int i = _figures.Count;
-                var f = LandFigure.Create(transform, "Demon " + i, -1, LandFigure.Kind.Demon, 1.15f);
+                var f = LandFigure.Create(transform, "Demon " + i, -1, LandFigure.Kind.Demon, 1.45f);
                 Vector3 p;
                 if (Kind == DemonSiteKind.Corner) p = Quaternion.Euler(0, 40f + i * 120f, 0) * Vector3.forward * 3.9f;
                 else p = _along * ((i - 1) * 2.6f) + Vector3.Cross(Vector3.up, _along) * (i % 2 == 0 ? 2.3f : -2.3f);
@@ -89,8 +100,8 @@ namespace World.Game
                 f.Body.localPosition = new Vector3(0, Mathf.Abs(Mathf.Sin(now * 3f + i * 2f)) * 0.25f, 0);
                 f.Body.localRotation = Quaternion.Euler(10f, Mathf.Sin(now * 1.7f + i) * 25f, 0);
             }
-            var d = _count.transform.position - eye; d.y = 0;
-            if (d.sqrMagnitude > 0.01f) _count.transform.rotation = Quaternion.LookRotation(d.normalized, Vector3.up);
+            var d = _token.position - eye; d.y = 0;
+            if (d.sqrMagnitude > 0.01f) _token.rotation = Quaternion.LookRotation(d.normalized, Vector3.up);
             _spire.transform.localScale = new Vector3(1f + 0.15f * Mathf.Sin(now * 2.3f), 1f, 1f + 0.15f * Mathf.Sin(now * 2.3f));
         }
     }
