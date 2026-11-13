@@ -63,14 +63,18 @@ namespace World.Game
             return v;
         }
 
-        /// <summary>Where idle carriers wait: a block of 6 columns in front of the storehouse, facing the square.</summary>
+        /// <summary>
+        /// Where idle carriers wait: a block of 6 columns in front of the storehouse, beside (not around) Quartermaster
+        /// Bram, who stands at the storehouse front on the other side.
+        /// </summary>
         public static Vector3 IdleSpot(VillageLayout L, int index)
         {
             if (L == null) return Vector3.zero;
             var fwd = BoardSpace.DirOf(L.StorehouseYaw);
             var side = new Vector3(fwd.z, 0, -fwd.x);
+            var bram = Vector3.Dot(L.QuartermasterSpot - L.Storehouse, side) >= 0 ? 1f : -1f;
             int col = index % 6, row = index / 6;
-            return L.Storehouse + fwd * (6.5f + row * 1.25f) + side * ((col - 2.5f) * 1.15f);
+            return L.Storehouse + fwd * (4.5f + row * 1.2f) - side * bram * (3.2f + col * 1.1f);
         }
 
         /// <summary>Spot beside a flag where a carrier waits (spread by id so several do not overlap).</summary>
@@ -126,7 +130,9 @@ namespace World.Game
             float u = Mathf.Clamp01((_progress + Mathf.Clamp01(tickFraction)) / _ticksPerEdge);
             var dir = _to - _from; dir.y = 0;
             var side = Vector3.Cross(Vector3.up, dir.normalized);
-            return Vector3.Lerp(_from, _to, u) + side * Lane * Mathf.Clamp01(Mathf.Min(u, 1f - u) * 8f);
+            // Lane by id (0.45, 0.8 or 1.1 m right of the centre line) so carriers walking together do not overlap.
+            float lane = Lane + (CarrierId % 3) * 0.33f;
+            return Vector3.Lerp(_from, _to, u) + side * lane * Mathf.Clamp01(Mathf.Min(u, 1f - u) * 8f);
         }
 
         /// <summary>Moves the figure toward the interpolated sim position (exact when close, so it stays on the road).</summary>
@@ -147,7 +153,7 @@ namespace World.Game
         /// <summary>God View scale of the load crate and disc (1 in first person).</summary>
         public void SetGodScale(float s, bool god)
         {
-            if (_disc != null) _disc.SetActive(god);
+            if (_disc != null) _disc.SetActive(god && (HasLoad || !IsIdleAtStore));
             if (Mathf.Approximately(s, _godScale)) return;
             _godScale = s;
             if (_crate != null)

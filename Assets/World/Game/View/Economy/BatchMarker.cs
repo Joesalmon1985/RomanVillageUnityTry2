@@ -34,6 +34,9 @@ namespace World.Game
         public static Vector3 SpotFor(int hex)
         {
             var c = BoardSpace.Hex(hex);
+            // 20 m south of the centre, so its God View tag reads below the hex's own label.
+            var south = c + new Vector3(0, 0, -20f);
+            if (!TerrainBuilder.InPeak(south, 3f)) return south;
             if (!TerrainBuilder.InPeak(c, 3f)) return c;
             for (int ring = 1; ring <= 3; ring++)
                 for (int k = 0; k < 12; k++)

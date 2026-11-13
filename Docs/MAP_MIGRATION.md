@@ -63,7 +63,8 @@ Not checked: `AgentScripts/*` scene builders and any code added in the main chec
 - [x] `VillageLayout`: rebuilt. Square centred 5 m out from H (radius 12); storehouse, market and 5 cottages in the three sectors between the hex edges at H, at least 9 m from other flags and 7 m from the edge lines; warehouse rescaled to about 17.75 x 22 m and placed beside flag W in the hex to the Right of the H-W edge, door facing the square (H + 28 Out + 9 Right), so it covers no flag and the corner 60 m out stays free. Everything within about 55 m of H, inside a 58 m clearing.
 - [x] `VillageBuilder`: storehouse 8 x 6 m, cottages, paths to door/storehouse/market.
 - [x] `WorldBootstrap`: spawn and camera unchanged in meaning; God camera `MaxSize` from the island radius, `HomeFocus` = village centre; `Outpost` built at `RivalOutpostVertex`.
-- [ ] Road / building / carrier / city / hero / demon views: deferred, not built (economy views wait for the simulation proof; branch feat/econview not merged).
+- [x] Road / building / carrier views (13 Nov 2026, on the unified economy; feat/econview was ported, not merged): see `Docs/ECONOMY_UI.md`.
+- [ ] City / hero / demon / squad views: not built (extension points in `Docs/ECONOMY_UI.md`).
 - [x] PlayMode tests: hex count 61; village tests use `WarehouseSet` positions instead of local coordinates; new `MapLayoutTests` (61 tiles + Pasture, village within 70 m and off the plots, outpost at its corner, God camera default and max framing, picker ids for flags, segments, corners, hex edges and hexes).
 - [x] No hard-coded ids in the Unity layer.
 

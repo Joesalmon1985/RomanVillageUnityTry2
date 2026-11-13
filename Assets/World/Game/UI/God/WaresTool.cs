@@ -40,7 +40,7 @@ namespace World.Game
             {
                 int store = EconomyApi.StorehouseCount(s, w);
                 string uses = Names(s, EconomyApi.ConsumersOf(s, w));
-                if (w == Ware.Planks || w == Ware.Bricks) uses += (uses == "-" ? "" : "; ") + "buildings, roads";
+                if (w == Ware.Planks || w == Ware.Bricks) uses = (uses == "-" ? "" : uses + "; ") + "buildings, roads";
                 _rows[(int)w] = "<b>" + EconomyLook.WareTag(w) + "</b>   storehouse <b>" + store + "</b>   <color=#BBB0A0>in the village " + inWorld[(int)w] + "</color>\n"
                     + "<size=" + UiStyle.Px(16) + "><color=#D8D0C0>made by " + Names(s, EconomyApi.ProducersOf(s, w)) + ";  used by " + uses + "</color></size>";
             }

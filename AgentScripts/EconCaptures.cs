@@ -23,6 +23,7 @@ public static class EconCaptures
         if (EncounterHost.Instance.IsRunning) EncounterHost.Instance.Abort();
         if (!keepView) B.Views.SetView(ViewMode.FirstPerson);
         B.Picker.ClearSelection();
+        B.Avatar.Teleport(B.Layout.Spawn + Vector3.up * 0.05f, B.Layout.SpawnYaw, 3f);
         if (GodToolbar.Instance != null) GodToolbar.Instance.Activate(GodToolbar.SelectId);
     }
 
@@ -94,35 +95,40 @@ public static class EconCaptures
         return (d.Failure ?? "ok") + " after " + n + " ticks; " + Status();
     }
 
-    /// <summary>First person standing beside a road with a loaded carrier coming towards the camera.</summary>
+    /// <summary>First person standing beside a road, a loaded carrier walking towards the camera (outside the village).</summary>
     public static string FirstPersonCarrier()
     {
         Reset();
+        B.Clock.Pause("Capture");
         var v = EconomyViews.Instance;
+        var home = B.Layout.Home;
         CarrierView best = null;
         foreach (var c in v.Carriers)
         {
             var sc = S.Economy.Carriers[c.CarrierId];
-            if (!c.HasLoad || sc.CurrentEdge < 0 || sc.Progress > S.Economy.Tuning.TicksPerEdge / 3) continue;
+            if (!c.HasLoad || sc.CurrentEdge < 0 || sc.Progress > S.Economy.Tuning.TicksPerEdge / 2) continue;
+            if (BoardSpace.Flat(BoardSpace.EdgeMid(sc.CurrentEdge) - home) < 22f) continue;
             best = c; break;
         }
-        if (best == null) return "no loaded carrier at the start of a segment";
+        if (best == null) return "no loaded carrier on a road outside the village";
         var sim = S.Economy.Carriers[best.CarrierId];
         var a = BoardSpace.Vertex(sim.FromVertex); var b = BoardSpace.Vertex(sim.ToVertex);
         var dir = (b - a).normalized; var side = new Vector3(dir.z, 0, -dir.x);
-        var eye = b + dir * 3f + side * 3.5f;
-        B.Avatar.Teleport(eye + Vector3.up * 0.05f, BoardSpace.YawOf(Vector3.Lerp(a, b, 0.6f) - eye), 6f);
-        B.Clock.Pause("Capture");
-        for (int i = 0; i < 8; i++) B.Clock.StepOnce();
+        float u = sim.Progress / (float)S.Economy.Tuning.TicksPerEdge;
+        var eye = Vector3.Lerp(a, b, Mathf.Min(1f, u + 0.5f)) + side * 3.2f;
+        for (int i = 0; i < 3; i++) B.Clock.StepOnce();
+        B.Avatar.Teleport(eye + Vector3.up * 0.05f, BoardSpace.YawOf(best.transform.position - eye), 0f);
+        B.Avatar.LookAt(best.CratePosition - Vector3.up * 0.6f);
         return "carrier " + best.CarrierId + " with " + best.Load + " edge " + sim.CurrentEdge;
     }
-
     /// <summary>God View close on a loaded carrier mid-road, with it selected.</summary>
     public static string GodCarrier(float size = 22f)
     {
         Reset();
         var v = EconomyViews.Instance;
-        var best = v.Carriers.FirstOrDefault(c => c.HasLoad && S.Economy.Carriers[c.CarrierId].CurrentEdge >= 0);
+        B.Clock.Pause("Capture");
+        var best = v.Carriers.Where(c => c.HasLoad && S.Economy.Carriers[c.CarrierId].CurrentEdge >= 0)
+            .OrderByDescending(c => BoardSpace.Flat(c.transform.position - B.Layout.Home) > 25f ? 1 : 0).FirstOrDefault();
         if (best == null) return "no loaded carrier on a road";
         B.Views.SetView(ViewMode.God);
         B.GodCam.SetFocus(best.transform.position, size);
@@ -134,9 +140,10 @@ public static class EconCaptures
     {
         Reset();
         B.Views.SetView(ViewMode.God);
-        B.GodCam.SetFocus(B.Layout.VillageCentre, 115f);
+        B.GodCam.SetFocus(B.Layout.Home, 75f);
         var t = (BuildTool)GodToolbar.Instance.Activate(BuildTool.ToolId);
         t.SelectType((BuildingType)System.Enum.Parse(typeof(BuildingType), type));
+        t.Refresh();
         var legal = t.LegalFlags;
         if (legal.Count > 0) t.ForceHover(legal[legal.Count / 2]);
         return "legal " + legal.Count;
@@ -245,7 +252,97 @@ public static class EconCaptures
         return string.Join(" | ", DialoguePanel.Instance.CurrentLines);
     }
 
-    public static string Fps() => Screen.width + "x" + Screen.height + " fps ~ " + (1f / Time.smoothDeltaTime).ToString("0");
+    /// <summary>Resumes the clock and measures fps (AutoPlay MeasureFps lines in the console) in God View and first person.</summary>
+    public static string MeasurePerf()
+    {
+        Reset();
+        B.Clock.Resume("Capture");
+        var L = B.Layout;
+        var s = new AutoPlayScript("econ_perf");
+        s.Call(() => { B.Views.SetView(ViewMode.God); B.GodCam.SetFocus(L.VillageCentre, 115f); })
+         .Wait(1f).MeasureFps("late game god view home (size 115)", 5f)
+         .Call(() => B.GodCam.SetFocus(L.VillageCentre, 45f)).Wait(0.5f).MeasureFps("late game god view close (size 45)", 4f)
+         .Call(() => B.GodCam.FrameIsland()).Wait(0.5f).MeasureFps("late game god view whole island", 4f)
+         .Call(() => { B.Views.SetView(ViewMode.FirstPerson); B.Avatar.Teleport(L.Spawn + Vector3.up * 0.05f, BoardSpace.YawOf(L.Home - L.Spawn) + 160f, 3f); })
+         .Wait(1f).MeasureFps("late game first person square", 4f)
+         .Log("[AutoPlay] econ_perf done " + Status());
+        B.AutoPlay.Run(s);
+        return "measuring";
+    }
+
+    /// <summary>Names of renderers within r metres (ground distance) of the selected object (debugging captures).</summary>
+    public static string NearSelected(float r = 3f)
+    {
+        var sel = B.Picker.Selected as Component;
+        if (sel == null) return "nothing selected";
+        var p = sel.transform.position;
+        var names = new System.Collections.Generic.List<string>();
+        foreach (var rd in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+        {
+            if (!rd.enabled || !rd.gameObject.activeInHierarchy) continue;
+            if (BoardSpace.Flat(rd.bounds.center - p) > r) continue;
+            var t = rd.transform; string path = t.name;
+            while (t.parent != null && path.Length < 120) { t = t.parent; path = t.name + "/" + path; }
+            names.Add(path);
+        }
+        return "beacons " + BeaconRegistry.All.Count + "; " + string.Join(" | ", names.Take(40));
+    }
+
+    /// <summary>All 20 building models in a labelled 5 x 4 grid on an empty meadow hex (a view check, not game content).</summary>
+    public static string ModelGallery(bool god = true)
+    {
+        Reset();
+        var board = S.Board; var topo = board.Topology;
+        int hex = -1; float bd = float.MaxValue;
+        for (int h = 0; h < topo.HexCount; h++)
+            if (board.HexTerrain[h] == World.Sim.Terrain.Meadow)
+            {
+                float d = BoardSpace.Flat(BoardSpace.Hex(topo, h) - B.Layout.Home);
+                if (d > 120f && d < bd) { bd = d; hex = h; }
+            }
+        var old = GameObject.Find("ModelGallery");
+        if (old != null) Object.Destroy(old);
+        var root = new GameObject("ModelGallery").transform;
+        var c = BoardSpace.Hex(topo, hex);
+        int i = 0;
+        foreach (BuildingType t in System.Enum.GetValues(typeof(BuildingType)))
+        {
+            var p = c + new Vector3(((i % 5) - 2) * 15f, 0.02f, (1.5f - i / 5) * 15f);
+            var holder = new GameObject(t.ToString()).transform;
+            holder.SetParent(root, false);
+            holder.position = p;
+            holder.rotation = Quaternion.Euler(0, 180f, 0);
+            var m = BuildingModels.Build(t, holder);
+            if (m.Glow != null) m.Glow.enabled = true;
+            float half = BuildingPlots.HalfFor(EconomyApi.Def(S, t).Size);
+            var mb = new MeshBuilder();
+            TerrainBuilder.Ring(mb, p + Vector3.up * 0.05f, half * 1.41f, 0.15f, 24, Color.white);
+            mb.ToObject("Footprint", holder, MaterialFactory.CreateUnlit(Color.white));
+            var tm = Signs.FlatText(root, EconomyApi.Def(S, t).Name, p + new Vector3(0, 0.3f, -half - 2.2f), 1.4f, Color.white);
+            i++;
+        }
+        if (god) { B.Views.SetView(ViewMode.God); B.GodCam.SetFocus(c, 42f); }
+        else
+        {
+            var eye = c + new Vector3(0, 0, -48f);
+            B.Avatar.Teleport(eye, 0f, -8f);
+        }
+        return "gallery on hex " + hex + " at " + c;
+    }
+
+    public static string Describe()
+    {
+        var s = S;
+        var sb = new System.Text.StringBuilder();
+        foreach (var b in s.Economy.Buildings) sb.Append(b.Type).Append(':').Append(b.State).Append(b.Reason != null ? "(" + b.Reason + ")" : "").Append(' ');
+        sb.Append(" | outcome ").Append(s.Strategy.Outcome).Append(' ').Append(s.Strategy.OutcomeReason).Append(" breaches ").Append(s.Strategy.Breaches)
+          .Append(" cities ").Append(s.Economy.Cities.Count).Append(" age ").Append(s.Strategy.Age).Append(" draft ").Append(World.Sim.Strategy.StrategyApi.DraftPending(s))
+          .Append(" farm flag ").Append(CommissionDriver.ChooseVertex(s, BuildingType.Farm, null))
+          .Append(" vp ").Append(World.Sim.Strategy.StrategyApi.ScoreText(s, 0)).Append(" rival ").Append(World.Sim.Strategy.StrategyApi.ScoreText(s, 1));
+        return sb.ToString();
+    }
+
+    public static string Fps() =>Screen.width + "x" + Screen.height + " fps ~ " + (1f / Time.smoothDeltaTime).ToString("0");
 }
 
 /// <summary>
@@ -286,7 +383,8 @@ public sealed class LateGameDriver
         if (Failure != null || _b.Sim.PendingCommands.Count > 0) return;
         if (s.Economy.Round != _round) { _round = s.Economy.Round; _roundStart = s.Tick; }
         if (!s.Economy.Commission.Complete) { _commission.Act(); if (_commission.Failure != null) Failure = _commission.Failure; return; }
-        if (s.Strategy != null && s.Strategy.GameOver) { Failure = "game over: " + s.Strategy.Outcome; return; }
+        bool over = s.Strategy != null && s.Strategy.GameOver;
+        if (over) { if (_queue.Count > 0) { Run(_queue.Dequeue()()); return; } PlanNext(); return; }
         if (World.Sim.Strategy.StrategyApi.DraftPending(s))
         {
             var hand = s.Strategy.Sides[0].DraftHand;
@@ -326,46 +424,50 @@ public sealed class LateGameDriver
         return true;
     }
 
+    private long _nextPlanTick;
+
     private bool PlanNext()
     {
         var s = S;
-        if (Live >= TargetBuildings) return false;
-        // Next wanted type: the plan in order, counting duplicates.
+        if (Live >= TargetBuildings || s.Tick < _nextPlanTick) return false;
+        _nextPlanTick = s.Tick + 15;
+        // Land first: more cities mean more flags for buildings.
+        if (s.Strategy != null && s.Strategy.Started && !s.Strategy.GameOver && s.Economy.Cities.Count(c => c.Owner == PlayerIds.Human) < 4 && FoundCity(null)) return true;
+        // Wanted types in plan order (counting duplicates); place the first one that has a flag and is affordable.
         var wanted = new System.Collections.Generic.Dictionary<BuildingType, int>();
-        BuildingType? next = null;
-        foreach (var t in Plan)
+        bool needsLand = false;
+        foreach (var type in Plan)
         {
-            wanted[t] = (wanted.TryGetValue(t, out int n) ? n : 0) + 1;
-            if (Count(t) < wanted[t] + (EconomyLook.CommissionTypes.Contains(t) ? 1 : 0)) { next = t; break; }
+            wanted[type] = (wanted.TryGetValue(type, out int n) ? n : 0) + 1;
+            if (Count(type) >= wanted[type] + (EconomyLook.CommissionTypes.Contains(type) ? 1 : 0)) continue;
+            var def = EconomyApi.Def(s, type);
+            int v = CommissionDriver.ChooseVertex(s, type, null);
+            if (v < 0) { needsLand = true; continue; }
+            var roads = CommissionDriver.RoadsToConnect(s, v);
+            var cost = (int[])def.Cost.Clone();
+            var rc = EconomyApi.RoadCostFor(s, roads.Count);
+            for (int w = 0; w < Wares.Count; w++) cost[w] += rc[w];
+            if (!CanAfford(cost)) continue;
+            var t = type;
+            _queue.Enqueue(() => GodCommands.PlaceBuilding(t, v));
+            foreach (int e in roads) _queue.Enqueue(() => GodCommands.PlaceRoad(e));
+            Run(_queue.Dequeue()());
+            return true;
         }
-        if (next == null) return false;
-        var type = next.Value;
-        var def = EconomyApi.Def(s, type);
-        System.Func<int, bool> filter = null;
-        int v = CommissionDriver.ChooseVertex(s, type, filter);
-        if (v < 0) return FoundCity(def.NeedsTerrain ? def.Terrain : (World.Sim.Terrain?)null);
-        var roads = CommissionDriver.RoadsToConnect(s, v);
-        var cost = (int[])def.Cost.Clone();
-        var rc = EconomyApi.RoadCostFor(s, roads.Count);
-        for (int w = 0; w < Wares.Count; w++) cost[w] += rc[w];
-        if (!CanAfford(cost)) return false;
-        _queue.Enqueue(() => GodCommands.PlaceBuilding(type, v));
-        foreach (int e in roads) _queue.Enqueue(() => GodCommands.PlaceRoad(e));
-        Run(_queue.Dequeue()());
-        return true;
+        return needsLand && FoundCity(null);
     }
-
     private bool FoundCity(World.Sim.Terrain? terrain)
     {
         var s = S;
-        if (s.Strategy == null || !s.Strategy.Started) return false;
+        if (s.Strategy == null || !s.Strategy.Started || s.Strategy.GameOver) return false;
         var topo = s.Board.Topology;
         int best = -1; System.Collections.Generic.List<int> bestRoads = null;
-        foreach (int c in World.Sim.Strategy.StrategyApi.LegalCitySites(s, true))
+        foreach (int c in s.Board.SuggestedCitySites)
         {
+            var verdict = World.Sim.Strategy.StrategyApi.CheckCity(s, c);
+            if (!verdict.Ok && verdict.Reason != "no_road" && verdict.Reason != "cannot_afford") continue;
             if (terrain.HasValue && !topo.VertexHexes(c).Any(h => s.Board.HexTerrain[h] == terrain.Value)) continue;
             var roads = CommissionDriver.RoadsToConnect(s, c);
-            if (roads.Count == 0 && !topo.VertexEdges(c).Any(e => s.Economy.Roads[e])) continue;
             if (bestRoads == null || roads.Count < bestRoads.Count) { best = c; bestRoads = roads; }
         }
         if (best < 0) return terrain.HasValue && FoundCity(null);
@@ -374,6 +476,7 @@ public sealed class LateGameDriver
         for (int w = 0; w < Wares.Count; w++) cost[w] += rc[w];
         if (!CanAfford(cost)) return false;
         int site = best;
+        bestRoads.Reverse(); // build outwards from the network
         foreach (int e in bestRoads) _queue.Enqueue(() => GodCommands.PlaceRoad(e));
         _queue.Enqueue(() => GodCommands.Submit(new World.Sim.Strategy.FoundCity { Vertex = site }, "city founded"));
         Run(_queue.Dequeue()());
