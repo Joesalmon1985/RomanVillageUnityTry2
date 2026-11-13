@@ -15,6 +15,7 @@ namespace World.Sim.Tests
         {
             var sim = WorldSimFactory.CreateNew(K.DefaultSeed);
             var s = sim.State;
+            s.Demons.Tuning = new DemonTuning(); // spec values: grace 1800, a draw on every seven
             K.RigNextRoll(s, 3, 4);
             Assert.IsEmpty(K.Step(sim, 1).OfType<DemonPlaced>());
 
@@ -39,8 +40,9 @@ namespace World.Sim.Tests
             int home = s.Board.StartCorners[0];
             int edge = s.Board.Topology.CornerHexEdges(home).Min();
             K.Do(sim, new PlaceRoad { HexEdge = edge });
-            K.Step(sim, 200);
+            K.Step(sim, 400);
             Assert.AreEqual(RoadState.Built, EconomyApi.RoadOn(s, edge).State);
+            s.Demons.Tuning = new DemonTuning();
             s.Demons.Corner[home] = 3;
             s.Demons.Corner[s.Board.StartCorners[1]] = 3;
             s.Demons.Edge[edge] = 3;

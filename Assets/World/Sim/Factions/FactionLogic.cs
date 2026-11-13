@@ -143,7 +143,11 @@ namespace World.Sim.Factions
             {
                 int before = fa.Strength;
                 FactionLogic.ComputeStrength(s, fa);
-                if (fa.Strength != before) ev.Add(new StrengthChanged { Faction = fa.Id, Strength = fa.Strength });
+                if (fa.Strength != before)
+                {
+                    fa.StrengthChangedTick = s.Tick;
+                    ev.Add(new StrengthChanged { Faction = fa.Id, Strength = fa.Strength });
+                }
             }
             int ps = f.Factions[PlayerIds.Human].Strength, rs = f.Factions[PlayerIds.Rival].Strength;
             var tu = f.Tuning;
@@ -227,7 +231,7 @@ namespace World.Sim.Factions
     {
         public static void InitState(WorldState s)
         {
-            var f = new FactionsState();
+            var f = new FactionsState { Tuning = FactionTunings.Tuned() };
             s.Factions = f;
             for (int id = 0; id < PlayerIds.Count; id++)
             {

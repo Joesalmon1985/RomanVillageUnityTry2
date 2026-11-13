@@ -22,6 +22,14 @@ namespace World.Sim.Demons
         public int Cap = 3;
         /// <summary>Demons added per 7.</summary>
         public int PerSeven = 1;
+        /// <summary>Only every Nth seven after the grace period draws demons (1 = every seven, the spec start value).</summary>
+        public int SevensPerDraw = 1;
+    }
+
+    public static class DemonTunings
+    {
+        /// <summary>The values a new game uses (spec start values + S tuning): grace 5 minutes, a draw on every third seven.</summary>
+        public static DemonTuning Tuned() => new DemonTuning { GraceTicks = 3000, SevensPerDraw = 3 };
     }
 
     /// <summary>All demon state (WorldState.Demons).</summary>
@@ -36,6 +44,8 @@ namespace World.Sim.Demons
         public int Placed;
         public int Banished;
         public int Outbreaks;
+        /// <summary>Sevens rolled after the grace period (counts towards SevensPerDraw).</summary>
+        public int Sevens;
     }
 
     /// <summary>Removes every demon from one of your sites (F1, tests, CastSpell).</summary>
@@ -208,6 +218,8 @@ namespace World.Sim.Demons
         {
             var d = s.Demons;
             if (d == null || d1 + d2 != 7 || s.Tick < d.Tuning.GraceTicks) return;
+            d.Sevens++;
+            if (d.Tuning.SevensPerDraw > 1 && (d.Sevens - 1) % d.Tuning.SevensPerDraw != 0) return;
             var sites = Sites(s);
             if (sites.Count == 0) return;
             var site = sites[d.Rng.NextInt(sites.Count)];
@@ -296,6 +308,7 @@ namespace World.Sim.Demons
             var t = s.Board.Topology;
             s.Demons = new DemonsState
             {
+                Tuning = DemonTunings.Tuned(),
                 Corner = new int[t.CornerCount],
                 Edge = new int[t.HexEdgeCount],
                 Rng = s.Rng.Fork("demons"),

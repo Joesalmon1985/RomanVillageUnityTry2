@@ -274,3 +274,34 @@ Ran:
 - Play Mode in the editor: `first_five` logged `[AutoPlay] first_five OK` (duel Victory after 3 casts; phrase 4/4 blocks, 20 perfect, balcony). Captures inspected (scratch, not kept): spawn among the Forest 6 trees with Mira in view; God View of the whole island with the new numbers.
 
 Not run / caveats: no Windows build and no packaged runs (not asked). Nothing new is drawn for camps, plots, roads, carriers or proposals: the sim runs underneath with nothing showing it but the God View toolbar code, which is not installed. The spawn stands among Forest trees (the only clearing is 12 m round each start corner) until V clears plots and spokes. The interim avatar walks freely, not on the lattice.
+
+## Prehistoric refactor, package S: simulation, brain, proof and tuning (13 Nov 2026, branch `refactor/sim`)
+
+Built (all in `Assets/World/Sim` and `Assets/World/Tests/EditMode`; API in `Docs/ECONOMY_API.md`, names in the spec's appendix A and its change log):
+- S-0 (`4bc636c`): the appendix A surface, board numbers 2..12 and start corners 70/97, `PlotLayout`, dice and hex stock, placement checks, strength, warning and endings, demons, the proposal queue and spells. Strategy, Military and the old economy moved to `Archive/Sim` with their tests (`Archive/Tests/EditMode`).
+- Logistics (`7bc97ba`): per-camp carriers, demand jobs in serving order with reservations, local and main-road legs, shipments between storehouses, routes avoiding demons, carriers waiting on a demon-held road until the banish, cancelled sites bringing goods home, real `CarrierPosition`. Job ageing (30 s) added after shipments starved behind outputs.
+- Brain (`16c82e1`): expansion target, the next road (merchant) and the camp, the scarcest-ware bonus, workshops, city, lodge, warning bonus, speakers; the rival on the same rules. Scripted players (prompt, fixed delay, slow, decliner, ignore, random) and `GameRunner` for whole-game tests.
+- Proof (`900bcf2`): `ProofReport` writes `Docs/ECONOMY_PROOF.md` (sections A-G plus a cast-delay sensitivity table), builds it twice and requires byte-identical text, and fails on any pass criterion.
+
+Tuning log (each line: the change on top of the previous ones; 11 seeds; "prompt" is the modelled human of spec 8.1; "W" wins by overrun, "L" losses by overrun; numbers from probe runs, the final ones from the proof):
+
+| Step | Change | Prompt | Delay 36 s | Ignored prince | Note |
+|---|---|---|---|---|---|
+| 0 | spec starting values, full logistics and brain | 0 W (all time-limit wins, 5-3) | 0 W | 0 L (rival 2.3 at 20 min) | nobody grows: carriers and casts are the limits |
+| 1 | carriers 5 m per 10 ticks (spec 15) | 7 W, median 17.0 | 0 W | 1 L | carriers were the bottleneck, batch size and cap made no difference |
+| 2 | 4 sheep at start (spec 2) | 9 W, median 12.7 | 0 W | 0 L | a second camp no longer waits for a pasture |
+| - | (probe) no demons at all | 6 W | 0 W | 10 L | the rival spent about half of its casts banishing (13 of 27 on seed 2) |
+| 3 | one workshop per type, surplus bonus, banish on a road edge 40, demons on every 2nd seven | 11 W, median 11.7 | 0 W | 2 L | the rival had built two sawmills and kilns and blocked its three site slots |
+| 4 | 5 / 3 carriers per start / new camp (spec 3 / 2), grace 5 min, demons on every 3rd seven | 11 W, median 12.0 | 1 W | 10 L | but with expansion +15 and press +40 only 2 building types were ever built |
+| 5 | no expansion bonus, no press; city 90, lodge 60 | 11 W, median 10.0 | 0 W | 7 L | 9-10 types built |
+| 6 | rival cast delay 40 s (spec 45 s) | 10 W, median 13.1 | 0 W | 9 L | Quarry never built |
+| 7 | +30 to strength builds while ahead of a people whose strength has not changed for 5 min | 10 W, median 13.1 | 0 W | 11 L | all 11 types built in some prompt game |
+| 8 | hex cap 16 (spec 12) | proof: 10 of 10 W, median 12.1 | proof: 0 W, 7 time wins, 4 draws | proof: 10 of 10 L, median 14.7 | two seeds lost 20-23% of clay or stone to the cap at 12 |
+
+Cast-delay sensitivity (proof, 11 seeds, overrun wins / median minutes): prompt 11 / 13.1; 10 s 11 / 9.7; 20 s 10 / 13.2; 28 s 5 / 20.0; 36 s 0 / 20.0 (7 time wins, 4 draws); 45 s 0 (3 time wins, 2 draws, 6 time losses); 60 s 0 (2 draws, 8 time losses, 1 overrun). Winning by overrun needs the player to cast within about 30 s of each pitch; this is the biggest design risk (spec risk 2) and must be measured in the first playtest.
+
+Ran:
+- `dotnet test DotNet`: 193 passed, 0 failed (about 25 s; the proof test about 20 s of it).
+- The proof: all criteria pass (prompt 10/10 overrun wins, median 12.1 min; ignored prince overrun 10/10, median 14.7 min; zero drift in 10 random-cast games; longest missed import 0 ticks; longest job wait under 2 minutes; the rival never more than 46 s without a proposal; no ware over 15% lost to the cap; every placeable type built in at least one prompt game).
+
+Not run: Unity (no EditMode or PlayMode run in the editor for this package); nothing was played by hand. The modelled human is crude (straight-line walking, fixed talk). Warriors are trained in none of the 10 prompt games before they end, so the lodge, meals and hunger are proven by unit tests and the paired run, not by play.

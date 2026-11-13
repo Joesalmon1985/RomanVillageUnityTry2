@@ -48,6 +48,42 @@ namespace World.Sim.Factions
         public int ExpansionReachEdges = 3;
         /// <summary>The game layer allows a cast only within this distance of the target point.</summary>
         public double CastRangeMetres = 15;
+
+        // Brain scores that tuning may change (6.2; added by S).
+        /// <summary>Score of a city upgrade candidate (spec start value 55).</summary>
+        public int CityScore = 55;
+        /// <summary>Added to road and settlement candidates (spec start value 0).</summary>
+        public int ExpansionBonus = 0;
+        /// <summary>Added to road, settlement, city and lodge candidates while the people is the stronger (spec start value 0).</summary>
+        public int PressAdvantageBonus = 0;
+        /// <summary>The lead in strength from which PressAdvantageBonus applies.</summary>
+        public int PressAdvantageLead = 1;
+        /// <summary>PressAdvantageBonus applies only while the other people's strength has not changed for this long.</summary>
+        public int PressIdleTicks = 0;
+        /// <summary>Score of a warrior lodge candidate once the people has a city (spec start value 38).</summary>
+        public int LodgeScore = 38;
+        /// <summary>Banish candidates score this + 10 per demon (spec start value 100 for both).</summary>
+        public int BanishCornerScore = 100;
+        public int BanishEdgeScore = 100;
+        /// <summary>Workshop bonus per unit of its first input the people holds above WorkshopSurplusFloor, up to WorkshopSurplusCap.</summary>
+        public int WorkshopSurplusPerUnit = 0;
+        public int WorkshopSurplusFloor = 4;
+        public int WorkshopSurplusCap = 15;
+    }
+
+    public static class FactionTunings
+    {
+        /// <summary>
+        /// The values a new game uses: the spec's starting values (FactionTuning's initialisers) with S's tuning (PROGRESS.md
+        /// tuning log): rival cast delay 40 s, city 90, lodge 60, banish on a road edge 40 + 10 per demon, workshop surplus
+        /// bonus 1 per unit above 4 (up to 15), and +30 to strength builds while ahead of a people whose strength has
+        /// not changed for 5 minutes.
+        /// </summary>
+        public static FactionTuning Tuned() => new FactionTuning
+        {
+            RivalCastDelayTicks = 400, CityScore = 90, LodgeScore = 60, BanishEdgeScore = 40,
+            WorkshopSurplusPerUnit = 1, WorkshopSurplusCap = 15, PressAdvantageBonus = 30, PressIdleTicks = 3000,
+        };
     }
 
     /// <summary>All faction state (WorldState.Factions).</summary>
@@ -85,6 +121,8 @@ namespace World.Sim.Factions
         public int FedWarriors;
         public int HungryWarriors;
         public long NextPlanTick;
+        /// <summary>Tick the strength last changed (0 at the start).</summary>
+        public long StrengthChangedTick;
     }
 
     /// <summary>An open proposal of a faction's brain: what, where, why, and who pitches it.</summary>

@@ -20,6 +20,8 @@ namespace World.Sim.Economy
         public int ShipmentSize = 4;
         public int InputBuffer = 2;
         public int CollectorStore = 4;
+        /// <summary>A job waiting this long is served before the serving order (2.B.1), oldest first, so no demand starves (0 = off).</summary>
+        public int JobAgeTicks = 300;
 
         // Warriors.
         public int MealTicks = 900;
@@ -45,6 +47,22 @@ namespace World.Sim.Economy
         public int NewSettlementCarriers = 2;
         public int CarriersPerBuilding = 1;
         public int CarriersPerCity = 1;
+
+        /// <summary>
+        /// The values a new game uses: the spec's starting values (the field initialisers, kept as written in
+        /// REFACTOR_SPEC) with the changes S made in tuning (PROGRESS.md, tuning log): carriers walk 5 m in 10 ticks,
+        /// 5 carriers at a starting camp and 3 at a new one, 4 sheep in the starting stock, hex cap 16.
+        /// </summary>
+        public static EconomyTuning Tuned()
+        {
+            var t = new EconomyTuning();
+            t.CarrierTicksPerStep = 10;
+            t.StartCarriers = 5;
+            t.NewSettlementCarriers = 3;
+            t.StartStock[(int)Ware.Sheep] = 4;
+            t.HexCap = 16;
+            return t;
+        }
 
         /// <summary>Growth time of a terrain's stock (750 when the table is short).</summary>
         public int GrowFor(Terrain t) => GrowTicks != null && (int)t >= 0 && (int)t < GrowTicks.Length ? GrowTicks[(int)t] : 750;
