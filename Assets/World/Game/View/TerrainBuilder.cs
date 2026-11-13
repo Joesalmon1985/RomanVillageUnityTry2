@@ -12,20 +12,15 @@ namespace World.Game
         public Terrain Terrain;
         public int Number;
 
-        public string Title => Terrain + " hex";
+        public string Title => LandText.State != null ? LandText.HexTitle(LandText.State, HexId) : Terrain + " hex";
         public IEnumerable<string> Lines
         {
             get
             {
-                var boot = WorldBootstrap.Instance;
-                if (boot != null && boot.Sim != null && boot.Sim.State.Economy != null)
+                var st = LandText.State;
+                if (st != null && st.Economy != null)
                 {
-                    var v = World.Sim.Economy.EconomyApi.HexStock(boot.Sim.State, HexId);
-                    if (v.Ware.HasValue) yield return "Gives " + Wares.DisplayName(v.Ware.Value) + ".";
-                    else yield return "Gives nothing (open meadow).";
-                    if (v.Number > 0) yield return "Number " + v.Number + " (" + v.Pips + " in 36).";
-                    if (v.Ware.HasValue) yield return "Stock: " + v.Mature + " ready, " + v.Young + " growing (cap " + v.Cap + ").";
-                    yield return "Hex id " + HexId + ".";
+                    foreach (var line in LandText.HexLines(st, HexId)) yield return line;
                     yield break;
                 }
                 var ware = TerrainInfo.RawWare(Terrain);
@@ -39,16 +34,24 @@ namespace World.Game
 
     /// <summary>
     /// Builds the board terrain for the radius-4 map (61 hexes, 60 m hex edges): one flat walkable tile per hex tinted
-    /// by terrain (outer ring through the 18 flags of the hex), props per terrain combined into one mesh per hex
-    /// (trees, mounds and rocks, crop rows, peaks, fenced pastures with sheep), hex-edge lines, a post at every corner,
-    /// the island rim and beach, invisible bounds, sky dome, fog and ambient light. God-View-only overlay: hex labels,
-    /// a plot disc at every intermediate flag and faint rings at the suggested city sites.
-    /// Props keep 4 m off the hex edges (roads and flags) and out of the village and outpost clearings.
+    /// by terrain, props per terrain combined into one mesh per hex (trees, mounds and rocks, crop rows, mountain crags,
+    /// grass), hex-edge lines, a low stone at every corner, the island rim and beach, invisible bounds, sky dome, fog and
+    /// ambient light. God-View-only overlay: hex labels and faint rings at the suggested camp corners. Owner: package V.
+    /// Props keep 4 m off the hex edges (main roads), out of the stock patch at every hex centre (the clearings passed
+    /// in) and, through <see cref="SetClearings"/>, off the corners, plots and local paths of every camp. Mountain crags
+    /// stand only where no plot can ever be (41 m out towards each hex-edge midpoint) and are registered with
+    /// <see cref="WalkGrid"/>.
     /// </summary>
     public static class TerrainBuilder
     {
         /// <summary>Props stay this far (m) from the hex-edge lines, where flags and road segments are.</summary>
         public const float RoadMargin = 4f;
+        /// <summary>Mountain crags: distance from the hex centre towards each hex-edge midpoint, and base radius.</summary>
+        public const float PeakDistance = 41f, PeakRadius = 6.5f;
+        /// <summary>God View hex labels sit this far south of the hex centre so the stock patch and its token stay visible.</summary>
+        public const float LabelOffset = 22f;
+        public const string PeakBlockerOwner = "land.peaks";
+
         /// <summary>Height of the God View labels (raised above trees and peaks, shifted south so they read over their hex).</summary>
         public const float LabelHeight = 70f;
 
@@ -89,6 +92,7 @@ namespace World.Game
         {
             var layout = new Clearings(clear);
             PropCounts.Clear();
+            WalkGrid.RemoveStaticBlockers(PeakBlockerOwner);
             GodCamera.ScaledLabels.Clear();
             var root = new GameObject("Terrain").transform;
             root.SetParent(parent, false);
@@ -107,16 +111,14 @@ namespace World.Game
             }
             lines.ToObject("HexEdgeLines", root, vcMat);
 
-            // Corner markers (150): low stone disc and a short post with a pennant.
+            // Corner markers (150): a low stone disc where three lines meet.
             var posts = new MeshBuilder();
             foreach (int v in t.Corners)
             {
                 var p = BoardSpace.Vertex(t, v);
-                Disc(posts, p + Vector3.up * 0.05f, 1.5f, 12, new Color(0.74f, 0.70f, 0.60f));
-                posts.Cylinder(p, 0.1f, 0.08f, 2.0f, 6, new Color(0.40f, 0.28f, 0.18f));
-                posts.Box(p + new Vector3(0.24f, 1.8f, 0), new Vector3(0.44f, 0.28f, 0.03f), new Color(0.78f, 0.22f, 0.18f));
+                Disc(posts, p + Vector3.up * 0.04f, 1.2f, 12, new Color(0.74f, 0.70f, 0.60f));
             }
-            posts.ToObject("CornerPosts", root, vcMat);
+            posts.ToObject("CornerStones", root, vcMat);
 
             BuildIsland(root, layout, vcMat);
             BuildBounds(root);
@@ -125,13 +127,6 @@ namespace World.Game
             godViewOnly = new GameObject("GodViewOverlay");
             godViewOnly.transform.SetParent(parent, false);
             var overlayMat = MaterialFactory.CreateUnlit(Color.white, "GodOverlay");
-            var plots = new MeshBuilder();
-            for (int v = 0; v < t.VertexCount; v++)
-            {
-                if (t.IsCorner(v)) continue;
-                Disc(plots, BoardSpace.Vertex(t, v) + Vector3.up * 0.09f, 1.1f, 10, new Color(0.96f, 0.93f, 0.80f));
-            }
-            plots.ToObject("PlotMarkers", godViewOnly.transform, overlayMat);
             var corners = new MeshBuilder();
             foreach (int v in t.Corners) Disc(corners, BoardSpace.Vertex(t, v) + Vector3.up * 0.1f, 2.2f, 12, new Color(1f, 0.97f, 0.85f));
             corners.ToObject("CornerMarkers", godViewOnly.transform, overlayMat);
@@ -143,7 +138,7 @@ namespace World.Game
             {
                 var terrain = board.HexTerrain[h];
                 string label = board.HexNumber[h] > 0 ? terrain + "\n" + board.HexNumber[h] : terrain.ToString();
-                var tm = Signs.FlatText(godViewOnly.transform, label, LabelPoint(BoardSpace.Hex(t, h)), 6.5f, new Color(1f, 1f, 0.92f));
+                var tm = Signs.FlatText(godViewOnly.transform, label, LabelPoint(BoardSpace.Hex(t, h) + new Vector3(0, 0, -LabelOffset)), 6.5f, new Color(1f, 1f, 0.92f));
                 tm.name = "HexLabel " + h;
                 GodCamera.ScaledLabels.Add(tm.transform);
             }
@@ -358,15 +353,21 @@ namespace World.Game
                 }
                 case Terrain.Mountain:
                 {
-                    for (int i = 0; i < 3; i++)
+                    // Six crags towards the hex-edge midpoints, 41 m out: at least 8 m from any possible plot (the side
+                    // plots of the neighbouring corners are 13 m away) and 7 m from the hex-edge lines (main roads).
+                    var sides = t.HexSides(h);
+                    for (int i = 0; i < sides.Count; i++)
                     {
-                        var p = centre + BoardSpace.DirOf(i * 120f + rnd.Range(0, 60f)) * rnd.Range(6f, 16f);
-                        float r = rnd.Range(18f, 25f), height = rnd.Range(38f, 58f);
+                        var mid = BoardSpace.HexEdgeMid(t, sides[i]);
+                        var dir = mid - centre; dir.y = 0; dir.Normalize();
+                        var p = centre + dir * PeakDistance;
+                        float r = PeakRadius * rnd.Range(0.9f, 1.0f), height = rnd.Range(20f, 34f) * (i % 2 == 0 ? 1f : 0.8f);
                         if (!first) continue;
                         _peaks[h].Add(new Vector3(p.x, p.z, r));
+                        WalkGrid.AddStaticBlocker(p, r, PeakBlockerOwner);
                         var peak = new MeshBuilder();
-                        peak.Cylinder(p, r, r * 0.22f, height * 0.78f, 9, new Color(0.47f, 0.45f, 0.43f) * rnd.Range(0.9f, 1.1f), false);
-                        peak.Cone(p + Vector3.up * height * 0.78f, r * 0.22f, height * 0.22f, 9, new Color(0.95f, 0.95f, 0.97f));
+                        peak.Cylinder(p, r, r * 0.24f, height * 0.75f, 9, new Color(0.47f, 0.45f, 0.43f) * rnd.Range(0.9f, 1.1f), false);
+                        peak.Cone(p + Vector3.up * height * 0.75f, r * 0.24f, height * 0.25f, 9, new Color(0.95f, 0.95f, 0.97f));
                         var go = peak.ToObject("Peak", tile, mat);
                         var mc = go.AddComponent<MeshCollider>(); mc.sharedMesh = go.GetComponent<MeshFilter>().sharedMesh; mc.convex = true;
                     }
@@ -380,10 +381,21 @@ namespace World.Game
                     if (first) Count("mountain rock", placed);
                     break;
                 }
-                case Terrain.Pasture:
-                    placed = BuildPasture(props, centre, R, layout, rnd);
-                    if (first) Count("sheep", placed);
-                    placed = 0;
+                case Terrain.Pasture: // grass tufts and a few bushes; the sheep belong to the stock patch
+                    for (int i = 0; i < 160; i++)
+                    {
+                        var p = RandomInHex(RoadMargin - 1f);
+                        if (!Ok(p, RoadMargin - 1f, 0f)) continue;
+                        props.Cone(p, rnd.Range(0.3f, 0.5f), rnd.Range(0.25f, 0.45f), 5, new Color(0.30f, 0.56f, 0.22f) * rnd.Range(0.95f, 1.08f));
+                        placed++;
+                    }
+                    for (int i = 0; i < 18; i++)
+                    {
+                        var p = RandomInHex(RoadMargin);
+                        if (!Ok(p, RoadMargin, 1f)) continue;
+                        props.Rock(p, rnd.Range(0.8f, 1.4f), new Color(0.26f, 0.46f, 0.20f), rnd.Next);
+                    }
+                    if (first) Count("tuft", placed);
                     break;
                 default: // Meadow: flowers, bushes and the odd lone tree
                     for (int i = 0; i < 300; i++)
@@ -410,64 +422,6 @@ namespace World.Game
                     break;
             }
             return props.VertexCount > 0 ? props.ToObject("Props", tile, mat) : null;
-        }
-
-        /// <summary>A hex-shaped fence inset in the hex with a gate, sheep, a trough and grass tufts. Returns the sheep count.</summary>
-        private static int BuildPasture(MeshBuilder mb, Vector3 centre, float R, Clearings layout, PropRandom rnd)
-        {
-            var wood = new Color(0.48f, 0.34f, 0.20f);
-            float fr = R * 0.62f; // fence circumradius: 37 m, about 19 m inside the roads
-            var corners = new Vector3[6];
-            for (int k = 0; k < 6; k++)
-            {
-                float a = (60f * k - 30f) * Mathf.Deg2Rad;
-                corners[k] = centre + new Vector3(Mathf.Cos(a) * fr, 0, Mathf.Sin(a) * fr);
-            }
-            for (int k = 0; k < 6; k++)
-            {
-                var a = corners[k]; var b = corners[(k + 1) % 6];
-                var d = b - a; float len = d.magnitude; var dir = d / len; float yaw = BoardSpace.YawOf(dir);
-                int posts = Mathf.CeilToInt(len / 3.5f);
-                for (int i = 0; i <= posts; i++)
-                {
-                    float s = i * len / posts;
-                    bool gate = k == 4 && Mathf.Abs(s - len / 2) < 2.4f;
-                    if (gate) continue;
-                    mb.Box(a + dir * s + Vector3.up * 0.6f, new Vector3(0.16f, 1.2f, 0.16f), wood);
-                }
-                // Two rails, broken for the gate on side 4.
-                foreach (float y in new[] { 0.5f, 1.0f })
-                {
-                    if (k == 4)
-                    {
-                        float g0 = len / 2 - 2.2f, g1 = len / 2 + 2.2f;
-                        mb.Box(a + dir * (g0 / 2) + Vector3.up * y, new Vector3(0.08f, 0.1f, g0), wood * 1.1f, yaw);
-                        mb.Box(a + dir * ((g1 + len) / 2) + Vector3.up * y, new Vector3(0.08f, 0.1f, len - g1), wood * 1.1f, yaw);
-                    }
-                    else mb.Box(a + dir * (len / 2) + Vector3.up * y, new Vector3(0.08f, 0.1f, len), wood * 1.1f, yaw);
-                }
-            }
-            // Water trough near the centre.
-            mb.Box(centre + new Vector3(4f, 0.35f, -3f), new Vector3(3f, 0.7f, 0.9f), wood);
-            mb.Box(centre + new Vector3(4f, 0.66f, -3f), new Vector3(2.7f, 0.05f, 0.65f), new Color(0.35f, 0.55f, 0.75f));
-            // Grass tufts.
-            for (int i = 0; i < 70; i++)
-            {
-                var p = centre + new Vector3(rnd.Range(-fr, fr), 0, rnd.Range(-fr, fr));
-                if (EdgeMargin(p - centre, fr) < 1f) continue;
-                mb.Cone(p, rnd.Range(0.3f, 0.5f), rnd.Range(0.25f, 0.4f), 5, new Color(0.30f, 0.56f, 0.22f) * rnd.Range(0.95f, 1.08f));
-            }
-            // Sheep, grazing in two loose flocks.
-            int sheep = 0;
-            for (int i = 0; i < 28; i++)
-            {
-                var flock = centre + (i % 2 == 0 ? new Vector3(-9f, 0, -8f) : new Vector3(10f, 0, 6f));
-                var p = flock + new Vector3(rnd.Range(-11f, 11f), 0, rnd.Range(-9f, 9f));
-                if (EdgeMargin(p - centre, fr) < 3f || !layout.IsClear(p, 1f)) continue;
-                Sheep(mb, p, rnd.Range(0f, 360f), rnd);
-                sheep++;
-            }
-            return sheep;
         }
 
         public static void Sheep(MeshBuilder mb, Vector3 p, float yaw, PropRandom rnd)
