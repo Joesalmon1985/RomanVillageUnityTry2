@@ -331,8 +331,16 @@ namespace World.Game.Tests
             Assert.AreEqual(BuildingType.Woodcutter, ((BuildTool)GodToolbar.Instance.Active).Selected, "preselected");
             _boot.Views.SetView(ViewMode.FirstPerson);
 
-            // The bell ends the round, exactly like End Round.
+            // The bell ends the round, exactly like End Round; during the harvest season it is refused with the sim's sentence.
             int round = S.Economy.Round;
+            Assert.Greater(EconomyApi.BellTicksLeft(S), 0, "a new round starts with the harvest season");
+            VillageBuilder.Bell.Interact();
+            Assert.AreEqual("round_too_soon", GodCommands.LastResult.Reason);
+            Assert.AreEqual(GodCommands.LastResult.Message, EconomyHud.LastToast, "the refusal shows the sim's sentence");
+            StringAssert.Contains("harvest season", VillageBuilder.Bell.Prompt, "the bell's prompt counts down");
+            StringAssert.Contains("s)", GodToolbar.Find(EconomyGodTools.EndRoundId).Badge, "the End Round button counts down");
+            Step((int)EconomyApi.BellTicksLeft(S));
+            Assert.AreEqual(0, EconomyApi.BellTicksLeft(S));
             VillageBuilder.Bell.Interact();
             Assert.IsTrue(GodCommands.LastCommand is EndRound);
             Assert.IsTrue(GodCommands.LastResult.Ok, GodCommands.LastResult.Message);
@@ -344,7 +352,9 @@ namespace World.Game.Tests
             site.Sign.Interact();
             yield return null;
             Assert.AreSame(site, _boot.Picker.Selected, "sign selects the building (same inspect panel)");
-            Assert.IsTrue(DialoguePanel.Instance.CurrentOptions.Any(o => o.Label.StartsWith("Cancel this site")));
+            if (site.IsSite) Assert.IsTrue(DialoguePanel.Instance.CurrentOptions.Any(o => o.Label.StartsWith("Cancel this site")));
+            else Assert.IsTrue(DialoguePanel.Instance.CurrentOptions.Any(o => o.Label.StartsWith("Set priority")) && DialoguePanel.Instance.CurrentOptions.Any(o => o.Label.StartsWith("Switch it")),
+                "a finished building offers priority and on/off (it finished during the harvest season)");
             DialoguePanel.Close();
         }
 
@@ -375,9 +385,11 @@ namespace World.Game.Tests
             // is refused and the refusal shows as the sim's sentence.
             _boot.Clock.Pause(TestPause);
             for (int i = 0; i < 20 && S.Economy.RoundStartPending; i++) Step(1);
+            Step((int)EconomyApi.BellTicksLeft(S));
             Assert.IsTrue(GodCommands.EndRound().Ok, GodCommands.LastResult.Message);
             Step(2);
             Assert.IsTrue(World.Sim.Strategy.StrategyApi.DraftPending(S), "Age I draft dealt");
+            Step((int)EconomyApi.BellTicksLeft(S)); // past the harvest season, so the draft is the only reason left
             VillageBuilder.Bell.Interact();
             Assert.IsFalse(GodCommands.LastResult.Ok);
             Assert.AreEqual("draft_pending", GodCommands.LastResult.Reason);

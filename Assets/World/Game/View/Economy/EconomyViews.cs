@@ -21,6 +21,8 @@ namespace World.Game
         public const float LabelRangeFirstPerson = 30f;
         public const float LoadLabelRangeFirstPerson = 30f;
         /// <summary>God View zoom (ortho half-height) up to which building names / statuses / carrier loads are labelled.</summary>
+        /// <summary>Above this God View size only selected, hovered or stalled buildings show their name tag.</summary>
+        public const float GodDeclutterSize = 75f;
         public const float GodNameMaxSize = 170f, GodStatusMaxSize = 95f, GodLoadMaxSize = 45f;
 
         private readonly Dictionary<int, RoadView> _roads = new Dictionary<int, RoadView>();
@@ -294,11 +296,15 @@ namespace World.Game
             }
 
             var selected = Picker.Instance != null ? Picker.Instance.Selected : null;
+            var hovered = Picker.Instance != null ? Picker.Instance.Hovered : null;
             if (!god || size <= GodNameMaxSize)
                 foreach (var bv in _buildings.Values)
                 {
                     if (bv == null) continue;
                     if (!god && (bv.transform.position - eye).magnitude > LabelRangeFirstPerson) continue;
+                    // Declutter: zoomed out, only selected, hovered or stalled buildings keep their name tag.
+                    if (god && size > GodDeclutterSize && !ReferenceEquals(selected, bv) && !ReferenceEquals(hovered, bv)
+                        && bv.Badge != EconomyBadge.Blocked && bv.Badge != EconomyBadge.Waiting) continue;
                     if (!ScreenPoint(cam, bv.LabelAnchor + (god ? Vector3.up * 2f * (Mathf.Clamp(size / 30f, 1f, 5f) - 1f) : Vector3.zero), out var p)) continue;
                     string name = bv.IsSite ? bv.DisplayName + " site" : bv.DisplayName;
                     bool withStatus = !god || size <= GodStatusMaxSize || ReferenceEquals(selected, bv);

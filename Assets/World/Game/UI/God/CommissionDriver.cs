@@ -53,7 +53,7 @@ namespace World.Game
             if (TryPlan(BuildingType.Sawmill, null)) return;
             if (TryPlan(BuildingType.CharcoalKiln, null)) return;
             if (TryPlan(BuildingType.BrickKiln, null)) return;
-            if (s.Economy.RoundStartPending) return;
+            if (s.Economy.RoundStartPending || EconomyApi.BellTicksLeft(s) > 0) return; // the harvest season holds the bell
             if (s.Economy.HexBatchRemaining[_forestHex] == 0 && s.Economy.HexBatchRemaining[_hillsHex] == 0)
                 _queue.Enqueue(() =>
                 {
@@ -190,7 +190,7 @@ namespace World.Game
             var s = new AutoPlayScript("commission");
             s.Wait(0.5f)
              .Check(() => !WorldBootstrap.Instance.Sim.State.Economy.Commission.Complete, "commission already complete at start")
-             .Step(a => Drive(a, ticksPerFrame, 6000))
+             .Step(a => Drive(a, ticksPerFrame, 12000))
              .Wait(0.5f)
              .Check(() => EconomyFirstPerson.Instance != null && EconomyFirstPerson.Instance.CompletionSeen, "the completion was not shown")
              .Check(() => EconomyViews.Instance.BuildingViewCount >= EconomyLook.CommissionTypes.Length, "commission buildings have no views")

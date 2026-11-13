@@ -58,6 +58,54 @@ public static class StrategyCaptures
     public static string UntilBarracks() => Until(() => StrategyUi.FirstBarracks(S, true) >= 0 && S.Military.Queues.Any(q => q.Orders.Count > 0), 40000);
     public static string UntilAttack() => Until(() => MilitaryApi.Squads(S, 0).Any(x => x.Engaged || (x.Order == OrderKind.Attack && x.At == S.Board.RivalOutpostVertex)), 60000);
     public static string UntilBreaches(int n) => Until(() => S.Strategy.Breaches >= n, 60000);
+    /// <summary>A careless player (never moves the hero) until the breach track reaches n: demons pile up, cities get robbed.</summary>
+    public static string CarelessUntilBreaches(int n)
+    {
+        _d = new FullGameDriver(B.Sim, false, true) { IgnoreDemons = true };
+        return Until(() => S.Strategy.Breaches >= n, 60000);
+    }
+
+    public static string CarelessUntilRobbed()
+    {
+        _d = new FullGameDriver(B.Sim, false, true) { IgnoreDemons = true };
+        return Until(() => StrategyViews.Instance.RobbedHexCount > 0 || Enumerable.Range(0, S.Board.HexTerrain.Length).Any(h => StrategyApi.IsHexRobbed(S, h)), 60000);
+    }
+
+    public static string FocusRobbed(float size = 140f)
+    {
+        for (int h = 0; h < S.Board.HexTerrain.Length; h++)
+            if (StrategyApi.IsHexRobbed(S, h)) { var p = BoardSpace.Hex(h); return God(p.x, p.z, size) + " robbed hex " + h; }
+        return "none robbed";
+    }
+
+    public static string FocusOutpost(float size = 60f) => GodAtVertex(S.Board.RivalOutpostVertex, size);
+
+    public static string FocusWonder(float size = 40f)
+    {
+        int id = EconomyApi.FindBuilding(S, BuildingType.WonderSite, true);
+        return id < 0 ? "no wonder" : GodAtVertex(S.Economy.Buildings[id].Vertex, size);
+    }
+
+    public static string FocusBarracks(float size = 45f)
+    {
+        int id = StrategyUi.FirstBarracks(S);
+        if (id < 0) return "no barracks";
+        B.Picker.Select(EconomyViews.Instance.Building(id));
+        return GodAtVertex(S.Economy.Buildings[id].Vertex, size);
+    }
+
+    public static string FocusCity(float size = 130f)
+    {
+        var c = StrategyApi.PlayerCities(S).LastOrDefault();
+        return GodAtVertex(c, size);
+    }
+
+    public static string HeroHover()
+    {
+        Tool(StrategyGodTools.HeroId);
+        return GodAtVertex(S.Strategy.HeroVertex, 90f);
+    }
+
     public static string UntilEnd() => Until(() => S.Strategy.GameOver, 60000);
     public static string Ticks(int n) => Until(() => false, n);
 

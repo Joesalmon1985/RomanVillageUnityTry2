@@ -80,6 +80,8 @@ namespace World.Game
     {
         public static StrategyHud Instance { get; private set; }
 
+        /// <summary>True while this HUD holds the clock for a pending draft.</summary>
+        public bool PausedForDraft => _pausedForDraft;
         /// <summary>The current hint ("Pick a card from the draft.").</summary>
         public string WhatNow { get; private set; } = "";
         public bool EndScreenOpen { get; private set; }
@@ -91,7 +93,7 @@ namespace World.Game
         private WorldBootstrap _boot;
         private float _refreshAt;
         private int _draftKey = -1;
-        private bool _gameOverSeen;
+        private bool _gameOverSeen, _pausedForDraft;
         private string _round, _roundShort, _points, _coin, _power, _infection;
         private int _breaches, _limit;
         private bool _showScore;
@@ -108,7 +110,7 @@ namespace World.Game
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            if (_boot != null && _boot.Clock != null) { _boot.Clock.Ticked -= OnTicked; _boot.Clock.Resume(PauseReasons.Draft); }
+            if (_boot != null && _boot.Clock != null) { _boot.Clock.Ticked -= OnTicked; if (_pausedForDraft) _boot.Clock.Resume(PauseReasons.Draft); }
             if (_boot != null && _boot.Avatar != null) _boot.Avatar.RemoveLock("EndScreen");
         }
 
@@ -122,8 +124,8 @@ namespace World.Game
             if (_boot == null) return;
             var s = S;
             bool draft = StrategyApi.DraftPending(s) && !s.Strategy.GameOver;
-            if (draft && !_boot.Clock.IsPausedFor(PauseReasons.Draft)) _boot.Clock.Pause(PauseReasons.Draft);
-            else if (!draft && _boot.Clock.IsPausedFor(PauseReasons.Draft)) _boot.Clock.Resume(PauseReasons.Draft);
+            if (draft && !_pausedForDraft) { _boot.Clock.Pause(PauseReasons.Draft); _pausedForDraft = true; }
+            else if (!draft && _pausedForDraft) { _boot.Clock.Resume(PauseReasons.Draft); _pausedForDraft = false; }
 
             int key = draft ? s.Strategy.DraftAge * 10 + s.Strategy.DraftStep : -1;
             if (key != _draftKey) { _draftKey = key; DraftDismissed = false; }
