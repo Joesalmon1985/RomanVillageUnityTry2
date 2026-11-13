@@ -36,7 +36,6 @@ namespace World.Game
         public Npc Npc;
         /// <summary>The NPC's body (may be null).</summary>
         public ICharacterActor NpcActor;
-        public WarehouseSet Warehouse;
         /// <summary>Where the encounter happens: position + facing (yaw, degrees).</summary>
         public EncounterStage Stage;
         /// <summary>Set before or in Begin: if true the player keeps mouse look and the cursor stays locked. Default false (cursor free for GUI).</summary>
@@ -69,7 +68,6 @@ namespace World.Game
                 Views = b != null ? b.Views : null,
                 FirstPersonCamera = b != null ? b.MainCamera : null,
                 GodCamera = b != null && b.GodCam != null ? b.GodCam.Camera : null,
-                Warehouse = WarehouseSet.Current,
                 Npc = npc,
                 NpcActor = npc != null ? npc.Actor : null,
             };
