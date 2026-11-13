@@ -78,8 +78,39 @@ namespace World.Game
             Market = BuildMarket(root, stat, L, board.MarketVertex);
             Bell = BuildBell(root, L);
             BuildDressing(stat, L);
+            Cottages.Clear();
+            for (int i = 0; i < L.Cottages.Count; i++) Cottages.Add(BuildCottage(root, stat, L.Cottages[i].pos, L.Cottages[i].yaw, i));
             StaticBatchingUtility.Combine(stat.gameObject);
             return root.gameObject;
+        }
+
+        /// <summary>The small houses around the square (inspectable, solid).</summary>
+        public static readonly List<BuildingInfo> Cottages = new List<BuildingInfo>();
+
+        private static BuildingInfo BuildCottage(Transform root, Transform stat, Vector3 pos, float yaw, int index)
+        {
+            var f = Frame(stat, "CottageShell " + index, pos, yaw);
+            float w = VillageLayout.CottageWidth, d = VillageLayout.CottageDepth, h = 2.9f;
+            var rnd = new PropRandom(300 + index);
+            var wall = Plaster * rnd.Range(0.9f, 1.05f); wall.a = 1;
+            Signs.Box(f, "Body", new Vector3(0, h / 2, 0), new Vector3(w, h, d), wall);
+            foreach (float x in new[] { -w / 2, w / 2 }) foreach (float z in new[] { -d / 2, d / 2 })
+                Signs.Box(f, "Beam", new Vector3(x, h / 2, z), new Vector3(0.3f, h + 0.05f, 0.3f), Wood, false);
+            Signs.Box(f, "Door", new Vector3(index % 2 == 0 ? -1.2f : 1.2f, 1.05f, d / 2 + 0.05f), new Vector3(1.0f, 2.1f, 0.1f), Wood * 0.75f, false);
+            var glass = new Color(0.30f, 0.38f, 0.45f);
+            Signs.Box(f, "Window", new Vector3(index % 2 == 0 ? 1.1f : -1.1f, 1.6f, d / 2 + 0.05f), new Vector3(1.1f, 0.8f, 0.08f), glass, false);
+            Signs.Box(f, "WindowSide", new Vector3(w / 2 + 0.05f, 1.6f, 0), new Vector3(0.08f, 0.8f, 1.1f), glass, false);
+            Signs.Box(f, "Chimney", new Vector3(w * 0.3f, h + 1.6f, -d * 0.2f), new Vector3(0.6f, 1.6f, 0.6f), Stone * 0.85f, false);
+            var roof = index % 3 == 1 ? new Color(0.45f, 0.36f, 0.28f) : RoofRed * rnd.Range(0.9f, 1.05f);
+            roof.a = 1;
+            GableRoof(f, w, d, h, 1.9f, roof, wall);
+
+            var info = new GameObject("Cottage " + index).AddComponent<BuildingInfo>();
+            info.transform.SetParent(root, false);
+            info.Kind = "cottage"; info.DisplayName = "Cottage";
+            info.StaticLines.Add("Villagers live here.");
+            AddPickVolume(info.gameObject, f, new Vector3(0, (h + 1.9f) / 2, 0), new Vector3(w + 0.2f, h + 2f, d + 0.2f));
+            return info;
         }
 
         private static void BuildSquare(Transform stat, VillageLayout L)
@@ -108,9 +139,17 @@ namespace World.Game
                 var dir = Quaternion.Euler(0, -a + 90f, 0) * Vector3.forward;
                 mb.Box(L.SquareCentre + dir * (R + 0.25f) + Vector3.up * 0.08f, new Vector3(R * 2f * Mathf.PI / seg + 0.1f, 0.16f, 0.5f), Stone * 0.8f, BoardSpace.YawOf(dir));
             }
-            // Path from the square to the warehouse door.
-            var a1v = L.SquareCentre + L.Out * (R - 0.5f); var b1v = L.WarehouseDoor + L.Out * 0.2f;
-            mb.Strip(a1v + Vector3.up * 0.045f, b1v + Vector3.up * 0.045f, 4.5f, Stone * 0.85f);
+            // Paths from the square to the warehouse door, the storehouse and the market.
+            void PathTo(Vector3 target, float width, float stopShort)
+            {
+                var d = target - L.SquareCentre; d.y = 0;
+                var a = L.SquareCentre + d.normalized * (R - 0.5f);
+                var b = target - d.normalized * stopShort;
+                mb.Strip(a + Vector3.up * 0.045f, b + Vector3.up * 0.045f, width, Stone * 0.85f);
+            }
+            PathTo(L.WarehouseDoor + L.Out * 0.2f, 4f, 0f);
+            PathTo(L.Storehouse, 2.6f, 3f);
+            PathTo(L.Market, 2.2f, 2f);
             var mat = MaterialFactory.CreateVertexColored(Color.white, "Square");
             mb.ToObject("Square", stat, mat);
         }
@@ -145,7 +184,7 @@ namespace World.Game
         {
             // Local frame: +Z faces the square (door side).
             var f = Frame(stat, "StorehouseShell", L.Storehouse, L.StorehouseYaw);
-            float w = 11f, d = 7f, h = 4.2f, th = 0.4f;
+            float w = VillageLayout.StorehouseWidth, d = VillageLayout.StorehouseDepth, h = 3.8f, th = 0.4f;
             Signs.Box(f, "Floor", new Vector3(0, 0.06f, 0), new Vector3(w, 0.12f, d), new Color(0.5f, 0.4f, 0.3f), false);
             Signs.Box(f, "FrontL", new Vector3(-(w / 2 + 1.3f) / 2, h / 2, d / 2 - th / 2), new Vector3(w / 2 - 1.3f, h, th), Plaster);
             Signs.Box(f, "FrontR", new Vector3((w / 2 + 1.3f) / 2, h / 2, d / 2 - th / 2), new Vector3(w / 2 - 1.3f, h, th), Plaster);
@@ -157,17 +196,17 @@ namespace World.Game
                 Signs.Box(f, "Beam", new Vector3(x, h / 2, z), new Vector3(0.45f, h + 0.1f, 0.45f), Wood, false);
             Signs.Box(f, "DoorFrame", new Vector3(0, 3.1f, d / 2 + 0.05f), new Vector3(2.9f, 0.25f, 0.2f), Wood, false);
             Signs.Box(f, "DoorLeaf", new Vector3(-1.75f, 1.5f, d / 2 + 0.35f), new Vector3(0.12f, 3f, 1.2f), Wood * 0.8f, false, 20f);
-            GableRoof(f, w, d, h, 2.4f, RoofRed, Plaster);
-            Signs.Board(f, "STOREHOUSE", new Vector3(0, 3.75f, d / 2 + 0.12f), new Vector2(3.6f, 0.62f), Wood * 0.7f, new Color(1f, 0.95f, 0.8f));
+            GableRoof(f, w, d, h, 2.2f, RoofRed, Plaster);
+            Signs.Board(f, "STOREHOUSE", new Vector3(0, 3.45f, d / 2 + 0.12f), new Vector2(3.2f, 0.55f), Wood * 0.7f, new Color(1f, 0.95f, 0.8f));
             // Interior goods.
             var rnd = new PropRandom(5);
-            for (int i = 0; i < 9; i++)
+            for (int i = 0; i < 7; i++)
             {
-                var p = new Vector3(rnd.Range(-4.5f, 4.5f), 0, rnd.Range(-2.8f, -0.5f));
-                Signs.Box(f, "Crate", p + Vector3.up * 0.45f, new Vector3(0.9f, 0.9f, 0.9f), Wood * rnd.Range(0.8f, 1.1f), true, rnd.Range(0, 40f));
+                var p = new Vector3(rnd.Range(-3.0f, 3.0f), 0, rnd.Range(-2.2f, -0.6f));
+                Signs.Box(f, "Crate", p + Vector3.up * 0.4f, new Vector3(0.8f, 0.8f, 0.8f), Wood * rnd.Range(0.8f, 1.1f), true, rnd.Range(0, 40f));
             }
-            for (int i = 0; i < 4; i++) Signs.Box(f, "Planks", new Vector3(-4.2f + i * 0.05f, 0.2f + i * 0.2f, 1.6f), new Vector3(1.0f, 0.18f, 3.2f), new Color(0.72f, 0.56f, 0.36f), false);
-            Signs.Box(f, "Stone", new Vector3(4f, 0.4f, 1.6f), new Vector3(1.4f, 0.8f, 1.4f), new Color(0.6f, 0.6f, 0.58f));
+            for (int i = 0; i < 4; i++) Signs.Box(f, "Planks", new Vector3(-2.9f + i * 0.05f, 0.2f + i * 0.2f, 1.1f), new Vector3(0.9f, 0.18f, 2.6f), new Color(0.72f, 0.56f, 0.36f), false);
+            Signs.Box(f, "Stone", new Vector3(2.8f, 0.4f, 1.2f), new Vector3(1.2f, 0.8f, 1.2f), new Color(0.6f, 0.6f, 0.58f));
 
             var info = new GameObject("Storehouse").AddComponent<BuildingInfo>();
             info.transform.SetParent(root, false);
@@ -257,17 +296,18 @@ namespace World.Game
                 Signs.Box(f, "Pole", new Vector3(0, 1.6f, 0), new Vector3(0.14f, 3.2f, 0.14f), new Color(0.15f, 0.15f, 0.16f));
                 Signs.Prim(PrimitiveType.Cube, f, "Lantern", new Vector3(0, 3.3f, 0), new Vector3(0.35f, 0.45f, 0.35f), MaterialFactory.SharedUnlit(new Color(1f, 0.85f, 0.55f)));
             }
-            var benchAt = new[] { L.Home + L.Right * 10f + L.Out * 6f, L.Home - L.Right * 10f + L.Out * 7f };
+            var benchAt = new[] { L.SquareCentre + L.Right * 9f - L.Out * 5f, L.SquareCentre - L.Right * 9f - L.Out * 4f };
             foreach (var p in benchAt)
             {
-                var f = Frame(stat, "Bench", p, BoardSpace.YawOf(L.Home - p));
+                var f = Frame(stat, "Bench", p, BoardSpace.YawOf(L.SquareCentre - p));
                 Signs.Box(f, "Seat", new Vector3(0, 0.45f, 0), new Vector3(2f, 0.1f, 0.5f), Wood);
                 Signs.Box(f, "LegL", new Vector3(-0.8f, 0.22f, 0), new Vector3(0.12f, 0.45f, 0.45f), Wood * 0.8f);
                 Signs.Box(f, "LegR", new Vector3(0.8f, 0.22f, 0), new Vector3(0.12f, 0.45f, 0.45f), Wood * 0.8f);
             }
             // Barrels near the storehouse and the warehouse.
             var barrel = MaterialFactory.Shared(new Color(0.48f, 0.32f, 0.2f));
-            foreach (var p in new[] { L.Storehouse - L.Right * 4.5f + L.Out * 4.5f, L.Storehouse - L.Right * 4.5f + L.Out * 5.4f, L.WarehouseDoor - L.Out * 1.5f - L.Right * 4.5f })
+            var sf = BoardSpace.DirOf(L.StorehouseYaw); var ss = new Vector3(sf.z, 0, -sf.x);
+            foreach (var p in new[] { L.Storehouse + sf * 3.8f + ss * 3.2f, L.Storehouse + sf * 3.8f + ss * 4.1f, L.WarehouseDoor - L.Out * 1.5f + L.Right * 4.2f })
                 Signs.Prim(PrimitiveType.Cylinder, stat, "Barrel", p + Vector3.up * 0.5f, new Vector3(0.8f, 0.5f, 0.8f), barrel);
         }
     }

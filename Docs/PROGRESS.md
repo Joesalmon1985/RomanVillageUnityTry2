@@ -101,3 +101,21 @@ Ran:
 - Before / after (same scripted players): headless commission default seed tick 2052 -> 1452 (3.4 -> 2.4 min), worst of 20 seeds 2173 -> 1692; strategy player's commission 1813 -> 1692. Competent player: default seed 9.3 -> 8.4 min (both wonder stages), 10/10 -> 10/10 other seeds win on points, 7.0-12.1 -> 7.6-9.7 min, wonder stage 1 in 9/10 -> 10/10. Full player: 12.3-15.0 -> 11.4-15.1 min, full squads of 4 took the outpost 4 of 7 -> 6 of 8. Careless player (no hero): breach loss on the default seed 13.0 -> 14.2 min, 7 of 11 -> 6 of 11 seeds. Passive player still loses.
 
 Not run: nothing in Unity. The Unity layer in the main checkout still assumes radius 2 and 20 m hexes; see `Docs/MAP_MIGRATION.md`.
+
+## Map migration: Unity layer on the radius-4 board (13 Nov 2026, main)
+
+Merged `3e732c4` (map rework) into main (PROGRESS conflict only; main's Encounters rules kept; Unity-generated `.meta` files committed). Then migrated `Assets/World/Game` and the PlayMode tests (details ticked off in `Docs/MAP_MIGRATION.md`, API in `Docs/GAME_API.md`):
+- Terrain: 61 tiles of 60 m hexes through the 18 flags of each hex; props one mesh per hex, 4 m off the hex edges, counts scaled about 7x; new Pasture look (fence with gate, two sheep flocks, trough); hex-edge lines; corner posts; God View overlay with hex labels (grow with zoom-out), plot discs at the 420 intermediate flags, rings at suggested city sites; island rim, beach and sea; fog 140-700 m.
+- Village: compact, within about 55 m of the home corner inside a 58 m clearing; square radius 12 m; storehouse 8 x 6 m, market stall, bell, 5 cottages 6 x 5 m, all 9+ m from other flags and 7+ m from the edge lines; warehouse rescaled from about 32 x 28 m to 17.75 x 22 m (hall 13 x 22 x 7 m, bar annex, balcony at 3.4 m), beside warehouse flag 361 with its door facing the square (spawn to door 22 m, to Mira 7 m, to Juno 17 m).
+- Rival outpost placeholder (stockade, watchtower, banner; inspectable "Rival outpost") at corner 97, about 215 m north-west.
+- God camera: default framing = village + neighbouring hexes (size 115), max zoom = whole island (about 495), H / M keys, wheel zooms about the mouse; BoardPicker `CornerAt`, `HexEdgeAt`; BoardSpace corner/hex-edge helpers; NPC name plates hidden when zoomed out.
+- AutoPlay `MeasureFps` step (boot_tour, first_five) and `-novsync`.
+
+Ran:
+- `dotnet test DotNet` after the merge: 187 passed, 0 failed.
+- Unity: recompile 0 errors; EditMode 187 passed; PlayMode 21 passed (16 earlier + 5 new `MapLayoutTests`); console 0 errors.
+- Editor Play Mode (1920x1080 Game view): AutoPlay `boot_tour` OK and `first_five` OK (duel Victory after 3 casts; phrase 4/4 blocks, 20 perfect, Balcony); about 320 fps first person, 285 fps God View.
+- Windows player rebuilt (`BuildWindows.Run`, Succeeded): `-autoplay first_five` at 1280x720 exit 0, `[AutoPlay] first_five OK`, no errors or exceptions in the log (60 fps, vSync on); `-autoplay boot_tour -novsync` at 1920x1080: 818 fps first person at spawn, 1,123 fps God View default, 1,108 fps whole island.
+- Captures inspected (git-ignored): map_god_whole_island, map_god_home, map_spawn, map_warehouse_interior, map_village_from_hill, map_outpost, map_pasture.
+
+Not done / caveats: no economy views (roads, buildings, carriers; feat/econview not merged); no fast travel; the outpost has no colliders (walk-through placeholder); mountain peaks keep convex colliders; nobody played it by hand.

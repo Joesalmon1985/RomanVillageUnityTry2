@@ -20,7 +20,7 @@ namespace World.Game.Tests
             Assert.IsNotNull(boot.Sim, "sim created");
             Assert.IsNotNull(boot.Clock);
             Assert.IsNotNull(boot.MainCamera);
-            Assert.AreEqual(19, boot.Sim.State.Board.Topology.HexCount);
+            Assert.AreEqual(61, boot.Sim.State.Board.Topology.HexCount, "radius-4 board");
 
             long t0 = boot.Sim.State.Tick;
             float until = Time.realtimeSinceStartup + 3f;

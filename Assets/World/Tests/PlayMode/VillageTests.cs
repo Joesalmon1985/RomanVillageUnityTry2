@@ -40,7 +40,8 @@ namespace World.Game.Tests
             var spawn = _boot.Avatar.Position;
             Assert.Less(Flat(Npc.Find(NpcIds.Mira).transform.position - spawn), 25f, "Mira within 25 m of spawn");
             Assert.Less(Flat(Npc.Find(NpcIds.Doorman).transform.position - spawn), 25f, "door host within 25 m of spawn");
-            Assert.Less(Flat(_boot.Warehouse.DoorPosition - L.Home), 40f, "warehouse door under 40 m from the square");
+            Assert.Less(Flat(_boot.Warehouse.DoorPosition - spawn), 25f, "lit warehouse door within 25 m of spawn");
+            Assert.Less(Flat(_boot.Warehouse.DoorPosition - L.SquareCentre), 30f, "warehouse door near the square");
             // Both hosts and the door are in front of the spawn camera.
             var cam = _boot.MainCamera;
             foreach (var p in new[] { Npc.Find(NpcIds.Mira).transform.position, Npc.Find(NpcIds.Doorman).transform.position, _boot.Warehouse.DoorPosition })
@@ -216,7 +217,6 @@ namespace World.Game.Tests
             yield return Load();
             var w = _boot.Warehouse;
             var av = _boot.Avatar;
-            Vector3 L(float x, float z) => w.transform.TransformPoint(new Vector3(x, 0, z));
             float yaw = w.transform.eulerAngles.y + 180f;
             _boot.AutoPlay.LogFailuresAsErrors = false; // closed routes are expected to time out
 
@@ -224,7 +224,7 @@ namespace World.Game.Tests
             foreach (bool open in new[] { false, true })
             {
                 w.SetRouteOpen(Route.Bar, open);
-                av.Teleport(L(-8f, -15f) + Vector3.up * 0.05f, yaw);
+                av.Teleport(w.RouteApproachPosition(Route.Bar) + Vector3.up * 0.05f, yaw);
                 yield return null;
                 var s = new AutoPlayScript("bar").WalkTo(w.RouteInsidePosition(Route.Bar), 0.8f, false, open ? 8f : 3f);
                 yield return _boot.AutoPlay.Run(s);
@@ -235,13 +235,13 @@ namespace World.Game.Tests
             foreach (bool open in new[] { false, true })
             {
                 w.SetRouteOpen(Route.Balcony, open);
-                av.Teleport(L(10f, -0.8f) + Vector3.up * 0.05f, yaw);
+                av.Teleport(w.RampFootPosition + Vector3.up * 0.05f, yaw);
                 yield return null;
-                var s = new AutoPlayScript("balcony").WalkTo(L(10f, -9.5f), 0.6f, false, open ? 8f : 3f);
+                var s = new AutoPlayScript("balcony").WalkTo(w.RampHeadPosition, 0.6f, false, open ? 8f : 3f);
                 if (open) s.WalkTo(w.RouteInsidePosition(Route.Balcony), 0.8f, false, 8f);
                 yield return _boot.AutoPlay.Run(s);
                 Assert.AreEqual(!open, _boot.AutoPlay.Failed, "balcony " + (open ? "open" : "closed") + ": " + _boot.AutoPlay.FailMessage);
-                if (open) Assert.Greater(av.Position.y, 3.3f, "on the balcony deck");
+                if (open) Assert.Greater(av.Position.y, WarehouseSet.BalconyHeight - 0.1f, "on the balcony deck");
             }
 
             // Decks: from the door to the front of the decks.

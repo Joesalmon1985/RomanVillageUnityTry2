@@ -47,7 +47,7 @@ namespace World.Game
             keeper.Options.Add(DialogueOption.Leave());
 
             var cap = Npc.Spawn(NpcIds.Captain, "Captain Orla", "Captain. Units and orders.",
-                "The outpost to the west is quiet. For now.", new Color(0.65f, 0.15f, 0.15f), L.CaptainSpot, Face(L.CaptainSpot, L.Home));
+                "The rival outpost to the north-west is quiet. For now.", new Color(0.65f, 0.15f, 0.15f), L.CaptainSpot, Face(L.CaptainSpot, L.Home));
             cap.Lines.Add("When the barracks stand, I'll drill your squads.");
             cap.Options.Add(DialogueOption.Leave());
 

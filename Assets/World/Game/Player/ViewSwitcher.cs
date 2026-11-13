@@ -55,7 +55,7 @@ namespace World.Game
             {
                 _fogInFirstPerson = RenderSettings.fog;
                 Avatar.AddLock(GodLock);
-                if (!_godFocusSet) { God.SetFocus(DefaultFocus(), 72f); _godFocusSet = true; }
+                if (!_godFocusSet) { God.HomeFocus = DefaultFocus(); God.FrameHome(); _godFocusSet = true; }
                 RenderSettings.fog = false;
             }
             else
@@ -74,7 +74,7 @@ namespace World.Game
         {
             var b = WorldBootstrap.Instance;
             if (b == null || b.Layout == null) return Avatar.Position;
-            return Vector3.Lerp(Vector3.zero, b.Layout.Home, 0.6f);
+            return b.Layout.VillageCentre;
         }
 
         private void Update()

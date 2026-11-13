@@ -47,3 +47,22 @@ Found by grepping `WorldMVP/Assets/World/Game/**` and `Assets/World/Tests/PlayMo
 | Any hard-coded ids or distances (docs, scene scripts) | e.g. home vertex 24, warehouse 18, edges 29/21 | Ids changed | Now: home corner 70, warehouse flag 361, demo road flags 333 and 332, rival outpost corner 97 (default seed; terrain and ids are seed-independent). Never hard-code; read `Board` and `Economy.DemoVertexA/B`. |
 
 Not checked: `AgentScripts/*` scene builders and any code added in the main checkout after the grep.
+
+## Unity migration: done in main (13 Nov 2026)
+
+- [x] `BoardSpace.HexCorner`: exact from `HexCorners(h)`, `scale` lerps to the centre. New: `HexSize`, `SegmentLength`, `NearestCorner`, `NearestHexEdge`, `HexEdgeMid/HexEdgeEnds`, `DistanceToSegment`, `IslandRadius`.
+- [x] `TerrainBuilder` tiles: outer ring through the 18 `HexFlags` (sorted by angle), inner-ring jitter 4 m, skirt kept. All 61 hexes.
+- [x] Props: sampled over the 60 m hex, kept `RoadMargin` 4 m off the hex edges (replaces `NearAnyVertex`), counts scaled about 7x (Forest about 170 trees, Hills 26 mounds + 70 rocks, Fields 8 m crop rows instead of 1.4 m boxes, Meadow 300 flowers, Mountain 3 peaks of 38-58 m), one combined mesh per hex, colliders only on mountain peaks.
+- [x] Edge lines: one 0.5 m line per hex edge (210); the 630 segments lie on them.
+- [x] Vertex posts: stone disc + pennant post only at the 150 corners (none inside the square); intermediate flags get a small plot disc in the God View overlay only.
+- [x] Hex labels: size 6.5 (grow to x3.2 when zoomed out), raised 70 m and shifted against the camera pitch so they read over the hex; Pasture has its own colour, look (fence, sheep, trough) and label with its number.
+- [x] `BuildOutskirts` / `BuildBounds`: island rim (trees, hills) and beach out to `IslandRadius`, 6,000 m sea plane (was a 400 m ground plane), 48 bound walls at `BoardRadius` + 6. Fog 140-700 m, first-person far plane 1,500 m, God far plane 2,500 m.
+- [x] `BoardRadius`: loops over `Corners`, cached.
+- [x] `NearestEdge`: nearest of 210 hex edges, then its 3 segments.
+- [x] `BoardPicker`: radii kept (flag 5 m, segment 3 m); added `CornerAt/CornerUnderMouse` (10 m), `HexEdgeAt/HexEdgeUnderMouse` (6 m), `FlagAt/SegmentAt` aliases.
+- [x] `VillageLayout`: rebuilt. Square centred 5 m out from H (radius 12); storehouse, market and 5 cottages in the three sectors between the hex edges at H, at least 9 m from other flags and 7 m from the edge lines; warehouse rescaled to about 17.75 x 22 m and placed beside flag W in the hex to the Right of the H-W edge, door facing the square (H + 28 Out + 9 Right), so it covers no flag and the corner 60 m out stays free. Everything within about 55 m of H, inside a 58 m clearing.
+- [x] `VillageBuilder`: storehouse 8 x 6 m, cottages, paths to door/storehouse/market.
+- [x] `WorldBootstrap`: spawn and camera unchanged in meaning; God camera `MaxSize` from the island radius, `HomeFocus` = village centre; `Outpost` built at `RivalOutpostVertex`.
+- [ ] Road / building / carrier / city / hero / demon views: deferred, not built (economy views wait for the simulation proof; branch feat/econview not merged).
+- [x] PlayMode tests: hex count 61; village tests use `WarehouseSet` positions instead of local coordinates; new `MapLayoutTests` (61 tiles + Pasture, village within 70 m and off the plots, outpost at its corner, God camera default and max framing, picker ids for flags, segments, corners, hex edges and hexes).
+- [x] No hard-coded ids in the Unity layer.

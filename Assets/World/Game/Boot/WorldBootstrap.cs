@@ -23,8 +23,10 @@ namespace World.Game
         public Light Sun { get; private set; }
         public GameObject Ground { get; private set; }
 
-        /// <summary>Ground plane side length in metres (board is about 175 m across).</summary>
-        public const float GroundSize = 400f;
+        /// <summary>Sea plane side length in metres (the board is about 950 m across, the island about 1,100 m).</summary>
+        public const float GroundSize = 6000f;
+        /// <summary>Sea level (the island ground is at -0.05, the hex tiles at 0).</summary>
+        public const float SeaY = -0.3f;
         public const float EyeHeight = 1.7f;
 
         private void Awake()
@@ -49,6 +51,8 @@ namespace World.Game
         public ViewSwitcher Views { get; private set; }
         public Picker Picker { get; private set; }
         public WarehouseSet Warehouse { get; private set; }
+        /// <summary>Placeholder rival outpost at Board.RivalOutpostVertex.</summary>
+        public BuildingInfo Outpost { get; private set; }
         public Hud Hud { get; private set; }
         public AutoPlay AutoPlay { get; private set; }
         public EncounterHost Encounters { get; private set; }
@@ -60,11 +64,12 @@ namespace World.Game
             var board = Sim.State.Board;
             Layout = new VillageLayout(board);
             TerrainBuilder.BuildSky(transform, Sun, MainCamera);
-            Ground.transform.position = new Vector3(0, -0.06f, 0);
-            Ground.GetComponent<Renderer>().sharedMaterial = MaterialFactory.Create(new Color(0.34f, 0.47f, 0.25f), "Ground");
+            Ground.transform.position = new Vector3(0, SeaY, 0);
+            Ground.GetComponent<Renderer>().sharedMaterial = MaterialFactory.Create(new Color(0.22f, 0.42f, 0.55f), "Sea");
             TerrainBuilder.Build(transform, board, Layout, out var overlay);
             VillageBuilder.Build(transform, board, Layout);
             Warehouse = WarehouseSet.Build(transform, Layout);
+            Outpost = OutpostBuilder.Build(transform, board, Layout, overlay.transform);
             ActorsRoot = new GameObject("Actors").transform;
             ActorsRoot.SetParent(transform, false);
 
@@ -73,6 +78,8 @@ namespace World.Game
             Avatar.BoundsRadius = BoardSpace.BoardRadius + 4f;
             GodCam = GodCamera.Create(transform);
             GodCam.ClampRadius = BoardSpace.BoardRadius;
+            GodCam.MaxSize = GodCamera.SizeToFrame(BoardSpace.IslandRadius);
+            GodCam.HomeFocus = Layout.VillageCentre;
             Views = gameObject.AddComponent<ViewSwitcher>();
             Views.Bind(Avatar, GodCam);
             Views.AddGodViewOnly(overlay);
@@ -121,7 +128,7 @@ namespace World.Game
             MainCamera = go.AddComponent<Camera>();
             MainCamera.clearFlags = CameraClearFlags.Skybox;
             MainCamera.nearClipPlane = 0.1f;
-            MainCamera.farClipPlane = 1000f;
+            MainCamera.farClipPlane = 1500f;
             MainCamera.fieldOfView = 70f;
             go.AddComponent<AudioListener>();
 

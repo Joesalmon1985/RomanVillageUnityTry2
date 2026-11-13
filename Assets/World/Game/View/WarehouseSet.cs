@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace World.Game
@@ -10,30 +10,48 @@ namespace World.Game
     /// The warehouse: an enterable hall with a lit doorway, dance floor, DJ decks, a bar annex and a
     /// balcony up a ramp. Bar and balcony are closed by barriers with their lights off until
     /// <see cref="SetRouteOpen"/>. Local frame: origin at the door on the ground, +Z out of the door.
+    /// Size (map rework): hall 13 x 22 m, 7 m high, bar annex 4.75 m wide on the local -X side, so the whole
+    /// building is about 17.75 x 22 m (the largest in the village, still under a 20 m plot spacing in depth + width).
     /// </summary>
     public sealed class WarehouseSet : MonoBehaviour, IInspectable
     {
-        public const float HallHalfWidth = 12f, HallDepth = 28f, HallHeight = 8f;
+        public const float HallHalfWidth = 6.5f, HallDepth = 22f, HallHeight = 7f;
+        /// <summary>Outer width of the bar annex beyond the hall's -X wall.</summary>
+        public const float BarAnnexWidth = 4.75f;
+        /// <summary>Height of the balcony deck.</summary>
+        public const float BalconyHeight = 3.4f;
 
         public Transform PartyLightsRoot { get; private set; }
         public AudioSource DoorMusic { get; private set; }
 
         /// <summary>Where the host stands behind the decks (world).</summary>
-        public Vector3 DecksPosition => transform.TransformPoint(new Vector3(-2f, 0.3f, -25.8f));
+        public Vector3 DecksPosition => transform.TransformPoint(new Vector3(-1.5f, 0.3f, -19.8f));
         /// <summary>Yaw the host faces from the decks (towards the dance floor).</summary>
         public float DecksYaw => transform.eulerAngles.y;
         /// <summary>Where a player stands in front of the decks (world).</summary>
-        public Vector3 DecksFrontPosition => transform.TransformPoint(new Vector3(-2f, 0f, -22.6f));
-        public Vector3 DanceFloorPosition => transform.TransformPoint(new Vector3(-2f, 0f, -14.5f));
+        public Vector3 DecksFrontPosition => transform.TransformPoint(new Vector3(-1.5f, 0f, -16.6f));
+        public Vector3 DanceFloorPosition => transform.TransformPoint(new Vector3(-1.5f, 0f, -10.5f));
         /// <summary>Centre of the doorway on the ground (world).</summary>
         public Vector3 DoorPosition => transform.position;
         /// <summary>A point on the ground just outside the door (world).</summary>
         public Vector3 OutsideDoorPosition => transform.TransformPoint(new Vector3(0, 0, 3f));
 
         /// <summary>Doorway of a route (world, ground), the spot where the barrier stands.</summary>
-        public Vector3 RouteDoorPosition(Route r) => transform.TransformPoint(r == Route.Bar ? new Vector3(-11.75f, 0, -15f) : new Vector3(10f, 0, -2.3f));
+        public Vector3 RouteDoorPosition(Route r) => transform.TransformPoint(r == Route.Bar ? new Vector3(-6.25f, 0, -13.5f) : new Vector3(4.8f, 0, -1.8f));
         /// <summary>A walkable point inside the route area (world).</summary>
-        public Vector3 RouteInsidePosition(Route r) => transform.TransformPoint(r == Route.Bar ? new Vector3(-15.5f, 0, -15f) : new Vector3(9.5f, 3.6f, -17f));
+        public Vector3 RouteInsidePosition(Route r) => transform.TransformPoint(r == Route.Bar ? new Vector3(-8.1f, 0, -13.5f) : new Vector3(4.8f, BalconyHeight, -14f));
+        /// <summary>A hall floor point in front of a route doorway (world, ground), the place to walk from.</summary>
+        public Vector3 RouteApproachPosition(Route r) => transform.TransformPoint(r == Route.Bar ? new Vector3(-3.8f, 0, -13.5f) : new Vector3(2.6f, 0, -1.2f));
+        /// <summary>Balcony ramp: the foot just in front of the barrier and the head on the deck (world).</summary>
+        public Vector3 RampFootPosition => transform.TransformPoint(new Vector3(4.8f, 0, -0.95f));
+        public Vector3 RampHeadPosition => transform.TransformPoint(new Vector3(4.8f, BalconyHeight, -9.2f));
+
+        /// <summary>Building footprint corners on the ground (world), including the bar annex, for layout checks.</summary>
+        public Vector3[] FootprintCorners()
+        {
+            float x0 = -HallHalfWidth - BarAnnexWidth, x1 = HallHalfWidth, z0 = -HallDepth - 0.6f, z1 = 0.6f;
+            return new[] { transform.TransformPoint(new Vector3(x0, 0, z0)), transform.TransformPoint(new Vector3(x1, 0, z0)), transform.TransformPoint(new Vector3(x1, 0, z1)), transform.TransformPoint(new Vector3(x0, 0, z1)) };
+        }
 
         public GameObject Barrier(Route r) => _routes[(int)r].Barrier;
         public IReadOnlyList<Light> RouteLights(Route r) => _routes[(int)r].Lights;
@@ -172,9 +190,9 @@ namespace World.Game
             Signs.Box(stat, "FrontLintel", new Vector3(0, (h + 4.2f) / 2, -th / 2), new Vector3(4.5f, h - 4.2f, th), brick);
             Signs.Box(stat, "Back", new Vector3(0, h / 2, -d + th / 2), new Vector3(2 * hw, h, th), brick);
             Signs.Box(stat, "Right", new Vector3(hw - th / 2, h / 2, -d / 2), new Vector3(th, h, d), brick);
-            Signs.Box(stat, "LeftBack", new Vector3(-hw + th / 2, h / 2, -22.25f), new Vector3(th, h, 11.5f), brick);
-            Signs.Box(stat, "LeftFront", new Vector3(-hw + th / 2, h / 2, -6.75f), new Vector3(th, h, 13.5f), brick);
-            Signs.Box(stat, "LeftLintel", new Vector3(-hw + th / 2, (h + 3f) / 2, -15f), new Vector3(th, h - 3f, 3f), brick);
+            Signs.Box(stat, "LeftBack", new Vector3(-hw + th / 2, h / 2, -18.5f), new Vector3(th, h, 7f), brick);
+            Signs.Box(stat, "LeftFront", new Vector3(-hw + th / 2, h / 2, -6f), new Vector3(th, h, 12f), brick);
+            Signs.Box(stat, "LeftLintel", new Vector3(-hw + th / 2, (h + 3f) / 2, -13.5f), new Vector3(th, h - 3f, 3f), brick);
             // Plinth and cornice trims for some shape from outside.
             foreach (var (y, hh, o) in new[] { (0.4f, 0.8f, 0.15f), (h - 0.2f, 0.4f, 0.25f) })
             {
@@ -192,7 +210,7 @@ namespace World.Game
             // Gabled roof along the hall depth.
             var roof = new MeshBuilder();
             var rc = new Color(0.30f, 0.32f, 0.36f);
-            float rh = 3f, ov = 0.6f;
+            float rh = 2.5f, ov = 0.6f;
             Vector3 a0 = new Vector3(-hw - ov, h, ov), a1 = new Vector3(-hw - ov, h, -d - ov);
             Vector3 b0 = new Vector3(hw + ov, h, ov), b1 = new Vector3(hw + ov, h, -d - ov);
             Vector3 r0 = new Vector3(0, h + rh, ov), r1 = new Vector3(0, h + rh, -d - ov);
@@ -269,12 +287,12 @@ namespace World.Game
             spill.Quad(new Vector3(-1.6f, 0.07f, 0.1f), new Vector3(-2.6f, 0.07f, 3.5f), new Vector3(2.6f, 0.07f, 3.5f), new Vector3(1.6f, 0.07f, 0.1f), new Color(1, 1, 1, 0.35f));
             spill.ToObject("DoorSpill", dyn, HueMat(0.85f, 0.6f, true));
 
-            _hueLights.Add(PointLight("DoorLightInside", new Vector3(0, 3f, -3f), 14f, 2.6f, Color.magenta)); _lightOffsets.Add(0.85f);
+            _hueLights.Add(PointLight("DoorLightInside", new Vector3(0, 3f, -3f), 12f, 2.6f, Color.magenta)); _lightOffsets.Add(0.85f);
             _hueLights.Add(PointLight("DoorLightOutside", new Vector3(0, 3.6f, 2.2f), 11f, 2.6f, Color.magenta)); _lightOffsets.Add(0.85f);
 
             // Sign on the facade.
-            Signs.Box(stat, "SignBack", new Vector3(0, 6.1f, 0.12f), new Vector3(10f, 1.7f, 0.15f), new Color(0.1f, 0.09f, 0.1f), false);
-            _signText = Signs.Text(transform, "WAREHOUSE", new Vector3(0, 6.1f, 0.25f), 1.1f, Color.cyan);
+            Signs.Box(stat, "SignBack", new Vector3(0, 5.5f, 0.12f), new Vector3(8.6f, 1.5f, 0.15f), new Color(0.1f, 0.09f, 0.1f), false);
+            _signText = Signs.Text(transform, "WAREHOUSE", new Vector3(0, 5.5f, 0.25f), 0.95f, Color.cyan);
             // Bouncer rope posts by the door.
             foreach (float x in new[] { -3.4f, 3.4f })
             {
@@ -286,54 +304,54 @@ namespace World.Game
         {
             var floorRoot = new GameObject("DanceFloor").transform; floorRoot.SetParent(transform, false);
             for (int g = 0; g < 4; g++) _floorMats.Add(MaterialFactory.CreateUnlit(Color.black, "DanceTile" + g));
-            for (int ix = 0; ix < 6; ix++)
-                for (int iz = 0; iz < 6; iz++)
+            for (int ix = 0; ix < 4; ix++)
+                for (int iz = 0; iz < 5; iz++)
                 {
-                    var p = new Vector3(-7f + ix * 2f, 0.04f, -9.5f - iz * 2f);
+                    var p = new Vector3(-4.5f + ix * 2f, 0.04f, -6.5f - iz * 2f);
                     Signs.Prim(PrimitiveType.Cube, floorRoot, "Tile", p, new Vector3(1.9f, 0.06f, 1.9f), _floorMats[(ix + iz * 2) % 4]);
                 }
 
             var dark = new Color(0.10f, 0.10f, 0.11f);
-            Signs.Box(stat, "Stage", new Vector3(-2f, 0.15f, -25.25f), new Vector3(12f, 0.3f, 4.5f), new Color(0.16f, 0.14f, 0.13f));
-            Signs.Box(stat, "Decks", new Vector3(-2f, 0.8f, -24.2f), new Vector3(3.6f, 1.0f, 0.9f), dark);
+            Signs.Box(stat, "Stage", new Vector3(-1.5f, 0.15f, -19.625f), new Vector3(8.5f, 0.3f, 4.25f), new Color(0.16f, 0.14f, 0.13f));
+            Signs.Box(stat, "Decks", new Vector3(-1.5f, 0.8f, -18.2f), new Vector3(3.6f, 1.0f, 0.9f), dark);
             var plat = MaterialFactory.Shared(new Color(0.05f, 0.05f, 0.05f));
-            Signs.Prim(PrimitiveType.Cylinder, stat, "TurntableL", new Vector3(-3.1f, 1.32f, -24.2f), new Vector3(0.75f, 0.02f, 0.75f), plat);
-            Signs.Prim(PrimitiveType.Cylinder, stat, "TurntableR", new Vector3(-0.9f, 1.32f, -24.2f), new Vector3(0.75f, 0.02f, 0.75f), plat);
-            Signs.Box(stat, "Mixer", new Vector3(-2f, 1.36f, -24.2f), new Vector3(0.5f, 0.1f, 0.6f), new Color(0.2f, 0.2f, 0.22f), false);
+            Signs.Prim(PrimitiveType.Cylinder, stat, "TurntableL", new Vector3(-2.6f, 1.32f, -18.2f), new Vector3(0.75f, 0.02f, 0.75f), plat);
+            Signs.Prim(PrimitiveType.Cylinder, stat, "TurntableR", new Vector3(-0.4f, 1.32f, -18.2f), new Vector3(0.75f, 0.02f, 0.75f), plat);
+            Signs.Box(stat, "Mixer", new Vector3(-1.5f, 1.36f, -18.2f), new Vector3(0.5f, 0.1f, 0.6f), new Color(0.2f, 0.2f, 0.22f), false);
             var deckGlow = HueMat(0.55f, 1f, false);
-            Signs.Prim(PrimitiveType.Cube, transform, "DecksFrontStrip", new Vector3(-2f, 0.45f, -23.73f), new Vector3(3.6f, 0.08f, 0.04f), deckGlow);
-            foreach (float x in new[] { -7f, 3f })
+            Signs.Prim(PrimitiveType.Cube, transform, "DecksFrontStrip", new Vector3(-1.5f, 0.45f, -17.73f), new Vector3(3.6f, 0.08f, 0.04f), deckGlow);
+            foreach (float x in new[] { -5.0f, 2.0f })
             {
-                Signs.Box(stat, "Speaker", new Vector3(x, 1.6f, -25.8f), new Vector3(1.4f, 2.6f, 1.1f), dark);
+                Signs.Box(stat, "Speaker", new Vector3(x, 1.6f, -19.9f), new Vector3(1.4f, 2.6f, 1.1f), dark);
                 var cone = MaterialFactory.Shared(new Color(0.22f, 0.22f, 0.24f));
-                Signs.Prim(PrimitiveType.Cylinder, stat, "Woofer", new Vector3(x, 1.2f, -25.22f), new Vector3(0.9f, 0.03f, 0.9f), cone, new Vector3(90, 0, 0));
-                Signs.Prim(PrimitiveType.Cylinder, stat, "Tweeter", new Vector3(x, 2.3f, -25.22f), new Vector3(0.45f, 0.03f, 0.45f), cone, new Vector3(90, 0, 0));
+                Signs.Prim(PrimitiveType.Cylinder, stat, "Woofer", new Vector3(x, 1.2f, -19.32f), new Vector3(0.9f, 0.03f, 0.9f), cone, new Vector3(90, 0, 0));
+                Signs.Prim(PrimitiveType.Cylinder, stat, "Tweeter", new Vector3(x, 2.3f, -19.32f), new Vector3(0.45f, 0.03f, 0.45f), cone, new Vector3(90, 0, 0));
             }
             // Backdrop wall glow behind the DJ.
             var back = new MeshBuilder();
-            back.Quad(new Vector3(-8f, 0.3f, -27.4f), new Vector3(-8f, 6.5f, -27.4f), new Vector3(4f, 6.5f, -27.4f), new Vector3(4f, 0.3f, -27.4f), new Color(1, 1, 1, 0.25f));
+            back.Quad(new Vector3(-6f, 0.3f, -21.4f), new Vector3(-6f, 5.5f, -21.4f), new Vector3(3f, 5.5f, -21.4f), new Vector3(3f, 0.3f, -21.4f), new Color(1, 1, 1, 0.25f));
             back.ToObject("Backdrop", transform, HueMat(0.6f, 0.35f, true));
 
             // Truss, fixtures, beams, lights.
             PartyLightsRoot = new GameObject("PartyLights").transform;
             PartyLightsRoot.SetParent(transform, false);
             var metal = new Color(0.25f, 0.25f, 0.27f);
-            Signs.Box(stat, "TrussA", new Vector3(-2f, 7.4f, -10.5f), new Vector3(14f, 0.25f, 0.25f), metal, false);
-            Signs.Box(stat, "TrussB", new Vector3(-2f, 7.4f, -18.5f), new Vector3(14f, 0.25f, 0.25f), metal, false);
-            var spots = new[] { new Vector3(-6.5f, 7.1f, -10.5f), new Vector3(2.5f, 7.1f, -10.5f), new Vector3(-6.5f, 7.1f, -18.5f), new Vector3(2.5f, 7.1f, -18.5f) };
+            Signs.Box(stat, "TrussA", new Vector3(-1.5f, 6.4f, -8.5f), new Vector3(10f, 0.25f, 0.25f), metal, false);
+            Signs.Box(stat, "TrussB", new Vector3(-1.5f, 6.4f, -14.5f), new Vector3(10f, 0.25f, 0.25f), metal, false);
+            var spots = new[] { new Vector3(-5f, 6.1f, -8.5f), new Vector3(2f, 6.1f, -8.5f), new Vector3(-5f, 6.1f, -14.5f), new Vector3(2f, 6.1f, -14.5f) };
             for (int i = 0; i < spots.Length; i++)
             {
                 float off = i * 0.25f;
                 var fix = new GameObject("Fixture" + i).transform;
                 fix.SetParent(PartyLightsRoot, false);
                 fix.localPosition = spots[i];
-                Signs.Prim(PrimitiveType.Sphere, fix, "Lamp", Vector3.zero, Vector3.one * 0.5f, HueMat(off, 1f, false));
+                Signs.Prim(PrimitiveType.Sphere, fix, "Lamp", Vector3.zero, Vector3.one * 0.45f, HueMat(off, 1f, false));
                 var beamPivot = new GameObject("Beam").transform; beamPivot.SetParent(fix, false);
                 var beam = new MeshBuilder();
-                beam.Cylinder(new Vector3(0, -7f, 0), 2.2f, 0.25f, 7f, 12, new Color(1, 1, 1, 0.12f), false);
+                beam.Cylinder(new Vector3(0, -6f, 0), 1.9f, 0.22f, 6f, 12, new Color(1, 1, 1, 0.12f), false);
                 beam.ToObject("BeamMesh", beamPivot, HueMat(off, 0.13f, true));
                 _beams.Add(beamPivot);
-                var l = PointLight("PartyLight" + i, spots[i] - new Vector3(0, 1.2f, 0), 12f, 2.2f, Color.white);
+                var l = PointLight("PartyLight" + i, spots[i] - new Vector3(0, 1.2f, 0), 10f, 2.2f, Color.white);
                 l.transform.SetParent(PartyLightsRoot, true);
                 _hueLights.Add(l); _lightOffsets.Add(off);
             }
@@ -341,68 +359,70 @@ namespace World.Game
 
         private void BuildBar(Transform stat)
         {
+            // Annex on the hall's -X side: x from -6.5 (hall wall) to -11.25, z from -8.25 to -18.75.
             var brick = new Color(0.36f, 0.20f, 0.17f);
-            float h = 4.5f;
-            Signs.Box(stat, "BarFloor", new Vector3(-16f, 0.01f, -15f), new Vector3(8f, 0.02f, 14f), new Color(0.28f, 0.20f, 0.14f), false);
-            Signs.Box(stat, "BarWallOuter", new Vector3(-19.75f, h / 2, -15f), new Vector3(0.5f, h, 14f), brick);
-            Signs.Box(stat, "BarWallBack", new Vector3(-16f, h / 2, -21.75f), new Vector3(8f, h, 0.5f), brick);
-            Signs.Box(stat, "BarWallFront", new Vector3(-16f, h / 2, -8.25f), new Vector3(8f, h, 0.5f), brick);
-            Signs.Box(stat, "BarRoof", new Vector3(-16f, h + 0.15f, -15f), new Vector3(8.6f, 0.3f, 14.6f), new Color(0.30f, 0.32f, 0.36f));
+            float h = 4f, cx = -8.75f, cz = -13.5f;
+            Signs.Box(stat, "BarFloor", new Vector3(cx, 0.01f, cz), new Vector3(4.5f, 0.02f, 10f), new Color(0.28f, 0.20f, 0.14f), false);
+            Signs.Box(stat, "BarWallOuter", new Vector3(-11.0f, h / 2, cz), new Vector3(0.5f, h, 10.5f), brick);
+            Signs.Box(stat, "BarWallBack", new Vector3(cx, h / 2, -18.5f), new Vector3(4.5f, h, 0.5f), brick);
+            Signs.Box(stat, "BarWallFront", new Vector3(cx, h / 2, -8.5f), new Vector3(4.5f, h, 0.5f), brick);
+            Signs.Box(stat, "BarRoof", new Vector3(cx - 0.05f, h + 0.15f, cz), new Vector3(5.1f, 0.3f, 11.1f), new Color(0.30f, 0.32f, 0.36f));
             var wood = new Color(0.42f, 0.27f, 0.16f);
-            Signs.Box(stat, "BarCounter", new Vector3(-17.6f, 0.55f, -15f), new Vector3(0.9f, 1.1f, 9f), wood);
-            Signs.Box(stat, "BarShelf", new Vector3(-19.3f, 2.0f, -15f), new Vector3(0.4f, 0.08f, 9f), wood, false);
-            for (int i = 0; i < 4; i++) Signs.Box(stat, "Stool", new Vector3(-16.5f, 0.35f, -18.5f + i * 2.3f), new Vector3(0.45f, 0.7f, 0.45f), new Color(0.2f, 0.15f, 0.12f));
+            Signs.Box(stat, "BarCounter", new Vector3(-9.95f, 0.55f, cz), new Vector3(0.8f, 1.1f, 7f), wood);
+            Signs.Box(stat, "BarShelf", new Vector3(-10.55f, 2.0f, cz), new Vector3(0.35f, 0.08f, 7f), wood, false);
+            foreach (float z in new[] { -16.2f, -11f }) Signs.Box(stat, "Stool", new Vector3(-9.1f, 0.35f, z), new Vector3(0.45f, 0.7f, 0.45f), new Color(0.2f, 0.15f, 0.12f));
 
             var parts = _routes[(int)Route.Bar];
             parts.OnColor = new Color(1f, 0.45f, 0.65f);
             var neonRoot = new GameObject("BarNeon").transform; neonRoot.SetParent(transform, false);
             for (int i = 0; i < 10; i++)
             {
-                var r = Signs.Prim(PrimitiveType.Cube, neonRoot, "Bottle", new Vector3(-19.3f, 2.3f, -19f + i * 0.9f), new Vector3(0.18f, 0.5f, 0.18f), _offNeon).GetComponent<Renderer>();
+                var r = Signs.Prim(PrimitiveType.Cube, neonRoot, "Bottle", new Vector3(-10.55f, 2.3f, -16.7f + i * 0.7f), new Vector3(0.16f, 0.45f, 0.16f), _offNeon).GetComponent<Renderer>();
                 parts.Neon.Add(r);
             }
-            parts.Neon.Add(Signs.Prim(PrimitiveType.Cube, neonRoot, "BarNeonTube", new Vector3(-19.45f, 3.4f, -15f), new Vector3(0.1f, 0.12f, 6f), _offNeon).GetComponent<Renderer>());
-            var bl = PointLight("BarLight", new Vector3(-16f, 3.6f, -15f), 10f, 2.4f, new Color(1f, 0.62f, 0.35f));
+            parts.Neon.Add(Signs.Prim(PrimitiveType.Cube, neonRoot, "BarNeonTube", new Vector3(-10.7f, 3.2f, cz), new Vector3(0.1f, 0.12f, 5f), _offNeon).GetComponent<Renderer>());
+            var bl = PointLight("BarLight", new Vector3(cx, 3.2f, cz), 8f, 2.4f, new Color(1f, 0.62f, 0.35f));
             parts.Lights.Add(bl);
-            var bl2 = PointLight("BarDoorLight", new Vector3(-13.2f, 2.6f, -15f), 6f, 1.6f, parts.OnColor);
+            var bl2 = PointLight("BarDoorLight", new Vector3(-7.3f, 2.4f, cz), 5f, 1.6f, parts.OnColor);
             parts.Lights.Add(bl2);
 
-            parts.Barrier = BuildBarrier("BarBarrier", new Vector3(-11.75f, 0, -15f), 90f, 3f, 3f);
+            parts.Barrier = BuildBarrier("BarBarrier", new Vector3(-6.25f, 0, cz), 90f, 3f, 3f);
             Signs.Board(parts.Barrier.transform, "BAR", new Vector3(0, 2.75f, 0.25f), new Vector2(1.4f, 0.45f), new Color(0.12f, 0.1f, 0.1f), new Color(1f, 0.6f, 0.75f));
         }
 
         private void BuildBalcony(Transform stat)
         {
-            float top = 3.6f;
+            // Deck along the hall's +X wall (x 3.0..6.5, z -8.3..-19.5), reached by a ramp from beside the door.
+            float top = BalconyHeight;
             var wood = new Color(0.33f, 0.24f, 0.17f);
             var metal = new Color(0.25f, 0.25f, 0.27f);
-            Signs.Box(stat, "BalconyDeck", new Vector3(8.85f, top - 0.15f, -17f), new Vector3(5.3f, 0.3f, 16f), wood);
-            foreach (float z in new[] { -24.6f, -17f, -9.4f }) Signs.Box(stat, "BalconyPost", new Vector3(6.3f, (top - 0.3f) / 2, z), new Vector3(0.3f, top - 0.3f, 0.3f), metal);
-            Signs.Box(stat, "RailSide", new Vector3(6.25f, top + 0.55f, -17f), new Vector3(0.1f, 1.1f, 16f), metal);
-            Signs.Box(stat, "RailBack", new Vector3(8.85f, top + 0.55f, -24.95f), new Vector3(5.3f, 1.1f, 0.1f), metal);
-            Signs.Box(stat, "RailFront", new Vector3(7.3f, top + 0.55f, -9.05f), new Vector3(2.1f, 1.1f, 0.1f), metal);
+            Signs.Box(stat, "BalconyDeck", new Vector3(4.75f, top - 0.15f, -13.9f), new Vector3(3.5f, 0.3f, 11.2f), wood);
+            foreach (float z in new[] { -19.2f, -13.9f, -8.6f }) Signs.Box(stat, "BalconyPost", new Vector3(3.15f, (top - 0.3f) / 2, z), new Vector3(0.3f, top - 0.3f, 0.3f), metal);
+            Signs.Box(stat, "RailSide", new Vector3(3.05f, top + 0.55f, -13.9f), new Vector3(0.1f, 1.1f, 11.2f), metal);
+            Signs.Box(stat, "RailBack", new Vector3(4.75f, top + 0.55f, -19.45f), new Vector3(3.5f, 1.1f, 0.1f), metal);
+            Signs.Box(stat, "RailFront", new Vector3(3.3f, top + 0.55f, -8.35f), new Vector3(0.6f, 1.1f, 0.1f), metal);
 
-            // Ramp from the floor near the door up to the deck.
-            Vector3 foot = new Vector3(10f, 0f, -2.5f), head = new Vector3(10f, top, -9f);
+            // Ramp from the floor beside the door up to the deck.
+            Vector3 foot = new Vector3(4.8f, 0f, -2.0f), head = new Vector3(4.8f, top, -8.3f);
             var along = head - foot;
-            var ramp = Signs.Box(stat, "Ramp", (foot + head) / 2, new Vector3(3f, 0.3f, along.magnitude + 0.6f), wood);
+            var ramp = Signs.Box(stat, "Ramp", (foot + head) / 2, new Vector3(2.4f, 0.3f, along.magnitude + 0.6f), wood);
             ramp.transform.localRotation = Quaternion.LookRotation(along.normalized, Vector3.up);
             ramp.transform.localPosition -= ramp.transform.localRotation * Vector3.up * 0.15f;
-            Signs.Box(stat, "RampWall", new Vector3(8.35f, 2.35f, -5.85f), new Vector3(0.3f, 4.7f, 6.9f), new Color(0.40f, 0.22f, 0.18f));
+            Signs.Box(stat, "RampWall", new Vector3(3.45f, 2.2f, -5.15f), new Vector3(0.3f, 4.4f, 6.3f), new Color(0.40f, 0.22f, 0.18f));
             // Doorway frame at the ramp foot.
-            Signs.Box(stat, "RampFrameL", new Vector3(8.35f, 1.6f, -2.3f), new Vector3(0.3f, 3.2f, 0.3f), metal);
-            Signs.Box(stat, "RampFrameTop", new Vector3(10f, 3.3f, -2.3f), new Vector3(3.6f, 0.25f, 0.3f), metal, false);
+            Signs.Box(stat, "RampFrameL", new Vector3(3.45f, 1.6f, -1.8f), new Vector3(0.3f, 3.2f, 0.3f), metal);
+            Signs.Box(stat, "RampFrameTop", new Vector3(4.75f, 3.3f, -1.8f), new Vector3(2.9f, 0.25f, 0.3f), metal, false);
 
             var parts = _routes[(int)Route.Balcony];
             parts.OnColor = new Color(0.45f, 0.95f, 1f);
             var neonRoot = new GameObject("BalconyNeon").transform; neonRoot.SetParent(transform, false);
             for (int i = 0; i < 12; i++)
-                parts.Neon.Add(Signs.Prim(PrimitiveType.Sphere, neonRoot, "Bulb", new Vector3(6.25f, top + 1.2f, -24.5f + i * 1.35f), Vector3.one * 0.22f, _offNeon).GetComponent<Renderer>());
-            parts.Neon.Add(Signs.Prim(PrimitiveType.Cube, neonRoot, "RampTube", new Vector3(10f, 3.15f, -2.1f), new Vector3(3.2f, 0.1f, 0.1f), _offNeon).GetComponent<Renderer>());
-            parts.Lights.Add(PointLight("BalconyLight", new Vector3(9f, 6.2f, -17f), 10f, 2.4f, parts.OnColor));
-            parts.Lights.Add(PointLight("BalconyRampLight", new Vector3(10f, 2.6f, -4f), 6f, 1.6f, parts.OnColor));
+                parts.Neon.Add(Signs.Prim(PrimitiveType.Sphere, neonRoot, "Bulb", new Vector3(3.05f, top + 1.2f, -19.2f + i * 0.95f), Vector3.one * 0.2f, _offNeon).GetComponent<Renderer>());
+            parts.Neon.Add(Signs.Prim(PrimitiveType.Cube, neonRoot, "RampTube", new Vector3(4.75f, 3.15f, -1.6f), new Vector3(2.6f, 0.1f, 0.1f), _offNeon).GetComponent<Renderer>());
+            parts.Lights.Add(PointLight("BalconyLight", new Vector3(4.8f, 5.8f, -14f), 8f, 2.4f, parts.OnColor));
+            parts.Lights.Add(PointLight("BalconyRampLight", new Vector3(4.8f, 2.5f, -3.5f), 5f, 1.6f, parts.OnColor));
 
-            parts.Barrier = BuildBarrier("BalconyBarrier", new Vector3(10f, 0, -2.3f), 0f, 3.1f, 3f);
+            parts.Barrier = BuildBarrier("BalconyBarrier", new Vector3(4.8f, 0, -1.8f), 0f, 2.7f, 3f);
             Signs.Board(parts.Barrier.transform, "BALCONY", new Vector3(0, 2.75f, 0.25f), new Vector2(1.9f, 0.45f), new Color(0.12f, 0.1f, 0.1f), new Color(0.6f, 0.95f, 1f));
         }
 

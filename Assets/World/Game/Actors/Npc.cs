@@ -135,6 +135,8 @@ namespace World.Game
             float x = sp.x, y = Screen.height - sp.y;
             if (views.CurrentView == ViewMode.God)
             {
+                // Names only when zoomed in on the village; at map scale they would pile up on one spot.
+                if (views.God != null && views.God.Size > GodCamera.NameplateMaxSize) return;
                 var r = new Rect(x - UiStyle.Px(150), y - UiStyle.Px(34), UiStyle.Px(300), UiStyle.Px(30));
                 var s = new GUIStyle(UiStyle.Small) { alignment = TextAnchor.MiddleCenter };
                 UiStyle.ShadowLabel(r, DisplayName, s);

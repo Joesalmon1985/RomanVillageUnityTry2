@@ -140,7 +140,8 @@ namespace World.Game
             var floor = w.DanceFloorPosition;
             var fwd = ctx.Stage.Forward;
             var right = Vector3.Cross(Vector3.up, fwd).normalized;
-            Vector3[] offs = { right * -3.4f + fwd * 3.2f, right * 1.6f + fwd * 4.6f, right * -2.2f - fwd * 2.4f, right * 2.6f - fwd * 2.0f, right * -5.0f + fwd * 0.8f, right * 5.2f - fwd * 1.0f };
+            // Fits the 13 m wide hall (dance floor 8 x 10 m) of the resized warehouse.
+            Vector3[] offs = { right * -2.6f + fwd * 3.0f, right * 1.4f + fwd * 4.0f, right * -1.8f - fwd * 2.2f, right * 2.2f - fwd * 1.8f, right * -3.8f + fwd * 0.8f, right * 3.9f - fwd * 0.6f };
             Color[] cols = { new Color(0.9f, 0.3f, 0.5f), new Color(0.3f, 0.8f, 0.6f), new Color(0.95f, 0.75f, 0.2f), new Color(0.5f, 0.4f, 0.95f), new Color(0.95f, 0.45f, 0.2f), new Color(0.3f, 0.6f, 0.95f) };
             for (int i = 0; i < offs.Length; i++)
             {

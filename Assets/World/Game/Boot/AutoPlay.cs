@@ -31,6 +31,8 @@ namespace World.Game
         public AutoPlayScript Check(Func<bool> check, string message) => Step(a => a.DoCall(() => { if (!check()) a.Fail(message); }));
         public AutoPlayScript Capture(string name) => Step(a => a.DoCapture(name));
         public AutoPlayScript Log(string line) => Step(a => a.DoCall(() => Debug.Log(line)));
+        /// <summary>Logs "[AutoPlay] fps label: avg N, worst frame M ms (WxH)" measured over the given real time.</summary>
+        public AutoPlayScript MeasureFps(string label, float seconds = 3f) => Step(a => a.DoMeasureFps(label, seconds));
         /// <summary>Quits the player with the exit code (in the editor: stops Play Mode only if QuitInEditor).</summary>
         public AutoPlayScript Quit(int exitCode = 0) => Step(a => a.DoQuit(exitCode));
     }
@@ -54,6 +56,7 @@ namespace World.Game
         {
             var s = new AutoPlayScript("boot_tour");
             s.Wait(1f)
+             .MeasureFps("spawn first person")
              .Turn(-50f, 1.2f).Turn(100f, 2f).Turn(-50f, 1.2f)
              .WalkTo(() => Npc.Find(NpcIds.Mira).transform.position, 2.5f)
              .Wait(0.4f)
@@ -61,7 +64,12 @@ namespace World.Game
              .WalkTo(() => WorldBootstrap.Instance.Warehouse.OutsideDoorPosition, 1.0f)
              .Check(() => Npc.Find(NpcIds.Doorman).IsGreetingShown, "doorman greeting not shown")
              .Call(() => s_tab = WorldBootstrap.Instance.Avatar.Position)
-             .ToggleView().Wait(1f).ToggleView().Wait(0.3f)
+             .ToggleView().Wait(0.5f)
+             .MeasureFps("god view default", 2f)
+             .Call(() => WorldBootstrap.Instance.GodCam.FrameIsland())
+             .MeasureFps("god view whole island", 2f)
+             .Call(() => WorldBootstrap.Instance.GodCam.FrameHome())
+             .ToggleView().Wait(0.3f)
              .Check(() => (WorldBootstrap.Instance.Avatar.Position - s_tab).magnitude < 0.001f, "avatar moved across Tab")
              .Log("[AutoPlay] boot_tour OK")
              .Quit(0);
@@ -88,6 +96,8 @@ namespace World.Game
 
         private void Start()
         {
+            // "-novsync": uncapped frame rate for performance measurements (MeasureFps).
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "-novsync") >= 0) { QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1; }
             string name = CommandLineScript();
             if (name == null) return;
             if (AutoPlayScripts.TryCreate(name, out var script)) Run(script);
@@ -188,6 +198,25 @@ namespace World.Game
         {
             float end = Time.realtimeSinceStartup + seconds;
             while (Time.realtimeSinceStartup < end) yield return null;
+        }
+
+        /// <summary>Last measured average frame rate (for tests and logs).</summary>
+        public float LastFps { get; private set; }
+
+        internal IEnumerator DoMeasureFps(string label, float seconds)
+        {
+            yield return null;
+            float t0 = Time.realtimeSinceStartup, last = t0, worst = 0f;
+            int frames = 0;
+            while (Time.realtimeSinceStartup - t0 < seconds)
+            {
+                yield return null;
+                float now = Time.realtimeSinceStartup;
+                worst = Mathf.Max(worst, now - last);
+                last = now; frames++;
+            }
+            LastFps = frames / Mathf.Max(0.001f, last - t0);
+            Debug.Log("[AutoPlay] fps " + label + ": avg " + LastFps.ToString("0") + ", worst frame " + (worst * 1000f).ToString("0.0") + " ms (" + Screen.width + "x" + Screen.height + ", vSync " + QualitySettings.vSyncCount + ")");
         }
 
         internal IEnumerator DoCall(Action a)
