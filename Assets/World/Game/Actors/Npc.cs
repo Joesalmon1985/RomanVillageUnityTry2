@@ -28,7 +28,8 @@ namespace World.Game
     /// </summary>
     public sealed class Npc : MonoBehaviour, IInteractable, IInspectable, ISpeaker, IFollowable
     {
-        public const float GreetRange = 4f;
+        /// <summary>Greets within this range (6 m: one 5 m lattice step away counts as near).</summary>
+        public const float GreetRange = 6f;
         private static readonly List<Npc> _all = new List<Npc>();
         public static IReadOnlyList<Npc> All => _all;
 

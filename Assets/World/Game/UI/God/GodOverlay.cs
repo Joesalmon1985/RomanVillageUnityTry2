@@ -29,14 +29,14 @@ namespace World.Game
         private static readonly Dictionary<Color32, Material> _mats = new Dictionary<Color32, Material>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void Reset() { _root = null; _vertex.Clear(); _edge.Clear(); _shown.Clear(); _mats.Clear(); }
+        private static void Reset() { _root = null; _vertex.Clear(); _edge.Clear(); _shown.Clear(); _mats.Clear(); _spots.Clear(); _bars.Clear(); }
 
         private static Transform Root
         {
             get
             {
                 if (_root != null) return _root;
-                _vertex.Clear(); _edge.Clear(); _shown.Clear();
+                _vertex.Clear(); _edge.Clear(); _shown.Clear(); _spots.Clear(); _bars.Clear();
                 _root = new GameObject("GodToolOverlay").transform;
                 if (WorldBootstrap.Instance != null) _root.SetParent(WorldBootstrap.Instance.transform, false);
                 return _root;
@@ -99,6 +99,65 @@ namespace World.Game
                 _shown.Add(g);
             }
         }
+
+        /// <summary>A disc at a world point (plots, corners, demon sites); Key identifies the pooled piece.</summary>
+        public struct Spot
+        {
+            public int Key; public Vector3 Pos; public Color Color; public float Size;
+            public Spot(int key, Vector3 pos, Color c, float size) { Key = key; Pos = pos; Color = c; Size = size; }
+        }
+
+        /// <summary>A flat bar between two world points (hex edges); Key identifies the pooled piece.</summary>
+        public struct Bar
+        {
+            public int Key; public Vector3 A, B; public Color Color; public float Width;
+            public Bar(int key, Vector3 a, Vector3 b, Color c, float width) { Key = key; A = a; B = b; Color = c; Width = width; }
+        }
+
+        private static readonly Dictionary<int, GameObject> _spots = new Dictionary<int, GameObject>();
+        private static readonly Dictionary<int, GameObject> _bars = new Dictionary<int, GameObject>();
+
+        /// <summary>Shows discs and bars (either list may be null); hides every other overlay piece.</summary>
+        public static void Show(IList<Spot> spots, IList<Bar> bars)
+        {
+            var root = Root;
+            if (_spots.Count > 0 && FirstOrNull(_spots) == null) { _spots.Clear(); _bars.Clear(); }
+            root.gameObject.SetActive(true);
+            HideShown();
+            if (spots != null)
+                foreach (var it in spots)
+                {
+                    if (!_spots.TryGetValue(it.Key, out var g) || g == null)
+                    {
+                        g = Signs.Prim(PrimitiveType.Cylinder, root, "S" + it.Key, it.Pos, Vector3.one, Mat(Valid));
+                        Object.Destroy(g.GetComponent<Collider>());
+                        _spots[it.Key] = g;
+                    }
+                    g.SetActive(true);
+                    g.transform.position = it.Pos + Vector3.up * 0.25f;
+                    g.transform.localScale = new Vector3(it.Size * 2f, 0.05f, it.Size * 2f);
+                    g.GetComponent<Renderer>().sharedMaterial = Mat(it.Color);
+                    _shown.Add(g);
+                }
+            if (bars != null)
+                foreach (var it in bars)
+                {
+                    if (!_bars.TryGetValue(it.Key, out var g) || g == null)
+                    {
+                        g = Signs.Prim(PrimitiveType.Cube, root, "B" + it.Key, Vector3.zero, Vector3.one, Mat(Valid));
+                        Object.Destroy(g.GetComponent<Collider>());
+                        _bars[it.Key] = g;
+                    }
+                    var d = it.B - it.A; d.y = 0;
+                    g.SetActive(true);
+                    g.transform.SetPositionAndRotation((it.A + it.B) * 0.5f + Vector3.up * 0.27f, Quaternion.Euler(0, BoardSpace.YawOf(d), 0));
+                    g.transform.localScale = new Vector3(it.Width, 0.05f, Mathf.Max(0.5f, d.magnitude - 6f));
+                    g.GetComponent<Renderer>().sharedMaterial = Mat(it.Color);
+                    _shown.Add(g);
+                }
+        }
+
+        private static GameObject FirstOrNull(Dictionary<int, GameObject> d) { foreach (var kv in d) return kv.Value; return null; }
 
         public static void Hide()
         {

@@ -31,7 +31,6 @@ namespace World.Game
         public GodTool Active { get; private set; }
 
         private WorldBootstrap _boot;
-        private bool _pickerDisabledByUs;
         private static readonly List<KeyValuePair<int, Rect>> _uiRects = new List<KeyValuePair<int, Rect>>();
         private static string _tooltip;
         private static int _tooltipFrame = -1;
@@ -140,13 +139,6 @@ namespace World.Game
             bool god = IsGod;
             bool overUi = god && MouseOverUi();
             bool capture = god && Active != null && Active.CapturesClicks;
-            bool wantPickerOff = god && (overUi || capture);
-            var picker = _boot.Picker;
-            if (picker != null)
-            {
-                if (wantPickerOff && picker.InputEnabled) { picker.InputEnabled = false; _pickerDisabledByUs = true; }
-                else if (!wantPickerOff && _pickerDisabledByUs) { picker.InputEnabled = true; _pickerDisabledByUs = false; }
-            }
             if (!god || Blocked) return;
 
             foreach (var t in _tools)

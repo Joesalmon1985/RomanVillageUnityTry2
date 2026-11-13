@@ -2,7 +2,10 @@ using UnityEngine;
 
 namespace World.Game
 {
-    /// <summary>Shows the Picker's selected IInspectable (title and lines) on the right, in both views.</summary>
+    /// <summary>
+    /// F1 developer tools only: shows the thing selected in the God View (<see cref="PointerInput.Selected"/>, title and
+    /// lines) on the right. In normal play a tap shows a small inspect bubble instead (<see cref="SpeechBubbles.Inspect"/>).
+    /// </summary>
     public sealed class InspectPanel : MonoBehaviour
     {
         public static InspectPanel Instance { get; private set; }
@@ -21,22 +24,21 @@ namespace World.Game
 
         private void OnGUI()
         {
-            var p = Picker.Instance;
-            var sel = p != null ? p.Selected : null;
-            if (sel == null || (sel is Object o && o == null) || Hud.MenuOpen) { ScreenRect = Rect.zero; return; }
+            var sel = PointerInput.Selected;
+            bool god = ViewSwitcher.Instance != null && ViewSwitcher.Instance.CurrentView == ViewMode.God;
+            if (!god || sel == null || (sel is Object o && o == null) || Hud.MenuOpen) { ScreenRect = Rect.zero; return; }
             float w = UiStyle.Px(460), pad = UiStyle.Px(18);
-            var label = UiStyle.Label;
             var small = UiStyle.Small;
             float h = pad + UiStyle.Px(50);
             foreach (var l in sel.Lines) h += small.CalcHeight(new GUIContent(l), w - 2 * pad) + UiStyle.Px(4);
-            h += UiStyle.Px(44) + pad;
+            h += pad;
             var r = new Rect(Screen.width - w - UiStyle.Px(24), UiStyle.Px(90), w, h);
             ScreenRect = r;
             UiStyle.DrawPanel(r);
             float y = r.y + pad;
             var title = new GUIStyle(UiStyle.Title) { fontSize = UiStyle.Px(32) };
             GUI.Label(new Rect(r.x + pad, y, w - 2 * pad - UiStyle.Px(40), UiStyle.Px(44)), sel.Title, title);
-            if (GUI.Button(new Rect(r.xMax - pad - UiStyle.Px(38), y, UiStyle.Px(38), UiStyle.Px(38)), "x", UiStyle.Button)) { p.ClearSelection(); return; }
+            if (GUI.Button(new Rect(r.xMax - pad - UiStyle.Px(38), y, UiStyle.Px(38), UiStyle.Px(38)), "x", UiStyle.Button)) { PointerInput.Selected = null; return; }
             y += UiStyle.Px(50);
             foreach (var l in sel.Lines)
             {
@@ -44,8 +46,6 @@ namespace World.Game
                 GUI.Label(new Rect(r.x + pad, y, w - 2 * pad, lh), l, small);
                 y += lh + UiStyle.Px(4);
             }
-            var hint = new GUIStyle(small); hint.normal.textColor = new Color(0.75f, 0.72f, 0.66f);
-            GUI.Label(new Rect(r.x + pad, y + UiStyle.Px(8), w - 2 * pad, UiStyle.Px(30)), "Selected (kept across Tab)", hint);
         }
     }
 }

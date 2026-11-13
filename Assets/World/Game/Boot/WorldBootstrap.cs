@@ -5,7 +5,8 @@ namespace World.Game
 {
     /// <summary>
     /// The only object in World.unity. Creates the WorldSim and builds the scene in code: clock, sun, camera, ground,
-    /// the interim viewpoint, then calls the five package installers (REFACTOR_SPEC 8.0). Owner after F-0: package P.
+    /// the encounter host and AutoPlay, then calls the five package installers (REFACTOR_SPEC 8.0; the player walker
+    /// and its UI come from <see cref="PlayerInstaller"/>). Owner after F-0: package P.
     /// World.Game never writes WorldState: read Sim.State, Submit commands, animate events.
     /// </summary>
     public sealed class WorldBootstrap : MonoBehaviour
@@ -83,42 +84,29 @@ namespace World.Game
         /// <summary>The save slot (F5 save, F9 load).</summary>
         public SaveSystem Saves { get; private set; }
 
-        // ---- Interim viewpoint (F-0; package P replaces FirstPersonAvatar with the PlayerWalker) ----
+        // ---- The viewpoint (package P: PlayerInstaller creates the walker, the F1 God View and the UI) ----
 
-        public FirstPersonAvatar Avatar { get; private set; }
+        /// <summary>The player's viewpoint on the walking lattice (the old name "Avatar" is kept for callers).</summary>
+        public PlayerWalker Avatar { get; private set; }
+        public PlayerWalker Walker => Avatar;
+        /// <summary>The F1 developer view's camera.</summary>
         public GodCamera GodCam { get; private set; }
         public ViewSwitcher Views { get; private set; }
-        public Picker Picker { get; private set; }
         public Hud Hud { get; private set; }
         public AutoPlay AutoPlay { get; private set; }
         public EncounterHost Encounters { get; private set; }
         /// <summary>Parent for characters created by ActorFactory.</summary>
         public Transform ActorsRoot { get; private set; }
 
+        internal void SetViewpoint(PlayerWalker walker, GodCamera god, ViewSwitcher views) { Avatar = walker; GodCam = god; Views = views; }
+        internal void SetHud(Hud hud) => Hud = hud;
+
         private void BuildViewpoint()
         {
-            var board = Sim.State.Board;
             Ground.transform.position = new Vector3(0, SeaY, 0);
             Ground.GetComponent<Renderer>().sharedMaterial = MaterialFactory.Create(new Color(0.22f, 0.42f, 0.55f), "Sea");
             ActorsRoot = new GameObject("Actors").transform;
             ActorsRoot.SetParent(transform, false);
-
-            var camp = new CampLayout(board);
-            var spawn = WalkLattice.ToWorld(camp.Spawn);
-            Avatar = FirstPersonAvatar.Create(transform, MainCamera, spawn + Vector3.up * 0.05f, WalkLattice.Yaw(camp.SpawnHeading));
-            Avatar.BoundsCentre = Vector3.zero;
-            Avatar.BoundsRadius = BoardSpace.BoardRadius + 4f;
-            GodCam = GodCamera.Create(transform);
-            GodCam.ClampRadius = BoardSpace.BoardRadius;
-            GodCam.MaxSize = GodCamera.SizeToFrame(BoardSpace.IslandRadius);
-            GodCam.HomeFocus = camp.Hearth;
-            Views = gameObject.AddComponent<ViewSwitcher>();
-            Views.Bind(Avatar, GodCam);
-            Picker = gameObject.AddComponent<Picker>();
-            Picker.Bind(Views);
-            gameObject.AddComponent<InspectPanel>();
-            gameObject.AddComponent<DialoguePanel>();
-            Hud = gameObject.AddComponent<Hud>();
             Encounters = EncounterHost.CreateInstance(gameObject);
             AutoPlay = gameObject.AddComponent<AutoPlay>();
             ShowDebugOverlay = false;
