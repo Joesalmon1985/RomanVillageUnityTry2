@@ -63,6 +63,27 @@ public static class LightCaptures
                 return "grown to tick " + boot.Sim.State.Tick;
             }
             case "scan": LightDecorator.Instance.ScanNow(); return "scanned";
+            case "stockmix":
+            {
+                // Capture fixture only (like the tests' stress fixtures): gives the resource hexes round the home camp
+                // a mix of mature and young stock in all three stages, so "mature versus young at night" can be judged.
+                var st = boot.Sim.State; long now = st.Tick; int n = 0;
+                var lay = new CampLayout(st.Board);
+                foreach (var hx in st.Economy.Hexes)
+                {
+                    var ware = World.Sim.TerrainInfo.RawWare(st.Board.HexTerrain[hx.Hex]);
+                    if (ware == null) continue;
+                    if ((BoardSpace.Hex(st.Board.Topology, hx.Hex) - lay.Hearth).magnitude > 260f) continue;
+                    hx.Mature = 4; hx.Young.Clear();
+                    hx.Young.Add(new World.Sim.Economy.StockCohort { Ware = ware.Value, Count = 2, AddedTick = now - 10, MatureTick = now + 5000 });
+                    hx.Young.Add(new World.Sim.Economy.StockCohort { Ware = ware.Value, Count = 3, AddedTick = now - 2500, MatureTick = now + 2500 });
+                    hx.Young.Add(new World.Sim.Economy.StockCohort { Ware = ware.Value, Count = 3, AddedTick = now - 4600, MatureTick = now + 400 });
+                    n++;
+                }
+                LandViews.Instance.RebuildFromState();
+                LightDecorator.Instance.ScanNow();
+                return "stock mixed on " + n + " hexes";
+            }
             case "god": boot.Views.SetView(ViewMode.God); return "god";
             case "fp": boot.Views.SetView(ViewMode.FirstPerson); return "fp";
             case "tp":
@@ -172,6 +193,23 @@ public static class LightCaptures
                 Look(boot, c + (layout.Hearth - c).normalized * (arg > 0 ? arg : 13f), c, 6f);
                 return "at pasture hex " + best;
             }
+            case "stock":
+            {
+                HexLandView best = null; int bs = -1;
+                for (int h = 0; h < t.HexCount; h++)
+                {
+                    var hv = views.Hex(h); if (hv == null) continue;
+                    var ter = s.Board.HexTerrain[h];
+                    if (arg == 1 ? ter != World.Sim.Terrain.Pasture : arg == 2 ? ter != World.Sim.Terrain.Fields : ter != World.Sim.Terrain.Forest) continue;
+                    int young = hv.ShownStage0 + hv.ShownStage1 + hv.ShownStage2;
+                    int score = Mathf.Min(young, hv.ShownMature) * 10 + young + hv.ShownMature;
+                    if (score > bs) { bs = score; best = hv; }
+                }
+                if (best == null) return "no stock hex";
+                var c = best.transform.position;
+                Look(boot, c + (layout.Hearth - c + Vector3.right * 0.1f).normalized * 12.5f, c, 10f);
+                return "at stock hex " + best.HexId + " mature " + best.ShownMature + " young " + best.ShownStage0 + "/" + best.ShownStage1 + "/" + best.ShownStage2;
+            }
             case "demon":
             {
                 var dv = views.DemonViews.FirstOrDefault();
@@ -250,7 +288,7 @@ public static class LightCaptures
             if (l.renderMode == LightRenderMode.ForceVertex) vertex++; else pixel++;
         }
         var s = boot.Sim.State;
-        return "tick " + s.Tick + " hour " + dn.Hour.ToString("0.00") + " night " + dn.Night.ToString("0.00") + " sunEl " + dn.State.SunElevation.ToString("0.0")
+        return "over " + s.Factions.GameOver + " tick " + s.Tick + " hour " + dn.Hour.ToString("0.00") + " night " + dn.Night.ToString("0.00") + " sunEl " + dn.State.SunElevation.ToString("0.0")
             + " lights: registered " + WorldLights.Registered + " enabled " + enabled + " (pixel-capable " + pixel + ", vertex " + vertex + ") budget px " + wl.PixelLightsNow + " vx " + wl.VertexLightsNow
             + " camps " + LightDecorator.Instance.CampsLit + " buildings " + LightDecorator.Instance.BuildingsLit
             + " markers " + LandViews.Instance.Markers.Count() + " demons " + LandViews.Instance.DemonViews.Count() + " carriers " + LandViews.Instance.Carriers.Count()

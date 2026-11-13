@@ -76,6 +76,8 @@ namespace World.Game
         /// <summary>No real light beyond this distance from the eye (m); glows and halos carry on.</summary>
         public const float LightCullDistance = 85f;
         public const float SparkDistance = 38f, HaloDistance = 420f;
+        /// <summary>Height of the ground glow discs: above the paths (0.05-0.08) and the cast marks (0.11-0.14), so nothing z-fights.</summary>
+        public const float GlowHeight = 0.16f;
         public const int SparkFires = 6, SparksPerFire = 5;
 
         private static readonly List<FireLight> All = new List<FireLight>();
@@ -208,7 +210,7 @@ namespace World.Game
             if (f.GroundGlow > 0f && f.GroundRenderer == null)
             {
                 var g = LandLook.Part(f.transform, "GroundGlow", LightShapes.RadialDisc(false), LightShapes.Glow, false);
-                g.transform.position = new Vector3(f.transform.position.x, BoardSpace.GroundY + 0.075f, f.transform.position.z);
+                g.transform.position = new Vector3(f.transform.position.x, BoardSpace.GroundY + GlowHeight, f.transform.position.z);
                 g.transform.rotation = Quaternion.identity;
                 g.transform.localScale = Vector3.one * f.GroundGlow;
                 f.GroundRenderer = g.GetComponent<Renderer>();

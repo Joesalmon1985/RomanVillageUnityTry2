@@ -10,6 +10,8 @@ namespace World.Game
     {
         public FireLight Main, Burn;
         public readonly List<FireLight> Torches = new List<FireLight>();
+        /// <summary>The local-paths mesh already unstacked (see <see cref="LightDecorator"/>).</summary>
+        public int PathMeshId;
     }
 
     /// <summary>
@@ -192,11 +194,31 @@ namespace World.Game
             }
             if (lit.Burn != null) lit.Burn.On = burn != null && burn.gameObject.activeSelf;
 
+            Unstack(sv.transform.Find("LocalPaths"), lit);
             Dim(sv.transform, "Smoke", 0.75f);
             Dim(sv.transform, "HeldGround", 0.4f);
             Lit(sv.transform, "StorePiles", LightShapes.Read.Load);
             Lit(sv.transform, "Totem", LightShapes.Read.Prop);
             return true;
+        }
+
+        /// <summary>
+        /// The local paths of a camp are one mesh of flat strips that overlap along the spokes, all at exactly the same
+        /// height. With one sun that is invisible; under a per-pixel fire light the overlapping strips are each lit
+        /// again (the additive pass passes the depth test for every coplanar copy) and the path shows bright stripes.
+        /// Each strip is lifted by its own fraction of a millimetre to 4 cm, so only the top one takes the light.
+        /// Done once per mesh (V replaces the mesh when the camp's plots change).
+        /// </summary>
+        private static void Unstack(Transform paths, LitBy lit)
+        {
+            var mf = paths != null ? paths.GetComponent<MeshFilter>() : null;
+            var mesh = mf != null ? mf.sharedMesh : null;
+            if (mesh == null || mesh.GetInstanceID() == lit.PathMeshId) return;
+            lit.PathMeshId = mesh.GetInstanceID();
+            var v = mesh.vertices;
+            for (int i = 0; i < v.Length; i++) v[i].y += ((i / 4) * 37 % 101) * 0.0004f;
+            mesh.vertices = v;
+            mesh.RecalculateBounds();
         }
 
         private bool Building(BuildingView bv)
@@ -216,6 +238,8 @@ namespace World.Game
 
         private void Demons(DemonView dv)
         {
+            // V's red spire is additive: right by day, a floodlight at night. It keeps its shape and is turned down.
+            Fade(dv.transform, "Spire", Mathf.Lerp(1f, 0.30f, Night));
             if (dv.GetComponent<LitBy>() != null) return;
             var lit = dv.gameObject.AddComponent<LitBy>();
             lit.Main = WorldLights.Add(dv.transform, new Vector3(0, 1.3f, 0), DemonGlow, 1.6f, 11f, 1, "Demon glow");
@@ -280,8 +304,26 @@ namespace World.Game
             Dim(t, "ReadyMark", 0.55f);
             var token = hv.Token;
             if (token == null) return;
+            // The roll effects are additive (made for daylight): turned down at night so a paying hex does not white out the view.
+            float k = Mathf.Lerp(1f, 0.42f, DayNight.Instance != null ? DayNight.Instance.Night : 0f);
+            Fade(t, "PaidBeam", k); Fade(t, "PaidRing", Mathf.Lerp(1f, 0.7f, 1f - k)); Fade(token, "Halo", Mathf.Lerp(k, 1f, 0.3f));
             // The number token is unlit (always readable); at night it is dimmed to a soft self-lit cream instead of a white lamp.
             Dim(token, "Disc", 1f); Dim(token, "Pips", 1f); Dim(token, "Stopped", 1f);
+        }
+
+        private static float Night => DayNight.Instance != null ? DayNight.Instance.Night : 0f;
+        private static MaterialPropertyBlock _fade;
+        private static readonly int ColorId = Shader.PropertyToID("_Color");
+
+        /// <summary>Scales the brightness of another package's additive effect (a property block on its renderer; its material is untouched).</summary>
+        private static void Fade(Transform parent, string child, float k)
+        {
+            var c = parent != null ? parent.Find(child) : null;
+            var r = c != null ? c.GetComponent<Renderer>() : null;
+            if (r == null) return;
+            if (_fade == null) _fade = new MaterialPropertyBlock();
+            _fade.SetColor(ColorId, new Color(k, k, k, 1f));
+            r.SetPropertyBlock(_fade);
         }
 
         private static void Lit(Transform parent, string child, LightShapes.Read read)

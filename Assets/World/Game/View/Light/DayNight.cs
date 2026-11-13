@@ -46,6 +46,8 @@ namespace World.Game
         public const float MinLightElevation = 14f;
         public const float MoonFullIntensity = 0.62f, SunFullIntensity = 1.15f;
         public const float ShadowDistanceDay = 90f, ShadowDistanceNight = 60f;
+        /// <summary>Paths, roads and marks lie 5-15 cm above the ground they do not shadow: the bias must clear that at a low moon, or they stripe.</summary>
+        public const float ShadowBias = 0.4f, ShadowNormalBias = 0.9f;
 
         // ---------------- developer scrub ----------------
 
@@ -64,6 +66,7 @@ namespace World.Game
         /// <summary>Developer and capture helper: jumps the scrub offset so that it is <paramref name="hour"/> now.</summary>
         public void SetHour(double hour)
         {
+            Refresh();
             DevOffsetHours += hour - Hour;
             Refresh();
         }
@@ -134,9 +137,9 @@ namespace World.Game
         private static readonly Color[] ZenithK = { C(0.012f, 0.022f, 0.065f), C(0.05f, 0.07f, 0.19f), C(0.19f, 0.27f, 0.50f), C(0.27f, 0.44f, 0.75f), C(0.33f, 0.55f, 0.85f) };
         private static readonly Color[] HorizonK = { C(0.045f, 0.065f, 0.13f), C(0.17f, 0.15f, 0.25f), C(0.52f, 0.42f, 0.44f), C(0.78f, 0.72f, 0.66f), C(0.78f, 0.84f, 0.88f) };
         private static readonly Color[] GlowK = { C(0, 0, 0), C(0.50f, 0.20f, 0.08f), C(1.0f, 0.50f, 0.16f), C(0.40f, 0.26f, 0.10f), C(0, 0, 0) };
-        private static readonly Color[] AmbSkyK = { C(0.105f, 0.15f, 0.29f), C(0.16f, 0.17f, 0.31f), C(0.38f, 0.36f, 0.46f), C(0.55f, 0.58f, 0.68f), C(0.62f, 0.68f, 0.80f) };
-        private static readonly Color[] AmbEqK = { C(0.07f, 0.095f, 0.175f), C(0.12f, 0.115f, 0.19f), C(0.33f, 0.29f, 0.30f), C(0.48f, 0.46f, 0.42f), C(0.52f, 0.52f, 0.48f) };
-        private static readonly Color[] AmbGroundK = { C(0.035f, 0.045f, 0.085f), C(0.06f, 0.055f, 0.085f), C(0.18f, 0.16f, 0.15f), C(0.27f, 0.25f, 0.22f), C(0.30f, 0.28f, 0.24f) };
+        private static readonly Color[] AmbSkyK = { C(0.13f, 0.18f, 0.33f), C(0.16f, 0.17f, 0.31f), C(0.38f, 0.36f, 0.46f), C(0.55f, 0.58f, 0.68f), C(0.62f, 0.68f, 0.80f) };
+        private static readonly Color[] AmbEqK = { C(0.10f, 0.13f, 0.23f), C(0.12f, 0.115f, 0.19f), C(0.33f, 0.29f, 0.30f), C(0.48f, 0.46f, 0.42f), C(0.52f, 0.52f, 0.48f) };
+        private static readonly Color[] AmbGroundK = { C(0.055f, 0.07f, 0.12f), C(0.06f, 0.055f, 0.085f), C(0.18f, 0.16f, 0.15f), C(0.27f, 0.25f, 0.22f), C(0.30f, 0.28f, 0.24f) };
         private static readonly Color[] SunColK = { C(1f, 0.40f, 0.18f), C(1f, 0.40f, 0.18f), C(1f, 0.50f, 0.24f), C(1f, 0.80f, 0.58f), C(1f, 0.93f, 0.80f) };
         private static readonly float[] SunIntK = { 0f, 0f, 0.12f, 0.80f, SunFullIntensity };
 
@@ -197,7 +200,7 @@ namespace World.Game
         {
             Sun = _boot.Sun;
             Sun.shadows = LightShadows.Soft;
-            Sun.shadowBias = 0.06f; Sun.shadowNormalBias = 0.5f;
+            Sun.shadowBias = ShadowBias; Sun.shadowNormalBias = ShadowNormalBias;
             Sun.renderMode = LightRenderMode.ForcePixel;
 
             var mgo = new GameObject("Moon");
@@ -206,7 +209,7 @@ namespace World.Game
             Moon.type = LightType.Directional;
             Moon.shadows = LightShadows.Soft;
             Moon.shadowStrength = 0.55f;
-            Moon.shadowBias = 0.06f; Moon.shadowNormalBias = 0.5f;
+            Moon.shadowBias = ShadowBias; Moon.shadowNormalBias = ShadowNormalBias;
             Moon.renderMode = LightRenderMode.ForcePixel;
 
             // Stable shadows: fixed cascades fitted to stay still as the camera turns, high resolution, soft edges.
