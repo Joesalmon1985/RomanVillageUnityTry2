@@ -20,6 +20,8 @@ namespace World.Sim.Economy
         public int ShipmentSize = 4;
         public int InputBuffer = 2;
         public int CollectorStore = 4;
+        /// <summary>A job waiting this long is served before the serving order (2.B.1), oldest first, so no demand starves (0 = off).</summary>
+        public int JobAgeTicks = 300;
 
         // Warriors.
         public int MealTicks = 900;

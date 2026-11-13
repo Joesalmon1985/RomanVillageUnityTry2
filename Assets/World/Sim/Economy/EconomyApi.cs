@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -279,8 +280,10 @@ namespace World.Sim.Economy
         // ---- carriers ----
 
         /// <summary>
-        /// Interpolated carrier position (metres) and facing (degrees, 0 = north, clockwise) at Tick + tickFraction.
-        /// False for an unknown carrier. S-0: carriers stand at their storehouse corner.
+        /// Interpolated carrier position (metres) and facing (degrees, 0 = north, clockwise) at Tick + tickFraction
+        /// (0..1) along its current leg: local legs follow PlotLayout.PathPoints, main-road legs the corner path
+        /// (and the hex-edge midpoint of a road site). An idle carrier stands at its storehouse corner. False for an
+        /// unknown carrier.
         /// </summary>
         public static bool CarrierPosition(WorldState s, int carrierId, double tickFraction, out double x, out double z, out double yaw)
         {
@@ -288,11 +291,10 @@ namespace World.Sim.Economy
             var e = s?.Economy;
             if (e == null || carrierId < 0 || carrierId >= e.Carriers.Count) return false;
             var c = e.Carriers[carrierId];
-            var home = EconomyLogic.GetSettlement(s, c.Home);
-            if (home == null) return false;
-            var t = s.Board.Topology;
-            x = t.VertexX(home.Corner);
-            z = t.VertexZ(home.Corner);
+            var pts = Logistics.LegPoints(s, c);
+            if (pts.Length < 2) return false;
+            double f = c.LegTicks > 0 ? (c.Progress + Math.Max(0, Math.Min(1, tickFraction))) / c.LegTicks : 0;
+            Logistics.PointAlong(pts, f, out x, out z, out yaw);
             return true;
         }
 
@@ -302,7 +304,12 @@ namespace World.Sim.Economy
             if (e == null || carrierId < 0 || carrierId >= e.Carriers.Count) return "";
             var c = e.Carriers[carrierId];
             string who = "A carrier of " + SettlementName(s, c.Home);
-            if (c.JobId >= 0) return who + ": " + DescribeJob(s, c.JobId);
+            if (c.JobId >= 0)
+            {
+                string job = DescribeJob(s, c.JobId);
+                if (job.Length > 0) return who + ": " + char.ToLowerInvariant(job[0]) + job.Substring(1);
+            }
+            if (c.State == CarrierState.Returning) return who + ", walking home.";
             return who + ", waiting at the storehouse.";
         }
 

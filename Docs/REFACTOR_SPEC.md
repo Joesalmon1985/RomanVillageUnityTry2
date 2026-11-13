@@ -793,6 +793,14 @@ Proposal target points and press areas: Building: plot centre, radius 5. Road: h
 9. `PlayerState.Name` is "Your people" / "the Ash Clan".
 10. Helpers added (public, free to use): `SystemOrder.Dice/Growth/Collect/Brain/Strength` (100/150/200/1150/1200; the older slot names stay); `TerrainInfo.Count`, `DisplayName(Terrain)`, `IsMined(Terrain)`; `PlotLayout.PlotCount`, `IsValidPlot`, `Yaw(dx, dz)`, `SideSlotSpoke`, `CitySlotSpoke`, `SideOffset`; `BuildingDefs.IsValid`, `BuildingDef.IsCollector`; `EconomyTuning.GrowFor(Terrain)`; `EconomyApi.CornerTerrains(s, corner)`; `EconomyRefusals.Sentence/Reject`, `FactionRefusals.Sentence/Reject`, `DemonRefusals.Sentence/Reject`; `DemonApi.Effect(kind)`; `FactionApi.PlotPressRadius/CornerPressRadius/RoadStripHalfWidth/RoadPressRadius`; `BoardGenerator.NumberPool`, `MountainNumbers`, `StartForestNumber/StartHillsNumber/StartFieldsNumber`.
 
+
+**13 Nov 2026, S logistics.** Additions only:
+
+11. `EconomyTuning.JobAgeTicks` = 300 (new field). A job that has waited this long is served before the serving order of 2.B.1 (oldest first). Why: with one-unit local trips, outputs (class 2) arrive faster than three carriers can fetch them, and shipments (class 3) starved for thousands of ticks in tests; ageing keeps the serving order in normal load and guarantees every demand is served.
+12. A carrier that has just delivered to a building takes a waiting output of that same building (for its own settlement) straight back to the storehouse instead of walking home empty. A carrier always ends at its own storehouse.
+13. Carrier legs: local legs follow `PlotLayout.PathPoints` (out) or its reverse (back) and last `LocalSteps(plot) * CarrierTicksPerStep`; main-road legs follow `Carrier.LegCorners` (12 steps per hex edge) plus 6 steps to or from the midpoint of a road site's hex edge. `EconomyApi.CarrierPosition` interpolates by path length at `(Progress + tickFraction) / LegTicks`; an idle carrier stands at its storehouse corner. A carrier on a main-road leg does not advance while the hex edge it is on (or about to enter) is demon-held; a waiting job that can no longer find a route is released (`JobStalled`) and demand re-creates it from a reachable source.
+14. A cancelled site: waiting jobs to it are released; goods already on a carrier are redirected to the carrier's own storehouse (`Job.ToKind/ToId` change), and the carrier brings them home after reaching the old destination.
+15. Workshops and lodges consume inputs on hand (`Building.Delivered`); a site's `Building.Delivered` is its delivered construction goods. Halted (demon-held) settlements send and receive no shipments and no road or settlement site goods; their local trips go on.
 ---
 
 ## Appendix B. Unity-side interface between packages (namespace `World.Game`)

@@ -39,7 +39,7 @@ namespace World.Sim.Tests
             int home = s.Board.StartCorners[0];
             int edge = s.Board.Topology.CornerHexEdges(home).Min();
             K.Do(sim, new PlaceRoad { HexEdge = edge });
-            K.Step(sim, 200);
+            K.Step(sim, 400);
             Assert.AreEqual(RoadState.Built, EconomyApi.RoadOn(s, edge).State);
             s.Demons.Corner[home] = 3;
             s.Demons.Corner[s.Board.StartCorners[1]] = 3;

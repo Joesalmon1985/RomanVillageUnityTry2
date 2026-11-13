@@ -200,8 +200,8 @@ namespace World.Sim.Economy
 
     /// <summary>
     /// Production (2.B, 3.2): workshops, warrior lodges and warrior meals.
-    /// S-0 FIRST VERSION: inputs are taken straight from the settlement's storehouse at the cycle start (no carrier
-    /// trips, no InputBuffer); outputs go to the building's store and the interim Jobs system moves them home.
+    /// Inputs are those on hand at the building (Delivered: carriers keep InputBuffer cycles there); outputs go to the
+    /// building's store and carriers take them to the storehouse.
     /// </summary>
     internal sealed class ProductionSystem : ISimSystem
     {
@@ -240,7 +240,7 @@ namespace World.Sim.Economy
                 int rw = -1;
                 if (def.Class == BuildingClass.Lodge && WarriorsAt(s, b.Id) >= e.Tuning.WarriorsPerLodge) reason = Reasons.OutputFull;
                 else if (def.Class == BuildingClass.Workshop && OutputFull(e, st, b, def, out rw)) reason = Reasons.OutputFull;
-                else if (!HasInputs(st, def, out rw)) reason = Reasons.InputMissing;
+                else if (!HasInputs(b, def, out rw)) reason = Reasons.InputMissing;
                 else
                 {
                     rw = -1;
@@ -248,7 +248,7 @@ namespace World.Sim.Economy
                     {
                         int n = def.Inputs[w];
                         if (n <= 0) continue;
-                        st.Stock[w] -= n;
+                        b.Delivered[w] -= n;
                         e.Ledger.Consumed[w] += n;
                         if (def.Class == BuildingClass.Lodge) e.Ledger.Training[w] += n;
                         else e.Ledger.RecipeIn[(int)b.Type][w] += n;
@@ -273,15 +273,15 @@ namespace World.Sim.Economy
             return false;
         }
 
-        private static bool HasInputs(Settlement st, BuildingDef def, out int missing)
+        private static bool HasInputs(Building b, BuildingDef def, out int missing)
         {
             missing = -1;
             for (int w = 0; w < Wares.Count; w++)
-                if (def.Inputs[w] > 0 && st.Stock[w] - st.Reserved[w] < def.Inputs[w]) { missing = w; return false; }
+                if (def.Inputs[w] > 0 && b.Delivered[w] < def.Inputs[w]) { missing = w; return false; }
             return true;
         }
 
-        private static int WarriorsAt(WorldState s, int lodge)
+        internal static int WarriorsAt(WorldState s, int lodge)
         {
             int n = 0;
             foreach (var w in s.Economy.Warriors) if (w.Lodge == lodge) n++;
@@ -473,99 +473,5 @@ namespace World.Sim.Economy
                 delivered[w] = 0;
             }
         }
-    }
-
-    /// <summary>
-    /// Jobs and logistics. S-0 FIRST VERSION (no carrier trips): every tick, building sites take their missing goods
-    /// straight from their settlement's storehouse, road and settlement sites from their source settlement's
-    /// storehouse, and collector and workshop stores are emptied into their storehouse. The full hub-and-spoke
-    /// version with jobs, carriers and shipments (2.B.1) replaces this.
-    /// </summary>
-    internal sealed class JobSystem : ISimSystem
-    {
-        private readonly EconomyHooks _hooks;
-        public JobSystem(EconomyHooks hooks) { _hooks = hooks; }
-
-        public void Tick(WorldState s, EventBuffer ev)
-        {
-            var e = s.Economy;
-            foreach (var b in e.Buildings)
-            {
-                var st = EconomyLogic.GetSettlement(s, b.Settlement);
-                if (st == null) continue;
-                var def = BuildingDefs.Get(b.Type);
-                if (b.State == BuildingState.Site && def != null) Pull(st, b.Delivered, def.Cost, b);
-                if (b.State == BuildingState.Active || b.State == BuildingState.Retiring || b.State == BuildingState.Constructing)
-                {
-                    for (int w = 0; w < Wares.Count; w++)
-                    {
-                        if (b.Stock[w] <= 0) continue;
-                        st.Stock[w] += b.Stock[w];
-                        b.Stock[w] = 0;
-                    }
-                }
-            }
-            foreach (var r in e.Roads)
-            {
-                if (r.State != RoadState.Site) continue;
-                var src = EconomyLogic.GetSettlement(s, r.SourceSettlement);
-                if (src == null || _hooks.SettlementHalted(s, src.Id)) { r.Reason = Reasons.NoRoad; continue; }
-                PullRoad(src, r, e.Tuning.RoadCost);
-            }
-            foreach (var st in e.Settlements)
-            {
-                if (st.State != SettlementState.Site) continue;
-                var src = EconomyLogic.GetSettlement(s, st.SourceSettlement);
-                if (src == null || _hooks.SettlementHalted(s, src.Id)) { st.Reason = Reasons.NoRoad; continue; }
-                for (int w = 0; w < Wares.Count; w++)
-                {
-                    int take = System.Math.Min(e.Tuning.SettlementCost[w] - st.Delivered[w], src.Stock[w] - src.Reserved[w]);
-                    if (take <= 0) continue;
-                    src.Stock[w] -= take;
-                    st.Delivered[w] += take;
-                }
-                st.Reason = ConstructionSystem.Covered(st.Delivered, e.Tuning.SettlementCost) ? null : Reasons.WaitingWare;
-            }
-        }
-
-        private static void Pull(Settlement from, int[] delivered, int[] cost, Building b)
-        {
-            int missing = -1;
-            for (int w = 0; w < Wares.Count; w++)
-            {
-                int take = System.Math.Min(cost[w] - delivered[w], from.Stock[w] - from.Reserved[w]);
-                if (take > 0)
-                {
-                    from.Stock[w] -= take;
-                    delivered[w] += take;
-                }
-                if (delivered[w] < cost[w] && missing < 0) missing = w;
-            }
-            b.Reason = missing >= 0 ? Reasons.WaitingWare : null;
-            b.ReasonWare = missing;
-        }
-
-        private static void PullRoad(Settlement from, Road r, int[] cost)
-        {
-            int missing = -1;
-            for (int w = 0; w < Wares.Count; w++)
-            {
-                int take = System.Math.Min(cost[w] - r.Delivered[w], from.Stock[w] - from.Reserved[w]);
-                if (take > 0)
-                {
-                    from.Stock[w] -= take;
-                    r.Delivered[w] += take;
-                }
-                if (r.Delivered[w] < cost[w] && missing < 0) missing = w;
-            }
-            r.Reason = missing >= 0 ? Reasons.WaitingWare : null;
-            r.ReasonWare = missing;
-        }
-    }
-
-    /// <summary>Carriers. S-0 STUB: carriers stay idle at their storehouse (the interim Jobs system moves goods directly).</summary>
-    internal sealed class CarrierSystem : ISimSystem
-    {
-        public void Tick(WorldState s, EventBuffer ev) { }
     }
 }

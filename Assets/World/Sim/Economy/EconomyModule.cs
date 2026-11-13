@@ -15,7 +15,7 @@ namespace World.Sim.Economy
             sim.AddSystem(SystemOrder.Production, new ProductionSystem());
             sim.AddSystem(SystemOrder.Construction, new ConstructionSystem(hooks));
             sim.AddSystem(SystemOrder.Jobs, new JobSystem(hooks));
-            sim.AddSystem(SystemOrder.Carriers, new CarrierSystem());
+            sim.AddSystem(SystemOrder.Carriers, new CarrierSystem(hooks));
             sim.RegisterHandler(new PlaceBuildingHandler());
             sim.RegisterHandler(new PlaceRoadHandler());
             sim.RegisterHandler(new FoundSettlementHandler());

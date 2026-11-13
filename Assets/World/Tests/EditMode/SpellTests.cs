@@ -54,7 +54,7 @@ namespace World.Sim.Tests
 
             Assert.AreEqual(FactionRefusals.UnknownProposal, sim.Submit(new CastSpell { PlayerId = 0, ProposalId = top.Id }).Reason);
 
-            ev = K.Step(sim, 300);
+            ev = K.Step(sim, 600);
             var hut = s.Economy.Buildings[placed.Id];
             Assert.AreEqual(BuildingState.Active, hut.State, "S-0 interim logistics: goods come straight from the storehouse");
             Assert.IsTrue(ev.OfType<SiteCompleted>().Any(c => c.Kind == SiteKind.Building && c.Id == hut.Id));
