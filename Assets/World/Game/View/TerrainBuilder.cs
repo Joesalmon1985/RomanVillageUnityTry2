@@ -17,6 +17,13 @@ namespace World.Game
         {
             get
             {
+                var boot = WorldBootstrap.Instance;
+                if (boot != null && boot.Sim != null && boot.Sim.State.Economy != null)
+                {
+                    foreach (var l in EconomyText.HexLines(boot.Sim.State, HexId)) yield return l;
+                    yield return "Hex id " + HexId + ".";
+                    yield break;
+                }
                 var ware = TerrainInfo.RawWare(Terrain);
                 if (ware.HasValue) yield return "Gives " + Wares.DisplayName(ware.Value) + ".";
                 else yield return "Gives nothing (open meadow).";
@@ -186,6 +193,64 @@ namespace World.Game
             var hv = tile.AddComponent<HexView>();
             hv.HexId = h; hv.Terrain = terrain; hv.Number = board.HexNumber[h];
 
+            _ctx.Board = board; _ctx.Layout = layout; _ctx.Mat = mat;
+            if (_tiles.Length != t.HexCount) { _tiles = new Transform[t.HexCount]; _props = new GameObject[t.HexCount]; _clearings = new List<Vector3>[t.HexCount]; _peaks = new List<Vector3>[t.HexCount]; }
+            _tiles[h] = tile.transform; _clearings[h] = null; _peaks[h] = new List<Vector3>();
+            _props[h] = BuildProps(board, t, h, layout, mat, tile.transform, null, true);
+        }
+
+        // ---------------- props, rebuildable per hex with clearings ----------------
+
+        private struct Ctx { public Board Board; public VillageLayout Layout; public Material Mat; }
+        private static Ctx _ctx;
+        private static Transform[] _tiles = new Transform[0];
+        private static GameObject[] _props = new GameObject[0];
+        private static List<Vector3>[] _clearings = new List<Vector3>[0];
+        private static List<Vector3>[] _peaks = new List<Vector3>[0];
+
+        /// <summary>Mountain peak footprints (x, z, base radius) on a hex; empty for other terrain.</summary>
+        public static IReadOnlyList<Vector3> PeakCircles(int hex) =>
+            hex >= 0 && hex < _peaks.Length && _peaks[hex] != null ? _peaks[hex] : (IReadOnlyList<Vector3>)new Vector3[0];
+
+        /// <summary>True when a ground point lies within margin of a mountain peak's base.</summary>
+        public static bool InPeak(Vector3 p, float margin = 0f)
+        {
+            int h = BoardSpace.HexAt(p);
+            foreach (var c in PeakCircles(h))
+            {
+                float dx = p.x - c.x, dz = p.z - c.y;
+                if (dx * dx + dz * dz < (c.z + margin) * (c.z + margin)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>The prop mesh object of a hex (null if it has none).</summary>
+        public static GameObject HexProps(int hex) => hex >= 0 && hex < _props.Length ? _props[hex] : null;
+
+        /// <summary>
+        /// Keeps trees, rocks and crops out of these circles (x, z, radius) on a hex, e.g. building plots. Rebuilds that
+        /// hex's prop mesh only when the set changes; the rest of the hex looks exactly the same (props are seeded per hex).
+        /// </summary>
+        public static void SetClearings(int hex, List<Vector3> circles)
+        {
+            if (hex < 0 || hex >= _tiles.Length || _tiles[hex] == null || _ctx.Board == null) return;
+            var old = _clearings[hex];
+            bool same = (old == null || old.Count == 0) ? (circles == null || circles.Count == 0)
+                       : circles != null && circles.Count == old.Count;
+            if (same && old != null && circles != null)
+                for (int i = 0; i < old.Count && same; i++) same = (old[i] - circles[i]).sqrMagnitude < 1e-4f;
+            if (same) return;
+            _clearings[hex] = circles == null ? null : new List<Vector3>(circles);
+            if (_props[hex] != null) Object.Destroy(_props[hex]);
+            _props[hex] = BuildProps(_ctx.Board, _ctx.Board.Topology, hex, _ctx.Layout, _ctx.Mat, _tiles[hex], _clearings[hex], false);
+        }
+
+        private static GameObject BuildProps(Board board, BoardTopology t, int h, VillageLayout layout, Material mat, Transform tile, List<Vector3> clearings, bool first)
+        {
+            var terrain = board.HexTerrain[h];
+            var rnd = new PropRandom(5000 + h * 7919);
+            var centre = BoardSpace.Hex(t, h);
+            float R = BoardSpace.HexSize;
             // Props (one combined mesh per hex, no colliders except mountain peaks).
             var props = new MeshBuilder();
             Vector3 RandomInHex(float margin)
@@ -197,7 +262,17 @@ namespace World.Game
                 }
                 return centre;
             }
-            bool Ok(Vector3 p, float margin, float clear) => EdgeMargin(p - centre, R) >= margin && layout.IsClear(p, clear);
+            bool Ok(Vector3 p, float margin, float clear)
+            {
+                if (EdgeMargin(p - centre, R) < margin || !layout.IsClear(p, clear)) return false;
+                if (clearings != null)
+                    foreach (var c in clearings)
+                    {
+                        float dx = p.x - c.x, dz = p.z - c.y, rr = c.z + clear;
+                        if (dx * dx + dz * dz < rr * rr) return false;
+                    }
+                return true;
+            }
             int placed = 0;
             switch (terrain)
             {
@@ -214,7 +289,7 @@ namespace World.Game
                         if (!Ok(p, RoadMargin, 1f)) continue;
                         props.Rock(p, rnd.Range(0.7f, 1.4f), new Color(0.22f, 0.38f, 0.18f), rnd.Next);
                     }
-                    Count("tree", placed);
+                    if (first) Count("tree", placed);
                     break;
                 case Terrain.Hills:
                     for (int i = 0; i < 26; i++)
@@ -232,7 +307,7 @@ namespace World.Game
                         props.Rock(p, rnd.Range(0.4f, 1.5f), new Color(0.58f, 0.56f, 0.52f), rnd.Next);
                         placed++;
                     }
-                    Count("hill prop", placed);
+                    if (first) Count("hill prop", placed);
                     break;
                 case Terrain.Fields:
                 {
@@ -257,7 +332,7 @@ namespace World.Game
                         if (!Ok(p, RoadMargin + 2f, 1f)) continue;
                         props.Cylinder(p + side * 1.6f, 0.75f, 0.75f, 1.1f, 10, new Color(0.88f, 0.78f, 0.40f));
                     }
-                    Count("crop row", placed);
+                    if (first) Count("crop row", placed);
                     break;
                 }
                 case Terrain.Mountain:
@@ -266,10 +341,12 @@ namespace World.Game
                     {
                         var p = centre + BoardSpace.DirOf(i * 120f + rnd.Range(0, 60f)) * rnd.Range(6f, 16f);
                         float r = rnd.Range(18f, 25f), height = rnd.Range(38f, 58f);
+                        if (!first) continue;
+                        _peaks[h].Add(new Vector3(p.x, p.z, r));
                         var peak = new MeshBuilder();
                         peak.Cylinder(p, r, r * 0.22f, height * 0.78f, 9, new Color(0.47f, 0.45f, 0.43f) * rnd.Range(0.9f, 1.1f), false);
                         peak.Cone(p + Vector3.up * height * 0.78f, r * 0.22f, height * 0.22f, 9, new Color(0.95f, 0.95f, 0.97f));
-                        var go = peak.ToObject("Peak", tile.transform, mat);
+                        var go = peak.ToObject("Peak", tile, mat);
                         var mc = go.AddComponent<MeshCollider>(); mc.sharedMesh = go.GetComponent<MeshFilter>().sharedMesh; mc.convex = true;
                     }
                     for (int i = 0; i < 70; i++)
@@ -279,12 +356,13 @@ namespace World.Game
                         props.Rock(p, rnd.Range(0.6f, 2.2f), new Color(0.52f, 0.50f, 0.48f), rnd.Next);
                         placed++;
                     }
-                    Count("mountain rock", placed);
+                    if (first) Count("mountain rock", placed);
                     break;
                 }
                 case Terrain.Pasture:
                     placed = BuildPasture(props, centre, R, layout, rnd);
-                    Count("sheep", placed);
+                    if (first) Count("sheep", placed);
+                    placed = 0;
                     break;
                 default: // Meadow: flowers, bushes and the odd lone tree
                     for (int i = 0; i < 300; i++)
@@ -307,10 +385,10 @@ namespace World.Game
                         if (!Ok(p, RoadMargin + 2f, 3f)) continue;
                         Tree(props, p, rnd, 1.3f);
                     }
-                    Count("flower", placed);
+                    if (first) Count("flower", placed);
                     break;
             }
-            if (props.VertexCount > 0) props.ToObject("Props", tile.transform, mat);
+            return props.VertexCount > 0 ? props.ToObject("Props", tile, mat) : null;
         }
 
         /// <summary>A hex-shaped fence inset in the hex with a gate, sheep, a trough and grass tufts. Returns the sheep count.</summary>

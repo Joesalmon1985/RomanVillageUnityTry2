@@ -73,10 +73,23 @@ namespace World.Game
             return Vector3.LerpUnclamped(c, p, scale);
         }
 
+        /// <summary>
+        /// Below this search radius the picking helpers look only at the hex under the point (its 18 flags, 6 corners or
+        /// 6 sides): any flag or segment that close to a point inside a hex lies on that hex's boundary. Used by the God
+        /// View tools every frame, so they never scan all 570 flags or 630 segments.
+        /// </summary>
+        public const float LocalSearchRadius = 15f;
+
         /// <summary>Nearest flag (any vertex) to a world point, or -1 if farther than maxDistance.</summary>
         public static int NearestVertex(Vector3 p, float maxDistance = float.MaxValue)
         {
             var t = Topo;
+            if (maxDistance <= LocalSearchRadius)
+            {
+                int h = t.HexAt(p.x, p.z);
+                if (h < 0) return Flat(p) > BoardRadius + maxDistance ? -1 : NearestOnRim(t, p, maxDistance, false);
+                return NearestOf(t, t.HexFlags(h), p, maxDistance);
+            }
             int v = t.NearestVertex(p.x, p.z);
             if (v < 0) return -1;
             return Flat(Vertex(t, v) - p) <= maxDistance ? v : -1;
@@ -86,9 +99,36 @@ namespace World.Game
         public static int NearestCorner(Vector3 p, float maxDistance = float.MaxValue)
         {
             var t = Topo;
+            if (maxDistance <= LocalSearchRadius)
+            {
+                int h = t.HexAt(p.x, p.z);
+                if (h < 0) return Flat(p) > BoardRadius + maxDistance ? -1 : NearestOnRim(t, p, maxDistance, true);
+                return NearestOf(t, t.HexCorners(h), p, maxDistance);
+            }
             int v = t.NearestCorner(p.x, p.z);
             if (v < 0) return -1;
             return Flat(Vertex(t, v) - p) <= maxDistance ? v : -1;
+        }
+
+        private static int NearestOf(BoardTopology t, System.Collections.Generic.IReadOnlyList<int> ids, Vector3 p, float maxDistance)
+        {
+            int best = -1; float bestD = float.MaxValue;
+            for (int i = 0; i < ids.Count; i++)
+            {
+                int v = ids[i];
+                float d = Flat(Vertex(t, v) - p);
+                if (d < bestD || (d == bestD && v < best)) { bestD = d; best = v; }
+            }
+            return bestD <= maxDistance ? best : -1;
+        }
+
+        /// <summary>Just outside the board: the hex is found a little towards the centre.</summary>
+        private static int NearestOnRim(BoardTopology t, Vector3 p, float maxDistance, bool corners)
+        {
+            var q = Flat(p) > 0 ? p - new Vector3(p.x, 0, p.z).normalized * maxDistance : p;
+            int h = t.HexAt(q.x, q.z);
+            if (h < 0) return -1;
+            return corners ? NearestOf(t, t.HexCorners(h), p, maxDistance) : NearestOf(t, t.HexFlags(h), p, maxDistance);
         }
 
         /// <summary>Coarse hex edge nearest to a world point (distance to the 60 m line), or -1 if farther than maxDistance.</summary>
@@ -97,6 +137,25 @@ namespace World.Game
         public static int NearestHexEdge(BoardTopology t, Vector3 p, float maxDistance, out float distance)
         {
             int best = -1; float bestD = maxDistance;
+            if (maxDistance <= LocalSearchRadius)
+            {
+                int h = t.HexAt(p.x, p.z);
+                if (h < 0 && Flat(p) <= BoardRadius + maxDistance)
+                {
+                    var q = p - new Vector3(p.x, 0, p.z).normalized * maxDistance;
+                    h = t.HexAt(q.x, q.z);
+                }
+                distance = maxDistance;
+                if (h < 0) return -1;
+                foreach (int he in t.HexSides(h))
+                {
+                    HexEdgeEnds(t, he, out var a, out var b);
+                    float d = DistanceToSegment(p, a, b);
+                    if (d < bestD || (d == bestD && he < best)) { bestD = d; best = he; }
+                }
+                distance = bestD;
+                return best;
+            }
             for (int he = 0; he < t.HexEdgeCount; he++)
             {
                 HexEdgeEnds(t, he, out var a, out var b);
