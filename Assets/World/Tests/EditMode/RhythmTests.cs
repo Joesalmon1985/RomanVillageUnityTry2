@@ -183,6 +183,16 @@ namespace World.Sim.Tests
         }
 
         [Test]
+        public void Tuning_FromJson_ReplacesListsAndKeepsOtherDefaults()
+        {
+            var t = RhythmTuning.FromJson("{ \"CalibrationMs\": 20, \"Stages\": [ { \"Id\": \"only\", \"Cue\": \"drums\", \"Gains\": { \"Drums\": 1 } } ] }");
+            Assert.AreEqual(20, t.CalibrationMs);
+            Assert.AreEqual(1, t.Stages.Count);
+            Assert.AreEqual(174, t.Bpm);
+            Assert.AreEqual(4, RhythmTuning.FromJson("").Stages.Count);
+        }
+
+        [Test]
         public void Tuning_Defaults()
         {
             var t = new RhythmTuning();
@@ -362,8 +372,8 @@ namespace World.Sim.Tests
             var r = Autoplay(s, b => b == 3, Route.Balcony);
             Assert.AreEqual(3, r.PassedBlocks);
             Assert.IsFalse(r.FinalBlockPassed);
-            Assert.IsFalse(r.Success);
-            Assert.AreEqual(RouteOutcome.None, r.RouteOpened);
+            Assert.IsTrue(r.Success, "three passes is a party success even when the final block fails (R9)");
+            Assert.AreEqual(RouteOutcome.None, r.RouteOpened, "no route without a passing final block");
             Assert.IsTrue(r.CanRetry);
         }
 
@@ -375,7 +385,8 @@ namespace World.Sim.Tests
             Assert.AreEqual(2, r.PassedBlocks);
             Assert.IsTrue(r.FinalBlockPassed);
             Assert.IsFalse(r.Success);
-            Assert.AreEqual(RouteOutcome.None, r.RouteOpened);
+            Assert.AreEqual(RouteOutcome.Bar, r.RouteOpened, "the route follows the final block alone (R9)");
+            Assert.IsTrue(r.CanRetry);
         }
 
         [Test]
@@ -385,6 +396,8 @@ namespace World.Sim.Tests
             var r = Autoplay(s, b => b == 1);
             Assert.AreEqual(3, r.PassedBlocks);
             Assert.IsTrue(r.Success);
+            Assert.AreEqual(RouteOutcome.Bar, r.RouteOpened);
+            Assert.IsTrue(r.CanRetry, "retry is always offered");
         }
 
         // ---------- autoplayers ----------

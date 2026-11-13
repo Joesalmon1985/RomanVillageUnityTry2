@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace World.Sim.Encounters.Rhythm
 {
@@ -58,6 +59,15 @@ namespace World.Sim.Encounters.Rhythm
         public double RouteLockBeat = 60.5;
 
         public List<StageTuning> Stages = DefaultStages();
+
+        /// <summary>Overrides fields present in a JSON object (e.g. StreamingAssets/world/rhythm.json); lists are replaced, not appended.</summary>
+        public static RhythmTuning FromJson(string json, RhythmTuning baseTuning = null)
+        {
+            var t = baseTuning ?? new RhythmTuning();
+            if (!string.IsNullOrEmpty(json))
+                JsonConvert.PopulateObject(json, t, new JsonSerializerSettings { ObjectCreationHandling = ObjectCreationHandling.Replace });
+            return t;
+        }
 
         public static List<StageTuning> DefaultStages()
         {

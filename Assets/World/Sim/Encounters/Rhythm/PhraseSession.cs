@@ -47,12 +47,13 @@ namespace World.Sim.Encounters.Rhythm
     {
         public int PassedBlocks;
         public bool FinalBlockPassed;
-        /// <summary>Three or more passing blocks and a passing final block.</summary>
+        /// <summary>Party success (PRD R9): three or more passing blocks, reported independently of the route.</summary>
         public bool Success;
+        /// <summary>The chosen route iff the final block passed (PRD R9: it opens on the downbeat at beat 64); None otherwise.</summary>
         public RouteOutcome RouteOpened;
         public int Perfect, Great, Ok, Miss, Stray, HoldComplete, HoldPartial;
-        /// <summary>True when the final block failed: the player stays on the floor and may retry.</summary>
-        public bool CanRetry { get { return !FinalBlockPassed; } }
+        /// <summary>A phrase can always be replayed at once (PRD F4 "retry at once or roam").</summary>
+        public bool CanRetry { get { return true; } }
     }
 
     /// <summary>
@@ -271,8 +272,8 @@ namespace World.Sim.Encounters.Rhythm
             for (int b = 0; b < blocks; b++) if (results[b] != null && results[b].Passed) r.PassedBlocks++;
             var last = results[blocks - 1];
             r.FinalBlockPassed = last != null && last.Passed;
-            r.Success = r.PassedBlocks >= 3 && r.FinalBlockPassed;
-            r.RouteOpened = r.Success ? (selection == Route.Bar ? RouteOutcome.Bar : RouteOutcome.Balcony) : RouteOutcome.None;
+            r.Success = r.PassedBlocks >= 3;
+            r.RouteOpened = r.FinalBlockPassed ? (selection == Route.Bar ? RouteOutcome.Bar : RouteOutcome.Balcony) : RouteOutcome.None;
             Result = r;
             IsEnded = true;
             events.Add(new PhraseEnded { SongTime = t, Result = r });
