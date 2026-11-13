@@ -80,7 +80,7 @@ namespace World.Sim.Tests
             Assert.AreEqual(SettlementState.Site, s.Economy.Settlements[id].State);
             Assert.AreEqual(0, s.Economy.Settlements[id].SourceSettlement);
             Assert.IsTrue(K.StepUntil(sim, () => s.Economy.Settlements[id].State == SettlementState.Active, 3000), "clay comes from the scrape");
-            Assert.AreEqual(2, s.Economy.Carriers.Count(c => c.Home == id));
+            Assert.AreEqual(s.Economy.Tuning.NewSettlementCarriers, s.Economy.Carriers.Count(c => c.Home == id));
             Assert.AreEqual(2, World.Sim.Factions.FactionApi.Strength(s, 0).Total);
             Assert.IsNull(K.CheckInvariants(s));
         }

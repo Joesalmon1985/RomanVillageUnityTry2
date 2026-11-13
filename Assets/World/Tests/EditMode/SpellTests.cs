@@ -107,12 +107,13 @@ namespace World.Sim.Tests
         public void Rival_CastsItsTopProposal_45SecondsAfterItBecameTop()
         {
             var sim = WorldSimFactory.CreateNew(K.DefaultSeed);
-            var ev = K.Step(sim, 459);
+            int delay = sim.State.Factions.Tuning.RivalCastDelayTicks;
+            var ev = K.Step(sim, 10 + delay - 1);
             Assert.IsFalse(ev.OfType<SpellCast>().Any());
             ev = K.Step(sim, 1);
             var cast = ev.OfType<SpellCast>().Single();
             Assert.AreEqual(PlayerIds.Rival, cast.Faction);
-            Assert.AreEqual(460, cast.Tick);
+            Assert.AreEqual(10 + delay, cast.Tick, "planned at tick 10, cast RivalCastDelayTicks later");
             Assert.AreEqual((int)BuildingType.WoodcutterHut, cast.BuildingType);
             Assert.IsTrue(sim.State.Factions.OpeningDone[PlayerIds.Rival]);
         }

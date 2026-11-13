@@ -72,8 +72,9 @@ namespace World.Sim.Tests
                 Assert.AreEqual(0, v.Young);
                 Assert.AreEqual(12, v.Cap);
             }
-            CollectionAssert.AreEqual(new[] { 4, 2, 2, 2, 0, 0, 0, 0, 0, 0 }, s.Economy.Settlements[0].Stock);
-            Assert.AreEqual(3, s.Economy.Carriers.Count(c => c.Home == 0));
+            CollectionAssert.AreEqual(s.Economy.Tuning.StartStock, s.Economy.Settlements[0].Stock);
+            Assert.AreEqual(new[] { 4, 2, 2, 2 }, new EconomyTuning().StartStock.Take(4).ToArray(), "spec starting stock (the tuned game starts with 4 sheep)");
+            Assert.AreEqual(s.Economy.Tuning.StartCarriers, s.Economy.Carriers.Count(c => c.Home == 0));
             Assert.AreEqual(3, s.Economy.Buildings.Count(b => b.Settlement == 0));
             Assert.AreEqual(630, s.Economy.Buildings.Single(b => b.Settlement == 0 && b.Type == BuildingType.LogPile).Plot);
         }

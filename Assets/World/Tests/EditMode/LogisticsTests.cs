@@ -25,9 +25,9 @@ namespace World.Sim.Tests
             Assert.AreEqual(2, s.Economy.Buildings[hut].Incoming[(int)Ware.Wood]);
             var legs = ev.OfType<CarrierLegStarted>().Where(l => l.ToKind == PlaceKind.Building && l.ToId == hut).ToList();
             Assert.AreEqual(2, legs.Count);
-            Assert.AreEqual(8 * 15, legs[0].LegTicks, "slot 1: 8 steps of 15 ticks");
+            Assert.AreEqual(8 * s.Economy.Tuning.CarrierTicksPerStep, legs[0].LegTicks, "slot 1: 8 steps");
             Assert.AreEqual(2, ev.OfType<WarePickedUp>().Count(p => jobs.Any(j => j.JobId == p.JobId)));
-            ev = K.Step(sim, 120);
+            ev = K.Step(sim, 8 * s.Economy.Tuning.CarrierTicksPerStep);
             Assert.AreEqual(2, ev.OfType<WareDelivered>().Count(d => d.ToKind == PlaceKind.Building && d.ToId == hut));
             Assert.AreEqual(BuildingState.Constructing, s.Economy.Buildings[hut].State);
             Assert.IsNull(K.CheckInvariants(s));
@@ -101,7 +101,7 @@ namespace World.Sim.Tests
             Assert.IsTrue(ship.All(j => j.FromKind == PlaceKind.Storehouse && j.FromId == 0 && j.Count <= 4));
             Assert.IsTrue(K.StepUntil(sim, () => s.Economy.Carriers.Any(c => c.Home != camp && c.LegToKind == PlaceKind.Storehouse && c.LegToId == camp && c.HasLoad), 3000));
             var leg = s.Economy.Carriers.First(c => c.Home != camp && c.LegToKind == PlaceKind.Storehouse && c.LegToId == camp && c.HasLoad);
-            Assert.AreEqual((path.Length - 1) * 12 * 15, leg.LegTicks, "two hex edges at 180 ticks each");
+            Assert.AreEqual((path.Length - 1) * 12 * s.Economy.Tuning.CarrierTicksPerStep, leg.LegTicks, "12 steps per hex edge");
             Assert.AreEqual(path, leg.LegCorners);
             int kiln = s.Economy.Buildings.Single(b => b.Plot == plot).Id;
             Assert.IsTrue(K.StepUntil(sim, () => s.Economy.Buildings[kiln].State != BuildingState.Site, 2000),
@@ -195,10 +195,10 @@ namespace World.Sim.Tests
         {
             var sim = WorldSimFactory.CreateNew(K.DefaultSeed);
             var s = sim.State;
-            Assert.AreEqual(3, s.Economy.Carriers.Count(c => c.Home == 0));
+            Assert.AreEqual(s.Economy.Tuning.StartCarriers, s.Economy.Carriers.Count(c => c.Home == 0));
             K.Do(sim, new PlaceBuilding { Type = BuildingType.WoodcutterHut, Plot = 631 });
             Assert.IsTrue(K.StepUntil(sim, () => s.Economy.Buildings.Single(b => b.Plot == 631).State == BuildingState.Active, 1000));
-            Assert.AreEqual(4, s.Economy.Carriers.Count(c => c.Home == 0));
+            Assert.AreEqual(s.Economy.Tuning.StartCarriers + 1, s.Economy.Carriers.Count(c => c.Home == 0));
             Assert.IsTrue(s.Economy.Carriers.All(c => c.Faction == s.Economy.Settlements[c.Home].Faction));
             var idle = s.Economy.Carriers.FirstOrDefault(c => c.Home == 0 && c.State == CarrierState.Idle);
             if (idle != null) Assert.AreEqual("A carrier of the home camp, waiting at the storehouse.", EconomyApi.DescribeCarrier(s, idle.Id));

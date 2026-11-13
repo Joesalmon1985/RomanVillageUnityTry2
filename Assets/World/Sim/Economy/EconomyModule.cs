@@ -31,7 +31,7 @@ namespace World.Sim.Economy
         public static void InitState(WorldState s)
         {
             var topo = s.Board.Topology;
-            var e = new EconomyState();
+            var e = new EconomyState { Tuning = EconomyTuning.Tuned() };
             s.Economy = e;
             var tu = e.Tuning;
 
