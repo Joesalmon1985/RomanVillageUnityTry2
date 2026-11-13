@@ -22,8 +22,10 @@ namespace World.Game
 
     /// <summary>
     /// "first_five": the boot tour, then accept Mira's duel and play it to the end (scripted candidate-filter player),
-    /// walk to the decks, play a successful phrase choosing the balcony (built-in autoplayer), walk onto the balcony and
-    /// back to the square. Logs "[AutoPlay] first_five OK" and quits 0 (in the editor: stays in Play Mode).
+    /// then (F-0 interim, until package D's dance circle) stand up the test warehouse, teleport to its door, walk to the
+    /// decks, play a successful phrase choosing the balcony (built-in autoplayer), walk onto the balcony and back out,
+    /// and teleport back to the spawn. Logs "[AutoPlay] first_five OK" and quits 0 (in the editor: stays in Play Mode).
+    /// Package D turns this into "duel_dance".
     /// </summary>
     public static class FirstFive
     {
@@ -31,7 +33,8 @@ namespace World.Game
         private static Vector3 _before;
         private static float _beforeYaw;
 
-        private static Vector3 W(float x, float z) => B.Warehouse.transform.TransformPoint(new Vector3(x, 0, z));
+        private static WarehouseSet Wh => WarehouseSet.Current;
+        private static Vector3 SpawnPoint => WalkLattice.ToWorld(new CampLayout(B.Sim.State.Board).Spawn);
 
         public static AutoPlayScript Create()
         {
@@ -58,9 +61,10 @@ namespace World.Game
              .Call(() => { var bot = B.GetComponent<WardBot>(); if (bot != null) bot.enabled = false; })
              .Check(() => !EncounterHost.Instance.IsRunning, "duel still running after Return")
              .Check(Restored, "avatar not restored after the duel")
-             // To the decks.
-             .WalkTo(() => B.Warehouse.OutsideDoorPosition, 1.0f, true)
-             .WalkTo(() => B.Warehouse.DecksFrontPosition, 0.3f)
+             // To the decks (the interim test warehouse; normal play has none).
+             .Call(() => WarehouseSet.BuildStandalone(B))
+             .Step(a => a.DoTeleport(Wh.OutsideDoorPosition + Vector3.up * 0.05f, Wh.DecksYaw + 180f, 0f))
+             .WalkTo(() => Wh.DecksFrontPosition, 0.3f)
              .LookAt(() => Npc.Find(NpcIds.Host).transform.position + Vector3.up * 1.4f, 0.4f)
              .Call(Remember)
              .Interact()
@@ -70,7 +74,7 @@ namespace World.Game
              .Call(() => { var r = RhythmPartyEncounter.Current; r.AutoPlayEnabled = true; r.AutoRoute = SimRoute.Balcony; r.AutoSkipBlock = null; })
              .Step(a => WaitFor(a, () => RhythmPartyEncounter.Current != null && RhythmPartyEncounter.Current.Phase == RhythmPartyEncounter.Screen.Result, 60f, "phrase did not finish"))
              .Check(() => RhythmPartyEncounter.Current.LastResult.Success, "party not a success")
-             .Check(() => B.Warehouse.IsRouteOpen(Route.Balcony), "balcony did not open")
+             .Check(() => Wh.IsRouteOpen(Route.Balcony), "balcony did not open")
              .Call(() => Debug.Log("[AutoPlay] first_five phrase: passed " + RhythmPartyEncounter.Current.LastResult.PassedBlocks + " blocks, perfect " + RhythmPartyEncounter.Current.LastResult.Perfect + ", route " + RhythmPartyEncounter.Current.LastRouteOpened))
              .Wait(1.5f)
              .Call(() => RhythmPartyEncounter.Current.Return())
@@ -78,17 +82,17 @@ namespace World.Game
              .Check(() => !EncounterHost.Instance.IsRunning, "party still running after Return")
              .Check(Restored, "avatar not restored after the party")
              // Onto the balcony and back.
-             .WalkTo(() => B.Warehouse.RouteApproachPosition(Route.Balcony), 0.8f)
-             .WalkTo(() => B.Warehouse.RampFootPosition, 0.6f)
-             .WalkTo(() => B.Warehouse.RampHeadPosition, 0.6f)
-             .WalkTo(() => B.Warehouse.RouteInsidePosition(Route.Balcony), 0.8f)
+             .WalkTo(() => Wh.RouteApproachPosition(Route.Balcony), 0.8f)
+             .WalkTo(() => Wh.RampFootPosition, 0.6f)
+             .WalkTo(() => Wh.RampHeadPosition, 0.6f)
+             .WalkTo(() => Wh.RouteInsidePosition(Route.Balcony), 0.8f)
              .Check(() => B.Avatar.Position.y > WarehouseSet.BalconyHeight - 0.1f, "not on the balcony deck")
              .Wait(0.5f)
-             .WalkTo(() => B.Warehouse.RampHeadPosition, 0.6f)
-             .WalkTo(() => B.Warehouse.RampFootPosition, 0.6f)
-             .WalkTo(() => B.Warehouse.RouteApproachPosition(Route.Balcony), 0.8f)
-             .WalkTo(() => B.Warehouse.OutsideDoorPosition, 1.0f)
-             .WalkTo(() => B.Layout.Spawn, 1.5f, true, 40f)
+             .WalkTo(() => Wh.RampHeadPosition, 0.6f)
+             .WalkTo(() => Wh.RampFootPosition, 0.6f)
+             .WalkTo(() => Wh.RouteApproachPosition(Route.Balcony), 0.8f)
+             .WalkTo(() => Wh.OutsideDoorPosition, 1.0f)
+             .Step(a => a.DoTeleport(SpawnPoint + Vector3.up * 0.05f, 0f, 0f))
              .Log("[AutoPlay] first_five OK")
              .Quit(0);
             return s;

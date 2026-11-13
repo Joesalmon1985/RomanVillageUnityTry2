@@ -45,7 +45,17 @@ namespace World.Game
         public bool Aborted { get; internal set; }
 
         /// <summary>Moves the avatar onto the stage (restored automatically when the encounter ends).</summary>
-        public void MoveAvatarToStage(float pitch = 0f) => Avatar.Teleport(Stage.Position, Stage.Yaw, pitch);
+        public void MoveAvatarToStage(float pitch = 0f) => PlaceAvatar(Stage.Position, Stage.Yaw, pitch);
+
+        /// <summary>
+        /// Puts the player's viewpoint at an exact pose for the encounter (restored automatically when it ends).
+        /// Encounters call this (or <see cref="MoveAvatarToStage"/>) instead of touching <see cref="Avatar"/>, so package P
+        /// can switch the viewpoint to the PlayerWalker (PlaceExact) without editing the encounters (REFACTOR_SPEC appendix B).
+        /// </summary>
+        public void PlaceAvatar(Vector3 position, float yaw, float pitch)
+        {
+            if (Avatar != null) Avatar.Teleport(position, yaw, pitch);
+        }
 
         public static EncounterContext Create(Npc npc = null)
         {
@@ -59,7 +69,7 @@ namespace World.Game
                 Views = b != null ? b.Views : null,
                 FirstPersonCamera = b != null ? b.MainCamera : null,
                 GodCamera = b != null && b.GodCam != null ? b.GodCam.Camera : null,
-                Warehouse = b != null ? b.Warehouse : null,
+                Warehouse = WarehouseSet.Current,
                 Npc = npc,
                 NpcActor = npc != null ? npc.Actor : null,
             };

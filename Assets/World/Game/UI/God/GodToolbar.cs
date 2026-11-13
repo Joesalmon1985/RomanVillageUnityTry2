@@ -241,10 +241,12 @@ namespace World.Game
 
         private void DrawStatusStrip(Rect r, WorldState s)
         {
-            var e = s.Economy;
-            var store = e.Buildings[e.StorehouseId];
+            // F-0 interim: last roll and the stock of the player's first camp (P rewrites the F1 tools).
+            var roll = EconomyApi.LastRoll(s);
+            int home = -1;
+            foreach (var st in EconomyApi.Settlements(s)) if (st.Faction == PlayerIds.Human) { home = st.Id; break; }
             float x = r.x;
-            string round = "<b>Round " + e.Round + "</b>  numbers " + (e.LastDraw != null && e.LastDraw.Length > 0 ? string.Join(" ", e.LastDraw) : "-");
+            string round = "<b>Roll " + (roll.RollIndex >= 0 ? roll.Sum.ToString() : "-") + "</b>  next in " + (EconomyApi.TicksToNextRoll(s) / WorldSim.TicksPerSecond) + " s";
             var rs = _strip.CalcSize(new GUIContent(round));
             GUI.Label(new Rect(x, r.y, rs.x, r.height), round, _strip);
             x += rs.x + UiStyle.Px(20);
@@ -270,12 +272,12 @@ namespace World.Game
             int hidden = 0;
             foreach (var w in Wares.All)
             {
-                int n = store.Stock[(int)w];
+                int n = home >= 0 ? EconomyApi.StockOf(s, home, w) : 0;
                 if (n <= 0 && w != Ware.Planks && w != Ware.Bricks) continue;
                 string t = EconomyApi.WareTitle(w) + " <b>" + n + "</b>";
                 var ts = _strip.CalcSize(new GUIContent(t));
                 if (x + sq + ts.x + UiStyle.Px(6) > rx) { hidden++; continue; }
-                GUI.DrawTexture(new Rect(x, r.y + (r.height - sq) / 2, sq, sq), UiStyle.SolidTexture(EconomyLook.WareColor(w)));
+                GUI.DrawTexture(new Rect(x, r.y + (r.height - sq) / 2, sq, sq), UiStyle.SolidTexture(ColorUtility.TryParseHtmlString(EconomyApi.WareColour(w), out var wc) ? wc : Color.gray));
                 GUI.Label(new Rect(x + sq + UiStyle.Px(4), r.y, ts.x, r.height), t, _strip);
                 x += sq + ts.x + UiStyle.Px(14);
             }

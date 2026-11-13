@@ -20,7 +20,11 @@ namespace World.Game
                 var boot = WorldBootstrap.Instance;
                 if (boot != null && boot.Sim != null && boot.Sim.State.Economy != null)
                 {
-                    foreach (var l in EconomyText.HexLines(boot.Sim.State, HexId)) yield return l;
+                    var v = World.Sim.Economy.EconomyApi.HexStock(boot.Sim.State, HexId);
+                    if (v.Ware.HasValue) yield return "Gives " + Wares.DisplayName(v.Ware.Value) + ".";
+                    else yield return "Gives nothing (open meadow).";
+                    if (v.Number > 0) yield return "Number " + v.Number + " (" + v.Pips + " in 36).";
+                    if (v.Ware.HasValue) yield return "Stock: " + v.Mature + " ready, " + v.Young + " growing (cap " + v.Cap + ").";
                     yield return "Hex id " + HexId + ".";
                     yield break;
                 }
@@ -64,8 +68,26 @@ namespace World.Game
         /// <summary>Number of props placed per terrain (for tests and the performance budget).</summary>
         public static readonly Dictionary<string, int> PropCounts = new Dictionary<string, int>();
 
-        public static GameObject Build(Transform parent, Board board, VillageLayout layout, out GameObject godViewOnly)
+        /// <summary>Circles kept free of trees, rocks and crops: (x, z, radius) per entry.</summary>
+        private sealed class Clearings
         {
+            private readonly List<Vector3> _clear;
+            public Clearings(IReadOnlyList<Vector3> clear) { _clear = clear != null ? new List<Vector3>(clear) : new List<Vector3>(); }
+            public bool IsClear(Vector3 p, float margin = 0f)
+            {
+                foreach (var c in _clear)
+                {
+                    float dx = p.x - c.x, dz = p.z - c.y;
+                    if (dx * dx + dz * dz < (c.z + margin) * (c.z + margin)) return false;
+                }
+                return true;
+            }
+        }
+
+        /// <param name="clear">Circles (x, z, radius) kept free of props.</param>
+        public static GameObject Build(Transform parent, Board board, IReadOnlyList<Vector3> clear, out GameObject godViewOnly)
+        {
+            var layout = new Clearings(clear);
             PropCounts.Clear();
             GodCamera.ScaledLabels.Clear();
             var root = new GameObject("Terrain").transform;
@@ -85,13 +107,12 @@ namespace World.Game
             }
             lines.ToObject("HexEdgeLines", root, vcMat);
 
-            // Corner markers (150): low stone disc and a short post with a pennant. Not inside the village square.
+            // Corner markers (150): low stone disc and a short post with a pennant.
             var posts = new MeshBuilder();
             foreach (int v in t.Corners)
             {
                 var p = BoardSpace.Vertex(t, v);
                 Disc(posts, p + Vector3.up * 0.05f, 1.5f, 12, new Color(0.74f, 0.70f, 0.60f));
-                if (BoardSpace.Flat(p - layout.SquareCentre) < VillageLayout.SquareRadius + 1f) continue;
                 posts.Cylinder(p, 0.1f, 0.08f, 2.0f, 6, new Color(0.40f, 0.28f, 0.18f));
                 posts.Box(p + new Vector3(0.24f, 1.8f, 0), new Vector3(0.44f, 0.28f, 0.03f), new Color(0.78f, 0.22f, 0.18f));
             }
@@ -115,8 +136,8 @@ namespace World.Game
             foreach (int v in t.Corners) Disc(corners, BoardSpace.Vertex(t, v) + Vector3.up * 0.1f, 2.2f, 12, new Color(1f, 0.97f, 0.85f));
             corners.ToObject("CornerMarkers", godViewOnly.transform, overlayMat);
             var sites = new MeshBuilder();
-            foreach (int v in board.SuggestedCitySites) Ring(sites, BoardSpace.Vertex(t, v) + Vector3.up * 0.12f, 6.5f, 0.7f, 24, new Color(0.62f, 0.82f, 0.95f));
-            sites.ToObject("SuggestedCitySites", godViewOnly.transform, overlayMat);
+            foreach (int v in board.SuggestedSettlementCorners) Ring(sites, BoardSpace.Vertex(t, v) + Vector3.up * 0.12f, 6.5f, 0.7f, 24, new Color(0.62f, 0.82f, 0.95f));
+            sites.ToObject("SuggestedSettlementCorners", godViewOnly.transform, overlayMat);
 
             for (int h = 0; h < t.HexCount; h++)
             {
@@ -157,7 +178,7 @@ namespace World.Game
 
         private static void Count(string kind, int n) { PropCounts.TryGetValue(kind, out int c); PropCounts[kind] = c + n; }
 
-        private static void BuildHex(Transform root, Board board, BoardTopology t, int h, VillageLayout layout, Material mat)
+        private static void BuildHex(Transform root, Board board, BoardTopology t, int h, Clearings layout, Material mat)
         {
             var terrain = board.HexTerrain[h];
             var baseCol = TerrainColor(terrain);
@@ -201,7 +222,7 @@ namespace World.Game
 
         // ---------------- props, rebuildable per hex with clearings ----------------
 
-        private struct Ctx { public Board Board; public VillageLayout Layout; public Material Mat; }
+        private struct Ctx { public Board Board; public Clearings Layout; public Material Mat; }
         private static Ctx _ctx;
         private static Transform[] _tiles = new Transform[0];
         private static GameObject[] _props = new GameObject[0];
@@ -245,7 +266,7 @@ namespace World.Game
             _props[hex] = BuildProps(_ctx.Board, _ctx.Board.Topology, hex, _ctx.Layout, _ctx.Mat, _tiles[hex], _clearings[hex], false);
         }
 
-        private static GameObject BuildProps(Board board, BoardTopology t, int h, VillageLayout layout, Material mat, Transform tile, List<Vector3> clearings, bool first)
+        private static GameObject BuildProps(Board board, BoardTopology t, int h, Clearings layout, Material mat, Transform tile, List<Vector3> clearings, bool first)
         {
             var terrain = board.HexTerrain[h];
             var rnd = new PropRandom(5000 + h * 7919);
@@ -392,7 +413,7 @@ namespace World.Game
         }
 
         /// <summary>A hex-shaped fence inset in the hex with a gate, sheep, a trough and grass tufts. Returns the sheep count.</summary>
-        private static int BuildPasture(MeshBuilder mb, Vector3 centre, float R, VillageLayout layout, PropRandom rnd)
+        private static int BuildPasture(MeshBuilder mb, Vector3 centre, float R, Clearings layout, PropRandom rnd)
         {
             var wood = new Color(0.48f, 0.34f, 0.20f);
             float fr = R * 0.62f; // fence circumradius: 37 m, about 19 m inside the roads
@@ -477,7 +498,7 @@ namespace World.Game
         }
 
         /// <summary>Island ground beyond the board: a grass rim with trees and soft hills, a sandy beach and a ragged coast.</summary>
-        private static void BuildIsland(Transform root, VillageLayout layout, Material mat)
+        private static void BuildIsland(Transform root, Clearings layout, Material mat)
         {
             float br = BoardSpace.BoardRadius, ir = BoardSpace.IslandRadius;
             var rnd = new PropRandom(4242);

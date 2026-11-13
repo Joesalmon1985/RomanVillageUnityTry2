@@ -10,7 +10,6 @@ namespace World.Game
     {
         public const string Encounter = "Encounter";
         public const string Menu = "Menu";
-        public const string Draft = "Draft";
     }
 
     /// <summary>
@@ -64,13 +63,7 @@ namespace World.Game
         private void Update()
         {
             if (Sim == null) return;
-            if (IsPaused)
-            {
-                // Commands apply at the next tick. While the clock waits only for the draft, a pick (or a card built from
-                // the hand) would otherwise stay queued forever and the draft would never end: apply it with one tick.
-                if (Sim.PendingCommands.Count > 0 && _pauseReasons.Count == 1 && _pauseReasons.Contains(PauseReasons.Draft)) StepOnce();
-                return;
-            }
+            if (IsPaused) return;
             _accumulator += Time.deltaTime;
             double dt = 1.0 / WorldSim.TicksPerSecond;
             int n = 0;

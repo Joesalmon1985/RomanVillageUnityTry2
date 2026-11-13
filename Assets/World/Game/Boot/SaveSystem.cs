@@ -123,9 +123,6 @@ namespace World.Game
                 ["view"] = _boot.Views.CurrentView.ToString(),
                 ["god.focus"] = V3(_boot.GodCam.Focus),
                 ["god.size"] = F(_boot.GodCam.Size),
-                ["route.bar"] = _boot.Warehouse.IsRouteOpen(Route.Bar) ? "1" : "0",
-                ["route.balcony"] = _boot.Warehouse.IsRouteOpen(Route.Balcony) ? "1" : "0",
-                ["bram.acknowledged"] = EconomyFirstPerson.Instance != null && EconomyFirstPerson.Instance.QuartermasterAcknowledged ? "1" : "0",
                 ["objective"] = Hud.Objective ?? "",
                 ["seed"] = _boot.Seed.ToString(CultureInfo.InvariantCulture),
             };
@@ -182,9 +179,6 @@ namespace World.Game
             var x = m.Extras;
             if (m.Player != null)
                 _boot.Avatar.Teleport(new Vector3((float)m.Player.X, (float)m.Player.Y, (float)m.Player.Z), (float)m.Player.Yaw, (float)m.Player.Pitch);
-            if (x.TryGetValue("route.bar", out var bar) && bar == "1") _boot.Warehouse.SetRouteOpen(Route.Bar, true);
-            if (x.TryGetValue("route.balcony", out var bal) && bal == "1") _boot.Warehouse.SetRouteOpen(Route.Balcony, true);
-            if (x.TryGetValue("bram.acknowledged", out var ack) && ack == "1" && EconomyFirstPerson.Instance != null) EconomyFirstPerson.Instance.RestoreAcknowledged();
             if (x.TryGetValue("objective", out var obj) && !string.IsNullOrEmpty(obj)) Hud.SetObjective(obj);
             if (x.TryGetValue("view", out var view) && view == ViewMode.God.ToString()) _boot.Views.SetView(ViewMode.God);
             if (x.TryGetValue("god.focus", out var f) && TryV3(f, out var focus))
@@ -199,7 +193,7 @@ namespace World.Game
         private static string Describe(WorldState s)
         {
             float min = s.Tick / (float)(WorldSim.TicksPerSecond * 60);
-            return "game minute " + min.ToString("0.0", CultureInfo.InvariantCulture) + ", round " + s.Economy.Round;
+            return "game minute " + min.ToString("0.0", CultureInfo.InvariantCulture);
         }
 
         private static void Report(string text, bool error)

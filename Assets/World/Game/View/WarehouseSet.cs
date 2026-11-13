@@ -161,14 +161,49 @@ namespace World.Game
 
         // ------------------------------------------------------------------ build
 
-        public static WarehouseSet Build(Transform parent, VillageLayout layout)
+        /// <summary>The warehouse built most recently (null when none stands). Interim, until package D's dance circle.</summary>
+        public static WarehouseSet Current { get; private set; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => Current = null;
+
+        private void OnDestroy() { if (Current == this) Current = null; }
+
+        /// <param name="door">Centre of the doorway on the ground.</param>
+        /// <param name="yaw">Yaw of the building's outward (+Z local) axis, out of the door.</param>
+        public static WarehouseSet Build(Transform parent, Vector3 door, float yaw)
         {
             var go = new GameObject("Warehouse");
             go.transform.SetParent(parent, false);
-            go.transform.position = layout.WarehouseDoor;
-            go.transform.rotation = Quaternion.Euler(0, layout.WarehouseYaw, 0);
+            go.transform.position = door;
+            go.transform.rotation = Quaternion.Euler(0, yaw, 0);
             var w = go.AddComponent<WarehouseSet>();
             w.BuildAll();
+            Current = w;
+            return w;
+        }
+
+        /// <summary>
+        /// F-0 interim (REFACTOR_SPEC 8.3: D replaces the warehouse with the dance circle and deletes this file): the
+        /// prehistoric village has no warehouse, so normal play builds none and the party is unreachable. Tests and
+        /// captures call this to stand a warehouse with DJ Sol at the decks on the first Meadow hex (else hex 0), facing
+        /// north, so the rhythm encounter can still be played and tested.
+        /// </summary>
+        public static WarehouseSet BuildStandalone(WorldBootstrap boot)
+        {
+            if (Current != null) return Current;
+            var board = boot.Sim.State.Board;
+            var t = board.Topology;
+            int hex = 0;
+            for (int h = 0; h < t.HexCount; h++) if (board.HexTerrain[h] == World.Sim.Terrain.Meadow) { hex = h; break; }
+            var w = Build(boot.transform, BoardSpace.Hex(t, hex) + new Vector3(0, 0, 11f), 0f);
+            var host = Npc.Spawn(NpcIds.Host, "DJ Sol", "Plays the decks inside the warehouse.",
+                "One phrase at 174. Keep up and the crowd opens a new room.", new Color(0.20f, 0.75f, 0.85f), w.DecksPosition, w.DecksYaw);
+            host.Lines.Add("Four pads: D, F, J, K. Hit the cues as they land.");
+            host.Lines.Add("In the last block, pick the bar or the balcony.");
+            host.Options.Add(DialogueOption.Encounter("Play the phrase", EncounterDirectory.RhythmParty));
+            host.Options.Add(DialogueOption.Leave("Just looking"));
+            host.Stage = new EncounterStage(w.DanceFloorPosition, w.DecksYaw + 180f);
             return w;
         }
 

@@ -4,8 +4,8 @@ using World.Sim;
 namespace World.Game
 {
     /// <summary>
-    /// The only object in World.unity. Creates the WorldSim and builds the scene in code:
-    /// clock, sun, camera, ground. Later milestones add their builders here (one call each).
+    /// The only object in World.unity. Creates the WorldSim and builds the scene in code: clock, sun, camera, ground,
+    /// the interim viewpoint, then calls the five package installers (REFACTOR_SPEC 8.0). Owner after F-0: package P.
     /// World.Game never writes WorldState: read Sim.State, Submit commands, animate events.
     /// </summary>
     public sealed class WorldBootstrap : MonoBehaviour
@@ -65,58 +65,55 @@ namespace World.Game
             BuildSun();
             BuildGround();
             BuildCamera();
-            BuildVillage();
-            EconomyInstaller.Install(this); // road economy: views, God View tools, quartermaster (Docs/ECONOMY_UI.md)
-            StrategyInstaller.Install(this); // draft, cities, demons, hero, military, end screen (Docs/STRATEGY_UI.md)
+            BuildViewpoint();
+
+            // The packages' entry points, in the order of REFACTOR_SPEC 8.0 / appendix B. Each installer belongs to its
+            // package; nothing else in this method should change when a package lands.
+            PlayerInstaller.Install(this);   // P: walker, pointer, speech bubbles, spell caster, map, HUD toggle
+            CampInstaller.Install(this);     // D: dance circle, camp dressing, Mira and Sol
+            LandViewsInstaller.Install(this); // V: terrain and land views
+            PrinceInstaller.Install(this);   // N: prince, sawyer, merchant, first scene
+            DevToolsInstaller.Install(this); // P: F1 developer tools
+
             Saves = gameObject.AddComponent<SaveSystem>(); // F5 / F9, one slot; applies the loaded save's game-layer data in Start
             Saves.Bind(this, loaded);
-            TravelTool.Register(); // God View "Go here" (fast travel)
             Debug.Log("[World] ready: " + (loaded != null ? "loaded save at tick " + Sim.State.Tick : "new game") + ", seed " + Seed + ", " + Screen.width + "x" + Screen.height);
         }
 
         /// <summary>The save slot (F5 save, F9 load).</summary>
         public SaveSystem Saves { get; private set; }
 
-        // ---- Milestone 1: walkable village ----
+        // ---- Interim viewpoint (F-0; package P replaces FirstPersonAvatar with the PlayerWalker) ----
 
-        public VillageLayout Layout { get; private set; }
         public FirstPersonAvatar Avatar { get; private set; }
         public GodCamera GodCam { get; private set; }
         public ViewSwitcher Views { get; private set; }
         public Picker Picker { get; private set; }
-        public WarehouseSet Warehouse { get; private set; }
-        /// <summary>Placeholder rival outpost at Board.RivalOutpostVertex.</summary>
-        public BuildingInfo Outpost { get; private set; }
         public Hud Hud { get; private set; }
         public AutoPlay AutoPlay { get; private set; }
         public EncounterHost Encounters { get; private set; }
         /// <summary>Parent for characters created by ActorFactory.</summary>
         public Transform ActorsRoot { get; private set; }
 
-        private void BuildVillage()
+        private void BuildViewpoint()
         {
             var board = Sim.State.Board;
-            Layout = new VillageLayout(board);
-            TerrainBuilder.BuildSky(transform, Sun, MainCamera);
             Ground.transform.position = new Vector3(0, SeaY, 0);
             Ground.GetComponent<Renderer>().sharedMaterial = MaterialFactory.Create(new Color(0.22f, 0.42f, 0.55f), "Sea");
-            TerrainBuilder.Build(transform, board, Layout, out var overlay);
-            VillageBuilder.Build(transform, board, Layout);
-            Warehouse = WarehouseSet.Build(transform, Layout);
-            Outpost = OutpostBuilder.Build(transform, board, Layout, overlay.transform);
             ActorsRoot = new GameObject("Actors").transform;
             ActorsRoot.SetParent(transform, false);
 
-            Avatar = FirstPersonAvatar.Create(transform, MainCamera, Layout.Spawn + Vector3.up * 0.05f, Layout.SpawnYaw);
+            var camp = new CampLayout(board);
+            var spawn = WalkLattice.ToWorld(camp.Spawn);
+            Avatar = FirstPersonAvatar.Create(transform, MainCamera, spawn + Vector3.up * 0.05f, WalkLattice.Yaw(camp.SpawnHeading));
             Avatar.BoundsCentre = Vector3.zero;
             Avatar.BoundsRadius = BoardSpace.BoardRadius + 4f;
             GodCam = GodCamera.Create(transform);
             GodCam.ClampRadius = BoardSpace.BoardRadius;
             GodCam.MaxSize = GodCamera.SizeToFrame(BoardSpace.IslandRadius);
-            GodCam.HomeFocus = Layout.VillageCentre;
+            GodCam.HomeFocus = camp.Hearth;
             Views = gameObject.AddComponent<ViewSwitcher>();
             Views.Bind(Avatar, GodCam);
-            Views.AddGodViewOnly(overlay);
             Picker = gameObject.AddComponent<Picker>();
             Picker.Bind(Views);
             gameObject.AddComponent<InspectPanel>();
@@ -124,7 +121,6 @@ namespace World.Game
             Hud = gameObject.AddComponent<Hud>();
             Encounters = EncounterHost.CreateInstance(gameObject);
             AutoPlay = gameObject.AddComponent<AutoPlay>();
-            VillageNpcs.Spawn(this);
             ShowDebugOverlay = false;
         }
 
@@ -166,9 +162,9 @@ namespace World.Game
             MainCamera.fieldOfView = 70f;
             go.AddComponent<AudioListener>();
 
-            // Stand at the home city (the village square) looking north-west across the board.
+            // Stand at the player's start corner looking north-west across the board (the avatar takes over at once).
             var topo = Sim.State.Board.Topology;
-            int home = Sim.State.Board.HomeCityVertex;
+            int home = Sim.State.Board.StartCorners[0];
             go.transform.position = new Vector3((float)topo.VertexX(home), EyeHeight, (float)topo.VertexZ(home));
             go.transform.rotation = Quaternion.Euler(5f, -45f, 0f);
         }

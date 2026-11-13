@@ -26,7 +26,7 @@ namespace World.Game
     /// greeting; E opens the DialoguePanel with <see cref="Lines"/> and up to three <see cref="Options"/>.
     /// Later agents change Lines/Options (or set <see cref="DialogueBuilder"/>) to wire behaviour.
     /// </summary>
-    public sealed class Npc : MonoBehaviour, IInteractable, IInspectable
+    public sealed class Npc : MonoBehaviour, IInteractable, IInspectable, ISpeaker, IFollowable
     {
         public const float GreetRange = 4f;
         private static readonly List<Npc> _all = new List<Npc>();
@@ -58,6 +58,60 @@ namespace World.Game
                 if (!string.IsNullOrEmpty(Role)) yield return Role;
                 if (!string.IsNullOrEmpty(Greeting)) yield return "\"" + Greeting + "\"";
             }
+        }
+
+        // ---- REFACTOR_SPEC appendix B (owner: package N). F-0 gives a minimal straight-line walk so P and D can use it. ----
+
+        /// <summary>Walking speed in metres per second (F-0 placeholder; N tunes it).</summary>
+        public float WalkSpeed = 3f;
+        public bool IsWalking { get; private set; }
+        public string SpeakerId => Id;
+        public string FollowName => DisplayName;
+        public Transform FollowTransform => transform;
+        public Transform Head
+        {
+            get
+            {
+                if (_head == null)
+                {
+                    _head = new GameObject("Head").transform;
+                    _head.SetParent(transform, false);
+                    _head.localPosition = Vector3.up * 2.15f;
+                }
+                return _head;
+            }
+        }
+        private Transform _head;
+        private Vector3? _walkTarget;
+        private Transform _followTarget;
+        private float _followDistance;
+
+        /// <summary>Walks in a straight line to a ground point (F-0: no path finding, no blockers).</summary>
+        public void WalkTo(Vector3 target) { _followTarget = null; _walkTarget = target; IsWalking = true; }
+
+        /// <summary>Keeps <paramref name="distance"/> metres behind a moving transform until <see cref="WalkTo"/> or <see cref="StopWalking"/>.</summary>
+        public void Follow(Transform target, float distance) { _walkTarget = null; _followTarget = target; _followDistance = distance; }
+
+        public void StopWalking() { _walkTarget = null; _followTarget = null; IsWalking = false; }
+
+        private void UpdateWalk()
+        {
+            Vector3? goal = _walkTarget;
+            float stop = 0.05f;
+            if (_followTarget != null) { goal = _followTarget.position; stop = _followDistance; }
+            if (!goal.HasValue) { IsWalking = false; return; }
+            var d = goal.Value - transform.position; d.y = 0;
+            float dist = d.magnitude;
+            if (dist <= stop)
+            {
+                IsWalking = false;
+                if (_walkTarget.HasValue) { HomePosition = transform.position; _walkTarget = null; }
+                return;
+            }
+            IsWalking = true;
+            float step = Mathf.Min(WalkSpeed * Time.deltaTime, dist - stop);
+            transform.position += d / dist * step;
+            Actor?.FaceTowards(transform.position + d);
         }
 
         public static Npc Find(string id)
@@ -102,6 +156,8 @@ namespace World.Game
 
         private void Update()
         {
+            UpdateWalk();
+            if (IsWalking) return;
             var views = ViewSwitcher.Instance;
             if (views == null || Actor == null) return;
             var player = views.Avatar.Position;

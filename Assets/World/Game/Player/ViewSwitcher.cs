@@ -73,8 +73,8 @@ namespace World.Game
         private Vector3 DefaultFocus()
         {
             var b = WorldBootstrap.Instance;
-            if (b == null || b.Layout == null) return Avatar.Position;
-            return b.Layout.VillageCentre;
+            if (b == null || b.GodCam == null) return Avatar.Position;
+            return b.GodCam.HomeFocus;
         }
 
         private void Update()

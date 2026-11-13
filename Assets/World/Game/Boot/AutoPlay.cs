@@ -44,8 +44,8 @@ namespace World.Game
         static AutoPlayScripts() { Register("boot_tour", BootTour); Register("capture_tour", CaptureTour); }
 
         /// <summary>
-        /// Screenshots for checking a packaged build by eye (materials, fonts, UI scale): spawn, the pause menu, the
-        /// warehouse, God View home and whole island. Files go to &lt;exe folder&gt;/Evidence/screenshots (pkg_*.png).
+        /// Screenshots for checking a packaged build by eye (materials, fonts, UI scale): spawn, the pause menu, Mira,
+        /// God View home and whole island. Files go to &lt;exe folder&gt;/Evidence/screenshots (pkg_*.png).
         /// </summary>
         public static AutoPlayScript CaptureTour()
         {
@@ -54,9 +54,8 @@ namespace World.Game
              .Call(() => Hud.Instance.OpenMenu()).Wait(0.3f).Capture("pkg_menu")
              .Call(() => { Hud.Instance.MenuPage = Hud.Page.HowToPlay; }).Wait(0.3f).Capture("pkg_menu_howto")
              .Call(() => Hud.Instance.CloseMenu())
-             .WalkTo(() => WorldBootstrap.Instance.Warehouse.OutsideDoorPosition, 1.0f, true)
-             .WalkTo(() => WorldBootstrap.Instance.Warehouse.DanceFloorPosition, 1.0f)
-             .LookAt(() => WorldBootstrap.Instance.Warehouse.DecksPosition + Vector3.up * 1.5f, 0.4f).Wait(0.3f).Capture("pkg_warehouse")
+             .WalkTo(() => Npc.Find(NpcIds.Mira).transform.position, 3f)
+             .LookAt(() => Npc.Find(NpcIds.Mira).transform.position + Vector3.up * 1.2f, 0.4f).Wait(0.3f).Capture("pkg_mira")
              .ToggleView().Wait(0.8f).Capture("pkg_god_home")
              .Call(() => WorldBootstrap.Instance.GodCam.FrameIsland()).Wait(0.8f).Capture("pkg_god_island")
              .Log("[AutoPlay] capture_tour OK")
@@ -72,18 +71,22 @@ namespace World.Game
         }
         public static IEnumerable<string> Names => Registry.Keys;
 
-        /// <summary>Spawn, look around, walk to Mira, walk to the warehouse door, God View and back, quit 0.</summary>
+        /// <summary>
+        /// Spawn at the home camp, check the new board (61 hexes, numbers 2..12 and never 7, start corners), look around,
+        /// walk to Mira, God View and back, quit 0. (F-0: interim avatar; package P moves it onto the lattice.)
+        /// </summary>
         public static AutoPlayScript BootTour()
         {
             var s = new AutoPlayScript("boot_tour");
             s.Wait(1f)
+             .Check(BoardLooksNew, "board is not the prehistoric board (61 hexes, numbers 2..12 except 7, two start corners)")
+             .Check(() => (WorldBootstrap.Instance.Avatar.Position - WalkLattice.ToWorld(new CampLayout(WorldBootstrap.Instance.Sim.State.Board).Spawn)).magnitude < 1f, "avatar not at the camp spawn")
              .MeasureFps("spawn first person")
              .Turn(-50f, 1.2f).Turn(100f, 2f).Turn(-50f, 1.2f)
              .WalkTo(() => Npc.Find(NpcIds.Mira).transform.position, 2.5f)
              .Wait(0.4f)
              .Check(() => Npc.Find(NpcIds.Mira).IsGreetingShown, "Mira greeting not shown")
-             .WalkTo(() => WorldBootstrap.Instance.Warehouse.OutsideDoorPosition, 1.0f)
-             .Check(() => Npc.Find(NpcIds.Doorman).IsGreetingShown, "doorman greeting not shown")
+             .Check(() => WorldBootstrap.Instance.Sim.State.Tick > 0, "the clock does not run")
              .Call(() => s_tab = WorldBootstrap.Instance.Avatar.Position)
              .ToggleView().Wait(0.5f)
              .MeasureFps("god view default", 2f)
@@ -97,6 +100,19 @@ namespace World.Game
             return s;
         }
         private static Vector3 s_tab;
+
+        private static bool BoardLooksNew()
+        {
+            var b = WorldBootstrap.Instance.Sim.State.Board;
+            if (b.Topology.HexCount != 61 || b.StartCorners == null || b.StartCorners.Length != 2) return false;
+            for (int h = 0; h < b.HexNumber.Length; h++)
+            {
+                int n = b.HexNumber[h];
+                bool meadow = b.HexTerrain[h] == World.Sim.Terrain.Meadow;
+                if (meadow ? n != 0 : (n < 2 || n > 12 || n == 7)) return false;
+            }
+            return true;
+        }
     }
 
     /// <summary>Runs AutoPlayScripts. Also honours "-autoplay &lt;name&gt;" on the command line in player builds.</summary>

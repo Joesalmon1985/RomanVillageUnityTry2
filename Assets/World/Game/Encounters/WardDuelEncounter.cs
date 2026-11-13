@@ -79,7 +79,6 @@ namespace World.Game
             _stage = WardDuelStage.Build(_root.transform, playerPos, _mira != null ? _mira.Actor : null, _sfx);
 
             // Over-the-shoulder first-person view: both wizards and both Wards in frame.
-            if (ctx.Avatar != null)
             {
                 var toMira = (miraPos - playerPos).normalized;
                 var right = Vector3.Cross(Vector3.up, toMira).normalized;
@@ -88,7 +87,7 @@ namespace World.Game
                 var d = target - (camPos + Vector3.up * WorldBootstrap.EyeHeight);
                 float yaw = BoardSpace.YawOf(d);
                 float pitch = -Mathf.Atan2(d.y, new Vector2(d.x, d.z).magnitude) * Mathf.Rad2Deg;
-                ctx.Avatar.Teleport(camPos + Vector3.up * 0.05f, yaw, pitch);
+                ctx.PlaceAvatar(camPos + Vector3.up * 0.05f, yaw, pitch);
             }
             if (ctx.World != null && ctx.World.GodCam != null) { _prevPan = ctx.World.GodCam.KeyboardPan; ctx.World.GodCam.KeyboardPan = false; }
 

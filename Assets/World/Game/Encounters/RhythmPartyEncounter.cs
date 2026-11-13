@@ -106,8 +106,7 @@ namespace World.Game
             _sfx = EncounterSfx.Create(_root.transform);
 
             // Stand on the dance floor facing the decks, turned a little so DJ Sol stays visible left of the note highway.
-            ctx.MoveAvatarToStage(-4f);
-            if (ctx.Avatar != null) ctx.Avatar.SetLook(ctx.Stage.Yaw + ViewYawOffset, -4f);
+            ctx.PlaceAvatar(ctx.Stage.Position, ctx.Stage.Yaw + ViewYawOffset, -4f);
             var w = ctx.Warehouse;
             if (w != null) { _prevDoorMusic = w.IsDoorMusicOn; if (AudioGuard.CanWriteControls) w.SetDoorMusic(false); }
             if (ctx.World != null && ctx.World.GodCam != null) { _prevPan = ctx.World.GodCam.KeyboardPan; ctx.World.GodCam.KeyboardPan = false; }

@@ -3,25 +3,12 @@ using UnityEngine;
 
 namespace World.Game
 {
-    /// <summary>Anything selectable: shown in the InspectPanel in both views.</summary>
-    public interface IInspectable
-    {
-        string Title { get; }
-        IEnumerable<string> Lines { get; }
-    }
-
-    /// <summary>Anything the player can use with E in first person (within 4 m under the crosshair).</summary>
-    public interface IInteractable
-    {
-        string Prompt { get; }
-        void Interact();
-    }
-
     /// <summary>
     /// First-person walker: CharacterController, WASD, mouse look, Shift run, gravity.
     /// Movement and look are blocked while any lock is held (God View, encounter, dialogue, menu...).
     /// Scripts drive it through <see cref="SetScriptedMove"/>, <see cref="SetLook"/> and <see cref="Teleport"/>.
     /// Transform position = feet; yaw on this transform, pitch on <see cref="Head"/>.
+    /// Interim viewpoint after F-0: package P replaces it with <see cref="PlayerWalker"/> (REFACTOR_SPEC 7.3).
     /// </summary>
     public sealed class FirstPersonAvatar : MonoBehaviour
     {
