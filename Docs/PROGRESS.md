@@ -274,3 +274,69 @@ Ran:
 - Play Mode in the editor: `first_five` logged `[AutoPlay] first_five OK` (duel Victory after 3 casts; phrase 4/4 blocks, 20 perfect, balcony). Captures inspected (scratch, not kept): spawn among the Forest 6 trees with Mira in view; God View of the whole island with the new numbers.
 
 Not run / caveats: no Windows build and no packaged runs (not asked). Nothing new is drawn for camps, plots, roads, carriers or proposals: the sim runs underneath with nothing showing it but the God View toolbar code, which is not installed. The spawn stands among Forest trees (the only clearing is 12 m round each start corner) until V clears plots and spokes. The interim avatar walks freely, not on the lattice.
+
+## Prehistoric refactor, package S: simulation, brain, proof and tuning (13 Nov 2026, branch `refactor/sim`)
+
+Built (all in `Assets/World/Sim` and `Assets/World/Tests/EditMode`; API in `Docs/ECONOMY_API.md`, names in the spec's appendix A and its change log):
+- S-0 (`4bc636c`): the appendix A surface, board numbers 2..12 and start corners 70/97, `PlotLayout`, dice and hex stock, placement checks, strength, warning and endings, demons, the proposal queue and spells. Strategy, Military and the old economy moved to `Archive/Sim` with their tests (`Archive/Tests/EditMode`).
+- Logistics (`7bc97ba`): per-camp carriers, demand jobs in serving order with reservations, local and main-road legs, shipments between storehouses, routes avoiding demons, carriers waiting on a demon-held road until the banish, cancelled sites bringing goods home, real `CarrierPosition`. Job ageing (30 s) added after shipments starved behind outputs.
+- Brain (`16c82e1`): expansion target, the next road (merchant) and the camp, the scarcest-ware bonus, workshops, city, lodge, warning bonus, speakers; the rival on the same rules. Scripted players (prompt, fixed delay, slow, decliner, ignore, random) and `GameRunner` for whole-game tests.
+- Proof (`900bcf2`): `ProofReport` writes `Docs/ECONOMY_PROOF.md` (sections A-G plus a cast-delay sensitivity table), builds it twice and requires byte-identical text, and fails on any pass criterion.
+
+Tuning log (each line: the change on top of the previous ones; 11 seeds; "prompt" is the modelled human of spec 8.1; "W" wins by overrun, "L" losses by overrun; numbers from probe runs, the final ones from the proof):
+
+| Step | Change | Prompt | Delay 36 s | Ignored prince | Note |
+|---|---|---|---|---|---|
+| 0 | spec starting values, full logistics and brain | 0 W (all time-limit wins, 5-3) | 0 W | 0 L (rival 2.3 at 20 min) | nobody grows: carriers and casts are the limits |
+| 1 | carriers 5 m per 10 ticks (spec 15) | 7 W, median 17.0 | 0 W | 1 L | carriers were the bottleneck, batch size and cap made no difference |
+| 2 | 4 sheep at start (spec 2) | 9 W, median 12.7 | 0 W | 0 L | a second camp no longer waits for a pasture |
+| - | (probe) no demons at all | 6 W | 0 W | 10 L | the rival spent about half of its casts banishing (13 of 27 on seed 2) |
+| 3 | one workshop per type, surplus bonus, banish on a road edge 40, demons on every 2nd seven | 11 W, median 11.7 | 0 W | 2 L | the rival had built two sawmills and kilns and blocked its three site slots |
+| 4 | 5 / 3 carriers per start / new camp (spec 3 / 2), grace 5 min, demons on every 3rd seven | 11 W, median 12.0 | 1 W | 10 L | but with expansion +15 and press +40 only 2 building types were ever built |
+| 5 | no expansion bonus, no press; city 90, lodge 60 | 11 W, median 10.0 | 0 W | 7 L | 9-10 types built |
+| 6 | rival cast delay 40 s (spec 45 s) | 10 W, median 13.1 | 0 W | 9 L | Quarry never built |
+| 7 | +30 to strength builds while ahead of a people whose strength has not changed for 5 min | 10 W, median 13.1 | 0 W | 11 L | all 11 types built in some prompt game |
+| 8 | hex cap 16 (spec 12) | proof: 10 of 10 W, median 12.1 | proof: 0 W, 7 time wins, 4 draws | proof: 10 of 10 L, median 14.7 | two seeds lost 20-23% of clay or stone to the cap at 12 |
+
+Cast-delay sensitivity (proof, 11 seeds, overrun wins / median minutes): prompt 11 / 13.1; 10 s 11 / 9.7; 20 s 10 / 13.2; 28 s 5 / 20.0; 36 s 0 / 20.0 (7 time wins, 4 draws); 45 s 0 (3 time wins, 2 draws, 6 time losses); 60 s 0 (2 draws, 8 time losses, 1 overrun). Winning by overrun needs the player to cast within about 30 s of each pitch; this is the biggest design risk (spec risk 2) and must be measured in the first playtest.
+
+Ran:
+- `dotnet test DotNet`: 193 passed, 0 failed (about 25 s; the proof test about 20 s of it).
+- The proof: all criteria pass (prompt 10/10 overrun wins, median 12.1 min; ignored prince overrun 10/10, median 14.7 min; zero drift in 10 random-cast games; longest missed import 0 ticks; longest job wait under 2 minutes; the rival never more than 46 s without a proposal; no ware over 15% lost to the cap; every placeable type built in at least one prompt game).
+
+Not run: Unity (no EditMode or PlayMode run in the editor for this package); nothing was played by hand. The modelled human is crude (straight-line walking, fixed talk). Warriors are trained in none of the 10 prompt games before they end, so the lodge, meals and hunger are proven by unit tests and the paired run, not by play.
+
+## Prehistoric refactor, package S: second tuning pass (13 Nov 2026, branch `refactor/sim`)
+
+Asked for: a real person casting about 45-60 s after each pitch must win; the middle and late game (warriors, cities, every worked good, demons) must happen in those wins; the first pass's hidden-information rule replaced with something visible. Numbers and brain/rival logic only; the surface grew (spec A.5 items 21-24), `ApiSurfaceTests` unchanged.
+
+Changed (spec value -> game value; all in the `Tuned()` factories):
+- Rival pace: 45 s from when a proposal became top -> 100 s from its last spell (`RivalPacePerCast`; the top must have settled 15 s), 60 s sooner per point of strength it leads by, never under 10 s. Replaces the first pass's +30 to strength builds while the other people's strength had been static for 5 minutes (hidden information).
+- No overrun warning in the first 8 minutes (`WarningGraceTicks` 4800): stops games ending before the workshops appear.
+- A camp held by demons adds no strength until banished (spec: it counts).
+- Demons: grace 5 min, a draw on every 2nd seven (first pass: 3rd), and a draw picks a people first (equal chances), then one of its sites (spec: one site among all, so the bigger people got most demons).
+- Lodge also without a city once a Bakery and a Smokehouse are active (spec: city only); lodge score 60 -> 90.
+- Workshops +30 once a people has 2 camps; improved collectors +15 once it has 4 (without it the Farm was never built).
+- A banish on a road edge ranks like a camp's while it holds something up (a carrier or a road or camp site waiting).
+- Pitches within 60 m of the last cast get +8 (walkable clusters).
+
+Tuning log (11 seeds per row; W/Wt = wins by overrun / at the time limit; L = overrun losses; probe runs, last line from the proof):
+
+| Step | Change | Prompt | 45 s | 60 s | 90 s | Ignored prince |
+|---|---|---|---|---|---|---|
+| 0 | first-pass values | W11, median 13.1 | W0, Wt3, Lt6 | W0, Lt8, L1 | Lt6, L5 | L11, median 14.7 |
+| 1 | no press bonus, rival delay ramp 90 -> 40 s over 15 min | W11, median 8.6 | W1, Wt6 | W1, Wt3 | Lt8, L2 | L2 (Lt9) |
+| 2 | + workshops +30 from 2 camps, lodge without a city, lodge 70-90 | W11, median 10.3 | W7, Wt3, L1; city, warriors and all goods in 9-10 wins | W1, Lt7 | Lt7, L2 | L1 |
+| 3 | + demon-held camps count 0, draws on every 2nd seven | W11 | W5-8 | W1-3, L0-3 | L0-4 | L6-9 |
+| 4 | + the rival paced per spell (its 45-90 s delays were reset by every reorder of its queue) and bolder when ahead | W11 | W4-7 | W1-2, Wt4-5, L0-1 | L1 | L8 |
+| 5 | + demons pick a people first | W11, median 10.9 | W9, Wt2 | W1, Wt7, L1 | L2-4 | L10-11 |
+| 6 | + no warning before 8 min | W11, min 9.5 | W9, Wt2, median 15.8 | W1, Wt7, L1 | L4 | L11 |
+| 7 | + blocking road banishes rank high (a 60 s game had sat 10 minutes behind one) | W11 | 9+ wins | 7+ wins, L0 | - | L9 |
+| 8 | rival 100 s base, 60 s per point of lead, 10 s floor | W11, median 10.6 | W11, median 15.9 | W3, Wt6, L0 | D7, L4 | L11, median 14.7 |
+| 9 | + improved collectors +15 from 4 camps | proof: W11, median 10.6, min 9.5 | proof: W11, median 15.9 | proof: W3, Wt6, D1, Lt1, L0 | proof: D7, L4 | proof: L11, 11.3-19.5, median 14.7 |
+
+Ran:
+- `dotnet test DotNet`: 201 passed, 0 failed (new `TuningRulesTests`: each added rule on and off).
+- The proof (`Docs/ECONOMY_PROOF.md`): all criteria pass, including the new ones: 45 s player wins 11 of 11 (median 15.9 min); 60 s player wins 9 of 11 (3 by overrun, 6 at the time limit) and is never overrun; 90 s player: 7 draws, 4 overrun losses; ignored prince overrun 11 of 11 (median 14.7 min, earliest 11.3); prompt games 9.5-13.6 min. In the 45 s player's 11 wins: fed warriors in 10, a city in 9, all five worked goods made and used in 9, warriors made the margin in 5; 2.8 banishes per game; never banishing (paired run) turned a 15.9-minute win into a 12.1-minute defeat. Mean walk between casts 60-90 m (5-7 s at 12.5 m/s); 17-24 casts per game.
+
+Not run: Unity; nothing played by hand. Still weak: the 90 s player loses 4 of 11 by overrun (an idle player and a 90 s player differ by about one point of strength, and the rule that overruns every idle player also overruns some slow ones); prompt games end at 9.5-13.6 minutes, mostly right after the 8-minute warning grace, often before the first warrior; the rival is weak against an active player (final strength 1-2 against the 45 s player), partly because its camps are often demon-held.

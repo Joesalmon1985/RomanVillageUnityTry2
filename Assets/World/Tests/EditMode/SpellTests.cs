@@ -54,7 +54,7 @@ namespace World.Sim.Tests
 
             Assert.AreEqual(FactionRefusals.UnknownProposal, sim.Submit(new CastSpell { PlayerId = 0, ProposalId = top.Id }).Reason);
 
-            ev = K.Step(sim, 300);
+            ev = K.Step(sim, 600);
             var hut = s.Economy.Buildings[placed.Id];
             Assert.AreEqual(BuildingState.Active, hut.State, "S-0 interim logistics: goods come straight from the storehouse");
             Assert.IsTrue(ev.OfType<SiteCompleted>().Any(c => c.Kind == SiteKind.Building && c.Id == hut.Id));
@@ -106,13 +106,24 @@ namespace World.Sim.Tests
         [Test]
         public void Rival_CastsItsTopProposal_45SecondsAfterItBecameTop()
         {
+            // Spec rule (6.4): the top proposal must have been top for the whole delay.
+            var spec = WorldSimFactory.CreateNew(K.DefaultSeed);
+            spec.State.Factions.Tuning = new FactionTuning();
+            var sev = K.Step(spec, 460);
+            Assert.AreEqual(460, sev.OfType<SpellCast>().Single().Tick, "planned at tick 10, cast 45 s later");
+
+            // Tuned rule: paced per cast (the delay counts from the last cast), the top settled for RivalSettleTicks.
             var sim = WorldSimFactory.CreateNew(K.DefaultSeed);
-            var ev = K.Step(sim, 459);
+            var tu = sim.State.Factions.Tuning;
+            Assert.IsTrue(tu.RivalPacePerCast);
+            int delay = FactionApi.RivalCastDelay(sim.State);
+            long expected = System.Math.Max(delay, 10 + tu.RivalSettleTicks);
+            var ev = K.Step(sim, (int)expected - 1);
             Assert.IsFalse(ev.OfType<SpellCast>().Any());
             ev = K.Step(sim, 1);
             var cast = ev.OfType<SpellCast>().Single();
             Assert.AreEqual(PlayerIds.Rival, cast.Faction);
-            Assert.AreEqual(460, cast.Tick);
+            Assert.AreEqual(expected, cast.Tick);
             Assert.AreEqual((int)BuildingType.WoodcutterHut, cast.BuildingType);
             Assert.IsTrue(sim.State.Factions.OpeningDone[PlayerIds.Rival]);
         }

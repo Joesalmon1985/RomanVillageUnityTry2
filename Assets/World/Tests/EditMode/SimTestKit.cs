@@ -30,6 +30,57 @@ namespace World.Sim.Tests
             return all;
         }
 
+        /// <summary>Steps until the condition holds (true) or max ticks pass (false).</summary>
+        public static bool StepUntil(WorldSim sim, System.Func<bool> done, int max)
+        {
+            for (int i = 0; i < max; i++)
+            {
+                if (done()) return true;
+                sim.Step();
+                sim.DrainEvents();
+            }
+            return done();
+        }
+
+        /// <summary>Adds goods to a settlement's storehouse (and to the ledger's starting stock, so conservation holds).</summary>
+        public static void Give(WorldState s, int settlementId, Ware w, int n)
+        {
+            s.Economy.Settlements[settlementId].Stock[(int)w] += n;
+            s.Economy.Ledger.Starting[(int)w] += n;
+        }
+
+        /// <summary>
+        /// Builds two player roads from home to a free settlement corner two hex edges away and founds a camp there.
+        /// Returns the new settlement id; path holds the three corners home..camp.
+        /// </summary>
+        public static int SecondCamp(WorldSim sim, out int[] path)
+        {
+            var s = sim.State;
+            var t = s.Board.Topology;
+            int home = s.Board.StartCorners[0];
+            int target = -1;
+            foreach (int c in t.Corners)
+            {
+                if (t.CornerDistance(home, c) != 2 || EconomyApi.CheckSettlement(s, 0, c).Reason != "not_connected") continue;
+                bool free = true;
+                foreach (int n in t.CornerNeighbours(c)) if (EconomyApi.SettlementAt(s, n) != null) free = false;
+                if (free) { target = c; break; }
+            }
+            path = t.FindCornerPath(home, target);
+            s.Demons.Tuning.GraceTicks = int.MaxValue; // no random demons in these set-ups
+            Give(s, 0, Ware.Wood, 3);
+            Give(s, 0, Ware.Clay, 3);
+            Do(sim, new PlaceRoad { HexEdge = t.HexEdgeBetween(path[0], path[1]) });
+            int e1 = t.HexEdgeBetween(path[0], path[1]), e2 = t.HexEdgeBetween(path[1], path[2]);
+            Assert.IsTrue(StepUntil(sim, () => EconomyApi.RoadOn(s, e1).State == RoadState.Built, 1000));
+            Do(sim, new PlaceRoad { HexEdge = e2 });
+            Assert.IsTrue(StepUntil(sim, () => EconomyApi.RoadOn(s, e2).State == RoadState.Built, 1000));
+            int id = s.Economy.Settlements.Count;
+            Do(sim, new FoundSettlement { Corner = target });
+            Assert.IsTrue(StepUntil(sim, () => s.Economy.Settlements[id].State == SettlementState.Active, 2000));
+            return id;
+        }
+
         /// <summary>Forces the next roll: the given dice come up at the next tick.</summary>
         public static void RigNextRoll(WorldState s, int d1, int d2)
         {
@@ -80,9 +131,62 @@ namespace World.Sim.Tests
                 if (l.StockAdded[w] != l.StockLost[w] + l.StockTaken[w] + young[w] + mature[w])
                     return "hex stock " + (Ware)w + " drifts";
             }
+            // Collected = units taken x yield, less the cycles still running.
+            var expect = new int[Wares.Count];
+            foreach (var def in BuildingDefs.All)
+                if (def.IsCollector) expect[(int)TerrainInfo.RawWare(def.Terrain).Value] += l.TakenByType[(int)def.Type] * def.Yield;
+            foreach (var b in e.Buildings)
+            {
+                var def = BuildingDefs.Get(b.Type);
+                if (def.IsCollector && b.WorkProgress > 0) expect[(int)TerrainInfo.RawWare(def.Terrain).Value] -= def.Yield;
+            }
+            for (int w = 0; w < Wares.Count; w++)
+                if (l.Collected[w] != expect[w]) return "collected " + (Ware)w + " " + l.Collected[w] + " vs taken x yield " + expect[w];
             foreach (var st in e.Settlements)
                 for (int w = 0; w < Wares.Count; w++)
-                    if (st.Reserved[w] > st.Stock[w] || st.Stock[w] < 0) return "settlement " + st.Id + " stock " + (Ware)w;
+                    if (st.Reserved[w] > st.Stock[w] || st.Stock[w] < 0 || st.Reserved[w] < 0) return "settlement " + st.Id + " stock " + (Ware)w;
+            foreach (var b in e.Buildings)
+                for (int w = 0; w < Wares.Count; w++)
+                    if (b.Reserved[w] > b.Stock[w] || b.Reserved[w] < 0 || b.Delivered[w] < 0) return "building " + b.Id + " stock " + (Ware)w;
+
+            // Incoming equals the open jobs heading there; reservations equal the jobs not yet picked up.
+            var incS = new int[e.Settlements.Count, Wares.Count];
+            var incB = new int[e.Buildings.Count, Wares.Count];
+            var incR = new int[e.Roads.Count, Wares.Count];
+            var resS = new int[e.Settlements.Count, Wares.Count];
+            var resB = new int[e.Buildings.Count, Wares.Count];
+            foreach (var j in e.Jobs)
+            {
+                int w = (int)j.Ware;
+                if (j.ToKind == PlaceKind.Building) incB[j.ToId, w] += j.Count;
+                else if (j.ToKind == PlaceKind.RoadSite) incR[j.ToId, w] += j.Count;
+                else incS[j.ToId, w] += j.Count;
+                if (j.State != JobState.Carrying)
+                {
+                    if (j.FromKind == PlaceKind.Building) resB[j.FromId, w] += j.Count;
+                    else resS[j.FromId, w] += j.Count;
+                }
+            }
+            for (int w = 0; w < Wares.Count; w++)
+            {
+                for (int i = 0; i < e.Settlements.Count; i++)
+                {
+                    if (e.Settlements[i].Incoming[w] != incS[i, w]) return "settlement " + i + " incoming " + (Ware)w;
+                    if (e.Settlements[i].Reserved[w] != resS[i, w]) return "settlement " + i + " reserved " + (Ware)w;
+                }
+                for (int i = 0; i < e.Buildings.Count; i++)
+                {
+                    if (e.Buildings[i].Incoming[w] != incB[i, w]) return "building " + i + " incoming " + (Ware)w;
+                    if (e.Buildings[i].Reserved[w] != resB[i, w]) return "building " + i + " reserved " + (Ware)w;
+                }
+                for (int i = 0; i < e.Roads.Count; i++)
+                    if (e.Roads[i].Incoming[w] != incR[i, w]) return "road " + i + " incoming " + (Ware)w;
+            }
+            foreach (var c in e.Carriers)
+            {
+                if (c.HasLoad && (c.JobId < 0 || !e.Jobs.Exists(j => j.Id == c.JobId))) return "carrier " + c.Id + " holds a load without a job";
+                if (c.State == CarrierState.Idle && c.HasLoad) return "idle carrier " + c.Id + " holds a load";
+            }
             return null;
         }
     }

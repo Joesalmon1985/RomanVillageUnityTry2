@@ -31,7 +31,8 @@ namespace World.Sim.Tests
         {
             var sim = WorldSimFactory.CreateNew(K.DefaultSeed);
             var s = sim.State;
-            s.Factions.Tuning.OverrunMargin = 0; // equal strength is enough: the player (checked first) attacks
+            s.Factions.Tuning.OverrunMargin = 0;
+            s.Factions.Tuning.WarningGraceTicks = 0; // equal strength is enough: the player (checked first) attacks
             var ev = K.Step(sim, 1);
             var w = ev.OfType<OverrunWarningStarted>().Single();
             Assert.AreEqual(PlayerIds.Human, w.Attacker);
@@ -58,6 +59,7 @@ namespace World.Sim.Tests
             var sim = WorldSimFactory.CreateNew(K.DefaultSeed);
             var s = sim.State;
             s.Factions.Tuning.OverrunMargin = 0;
+            s.Factions.Tuning.WarningGraceTicks = 0;
             K.Step(sim, 1);
             s.Factions.Tuning.OverrunMargin = 1;
             var ev = K.Step(sim, 1);

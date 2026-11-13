@@ -335,6 +335,12 @@ namespace World.Sim.Economy
             int faction = -1;
             switch (kind)
             {
+                case SiteKind.Building: Logistics.OnSiteCancelled(s, PlaceKind.Building, id); break;
+                case SiteKind.Road: Logistics.OnSiteCancelled(s, PlaceKind.RoadSite, id); break;
+                case SiteKind.Settlement: Logistics.OnSiteCancelled(s, PlaceKind.SettlementSite, id); break;
+            }
+            switch (kind)
+            {
                 case SiteKind.Building:
                 {
                     var b = GetBuilding(s, id);

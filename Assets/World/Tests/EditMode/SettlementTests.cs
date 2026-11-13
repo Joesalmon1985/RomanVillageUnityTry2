@@ -70,19 +70,17 @@ namespace World.Sim.Tests
             Assert.AreEqual(SiteKind.Road, K.Do(sim, new PlaceRoad { HexEdge = e1 }).OfType<SitePlaced>().Single().Kind);
             Refused(EconomyApi.CheckRoad(s, 0, e1), "road_exists", "A road already runs there.");
             Refused(EconomyApi.CheckRoad(s, 0, e2), "not_connected", "None of your roads reaches there.");
-            K.Step(sim, 110);
-            Assert.AreEqual(RoadState.Built, EconomyApi.RoadOn(s, e1).State);
+            Assert.IsTrue(K.StepUntil(sim, () => EconomyApi.RoadOn(s, e1).State == RoadState.Built, 600));
             K.Do(sim, new PlaceRoad { HexEdge = e2 });
             Assert.AreEqual(0, EconomyApi.RoadOn(s, e2).SourceSettlement);
-            K.Step(sim, 110);
+            Assert.IsTrue(K.StepUntil(sim, () => EconomyApi.RoadOn(s, e2).State == RoadState.Built, 900));
             Assert.IsTrue(EconomyApi.CheckSettlement(s, 0, target).Ok);
             var ev = K.Do(sim, new FoundSettlement { Corner = target });
             int id = ev.OfType<SitePlaced>().Single().Id;
             Assert.AreEqual(SettlementState.Site, s.Economy.Settlements[id].State);
             Assert.AreEqual(0, s.Economy.Settlements[id].SourceSettlement);
-            ev = K.Step(sim, 310);
-            Assert.IsTrue(ev.OfType<SettlementFounded>().Any(f => f.SettlementId == id && f.Corner == target));
-            Assert.AreEqual(2, s.Economy.Carriers.Count(c => c.Home == id));
+            Assert.IsTrue(K.StepUntil(sim, () => s.Economy.Settlements[id].State == SettlementState.Active, 3000), "clay comes from the scrape");
+            Assert.AreEqual(s.Economy.Tuning.NewSettlementCarriers, s.Economy.Carriers.Count(c => c.Home == id));
             Assert.AreEqual(2, World.Sim.Factions.FactionApi.Strength(s, 0).Total);
             Assert.IsNull(K.CheckInvariants(s));
         }

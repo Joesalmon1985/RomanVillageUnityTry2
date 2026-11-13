@@ -15,7 +15,7 @@ namespace World.Sim.Economy
             sim.AddSystem(SystemOrder.Production, new ProductionSystem());
             sim.AddSystem(SystemOrder.Construction, new ConstructionSystem(hooks));
             sim.AddSystem(SystemOrder.Jobs, new JobSystem(hooks));
-            sim.AddSystem(SystemOrder.Carriers, new CarrierSystem());
+            sim.AddSystem(SystemOrder.Carriers, new CarrierSystem(hooks));
             sim.RegisterHandler(new PlaceBuildingHandler());
             sim.RegisterHandler(new PlaceRoadHandler());
             sim.RegisterHandler(new FoundSettlementHandler());
@@ -31,7 +31,7 @@ namespace World.Sim.Economy
         public static void InitState(WorldState s)
         {
             var topo = s.Board.Topology;
-            var e = new EconomyState();
+            var e = new EconomyState { Tuning = EconomyTuning.Tuned() };
             s.Economy = e;
             var tu = e.Tuning;
 

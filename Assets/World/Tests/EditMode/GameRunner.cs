@@ -1,0 +1,228 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using World.Sim.Demons;
+using World.Sim.Economy;
+using World.Sim.Factions;
+
+namespace World.Sim.Tests
+{
+    /// <summary>What one scripted game did (for the proof and the tuning tests).</summary>
+    public sealed class GameResult
+    {
+        public ulong Seed;
+        public string Player;
+        public GameOutcome Outcome;
+        public string Reason;
+        public long EndTick;
+        public int PlayerStrength, RivalStrength;
+        public int PlayerCasts, RivalCasts, Declines;
+        /// <summary>Milestone ticks of the player's people (-1 never): hut, second camp, first workshop, city, first warrior, first warning.</summary>
+        public long Hut = -1, SecondCamp = -1, FirstWorkshop = -1, City = -1, FirstWarrior = -1, Warning = -1;
+        public long RivalSecondCamp = -1, RivalCity = -1;
+        public int[] Produced = new int[Wares.Count], Consumed = new int[Wares.Count], Collected = new int[Wares.Count];
+        public int[] StockAdded = new int[Wares.Count], StockLost = new int[Wares.Count];
+        /// <summary>Building types completed, per people.</summary>
+        public HashSet<BuildingType>[] Built = { new HashSet<BuildingType>(), new HashSet<BuildingType>() };
+        /// <summary>Ticks construction sites of the player's people spent waiting for each ware.</summary>
+        public int[] SiteWaitTicks = new int[Wares.Count];
+        public int[] DiceSums = new int[13];
+        public int DemonsPlaced, DemonsBanished, Outbreaks;
+        /// <summary>Strength per minute: [minute][people].</summary>
+        public List<int[]> StrengthPerMinute = new List<int[]>();
+        /// <summary>Longest stretch (ticks) the rival had no open proposal.</summary>
+        public long RivalLongestWithoutProposal;
+        public string InvariantFailure;
+        public long LongestJobWait;
+        /// <summary>Longest run (ticks, sampled every 100) in which a camp needed a ware that a connected camp of its people had spare, with no shipment on the way.</summary>
+        public long LongestMissedImport;
+        /// <summary>The player's people: goods made (collected or produced) and used (construction, recipes, meals) per ware.</summary>
+        public int[] PlayerMade = new int[Wares.Count], PlayerUsed = new int[Wares.Count];
+        public int PlayerBanishes, MaxFedWarriors, PlayerWarriorsTrained;
+        public double MeanCastDistance;
+        public int CollectedByPlayer;
+        public string StateJson;
+
+        public double Minutes => EndTick / 600.0;
+    }
+
+    public static class GameRunner
+    {
+        /// <summary>
+        /// Plays one game to its end (or maxTicks). hook runs before every step (paired-run variants). Invariants are
+        /// checked every 100 ticks when checkInvariants is set (the first failure is recorded).
+        /// </summary>
+        public static GameResult Play(ulong seed, PlayerStyle style, double delay = 0, Action<WorldSim> setup = null,
+            Action<WorldSim> hook = null, int maxTicks = 12000, bool checkInvariants = false, bool keepJson = false,
+            Action<WorldSim, IReadOnlyList<SimEvent>> onEvents = null, bool skipBanish = false)
+        {
+            var sim = WorldSimFactory.CreateNew(seed);
+            setup?.Invoke(sim);
+            var s = sim.State;
+            var player = new ScriptedPlayer(sim, style, delay, seed) { SkipBanish = skipBanish };
+            var r = new GameResult { Seed = seed, Player = ScriptedPlayer.Name(style, delay) };
+            long rivalEmptySince = -1;
+            var missed = new Dictionary<long, long>();
+            while (s.Tick < maxTicks && !s.Factions.GameOver)
+            {
+                player.Act();
+                hook?.Invoke(sim);
+                sim.Step();
+                var ev = sim.DrainEvents();
+                onEvents?.Invoke(sim, ev);
+                foreach (var e in ev) Record(s, r, e);
+                r.MaxFedWarriors = Math.Max(r.MaxFedWarriors, FactionApi.Strength(s, 0).FedWarriors);
+
+                foreach (var b in s.Economy.Buildings)
+                    if (b.Faction == 0 && b.State == BuildingState.Site && b.ReasonWare >= 0) r.SiteWaitTicks[b.ReasonWare]++;
+                foreach (var j in s.Economy.Jobs) r.LongestJobWait = Math.Max(r.LongestJobWait, j.State == JobState.Waiting ? s.Tick - j.CreatedTick : 0);
+
+                bool rivalHas = FactionApi.Proposals(s, PlayerIds.Rival).Count > 0;
+                if (rivalHas) rivalEmptySince = -1;
+                else
+                {
+                    if (rivalEmptySince < 0) rivalEmptySince = s.Tick;
+                    r.RivalLongestWithoutProposal = Math.Max(r.RivalLongestWithoutProposal, s.Tick - rivalEmptySince);
+                }
+                if (s.Tick % 600 == 0)
+                    r.StrengthPerMinute.Add(new[] { FactionApi.Strength(s, 0).Total, FactionApi.Strength(s, 1).Total });
+                if (s.Tick % 100 == 0) MissedImports(s, missed, r);
+                if (checkInvariants && r.InvariantFailure == null && s.Tick % 100 == 0)
+                {
+                    var f = SimTestKit.CheckInvariants(s);
+                    if (f != null) r.InvariantFailure = "tick " + s.Tick + ": " + f;
+                }
+            }
+            r.Outcome = s.Factions.Outcome;
+            r.Reason = s.Factions.OutcomeReason;
+            r.EndTick = s.Factions.GameOver ? s.Factions.EndedTick : s.Tick;
+            r.PlayerStrength = FactionApi.Strength(s, 0).Total;
+            r.RivalStrength = FactionApi.Strength(s, 1).Total;
+            r.PlayerCasts = s.Factions.Casts[0];
+            r.RivalCasts = s.Factions.Casts[1];
+            r.Declines = player.Declines;
+            r.MeanCastDistance = player.CastDistances.Count == 0 ? 0 : player.CastDistances.Average();
+            var l = s.Economy.Ledger;
+            for (int w = 0; w < Wares.Count; w++)
+            {
+                r.Produced[w] = l.Produced[w];
+                r.Consumed[w] = l.Consumed[w];
+                r.Collected[w] = l.Collected[w];
+                r.StockAdded[w] = l.StockAdded[w];
+                r.StockLost[w] = l.StockLost[w];
+            }
+            r.DemonsPlaced = s.Demons.Placed;
+            r.DemonsBanished = s.Demons.Banished;
+            r.Outbreaks = s.Demons.Outbreaks;
+            if (keepJson) r.StateJson = Save.SaveCodec.StateJson(s);
+            return r;
+        }
+
+        /// <summary>Deadlock check: an import that should exist (need here, spare in a connected camp, nothing on the way).</summary>
+        private static void MissedImports(WorldState s, Dictionary<long, long> since, GameResult r)
+        {
+            var e = s.Economy;
+            var now = new HashSet<long>();
+            foreach (var dst in e.Settlements)
+            {
+                if (dst.State != SettlementState.Active || Logistics.Halted(s, null, dst.Id)) continue;
+                for (int w = 0; w < Wares.Count; w++)
+                {
+                    if (Logistics.Unjobbed(s, dst, w) - Logistics.Avail(dst, w) <= 0 || Logistics.ShipmentHeading(s, dst.Id, w)) continue;
+                    bool available = false;
+                    foreach (var src in e.Settlements)
+                    {
+                        if (src == dst || src.Faction != dst.Faction || src.State != SettlementState.Active || Logistics.Halted(s, null, src.Id)) continue;
+                        if (Logistics.Avail(src, w) - Logistics.Unjobbed(s, src, w) <= 0) continue;
+                        if (Logistics.Route(s, null, src.Faction, src.Corner, dst.Corner) != null) { available = true; break; }
+                    }
+                    if (!available) continue;
+                    long key = dst.Id * 100L + w;
+                    now.Add(key);
+                    if (!since.ContainsKey(key)) since[key] = s.Tick;
+                    r.LongestMissedImport = Math.Max(r.LongestMissedImport, s.Tick - since[key]);
+                }
+            }
+            foreach (var k in new List<long>(since.Keys)) if (!now.Contains(k)) since.Remove(k);
+        }
+
+        private static void Record(WorldState s, GameResult r, SimEvent e)
+        {
+            switch (e)
+            {
+                case SiteCompleted c when c.Kind == SiteKind.Building:
+                {
+                    var b = s.Economy.Buildings[c.Id];
+                    r.Built[b.Faction].Add(b.Type);
+                    if (b.Faction != 0) break;
+                    if (b.Type == BuildingType.WoodcutterHut && r.Hut < 0) r.Hut = e.Tick;
+                    var cls = BuildingDefs.Get(b.Type).Class;
+                    if ((cls == BuildingClass.Workshop || cls == BuildingClass.Lodge) && r.FirstWorkshop < 0) r.FirstWorkshop = e.Tick;
+                    break;
+                }
+                case SettlementFounded f:
+                    if (f.Faction == 0 && r.SecondCamp < 0) r.SecondCamp = e.Tick;
+                    if (f.Faction == 1 && r.RivalSecondCamp < 0) r.RivalSecondCamp = e.Tick;
+                    break;
+                case CityUpgraded cu:
+                    if (cu.Faction == 0 && r.City < 0) r.City = e.Tick;
+                    if (cu.Faction == 1 && r.RivalCity < 0) r.RivalCity = e.Tick;
+                    break;
+                case WarriorTrained wt when wt.Faction == 0 && r.FirstWarrior < 0:
+                    r.FirstWarrior = e.Tick;
+                    break;
+                case OverrunWarningStarted ow when r.Warning < 0:
+                    r.Warning = e.Tick;
+                    break;
+                case DiceRolled d:
+                    r.DiceSums[d.Sum]++;
+                    break;
+            }
+            // The player's goods made and used.
+            var ec = s.Economy;
+            switch (e)
+            {
+                case Collected c when ec.Buildings[c.BuildingId].Faction == 0:
+                    r.PlayerMade[(int)c.Ware] += c.Amount;
+                    r.CollectedByPlayer += c.Amount;
+                    break;
+                case ProductionCycle p when ec.Buildings[p.BuildingId].Faction == 0:
+                    r.PlayerMade[(int)p.Ware] += p.Amount;
+                    break;
+                case ProductionStarted ps when ec.Buildings[ps.BuildingId].Faction == 0:
+                    Add(r.PlayerUsed, BuildingDefs.Get(ec.Buildings[ps.BuildingId].Type).Inputs);
+                    break;
+                case WarriorFed wf when ec.Warriors[wf.WarriorId].Faction == 0:
+                    r.PlayerUsed[(int)wf.Ware]++;
+                    break;
+                case WarriorTrained wt2 when wt2.Faction == 0:
+                    r.PlayerWarriorsTrained++;
+                    break;
+                case SpellCast sc when sc.Faction == 0 && sc.Kind == ProposalKind.Banish:
+                    r.PlayerBanishes++;
+                    break;
+                case SiteCompleted done when done.Faction == 0:
+                    switch (done.Kind)
+                    {
+                        case SiteKind.Building: Add(r.PlayerUsed, BuildingDefs.Get(ec.Buildings[done.Id].Type).Cost); break;
+                        case SiteKind.Road: Add(r.PlayerUsed, ec.Tuning.RoadCost); break;
+                        case SiteKind.Settlement: Add(r.PlayerUsed, ec.Tuning.SettlementCost); break;
+                        case SiteKind.City: Add(r.PlayerUsed, ec.Tuning.CityCost); break;
+                    }
+                    break;
+            }
+        }
+
+        private static void Add(int[] into, int[] add)
+        {
+            for (int i = 0; i < into.Length && i < add.Length; i++) into[i] += add[i];
+        }
+
+        public static double Median(IEnumerable<double> xs)
+        {
+            var a = xs.OrderBy(x => x).ToArray();
+            if (a.Length == 0) return 0;
+            return a.Length % 2 == 1 ? a[a.Length / 2] : (a[a.Length / 2 - 1] + a[a.Length / 2]) / 2;
+        }
+    }
+}
