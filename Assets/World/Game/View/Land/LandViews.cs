@@ -440,6 +440,8 @@ namespace World.Game
                 }
             }
             if (_warCamp != null) Add(_warCamp.transform.position, 8.5f);
+            // Package D's home camp: the dance circle, tents and props, Mira's duel ground, the spawn view (x, z, radius).
+            foreach (var c in new CampLayout(s.Board).Clearings) Add(new Vector3(c.x, 0, c.y), c.z);
             for (int h = 0; h < _hexes.Length; h++)
             {
                 byHex.TryGetValue(h, out var l);

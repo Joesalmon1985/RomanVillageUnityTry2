@@ -44,3 +44,7 @@ REFACTOR_SPEC 2.E and 8.3. Namespace `World.Game`. Rules stay in `World.Sim.Enco
 ## AutoPlay `duel_dance`
 
 Look round at the spawn, walk to Mira, accept and finish her duel (scripted player), return; walk round the circle to Sol, dance a successful phrase choosing Spirit call, return; checks the viewpoint is restored and the village clock did not move during either encounter. Logs `[AutoPlay] duel_dance OK`. It uses the interim avatar's `WalkTo` and `Interact` (P replaces both with lattice steps and the pointer).
+
+## HUD off (integration, 13 Nov 2026)
+
+In normal play the dance shows no overlay: no score strip, key hints, judgement words, banners or choice bar (`RhythmPartyEncounter.OverlayOn` = `Hud.Visible`; press H during the dance to see them). The dance reads through the world: embers and rings on the drums, flashes by judgement colour, dancers rising with the mix, the fire jumping on a kept block (`DanceCircle.Cheer`) and sinking on a missed one (`DanceCircle.Falter`), the ending marks glowing by the fire, and Sol's speech bubble (count-in, block kept or missed, the bass joining, "leap the fire (left of it) or call the spirits (right)", the choice made, the ending). The result panel with "Dance again" and "Return" still appears at the end. `duel_dance` and the tests now walk the lattice to Mira and Sol, tap them and answer by the bubble's reply.

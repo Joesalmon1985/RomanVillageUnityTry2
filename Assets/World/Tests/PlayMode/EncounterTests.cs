@@ -67,13 +67,20 @@ namespace World.Game.Tests
         /// <summary>Walks up to an NPC (teleport), opens its dialogue and accepts option 0, the way the player does.</summary>
         protected IEnumerator Accept(string npcId, Vector3 standAt, float yaw)
         {
-            Boot.Avatar.Teleport(standAt + Vector3.up * 0.05f, yaw, 3f);
-            yield return null; yield return null;
-            RememberAvatar();
+            // On the walking lattice: the free cell nearest the asked spot, turned towards the villager; then a pointer
+            // tap on them and their bubble's first reply (the player's real path since package P).
             var npc = Npc.Find(npcId);
-            npc.Interact();
-            Assert.IsTrue(DialoguePanel.IsOpen, npcId + " dialogue open");
-            Assert.IsTrue(DialoguePanel.Choose(0), npcId + " encounter option accepted");
+            var cell = WalkGrid.NearestFree(WalkLattice.ToCell(standAt), 4);
+            Assert.IsTrue(cell.HasValue, "a free cell near " + npcId);
+            var from = WalkLattice.ToWorld(cell.Value);
+            Boot.Avatar.StopAuto();
+            Boot.Avatar.Teleport(cell.Value, WalkLattice.HeadingOf(BoardSpace.YawOf(npc.transform.position - from)));
+            yield return null; yield return null;
+            Assert.IsFalse(Boot.Avatar.IsOffLattice, "standing on the lattice");
+            RememberAvatar();
+            Assert.AreEqual(TapOutcome.Interact, PointerInput.TapObject(npc), npcId + " tapped");
+            Assert.IsTrue(DialoguePanel.IsOpen && SpeechBubbles.IsOpen(DialoguePanel.Handle), npcId + " bubble open");
+            Assert.IsTrue(SpeechBubbles.AnswerNearest(0), npcId + " encounter reply accepted");
             Assert.IsTrue(EncounterHost.Instance.IsRunning, "encounter running");
             SavedTick = Boot.Sim.State.Tick;
             yield return null;

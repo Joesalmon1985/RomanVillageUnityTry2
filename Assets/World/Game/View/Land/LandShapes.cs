@@ -368,10 +368,28 @@ namespace World.Game
         {
             var skin = demon ? new Color(0.38f, 0.07f, 0.09f) : LandLook.Skin;
             var leg = demon ? new Color(0.10f, 0.04f, 0.05f) : new Color(0.38f, 0.27f, 0.18f);
-            mb.Box(new Vector3(-0.12f, 0.42f, 0), new Vector3(0.15f, 0.84f, 0.18f), leg);
-            mb.Box(new Vector3(0.12f, 0.42f, 0), new Vector3(0.15f, 0.84f, 0.18f), leg);
-            mb.Box(new Vector3(0, 1.08f, 0), new Vector3(0.48f, 0.56f, 0.28f), tunic);
-            mb.Box(new Vector3(0, 0.82f, 0), new Vector3(0.52f, 0.08f, 0.3f), trim);
+            if (demon)
+            {
+                mb.Box(new Vector3(-0.12f, 0.42f, 0), new Vector3(0.15f, 0.84f, 0.18f), leg);
+                mb.Box(new Vector3(0.12f, 0.42f, 0), new Vector3(0.15f, 0.84f, 0.18f), leg);
+                mb.Box(new Vector3(0, 1.08f, 0), new Vector3(0.48f, 0.56f, 0.28f), tunic);
+                mb.Box(new Vector3(0, 0.82f, 0), new Vector3(0.52f, 0.08f, 0.3f), trim);
+            }
+            else
+            {
+                // Prehistoric dress: bare legs in fur boots, a hide wrap dyed in the people's colour, a fur kilt and
+                // mantle, a sash in the people's trim.
+                var hide = Color.Lerp(new Color(0.52f, 0.38f, 0.24f), tunic, 0.5f);
+                var fur = new Color(0.34f, 0.25f, 0.16f);
+                mb.Box(new Vector3(-0.12f, 0.42f, 0), new Vector3(0.14f, 0.84f, 0.16f), skin);
+                mb.Box(new Vector3(0.12f, 0.42f, 0), new Vector3(0.14f, 0.84f, 0.16f), skin);
+                mb.Box(new Vector3(-0.12f, 0.13f, 0.02f), new Vector3(0.18f, 0.26f, 0.24f), fur);
+                mb.Box(new Vector3(0.12f, 0.13f, 0.02f), new Vector3(0.18f, 0.26f, 0.24f), fur);
+                mb.Box(new Vector3(0, 1.10f, 0), new Vector3(0.46f, 0.52f, 0.27f), hide);
+                mb.Box(new Vector3(0, 0.72f, 0), new Vector3(0.54f, 0.30f, 0.32f), fur);
+                mb.Box(new Vector3(0, 0.88f, 0), new Vector3(0.52f, 0.07f, 0.3f), trim);
+                mb.Box(new Vector3(-0.12f, 1.33f, 0), new Vector3(0.36f, 0.14f, 0.34f), fur);
+            }
             mb.Box(new Vector3(-0.31f, 1.05f, 0), new Vector3(0.12f, 0.55f, 0.14f), skin);
             mb.Box(new Vector3(0.31f, 1.05f, 0), new Vector3(0.12f, 0.55f, 0.14f), skin);
             mb.Box(new Vector3(0, 1.5f, 0), new Vector3(0.26f, 0.3f, 0.26f), skin);

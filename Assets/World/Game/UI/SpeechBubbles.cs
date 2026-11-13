@@ -60,7 +60,13 @@ namespace World.Game
         public static event Action<int, int> Replied;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() { _next = 1; All.Clear(); Replied = null; }
+        private static void ResetStatics() { _next = 1; All.Clear(); Replied = null; ShowInEncounter = false; }
+
+        /// <summary>
+        /// Bubbles are hidden while an encounter runs unless the encounter sets this (the dance: Sol calls the blocks
+        /// and the ending by bubble, so nothing else has to be on screen). The encounter resets it when it ends.
+        /// </summary>
+        public static bool ShowInEncounter;
 
         // ---------------- API (appendix B) ----------------
 
@@ -341,7 +347,7 @@ namespace World.Game
         private int _stylesFor = -1;
 
         private static bool Hidden =>
-            Hud.MenuOpen || MapScreen.IsOpen || (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning);
+            Hud.MenuOpen || MapScreen.IsOpen || (!SpeechBubbles.ShowInEncounter && EncounterHost.Instance != null && EncounterHost.Instance.IsRunning);
 
         private void Update()
         {

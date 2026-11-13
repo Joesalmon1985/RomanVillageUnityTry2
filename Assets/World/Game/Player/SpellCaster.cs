@@ -25,7 +25,7 @@ namespace World.Game
         public static int LastProposal { get; private set; } = -1;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() { CastAttempted = null; LastResult = default; LastProposal = -1; }
+        private static void ResetStatics() { CastAttempted = null; LastResult = default; LastProposal = -1; _pendingId = -1; _pendingSim = null; }
 
         private static WorldSim Sim => WorldBootstrap.Instance != null ? WorldBootstrap.Instance.Sim : null;
 
@@ -54,14 +54,21 @@ namespace World.Game
         }
 
         /// <summary>Casts a proposal of the player's people from where the player stands (range checked).</summary>
+        public const string AlreadyCast = "already_cast";
+        private static int _pendingId = -1; private static long _pendingTick = -10; private static WorldSim _pendingSim;
+
         public static CommandResult TryCast(int proposalId, Vector3 pressedAt)
         {
             var sim = Sim;
             if (sim == null) return Report(proposalId, CommandResult.Reject(NoProposal, "There is no world."), pressedAt, true);
             if (!InRange(proposalId))
                 return Report(proposalId, CommandResult.Reject(TooFar, TooFarSentence), pressedAt, true);
+            // A command is applied on the next tick: a second press on the same proposal before then is not a new spell.
+            if (proposalId == _pendingId && ReferenceEquals(sim, _pendingSim) && sim.State.Tick <= _pendingTick + 1)
+                return Report(proposalId, CommandResult.Reject(AlreadyCast, "The spell is already taking hold."), pressedAt, false);
             FactionApi.ProposalTarget(sim.State, proposalId, out double x, out double z, out _);
             var r = sim.Submit(new CastSpell { PlayerId = PlayerIds.Human, ProposalId = proposalId });
+            if (r.Ok) { _pendingId = proposalId; _pendingTick = sim.State.Tick; _pendingSim = sim; }
             if (r.Ok) SpellEffect.Play(new Vector3((float)x, PlayerWalker.GroundHeight(new Vector3((float)x, 0, (float)z)), (float)z), true);
             return Report(proposalId, r, pressedAt, true);
         }
@@ -192,17 +199,17 @@ namespace World.Game
             float drop = Mathf.Clamp01(u / 0.25f);
             float height = 40f;
             float fade = 1f - Mathf.Clamp01((u - 0.35f) / 0.65f);
-            float width = Mathf.Lerp(2.6f, 0.4f, Mathf.Clamp01((u - 0.2f) / 0.8f));
+            float width = Mathf.Lerp(0.55f, 0.12f, Mathf.Clamp01((u - 0.2f) / 0.8f)); // slim: never hides the plot
             _pillar.localScale = new Vector3(width, height * drop, width);
             _pillar.localPosition = Vector3.up * (height * (1f - drop));
-            SetAlpha(_pillarMat, 0.55f * fade);
+            SetAlpha(_pillarMat, 0.22f * fade);
             _core.localScale = new Vector3(width * 0.5f, height * drop, width * 0.5f);
             _core.localPosition = _pillar.localPosition;
-            SetAlpha(_coreMat, 0.8f * fade);
+            SetAlpha(_coreMat, 0.35f * fade);
             // Ring: widens over the whole effect.
-            float rr = Mathf.Lerp(0.5f, 9f, Mathf.Sqrt(u));
+            float rr = Mathf.Lerp(0.5f, 6f, Mathf.Sqrt(u));
             _ring.localScale = new Vector3(rr, 1f, rr);
-            SetAlpha(_ringMat, 0.9f * (1f - u));
+            SetAlpha(_ringMat, 0.55f * (1f - u));
             for (int i = 0; i < _sparks.Length; i++)
             {
                 var v = _sparkVel[i];
@@ -210,7 +217,7 @@ namespace World.Game
                 _sparks[i].Rotate(0, 360f * Time.deltaTime, 0);
             }
             SetAlpha(_sparkMat, fade);
-            _light.intensity = 6f * Mathf.Sin(Mathf.Clamp01(u * 1.4f) * Mathf.PI);
+            _light.intensity = 2.2f * Mathf.Sin(Mathf.Clamp01(u * 1.4f) * Mathf.PI);
         }
 
         private static void SetAlpha(Material m, float a) { var c = m.color; c.a = a; m.color = c; }

@@ -21,6 +21,10 @@ namespace World.Game
         /// <summary>The press point (proposal target) on the ground.</summary>
         public Vector3 Target { get; private set; }
 
+        /// <summary>Within this distance of the viewer the top proposal's beam is hidden.</summary>
+        public const float PillarHideMetres = 22f;
+        public bool PillarShown => _pillar != null && _pillar.activeSelf;
+        private bool _near;
         private Renderer[] _glow;
         private GameObject _pillar, _runes;
         private MaterialPropertyBlock _mpb;
@@ -92,10 +96,11 @@ namespace World.Game
                     }
                 }), LandLook.Additive, false);
             }
-            v._pillar = LandLook.Part(go.transform, "Pillar", LandLook.Cached("prop/pillar/" + ck, mb =>
+            v._pillar = LandLook.Part(go.transform, "Pillar", LandLook.Cached("prop/pillar2/" + ck, mb =>
             {
-                LandShapes.FadeBeam(mb, Vector3.zero, 1.4f, 0.8f, 45f, 12, col * 0.35f);
-                LandShapes.FadeBeam(mb, Vector3.zero, 0.5f, 0.2f, 60f, 8, col * 0.45f);
+                // A slim, soft beam: seen from afar, never hiding the plot or the people on it.
+                LandShapes.FadeBeam(mb, Vector3.zero, 0.22f, 0.10f, 26f, 8, col * 0.10f);
+                LandShapes.FadeBeam(mb, Vector3.zero, 0.07f, 0.03f, 34f, 6, col * 0.16f);
             }), LandLook.Additive, false);
             var rends = new List<Renderer> { ring.GetComponent<Renderer>(), v._pillar.GetComponent<Renderer>() };
             if (v._runes != null) rends.Add(v._runes.GetComponent<Renderer>());
@@ -114,13 +119,16 @@ namespace World.Game
         public void SetTop(bool top)
         {
             IsTop = top;
-            _pillar.SetActive(top);
+            _pillar.SetActive(top && !_near);
         }
 
         public void Animate(float now)
         {
+            // The beam is a beacon for finding the spot from afar; close by, the ring alone marks the ground.
+            bool near = BoardSpace.Flat(LandViews.Eye - Target) < PillarHideMetres;
+            if (near != _near) { _near = near; _pillar.SetActive(IsTop && !_near); }
             float pulse = 0.5f + 0.5f * Mathf.Sin(now * 3.2f + ProposalId);
-            float k = IsTop ? 0.65f + 0.55f * pulse : 0.25f + 0.2f * pulse;
+            float k = IsTop ? 0.55f + 0.35f * pulse : 0.25f + 0.2f * pulse;
             _mpb.SetColor("_Color", new Color(k, k, k, 1f));
             foreach (var r in _glow) r.SetPropertyBlock(_mpb);
             if (_runes != null) _runes.transform.localRotation = Quaternion.Euler(0, now * 20f, 0);

@@ -67,3 +67,10 @@ Everything has a trigger collider and an `IInspectable` with a title and one or 
 ## Tests (`Tests/PlayMode/LandViewTests.cs`)
 
 Views per state item for both peoples (camps, plots, buildings, roads, carriers, warriors' lodges, markers on their targets); stock stages equal `HexStockView` after rolls (all three young stages seen, mined hexes draw nothing young and show the ready flag); a harvest takes one visible unit and the gatherer goes out; building site to finished building with builder; road site to built; a demon on a camp, the held look, no collection while held, banish clears it; warning shows the war camp, overrun burns the loser; rebuild equals incremental; only changed or growing hexes are recomputed; the fake carrier feed; inspect sentences. `LandLateGame` (in the same file) grows both peoples with the direct build commands of 5.1 (and, for stress fixtures only, tops up storehouses and fills hexes to the cap).
+
+## Integration notes (13 Nov 2026, `pre-integrated-1`)
+
+- The terrain honours `CampLayout.Clearings` (dance circle, tents and props, Mira's duel ground, the spawn view) through `LandViews.SyncClearings`.
+- The top proposal's beam is slim and soft and hidden within 22 m of the viewer (`ProposalMarkerView.PillarHideMetres`, `PillarShown`).
+- Carriers, porters, gatherers, builders and warriors wear hides and furs in their people's colour; a figure the eye is inside of (within 1.1 m) is not drawn.
+- `IntegrationTests.CarrierViews_FollowTheRealSim_PositionsLoadsAndPorters` checks the carrier views against the real logistics (one view per carrier, on the sim's position within 5 cm, load shown, porter look on main-road legs).

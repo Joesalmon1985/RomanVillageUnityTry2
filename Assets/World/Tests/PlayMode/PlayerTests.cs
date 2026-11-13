@@ -325,7 +325,7 @@ namespace World.Game.Tests
             Assert.IsInstanceOf<HexView>(g.Target, "the ground is a hex tile");
             Assert.AreEqual(TapOutcome.Inspect, PointerInput.TapAt(gsp));
             Assert.AreNotEqual(0, SpeechBubbles.InspectHandle, "inspect label open");
-            StringAssert.Contains("hex", SpeechBubbles.TitleOf(SpeechBubbles.InspectHandle));
+            Assert.AreEqual(((HexView)g.Target).Title, SpeechBubbles.TitleOf(SpeechBubbles.InspectHandle), "the label names the hex tile");
             // Tapping Mira talks: her bubble with the duel reply.
             Assert.AreEqual(TapOutcome.Interact, PointerInput.TapAt(sp));
             Assert.IsTrue(DialoguePanel.IsOpen);

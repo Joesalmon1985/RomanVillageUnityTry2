@@ -407,7 +407,12 @@ namespace World.Game
         }
         private double _beat;
 
-        public void Cheer() { foreach (var d in _dancers) if (!d.Leaping) d.Actor.PlayOneShot(ActorKeys.Cheer); }
+        /// <summary>A block kept: the dancers cheer and the fire jumps.</summary>
+        public void Cheer() { _beatPulse = 2.2f; _falter = 0f; foreach (var d in _dancers) if (!d.Leaping) d.Actor.PlayOneShot(ActorKeys.Cheer); }
+        /// <summary>A block missed: the fire sinks for a moment and the dancers start back.</summary>
+        public void Falter() { _falter = 1f; Falters++; foreach (var d in _dancers) if (!d.Leaping) d.Actor.PlayOneShot(ActorKeys.Surprise); }
+        public int Falters { get; private set; }
+        private float _falter;
         public void Clap(int i) { if (_dancers.Count > 0) _dancers[((i % _dancers.Count) + _dancers.Count) % _dancers.Count].Actor.PlayOneShot(ActorKeys.Clap); }
 
         /// <summary>The successful ending: dancers leap the fire with an orange flare, or blue spirit smoke rises.</summary>
@@ -425,7 +430,7 @@ namespace World.Game
         public void ResetDance()
         {
             for (int p = 1; p <= 4; p++) { var d = _drums[p]; d.Glow = 0; d.Held = false; d.RingScale = 0; d.FlashAt = -100f; }
-            _live = false; _level = -1; ActiveDancers = 0; ChoiceVisible = false; _fireBoost = 0; _bassPulse = 0;
+            _live = false; _level = -1; ActiveDancers = 0; ChoiceVisible = false; _fireBoost = 0; _bassPulse = 0; _falter = 0;
             EffectStarted = -100f; LastEffect = Effect.None;
             foreach (var d in _dancers)
             {
@@ -451,7 +456,8 @@ namespace World.Game
             // Fire: calm flicker in normal play; during the dance it pumps on the beat and grows with the mix level.
             float flick = Mathf.PerlinNoise(now * 3.1f, 0.3f);
             float boost = flare ? Mathf.Clamp01(1.6f - since * 0.7f) : 0f;
-            float grow = 1f + (_live ? 0.2f * level + 0.18f * beatKick : 0f) + 0.15f * _beatPulse + 1.1f * boost;
+            _falter = Mathf.Max(0, _falter - dt * 0.55f);
+            float grow = (1f + (_live ? 0.2f * level + 0.18f * beatKick : 0f) + 0.15f * _beatPulse + 1.1f * boost) * (1f - 0.55f * Mathf.Clamp01(_falter));
             for (int i = 0; i < _flames.Count; i++)
             {
                 var f = _flames[i];
@@ -462,7 +468,7 @@ namespace World.Game
                 float s = spirit ? Mathf.Clamp01(1.4f - Mathf.Abs(since - 1.6f) * 0.5f) : 0f;
                 _flameMats[i].color = Color.Lerp(FlameColors[i], Color.Lerp(SpiritBlue, Color.white, i * 0.2f), s);
             }
-            _fireLight.intensity = 1.4f + 0.6f * flick + (_live ? 1.2f * beatKick * (0.4f + level) : 0f) + 4f * boost + _beatPulse;
+            _fireLight.intensity = 1.4f + 0.6f * flick + (_live ? 1.2f * beatKick * (0.4f + level) : 0f) + 4f * boost + _beatPulse - 1.1f * Mathf.Clamp01(_falter);
             _fireLight.color = spirit ? Color.Lerp(FireOrange, SpiritBlue, Mathf.Clamp01(since < 1f ? since : 3.5f - since)) : FireOrange;
 
             // Big drum: Sol's beat after the bass joins.

@@ -128,11 +128,33 @@ namespace World.Game
             if (ctx.World != null && ctx.World.GodCam != null) { _prevPan = ctx.World.GodCam.KeyboardPan; ctx.World.GodCam.KeyboardPan = false; }
             _sol = ctx.Npc != null ? ctx.Npc : Npc.Find(NpcIds.Host);
             if (_sol != null) { _solScale = _sol.transform.localScale; _sol.Actor?.FaceTowards(Circle.Layout.DancerSpot); }
+            SpeechBubbles.ShowInEncounter = true;
             StartPhrase();
+        }
+
+        /// <summary>
+        /// True when the dance may draw its text overlay (score strip, key hints, judgement words, banners, choice bar):
+        /// only with the HUD on (H). Without it the dance reads through the world: drums, embers, fire, dancers and
+        /// Sol's speech bubble (<see cref="SolSaid"/>).
+        /// </summary>
+        public static bool OverlayOn => Hud.Visible;
+        /// <summary>The last line Sol called out by speech bubble (block kept or missed, the bass, the ending choice).</summary>
+        public string SolSaid { get; private set; }
+        public int SolLines { get; private set; }
+        private int _solBubble;
+
+        private void SolSay(string text, float seconds)
+        {
+            SolSaid = text; SolLines++;
+            if (_solBubble != 0) SpeechBubbles.Close(_solBubble);
+            _solBubble = SpeechBubbles.Say(_sol, text, seconds);
         }
 
         public void End()
         {
+            if (_solBubble != 0) SpeechBubbles.Close(_solBubble);
+            _solBubble = 0;
+            SpeechBubbles.ShowInEncounter = false;
             if (Player != null) Player.StopAll();
             if (_ctx != null && _ctx.World != null && _ctx.World.GodCam != null) _ctx.World.GodCam.KeyboardPan = _prevPan;
             if (_sol != null) { _sol.transform.localScale = _solScale; _sol.Actor?.PlayIdle(); }
@@ -155,6 +177,7 @@ namespace World.Game
             PressesHandled = 0; JudgementsSeen = 0;
             LivePerfect = LiveGreat = LiveOk = LiveMiss = 0;
             _banner = null;
+            SolSay(Attempts > 1 ? "Again! Strike each drum as its ember lands." : "Strike each drum as its ember lands. Four beats, then we dance!", 3.2f);
             _lastCountBeat = _lastBassBeat = _lastBeatCheered = int.MinValue;
             Circle.ResetDance();
             var g = Session.CurrentGains;
@@ -208,10 +231,14 @@ namespace World.Game
         {
             if (Session == null || Session.IsEnded) return false;
             double t = double.IsNaN(SongTime) ? Player.SongTime : SongTime;
+            var before = Session.CurrentRoute;
             bool ok = Session.ChooseRoute(r, t);
+            if (ok && (Session.CurrentRoute != before || !_choiceSaid)) { _choiceSaid = true; SolSay(r == SimRoute.Bar ? "The fire leap it is!" : "The spirit call it is!", 2.2f); }
             DrainSession();
             return ok;
         }
+
+        private bool _choiceSaid;
 
         public bool Retry()
         {
@@ -339,16 +366,25 @@ namespace World.Game
                             Circle.Cheer();
                             _sol?.Actor?.PlayOneShot(ActorKeys.Clap);
                             ShowBanner("Block " + (bd.Block + 1) + " kept the beat!", EncounterUi.Good);
+                            SolSay(KeptLines[bd.Block % KeptLines.Length], 2.2f);
                         }
-                        else ShowBanner("Block " + (bd.Block + 1) + " missed - the dance holds back", EncounterUi.Bad);
+                        else
+                        {
+                            ShowBanner("Block " + (bd.Block + 1) + " missed - the dance holds back", EncounterUi.Bad);
+                            SolSay(MissedLines[bd.Block % MissedLines.Length], 2.4f);
+                            Circle.Falter();
+                        }
                         break;
                     case BassRevealed br:
                         Player.ScheduleBassAndOther(br.SongTime);
                         BassJoined = true;
                         ShowBanner("Sol's big drum: the bass joins in!", EncounterUi.Gold, 2.2f);
+                        SolSay("Hear my big drum? The bass joins in!", 2.4f);
                         break;
                     case RouteWindowOpened _:
                         ShowBanner("Last block: " + FireLeapName + " or " + SpiritCallName + "?", EncounterUi.Gold, 2.5f);
+                        _choiceSaid = false;
+                        SolSay("Last block! Leap the fire (left of it) or call the spirits (right)?", 4.5f);
                         break;
                     case PhraseEnded pe: OnEnded(pe.Result); break;
                 }
@@ -385,7 +421,11 @@ namespace World.Game
                 _sfx.Play(EncounterSfx.CheerClip, 0.8f);
             }
             _sol?.Actor?.PlayOneShot(r.Success ? ActorKeys.Cheer : ActorKeys.Clap);
+            SolSay(r.RouteOpened == RouteOutcome.Bar ? "Over the fire they go!" : r.RouteOpened == RouteOutcome.Balcony ? "The spirits rise!" : r.Success ? "The dance is alive!" : "The beat slipped away. Again?", 3f);
         }
+
+        private static readonly string[] KeptLines = { "That's the beat! The dancers are up.", "You kept it! More of them join.", "Yes! The whole circle moves.", "Kept! The fire roars." };
+        private static readonly string[] MissedLines = { "The beat slipped. The dancers hold back.", "Lost it there. Listen for the kick.", "Slipped. The fire sinks a little.", "The last one slipped." };
 
         /// <summary>Seconds the ending (leap or spirits) plays before the result panel covers the fire.</summary>
         public const float EndingShowSeconds = 2.6f;
@@ -486,12 +526,14 @@ namespace World.Game
                 if (LastResult != null && LastResult.RouteOpened != RouteOutcome.None && Time.unscaledTime - _endedAt < EndingShowSeconds)
                 {
                     string title = LastResult.RouteOpened == RouteOutcome.Bar ? FireLeapName + "!" : SpiritCallName + "!";
-                    EncounterUi.Shadow(new Rect(0, px(150), sw, px(90)), title, EncounterUi.Big, LastResult.RouteOpened == RouteOutcome.Bar ? new Color(1f, 0.62f, 0.25f) : new Color(0.6f, 0.78f, 1f), TextAnchor.MiddleCenter);
+                    if (OverlayOn) EncounterUi.Shadow(new Rect(0, px(150), sw, px(90)), title, EncounterUi.Big, LastResult.RouteOpened == RouteOutcome.Bar ? new Color(1f, 0.62f, 0.25f) : new Color(0.6f, 0.78f, 1f), TextAnchor.MiddleCenter);
                 }
                 else DrawResult();
-                DrawFooter();
+                if (OverlayOn) DrawFooter();
                 return;
             }
+            // Everything below is the optional overlay (H): the drums, embers, fire, dancers and Sol's bubble carry the dance.
+            if (!OverlayOn) { _pops.Clear(); return; }
             var cam = Camera.main;
 
             // Judgement words rise from the drum that was struck.

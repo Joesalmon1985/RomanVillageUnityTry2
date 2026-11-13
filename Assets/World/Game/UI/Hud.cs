@@ -133,6 +133,7 @@ namespace World.Game
             var them = FactionApi.Strength(s, PlayerIds.Rival);
             lines.Add("Strength: your people <b>" + me.Total + "</b>, the Ash Clan <b>" + them.Total + "</b>");
             var o = FactionApi.Outcome(s);
+            if (!o.GameOver) { string pace = MapScreenView.RivalPace(s); if (pace.Length > 0) lines.Add(pace); }
             if (o.GameOver) lines.Add("<color=#F2B84D><b>" + o.Sentence + "</b></color>");
             else
             {

@@ -13,7 +13,8 @@ namespace World.Game
     }
 
     /// <summary>
-    /// Default character body: capsule-ish torso in a coloured tunic, sphere head, arms and legs on pivots.
+    /// Default character body: capsule-ish torso in a hide wrap tinted with the villager's colour, a fur mantle and
+    /// kilt, bare arms and legs on pivots, sphere head.
     /// Procedural idle bob, walk swing driven by how fast the root moves, and short one-shots
     /// (wave, greet, cheer, cast, clap, surprise, stretch). Root = feet, faces +Z.
     /// </summary>
@@ -54,23 +55,35 @@ namespace World.Game
             var rnd = new PropRandom(h);
             var skin = Color.Lerp(new Color(0.95f, 0.78f, 0.62f), new Color(0.55f, 0.38f, 0.26f), rnd.Next());
             var hair = Color.Lerp(new Color(0.12f, 0.08f, 0.05f), new Color(0.75f, 0.55f, 0.25f), rnd.Next() * rnd.Next());
-            var trousers = new Color(0.22f, 0.20f, 0.18f);
-            var mSkin = MaterialFactory.Shared(skin); var mTunic = MaterialFactory.Shared(tunic);
-            var mHair = MaterialFactory.Shared(hair); var mTrousers = MaterialFactory.Shared(trousers);
+            // Prehistoric dress: a hide wrap dyed towards the villager's colour (so people stay tellable apart), a fur
+            // mantle over one shoulder, a ragged fur kilt, a thong belt, bare arms and legs, fur boots.
+            var hide = Color.Lerp(new Color(0.50f, 0.36f, 0.22f), tunic, 0.45f);
+            var fur = Color.Lerp(new Color(0.30f, 0.22f, 0.14f), new Color(0.62f, 0.54f, 0.42f), rnd.Next());
+            var mSkin = MaterialFactory.Shared(skin); var mTunic = MaterialFactory.Shared(hide);
+            var mHair = MaterialFactory.Shared(hair); var mFur = MaterialFactory.Shared(fur);
             var mDark = MaterialFactory.Shared(new Color(0.05f, 0.05f, 0.05f));
-            var mBelt = MaterialFactory.Shared(new Color(0.30f, 0.20f, 0.12f));
+            var mBelt = MaterialFactory.Shared(new Color(0.22f, 0.15f, 0.09f));
+            var mBone = MaterialFactory.Shared(new Color(0.90f, 0.86f, 0.74f));
 
             _body = new GameObject("Body").transform; _body.SetParent(transform, false);
             _legL = Pivot(_body, "LegL", new Vector3(-0.12f, 0.85f, 0));
             _legR = Pivot(_body, "LegR", new Vector3(0.12f, 0.85f, 0));
-            Signs.Prim(PrimitiveType.Capsule, _legL, "Leg", new Vector3(0, -0.42f, 0), new Vector3(0.17f, 0.43f, 0.17f), mTrousers);
-            Signs.Prim(PrimitiveType.Capsule, _legR, "Leg", new Vector3(0, -0.42f, 0), new Vector3(0.17f, 0.43f, 0.17f), mTrousers);
-            Signs.Prim(PrimitiveType.Capsule, _body, "Tunic", new Vector3(0, 1.12f, 0), new Vector3(0.48f, 0.42f, 0.34f), mTunic);
-            Signs.Prim(PrimitiveType.Cylinder, _body, "Skirt", new Vector3(0, 0.86f, 0), new Vector3(0.52f, 0.12f, 0.40f), mTunic);
-            Signs.Prim(PrimitiveType.Cylinder, _body, "Belt", new Vector3(0, 0.98f, 0), new Vector3(0.50f, 0.03f, 0.37f), mBelt);
+            foreach (var leg in new[] { _legL, _legR })
+            {
+                Signs.Prim(PrimitiveType.Capsule, leg, "Leg", new Vector3(0, -0.42f, 0), new Vector3(0.15f, 0.43f, 0.15f), mSkin);
+                Signs.Prim(PrimitiveType.Capsule, leg, "Boot", new Vector3(0, -0.70f, 0.02f), new Vector3(0.19f, 0.16f, 0.22f), mFur);
+            }
+            Signs.Prim(PrimitiveType.Capsule, _body, "Tunic", new Vector3(0, 1.12f, 0), new Vector3(0.46f, 0.42f, 0.33f), mTunic);
+            Signs.Prim(PrimitiveType.Cylinder, _body, "Skirt", new Vector3(0, 0.80f, 0), new Vector3(0.54f, 0.17f, 0.42f), mFur);
+            Signs.Prim(PrimitiveType.Cylinder, _body, "Belt", new Vector3(0, 0.98f, 0), new Vector3(0.50f, 0.025f, 0.37f), mBelt);
+            // Fur mantle across the left shoulder, a bone toggle on the chest.
+            var mantle = Signs.Prim(PrimitiveType.Sphere, _body, "Mantle", new Vector3(-0.10f, 1.36f, -0.02f), new Vector3(0.52f, 0.26f, 0.42f), mFur);
+            mantle.transform.localRotation = Quaternion.Euler(0, 0, -18f);
+            Signs.Prim(PrimitiveType.Sphere, _body, "Toggle", new Vector3(0.05f, 1.30f, 0.17f), new Vector3(0.06f, 0.10f, 0.04f), mBone);
             _head = new GameObject("HeadPivot").transform; _head.SetParent(_body, false); _head.localPosition = new Vector3(0, 1.5f, 0);
             Signs.Prim(PrimitiveType.Sphere, _head, "Head", new Vector3(0, 0.12f, 0), new Vector3(0.27f, 0.3f, 0.27f), mSkin);
-            Signs.Prim(PrimitiveType.Sphere, _head, "Hair", new Vector3(0, 0.2f, -0.03f), new Vector3(0.29f, 0.2f, 0.29f), mHair);
+            Signs.Prim(PrimitiveType.Sphere, _head, "Hair", new Vector3(0, 0.2f, -0.04f), new Vector3(0.32f, 0.22f, 0.32f), mHair);
+            Signs.Prim(PrimitiveType.Sphere, _head, "HairBack", new Vector3(0, 0.06f, -0.11f), new Vector3(0.28f, 0.30f, 0.16f), mHair);
             Signs.Prim(PrimitiveType.Cube, _head, "EyeL", new Vector3(-0.055f, 0.13f, 0.125f), new Vector3(0.04f, 0.045f, 0.03f), mDark);
             Signs.Prim(PrimitiveType.Cube, _head, "EyeR", new Vector3(0.055f, 0.13f, 0.125f), new Vector3(0.04f, 0.045f, 0.03f), mDark);
             Signs.Prim(PrimitiveType.Cube, _head, "Nose", new Vector3(0, 0.08f, 0.14f), new Vector3(0.035f, 0.06f, 0.05f), mSkin);
@@ -78,7 +91,8 @@ namespace World.Game
             _armR = Pivot(_body, "ArmR", new Vector3(0.29f, 1.38f, 0));
             foreach (var arm in new[] { _armL, _armR })
             {
-                Signs.Prim(PrimitiveType.Capsule, arm, "Sleeve", new Vector3(0, -0.26f, 0), new Vector3(0.13f, 0.28f, 0.13f), mTunic);
+                Signs.Prim(PrimitiveType.Capsule, arm, "Arm", new Vector3(0, -0.26f, 0), new Vector3(0.11f, 0.28f, 0.11f), mSkin);
+                Signs.Prim(PrimitiveType.Cylinder, arm, "Band", new Vector3(0, -0.40f, 0), new Vector3(0.13f, 0.035f, 0.13f), mFur);
                 Signs.Prim(PrimitiveType.Sphere, arm, "Hand", new Vector3(0, -0.58f, 0), Vector3.one * 0.1f, mSkin);
             }
             _renderers = GetComponentsInChildren<Renderer>();

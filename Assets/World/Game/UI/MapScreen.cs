@@ -336,8 +336,22 @@ namespace World.Game
             y += UiStyle.Px(14);
             string text = "Numbered hexes yield when the dice show their number (6 and 8 most often, in red).\n\n" +
                           "Tap a spot to walk there when the map closes. Right click clears it. Tab closes the map.\n\n" +
-                          FactionApi.Headline(s);
+                          StrengthLine(s) + "\n\n" + FactionApi.Headline(s);
             GUI.Label(new Rect(r.x, y, r.width, r.yMax - y), text, _small);
+        }
+
+        /// <summary>Both peoples' strength and how often the Ash Clan now casts (from the sim's tuned values).</summary>
+        public static string StrengthLine(WorldState s)
+        {
+            var me = FactionApi.Strength(s, PlayerIds.Human); var them = FactionApi.Strength(s, PlayerIds.Rival);
+            int margin = s.Factions.Tuning.OverrunMargin;
+            return "Strength: your people " + me.Total + ", the Ash Clan " + them.Total + ". A lead of " + margin + " overruns the other people.\n" + RivalPace(s);
+        }
+
+        public static string RivalPace(WorldState s)
+        {
+            int d = FactionApi.RivalCastDelay(s);
+            return d > 0 ? "The Ash Clan builds something about every " + Mathf.Max(1, Mathf.RoundToInt(d / (float)WorldSim.TicksPerSecond)) + " s." : "";
         }
 
         private void Key(float x, ref float y, float w, Texture tex, Color c, string text)

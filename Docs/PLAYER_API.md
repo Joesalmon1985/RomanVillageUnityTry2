@@ -59,3 +59,11 @@ The cursor is always free; there is no mouse look. Touch strips read real touche
 ## Encounters
 
 `EncounterContext.Avatar` is the `PlayerWalker`; `PlaceAvatar` calls `PlaceExact`. `EncounterHost.Start` stops any auto-walk and locks the walker; the end puts it back with `RestoreCell()` (or at the exact pose when it stood off the lattice before, e.g. after a legacy exact teleport).
+
+## Integration notes (13 Nov 2026, `pre-integrated-1`)
+
+- A second press on the same proposal before the next tick is refused silently with `already_cast` (one spell, one effect). The cast effect is a slim beam.
+- Villagers' nameplates are drawn only with the HUD on (H) or in the F1 God View.
+- The map's side text and the HUD strip show both peoples' strength, the overrun margin and how often the Ash Clan now builds (`MapScreenView.StrengthLine`, `RivalPace`).
+- AutoPlay `cast_all` (`CastAll`): plays a whole game with no prince by walking to each top proposal and pressing its ground on screen; `-autoplay cast_all [-speed 4]`. Logs `[AutoPlay] cast_all result <outcome> (<reason>), game minute N, casts N (...), metres walked N` and `[AutoPlay] cast_all OK`.
+- `SpeechBubbles.ShowInEncounter`: set by an encounter that wants bubbles shown while it runs (the dance).

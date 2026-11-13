@@ -201,9 +201,13 @@ namespace World.Game
             }
             float dist = (views.Avatar.Position - transform.position).magnitude;
             if (dist > 32f) return;
-            var nameStyle = new GUIStyle(UiStyle.Label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-            nameStyle.normal.textColor = UiStyle.AccentColor;
-            UiStyle.ShadowLabel(new Rect(x - UiStyle.Px(250), y - UiStyle.Px(40), UiStyle.Px(500), UiStyle.Px(36)), DisplayName, nameStyle);
+            // No permanent text in normal play (REFACTOR_SPEC 2.D "Screen"): the name shows with the HUD (H) only.
+            if (Hud.Visible)
+            {
+                var nameStyle = new GUIStyle(UiStyle.Label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
+                nameStyle.normal.textColor = UiStyle.AccentColor;
+                UiStyle.ShadowLabel(new Rect(x - UiStyle.Px(250), y - UiStyle.Px(40), UiStyle.Px(500), UiStyle.Px(36)), DisplayName, nameStyle);
+            }
             if (IsGreetingShown && !string.IsNullOrEmpty(Greeting))
             {
                 var gs = new GUIStyle(UiStyle.Label) { alignment = TextAnchor.UpperCenter, wordWrap = true };

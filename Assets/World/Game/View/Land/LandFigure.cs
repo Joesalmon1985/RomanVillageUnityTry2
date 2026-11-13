@@ -106,9 +106,15 @@ namespace World.Game
             }
         }
 
+        /// <summary>Figures closer to the viewer than this are not drawn (the camera would be inside them).</summary>
+        public const float HideWithin = 1.1f;
+
         public void Place(Vector3 p, float yaw)
         {
             transform.SetPositionAndRotation(p, Quaternion.Euler(0, yaw, 0));
+            // People never block the walker, so it can pass through one: do not draw a figure the eye is inside of.
+            bool show = BoardSpace.Flat(LandViews.Eye - p) > HideWithin || Mathf.Abs(LandViews.Eye.y - p.y) > 4f;
+            if (show != Body.gameObject.activeSelf) Body.gameObject.SetActive(show);
         }
     }
 }
