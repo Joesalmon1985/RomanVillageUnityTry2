@@ -127,9 +127,19 @@ namespace World.Game
             {
                 var listener = ViewSwitcher.Instance != null && ViewSwitcher.Instance.Avatar != null ? ViewSwitcher.Instance.Avatar.EyePosition : Vector3.zero;
                 float target = IsInsideHall(listener) ? 7000f : 1100f;
-                _lowPass.cutoffFrequency = Mathf.Lerp(_lowPass.cutoffFrequency, target, Time.unscaledDeltaTime * 4f);
+                // Smooth in C# and write the filter only in coarse steps, never every frame, and never while the audio
+                // output is stalled or changing device (per-frame filter writes there hit Unity's fatal ADTM error; see AudioGuard).
+                _cutoffSmooth = Mathf.Lerp(_cutoffSmooth, target, Time.unscaledDeltaTime * 4f);
+                if (Mathf.Abs(_cutoffSmooth - target) < 20f) _cutoffSmooth = target;
+                if (AudioGuard.CanWriteControls && Mathf.Abs(_cutoffSmooth - _cutoffWritten) > (_cutoffSmooth == target ? 0.5f : 400f))
+                {
+                    _lowPass.cutoffFrequency = _cutoffSmooth;
+                    _cutoffWritten = _cutoffSmooth;
+                }
             }
         }
+
+        private float _cutoffSmooth = 1100f, _cutoffWritten = 1100f;
 
         // ------------------------------------------------------------------ build
 

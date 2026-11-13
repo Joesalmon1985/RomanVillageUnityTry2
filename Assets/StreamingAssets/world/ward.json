@@ -1,0 +1,11 @@
+{
+  "MiraFirstCastMinMs": 3000,
+  "MiraFirstCastMaxMs": 6000,
+  "MiraThinkMinMs": 6000,
+  "MiraThinkMaxMs": 10000,
+  "MiraMistakeRatePercent": 0,
+  "PlayerRecoveryMs": 2000,
+  "IdleAutoCastMs": 60000,
+  "MaxCasts": 10,
+  "LightUnlockAfterDuels": 3
+}
