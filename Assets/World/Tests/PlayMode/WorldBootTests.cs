@@ -80,7 +80,9 @@ namespace World.Game.Tests
             Assert.IsNull(WarehouseSet.Current, "no warehouse in normal play");
             foreach (var name in new[] { "Warehouse", "Storehouse", "Market", "Bell", "Outpost" })
                 Assert.IsNull(GameObject.Find(name), "no " + name + " object");
-            Assert.AreEqual(1, Npc.All.Count, "only Mira until packages D and N add villagers");
+            // Mira, and package N's villagers (the prince, the sawyer, the merchant); nobody from the MVP village.
+            foreach (var n in Npc.All)
+                Assert.IsTrue(n.Id == NpcIds.Mira || n.Id == NpcIds.Prince || n.Id == NpcIds.Sawyer || n.Id == NpcIds.Merchant, "unexpected villager " + n.Id);
         }
 
         [UnityTest]

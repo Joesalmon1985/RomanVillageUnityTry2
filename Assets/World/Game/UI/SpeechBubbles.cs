@@ -462,10 +462,27 @@ namespace World.Game
             body.y = Mathf.Max(4, body.y);
             b.Body = body;
             var rects = new Rect[replyRects.Count];
+            float colX = body.x + UiStyle.Px(18);
+            // Package N: keep the reply column off the speaker's body (it used to cover the head): if the column would
+            // cross the speaker's figure on screen, it moves to the side with more room.
+            if (b.Who != null && b.Who.Head != null && rects.Length > 0)
+            {
+                var feet = cam.WorldToScreenPoint(b.Who.Head.position - Vector3.up * 2.15f);
+                float headY = Screen.height - sp.y, feetY = Screen.height - feet.y;
+                float half = Mathf.Max(UiStyle.Px(18), (feetY - headY) * 0.28f) + UiStyle.Px(8);
+                var figure = new Rect(sp.x - half, headY, 2 * half, Mathf.Max(1f, feetY - headY));
+                float colW = 0f; foreach (var r in replyRects) colW = Mathf.Max(colW, r.width);
+                var col = new Rect(colX, body.yMax + UiStyle.Px(16), colW, ry);
+                if (col.Overlaps(figure))
+                {
+                    float right = figure.xMax + UiStyle.Px(10), left = figure.xMin - UiStyle.Px(10) - colW;
+                    colX = right + colW <= Screen.width - 4 || left < 4 ? right : left;
+                }
+            }
             for (int i = 0; i < rects.Length; i++)
             {
                 var r = replyRects[i];
-                rects[i] = new Rect(Mathf.Clamp(body.x + UiStyle.Px(18), 4, Screen.width - r.width - 4), body.yMax + UiStyle.Px(16) + r.y, r.width, r.height);
+                rects[i] = new Rect(Mathf.Clamp(colX, 4, Screen.width - r.width - 4), body.yMax + UiStyle.Px(16) + r.y, r.width, r.height);
             }
             b.ReplyRects = rects;
             placed.Add(new Rect(body.x, body.y, body.width, body.height + ry + UiStyle.Px(16)));
@@ -487,6 +504,8 @@ namespace World.Game
             if (dir.sqrMagnitude < 1e-4f) dir = new Vector2(local.x >= 0 ? 1 : -1, 0);
             dir.Normalize();
             float w = UiStyle.Px(240), h = UiStyle.Px(52), m = UiStyle.Px(12);
+            // Package N: wide enough for longer names ("Wenna the merchant calls you").
+            if (_reply != null) w = Mathf.Max(w, _reply.CalcSize(new GUIContent((b.Name ?? "Someone") + " calls you   >")).x + UiStyle.Px(36));
             var c = new Vector2(Screen.width / 2f, Screen.height / 2f);
             float kx = (Screen.width / 2f - w / 2 - m) / Mathf.Max(1e-4f, Mathf.Abs(dir.x));
             float ky = (Screen.height / 2f - h / 2 - m) / Mathf.Max(1e-4f, Mathf.Abs(dir.y));

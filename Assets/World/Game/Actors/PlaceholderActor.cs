@@ -9,7 +9,9 @@ namespace World.Game
     {
         public const string Idle = AnimationKeys.Idle, Wave = AnimationKeys.Wave, Greet = AnimationKeys.Greet,
             Cheer = AnimationKeys.Cheer, Clap = AnimationKeys.Clap, Surprise = AnimationKeys.Surprise,
-            Stretch = AnimationKeys.Stretch, Cast = "cast";
+            Stretch = AnimationKeys.Stretch, Cast = "cast",
+            /// <summary>Package N: a come-here wave (calling the player over) and a builder's hammering.</summary>
+            Beckon = "beckon", Hammer = "hammer";
     }
 
     /// <summary>
@@ -33,6 +35,16 @@ namespace World.Game
         private float _targetYaw; private bool _turning;
         private Vector3 _lastPos; private float _walkBlend, _phase;
         private Renderer[] _renderers;
+        private Vector3? _pointAt;
+        private float _pointBlend;
+
+        /// <summary>The head pivot (accessories such as the prince's circlet hang here).</summary>
+        public Transform HeadPivot => _head;
+        /// <summary>The body pivot (moves with the walk bob).</summary>
+        public Transform BodyPivot => _body;
+
+        /// <summary>Raises the right arm towards a world point and holds it (null lowers it). Package N.</summary>
+        public void PointAt(Vector3? worldPoint) { _pointAt = worldPoint; }
 
         public static PlaceholderActor Build(string id, Color tunic, Transform parent)
         {
@@ -112,6 +124,8 @@ namespace World.Game
                 case ActorKeys.Clap: len = 1.4f; break;
                 case ActorKeys.Surprise: len = 1.0f; break;
                 case ActorKeys.Stretch: len = 2.0f; break;
+                case ActorKeys.Beckon: len = 1.4f; break;
+                case ActorKeys.Hammer: len = 0.9f; break;
                 default: return false;
             }
             _oneShot = key; _oneShotT = 0; _oneShotLen = len;
@@ -207,6 +221,18 @@ namespace World.Game
                         armR = Vector3.Lerp(armR, new Vector3(0, 0, 170f), env);
                         bodyPitch = -5f * env;
                         break;
+                    case ActorKeys.Beckon:
+                        // Arm out in front, forearm waving back towards the body.
+                        armR = Vector3.Lerp(armR, new Vector3(-80f + Mathf.Sin(_oneShotT * 11f) * 35f, 0, 12f), Mathf.Clamp01(env * 2f));
+                        headPitch -= 4f * env;
+                        break;
+                    case ActorKeys.Hammer:
+                    {
+                        float k = Mathf.Abs(Mathf.Sin(u * Mathf.PI * 2f));
+                        armR = Vector3.Lerp(armR, new Vector3(-150f + 90f * k, 0, 8f), env);
+                        bodyPitch = 14f * env;
+                        break;
+                    }
                 }
                 if (_oneShotT >= _oneShotLen)
                 {
@@ -217,6 +243,16 @@ namespace World.Game
                 }
             }
 
+            // Pointing (held): the right arm swings up towards the point, relative to the body's facing.
+            _pointBlend = Mathf.MoveTowards(_pointBlend, _pointAt.HasValue && _oneShot == null ? 1f : 0f, dt * 4f);
+            if (_pointBlend > 0f && _pointAt.HasValue)
+            {
+                var local = transform.InverseTransformPoint(_pointAt.Value);
+                float side = Mathf.Atan2(local.x, Mathf.Max(0.1f, local.z)) * Mathf.Rad2Deg;
+                float down = Mathf.Atan2(local.y - 1.4f, new Vector2(local.x, local.z).magnitude) * Mathf.Rad2Deg;
+                var pose = new Vector3(-90f - Mathf.Clamp(down, -40f, 30f), 0, Mathf.Clamp(side, -60f, 60f) + 4f);
+                armR = Vector3.Lerp(armR, pose, _pointBlend);
+            }
             _body.localPosition = new Vector3(0, bob + lift, 0);
             _body.localRotation = Quaternion.Euler(bodyPitch, 0, 0);
             _head.localRotation = Quaternion.Euler(headPitch, 0, 0);

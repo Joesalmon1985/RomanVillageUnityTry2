@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Bedsit;
 using UnityEngine;
@@ -10,6 +10,8 @@ namespace World.Game
     {
         public const string Mira = "mira", Doorman = "doorman", Host = "host", Quartermaster = "quartermaster",
             MarketKeeper = "market_keeper", Captain = "captain", Scribe = "scribe";
+        /// <summary>Package N's villagers (the speakers match <c>World.Sim.Factions.Speakers</c>).</summary>
+        public const string Prince = "prince", Sawyer = "sawyer", Merchant = "merchant", Builder = "builder", RivalChief = "ash_chief";
     }
 
     /// <summary>A position and facing where an encounter happens.</summary>
@@ -61,11 +63,24 @@ namespace World.Game
             }
         }
 
-        // ---- REFACTOR_SPEC appendix B (owner: package N). F-0 gives a minimal straight-line walk so P and D can use it. ----
+        // ---- REFACTOR_SPEC appendix B (owner: package N): walking on the lattice, speaker, followable. ----
 
-        /// <summary>Walking speed in metres per second (F-0 placeholder; N tunes it).</summary>
-        public float WalkSpeed = 3f;
+        /// <summary>Strolling speed in metres per second (villagers about their business).</summary>
+        public const float StrollSpeed = 3f;
+        /// <summary>Walking speed in metres per second; directors raise it to hurry (see PrinceDirector.HurrySpeed).</summary>
+        public float WalkSpeed = StrollSpeed;
         public bool IsWalking { get; private set; }
+        /// <summary>
+        /// True while a director (package N: <see cref="PrinceDirector"/>) controls this villager: it then does not turn
+        /// to greet the player or show its greeting box on its own.
+        /// </summary>
+        public bool Directed;
+        /// <summary>While true the villager stands still where it is (a director holds it while the clock is paused).</summary>
+        public bool Hold;
+        /// <summary>Optional tap handler: replaces the dialogue when the player taps this villager.</summary>
+        public Action<Npc> OnTapped;
+        /// <summary>Optional: what this villager is doing, said in a bubble when tapped (used when it has no Lines or Options).</summary>
+        public Func<string> Doing;
         public string SpeakerId => Id;
         public string FollowName => DisplayName;
         public Transform FollowTransform => transform;
@@ -86,33 +101,115 @@ namespace World.Game
         private Vector3? _walkTarget;
         private Transform _followTarget;
         private float _followDistance;
+        private readonly List<Vector3> _waypoints = new List<Vector3>();
+        private Vector3 _plannedFor;
+        private float _replanAt;
+        /// <summary>Metres walked since spawn (tests, pace numbers).</summary>
+        public float MetresWalked { get; private set; }
+        /// <summary>Where the current walk ends (the followed transform's position while following); null when standing.</summary>
+        public Vector3? Goal => _followTarget != null ? _followTarget.position : _walkTarget;
 
-        /// <summary>Walks in a straight line to a ground point (F-0: no path finding, no blockers).</summary>
-        public void WalkTo(Vector3 target) { _followTarget = null; _walkTarget = target; IsWalking = true; }
+        /// <summary>
+        /// Walks to a ground point along the walking lattice (round blocked cells: camps, buildings, peaks), ending
+        /// exactly on the point. Falls back to a straight line when the lattice has no way.
+        /// </summary>
+        public void WalkTo(Vector3 target)
+        {
+            _followTarget = null; _walkTarget = target;
+            Plan(target);
+            IsWalking = true;
+        }
 
-        /// <summary>Keeps <paramref name="distance"/> metres behind a moving transform until <see cref="WalkTo"/> or <see cref="StopWalking"/>.</summary>
-        public void Follow(Transform target, float distance) { _walkTarget = null; _followTarget = target; _followDistance = distance; }
+        /// <summary>Keeps within <paramref name="distance"/> metres of a moving transform (re-planned on the lattice as it moves) until <see cref="WalkTo"/> or <see cref="StopWalking"/>.</summary>
+        public void Follow(Transform target, float distance)
+        {
+            if (_followTarget == target && Mathf.Abs(_followDistance - distance) < 0.01f) return;
+            _walkTarget = null; _followTarget = target; _followDistance = distance;
+            _waypoints.Clear(); _replanAt = 0f;
+        }
 
-        public void StopWalking() { _walkTarget = null; _followTarget = null; IsWalking = false; }
+        /// <summary>The transform followed (null when not following).</summary>
+        public Transform FollowingTarget => _followTarget;
+
+        public void StopWalking() { _walkTarget = null; _followTarget = null; _waypoints.Clear(); IsWalking = false; }
+
+        /// <summary>Turns to face a point (the body turns smoothly).</summary>
+        public void FaceTowards(Vector3 point) { Actor?.FaceTowards(point); }
+
+        /// <summary>Raises an arm towards a point and keeps it there (null lowers it).</summary>
+        public void PointAt(Vector3? point) { if (Actor is PlaceholderActor p) p.PointAt(point); }
+
+        private void Plan(Vector3 target)
+        {
+            _waypoints.Clear();
+            _plannedFor = target;
+            var from = WalkLattice.ToCell(transform.position);
+            var to = WalkLattice.ToCell(target);
+            if (from != to)
+            {
+                var path = WalkGrid.FindPath(from, to, 6000);
+                if (path == null)
+                {
+                    var free = WalkGrid.NearestFree(to, 3);
+                    if (free.HasValue) path = WalkGrid.FindPath(from, free.Value, 6000);
+                }
+                if (path != null)
+                    for (int i = 0; i < path.Count; i++)
+                    {
+                        if (i == path.Count - 1 && path[i] == to) break; // the exact point ends the walk
+                        _waypoints.Add(WalkLattice.ToWorld(path[i]));
+                    }
+            }
+            _waypoints.Add(target);
+        }
 
         private void UpdateWalk()
         {
-            Vector3? goal = _walkTarget;
+            if (Hold) return;
             float stop = 0.05f;
-            if (_followTarget != null) { goal = _followTarget.position; stop = _followDistance; }
-            if (!goal.HasValue) { IsWalking = false; return; }
-            var d = goal.Value - transform.position; d.y = 0;
-            float dist = d.magnitude;
-            if (dist <= stop)
+            if (_followTarget != null)
+            {
+                var tp = _followTarget.position;
+                stop = _followDistance;
+                if (BoardSpace.Flat(tp - transform.position) <= stop) { _waypoints.Clear(); IsWalking = false; return; }
+                if (_waypoints.Count == 0 || (Time.time >= _replanAt && BoardSpace.Flat(tp - _plannedFor) > 2.5f))
+                {
+                    Plan(tp);
+                    _replanAt = Time.time + 0.4f;
+                }
+            }
+            else if (!_walkTarget.HasValue) { IsWalking = false; return; }
+            if (_waypoints.Count == 0)
             {
                 IsWalking = false;
                 if (_walkTarget.HasValue) { HomePosition = transform.position; _walkTarget = null; }
                 return;
             }
             IsWalking = true;
-            float step = Mathf.Min(WalkSpeed * Time.deltaTime, dist - stop);
-            transform.position += d / dist * step;
-            Actor?.FaceTowards(transform.position + d);
+            float budget = WalkSpeed * Time.deltaTime;
+            var pos = transform.position;
+            while (budget > 0f && _waypoints.Count > 0)
+            {
+                if (_followTarget != null && BoardSpace.Flat(_followTarget.position - pos) <= stop) break;
+                var wp = _waypoints[0];
+                var d = wp - pos; d.y = 0;
+                float dist = d.magnitude;
+                if (dist <= budget)
+                {
+                    pos = new Vector3(wp.x, pos.y, wp.z); budget -= dist; MetresWalked += dist;
+                    _waypoints.RemoveAt(0);
+                    if (dist > 0.01f) Actor?.FaceTowards(pos + d);
+                    continue;
+                }
+                pos += d / dist * budget; MetresWalked += budget; budget = 0f;
+                Actor?.FaceTowards(pos + d);
+            }
+            pos.y = PlayerWalker.GroundHeight(pos);
+            transform.position = pos;
+            if (_waypoints.Count == 0 && _walkTarget.HasValue)
+            {
+                IsWalking = false; HomePosition = transform.position; _walkTarget = null;
+            }
         }
 
         public static Npc Find(string id)
@@ -149,7 +246,13 @@ namespace World.Game
 
         public void Interact()
         {
+            if (OnTapped != null) { OnTapped(this); return; }
             DialogueBuilder?.Invoke(this);
+            if (Lines.Count == 0 && Options.Count == 0 && Doing != null)
+            {
+                SpeechBubbles.Say(this, Doing(), 4f);
+                return;
+            }
             DialoguePanel.Open(this);
         }
 
@@ -158,7 +261,7 @@ namespace World.Game
         private void Update()
         {
             UpdateWalk();
-            if (IsWalking) return;
+            if (IsWalking || Directed) { _wasNear = false; IsGreetingShown = false; return; }
             var views = ViewSwitcher.Instance;
             if (views == null || Actor == null) return;
             var player = views.Avatar.Position;
@@ -177,6 +280,14 @@ namespace World.Game
                 Actor.FaceTowards(transform.position + BoardSpace.DirOf(HomeYaw));
             }
             _wasNear = near;
+        }
+
+        /// <summary>True while one of this villager's speech bubbles is on screen (its name plate then hides).</summary>
+        public bool HasShownBubble()
+        {
+            foreach (var b in SpeechBubbles.All)
+                if (ReferenceEquals(b.Who, this) && SpeechBubbles.IsShown(b)) return true;
+            return false;
         }
 
         private void OnGUI()
@@ -201,6 +312,8 @@ namespace World.Game
             }
             float dist = (views.Avatar.Position - transform.position).magnitude;
             if (dist > 32f) return;
+            // A bubble already carries the speaker's name: no plate then (it sat on the bubble's tail).
+            if (HasShownBubble()) return;
             var nameStyle = new GUIStyle(UiStyle.Label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
             nameStyle.normal.textColor = UiStyle.AccentColor;
             UiStyle.ShadowLabel(new Rect(x - UiStyle.Px(250), y - UiStyle.Px(40), UiStyle.Px(500), UiStyle.Px(36)), DisplayName, nameStyle);
