@@ -241,6 +241,8 @@ namespace World.Sim.Economy
         public int[] StockAdded = new int[Wares.Count];
         public int[] StockLost = new int[Wares.Count];
         public int[] StockTaken = new int[Wares.Count];
+        /// <summary>Mature units taken per collector building type (for the check Collected = taken x yield; added by S).</summary>
+        public int[] TakenByType = new int[BuildingDefs.Count];
 
         private static int[][] NewTable()
         {

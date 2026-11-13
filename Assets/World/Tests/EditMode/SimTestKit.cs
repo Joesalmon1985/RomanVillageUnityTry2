@@ -131,6 +131,17 @@ namespace World.Sim.Tests
                 if (l.StockAdded[w] != l.StockLost[w] + l.StockTaken[w] + young[w] + mature[w])
                     return "hex stock " + (Ware)w + " drifts";
             }
+            // Collected = units taken x yield, less the cycles still running.
+            var expect = new int[Wares.Count];
+            foreach (var def in BuildingDefs.All)
+                if (def.IsCollector) expect[(int)TerrainInfo.RawWare(def.Terrain).Value] += l.TakenByType[(int)def.Type] * def.Yield;
+            foreach (var b in e.Buildings)
+            {
+                var def = BuildingDefs.Get(b.Type);
+                if (def.IsCollector && b.WorkProgress > 0) expect[(int)TerrainInfo.RawWare(def.Terrain).Value] -= def.Yield;
+            }
+            for (int w = 0; w < Wares.Count; w++)
+                if (l.Collected[w] != expect[w]) return "collected " + (Ware)w + " " + l.Collected[w] + " vs taken x yield " + expect[w];
             foreach (var st in e.Settlements)
                 for (int w = 0; w < Wares.Count; w++)
                     if (st.Reserved[w] > st.Stock[w] || st.Stock[w] < 0 || st.Reserved[w] < 0) return "settlement " + st.Id + " stock " + (Ware)w;

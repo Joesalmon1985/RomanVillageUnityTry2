@@ -34,6 +34,8 @@ namespace World.Sim.Tests
         public long RivalLongestWithoutProposal;
         public string InvariantFailure;
         public long LongestJobWait;
+        /// <summary>Longest run (ticks, sampled every 100) in which a camp needed a ware that a connected camp of its people had spare, with no shipment on the way.</summary>
+        public long LongestMissedImport;
         public string StateJson;
 
         public double Minutes => EndTick / 600.0;
@@ -55,6 +57,7 @@ namespace World.Sim.Tests
             var player = new ScriptedPlayer(sim, style, delay, seed);
             var r = new GameResult { Seed = seed, Player = ScriptedPlayer.Name(style, delay) };
             long rivalEmptySince = -1;
+            var missed = new Dictionary<long, long>();
             while (s.Tick < maxTicks && !s.Factions.GameOver)
             {
                 player.Act();
@@ -77,6 +80,7 @@ namespace World.Sim.Tests
                 }
                 if (s.Tick % 600 == 0)
                     r.StrengthPerMinute.Add(new[] { FactionApi.Strength(s, 0).Total, FactionApi.Strength(s, 1).Total });
+                if (s.Tick % 100 == 0) MissedImports(s, missed, r);
                 if (checkInvariants && r.InvariantFailure == null && s.Tick % 100 == 0)
                 {
                     var f = SimTestKit.CheckInvariants(s);
@@ -105,6 +109,34 @@ namespace World.Sim.Tests
             r.Outbreaks = s.Demons.Outbreaks;
             if (keepJson) r.StateJson = Save.SaveCodec.StateJson(s);
             return r;
+        }
+
+        /// <summary>Deadlock check: an import that should exist (need here, spare in a connected camp, nothing on the way).</summary>
+        private static void MissedImports(WorldState s, Dictionary<long, long> since, GameResult r)
+        {
+            var e = s.Economy;
+            var now = new HashSet<long>();
+            foreach (var dst in e.Settlements)
+            {
+                if (dst.State != SettlementState.Active || Logistics.Halted(s, null, dst.Id)) continue;
+                for (int w = 0; w < Wares.Count; w++)
+                {
+                    if (Logistics.Unjobbed(s, dst, w) - Logistics.Avail(dst, w) <= 0 || Logistics.ShipmentHeading(s, dst.Id, w)) continue;
+                    bool available = false;
+                    foreach (var src in e.Settlements)
+                    {
+                        if (src == dst || src.Faction != dst.Faction || src.State != SettlementState.Active || Logistics.Halted(s, null, src.Id)) continue;
+                        if (Logistics.Avail(src, w) - Logistics.Unjobbed(s, src, w) <= 0) continue;
+                        if (Logistics.Route(s, null, src.Faction, src.Corner, dst.Corner) != null) { available = true; break; }
+                    }
+                    if (!available) continue;
+                    long key = dst.Id * 100L + w;
+                    now.Add(key);
+                    if (!since.ContainsKey(key)) since[key] = s.Tick;
+                    r.LongestMissedImport = Math.Max(r.LongestMissedImport, s.Tick - since[key]);
+                }
+            }
+            foreach (var k in new List<long>(since.Keys)) if (!now.Contains(k)) since.Remove(k);
         }
 
         private static void Record(WorldState s, GameResult r, SimEvent e)

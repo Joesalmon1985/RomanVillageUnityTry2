@@ -166,6 +166,7 @@ namespace World.Sim.Economy
                 {
                     hs.Mature--;
                     e.Ledger.StockTaken[(int)ware]++;
+                    e.Ledger.TakenByType[(int)b.Type]++;
                     b.WorkProgress = 1;
                     b.WorkHex = b.Hex;
                     ev.Add(new CollectStarted { BuildingId = b.Id, Hex = b.Hex });

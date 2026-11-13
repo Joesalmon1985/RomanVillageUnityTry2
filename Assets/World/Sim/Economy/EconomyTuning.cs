@@ -51,7 +51,7 @@ namespace World.Sim.Economy
         /// <summary>
         /// The values a new game uses: the spec's starting values (the field initialisers, kept as written in
         /// REFACTOR_SPEC) with the changes S made in tuning (PROGRESS.md, tuning log): carriers walk 5 m in 10 ticks,
-        /// 5 carriers at a starting camp and 3 at a new one, 4 sheep in the starting stock.
+        /// 5 carriers at a starting camp and 3 at a new one, 4 sheep in the starting stock, hex cap 16.
         /// </summary>
         public static EconomyTuning Tuned()
         {
@@ -60,6 +60,7 @@ namespace World.Sim.Economy
             t.StartCarriers = 5;
             t.NewSettlementCarriers = 3;
             t.StartStock[(int)Ware.Sheep] = 4;
+            t.HexCap = 16;
             return t;
         }
 

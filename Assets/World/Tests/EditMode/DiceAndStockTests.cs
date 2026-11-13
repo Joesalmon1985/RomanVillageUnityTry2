@@ -70,7 +70,7 @@ namespace World.Sim.Tests
                 var v = EconomyApi.HexStock(s, h);
                 Assert.AreEqual(start.Contains(h) ? 4 : 0, v.Mature, "hex " + h);
                 Assert.AreEqual(0, v.Young);
-                Assert.AreEqual(12, v.Cap);
+                Assert.AreEqual(s.Economy.Tuning.HexCap, v.Cap);
             }
             CollectionAssert.AreEqual(s.Economy.Tuning.StartStock, s.Economy.Settlements[0].Stock);
             Assert.AreEqual(new[] { 4, 2, 2, 2 }, new EconomyTuning().StartStock.Take(4).ToArray(), "spec starting stock (the tuned game starts with 4 sheep)");
@@ -113,8 +113,9 @@ namespace World.Sim.Tests
             var sim = NewSim();
             var s = sim.State;
             int fields = HexOf(s, s.Board.StartCorners[0], Terrain.Fields); // number 5
-            s.Economy.Hexes[fields].Mature = 10;
-            s.Economy.Ledger.StockAdded[(int)Ware.Grain] += 6; // keep the ledger whole for the test edit
+            int cap = s.Economy.Tuning.HexCap;
+            s.Economy.Ledger.StockAdded[(int)Ware.Grain] += cap - 2 - s.Economy.Hexes[fields].Mature; // keep the ledger whole for the test edit
+            s.Economy.Hexes[fields].Mature = cap - 2;
             K.RigNextRoll(s, 1, 4);
             var ev = K.Step(sim, 1);
             Assert.AreEqual(2, ev.OfType<StockAdded>().Single(a => a.Hex == fields).Count);
