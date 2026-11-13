@@ -131,7 +131,7 @@ namespace World.Sim.Tests
             }
             foreach (var p in s.Players) if (p.Coin < 0) return "negative coin for " + p.Name;
             for (int v = 0; v < st.Demons.Length; v++)
-                if (st.Demons[v] < 0 || st.Demons[v] > StrategyApi.BreachThreshold(s)) return "demons out of range at " + v;
+                if (st.Demons[v] < 0 || st.Demons[v] > StrategyApi.DemonCap(s)) return "demons out of range at " + v;
             if (st.Breaches > st.Tuning.BreachLimit) return "breaches over the limit";
             if (st.Breaches >= st.Tuning.BreachLimit && !st.GameOver) return "breach limit reached without an ending";
             // Every card id in at most one place.

@@ -55,7 +55,12 @@ namespace World.Sim.Strategy
         // ---- Demons and hero ----
         /// <summary>Demons per vertex id.</summary>
         public int[] Demons = new int[0];
+        /// <summary>The breach track: one step per outbreak; the game is lost at Tuning.BreachLimit.</summary>
         public int Breaches;
+        /// <summary>Epidemics so far (one at each age change).</summary>
+        public int Epidemics;
+        /// <summary>Sites that outbroke at the last infection or epidemic (for views), in order.</summary>
+        public List<int> LastOutbreaks = new List<int>();
         /// <summary>Draw pile of vertex ids (top = last element).</summary>
         public List<int> InfectionDeck = new List<int>();
         public List<int> InfectionDiscard = new List<int>();
@@ -79,7 +84,33 @@ namespace World.Sim.Strategy
         // ---- Wonder ----
         public WonderState Wonder = new WonderState();
 
+        // ---- Military comparison ----
+        /// <summary>One entry per finished age: shields on both sides and the tokens awarded.</summary>
+        public List<MilitaryComparison> Comparisons = new List<MilitaryComparison>();
+
         public StrategyLedger Ledger = new StrategyLedger();
+    }
+
+    /// <summary>Result of an age-end military comparison, from the player's side.</summary>
+    public enum ComparisonResult
+    {
+        Tie = 0,
+        Win = 1,
+        Loss = 2,
+    }
+
+    /// <summary>A military comparison at the end of an age (7 Wonders' conflict tokens).</summary>
+    public sealed class MilitaryComparison
+    {
+        public int Age;
+        public long Tick;
+        public int PlayerShields;
+        public int RivalShields;
+        public ComparisonResult Result;
+        /// <summary>Token points for the player (+1/+3/+5 on a win, -1 on a loss, 0 on a tie).</summary>
+        public int PlayerVp;
+        /// <summary>Token points for the rival (mirror of the player's result).</summary>
+        public int RivalVp;
     }
 
     public sealed class AgeDeck

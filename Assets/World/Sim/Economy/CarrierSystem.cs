@@ -3,9 +3,12 @@ using System.Collections.Generic;
 namespace World.Sim.Economy
 {
     /// <summary>
-    /// Carriers slot: assigns waiting jobs to free carriers (priority, then id), then moves every
-    /// carrier. A carrier re-plans its route at each flag over current roads and unblocked flags, so a
-    /// removed road makes it stop at the next flag (keeping its load) until a route exists again.
+    /// Carriers slot: carriers walking a segment advance (arriving at flags), waiting jobs are assigned to free
+    /// carriers standing at a flag (priority, then id; the nearest free carrier), then every carrier at a flag acts
+    /// (pick up, deliver) and steps onto its next segment. A carrier re-plans its route at each flag over current
+    /// roads and unblocked flags, so a removed road makes it stop at the next flag (keeping its load) until a route
+    /// exists again. After a delivery a carrier waits at that flag for up to Tuning.CarrierWaitTicks for another job,
+    /// then walks back to the storehouse (it can still take a job at any flag on the way).
     /// </summary>
     internal sealed class CarrierSystem : ISimSystem
     {
@@ -15,8 +18,22 @@ namespace World.Sim.Economy
         public void Tick(WorldState s, EventBuffer ev)
         {
             var blocked = _hooks.ComputeBlocked(s);
+            foreach (var c in s.Economy.Carriers) Advance(s, c);
             Assign(s, blocked, ev);
             foreach (var c in s.Economy.Carriers) Move(s, blocked, c, ev);
+        }
+
+        /// <summary>Walk one tick along the current segment; on arrival the carrier stands at the flag.</summary>
+        private static void Advance(WorldState s, Carrier c)
+        {
+            if (c.CurrentEdge < 0) return;
+            c.Progress++;
+            if (c.Progress < s.Economy.Tuning.TicksPerEdge) return;
+            c.AtVertex = c.ToVertex;
+            c.CurrentEdge = -1;
+            c.FromVertex = -1;
+            c.ToVertex = -1;
+            c.Progress = 0;
         }
 
         private static void Assign(WorldState s, bool[] blocked, EventBuffer ev)
@@ -25,10 +42,16 @@ namespace World.Sim.Economy
             var waiting = new List<DeliveryJob>();
             foreach (var j in e.Jobs) if (j.State == JobState.Waiting) waiting.Add(j);
             if (waiting.Count == 0) return;
+            // Deliveries to buildings come first (by the destination's priority), stockpiling into the storehouse
+            // last: carriers haul surplus only when no building is waiting.
+            int store = e.StorehouseId;
             waiting.Sort((a, b) =>
             {
                 int pa = (int)e.Buildings[a.DestId].Priority, pb = (int)e.Buildings[b.DestId].Priority;
-                return pa != pb ? pb.CompareTo(pa) : a.Id.CompareTo(b.Id);
+                if (pa != pb) return pb.CompareTo(pa);
+                bool sa = a.DestId == store, sb = b.DestId == store;
+                if (sa != sb) return sa ? 1 : -1;
+                return a.Id.CompareTo(b.Id);
             });
 
             foreach (var j in waiting)
@@ -78,6 +101,7 @@ namespace World.Sim.Economy
                 j.CarrierId = best.Id;
                 best.JobId = j.Id;
                 best.State = CarrierState.ToPickup;
+                best.IdleTicks = 0;
                 EconomyLogic.SetJobReason(j, null, ev);
             }
         }
@@ -85,16 +109,7 @@ namespace World.Sim.Economy
         private static void Move(WorldState s, bool[] blocked, Carrier c, EventBuffer ev)
         {
             var e = s.Economy;
-            if (c.CurrentEdge >= 0)
-            {
-                c.Progress++;
-                if (c.Progress < e.Tuning.TicksPerEdge) return;
-                c.AtVertex = c.ToVertex;
-                c.CurrentEdge = -1;
-                c.FromVertex = -1;
-                c.ToVertex = -1;
-                c.Progress = 0;
-            }
+            if (c.CurrentEdge >= 0) return; // still walking its segment
 
             var job = c.JobId >= 0 ? EconomyLogic.FindJob(e, c.JobId) : null;
             if (job == null && (c.State == CarrierState.ToPickup || c.State == CarrierState.Carrying))
@@ -124,6 +139,7 @@ namespace World.Sim.Economy
                 dst.Incoming[w]--;
                 c.HasLoad = false;
                 c.State = CarrierState.Idle;
+                c.IdleTicks = 0;
                 c.JobId = -1;
                 e.Jobs.Remove(job);
                 ev.Add(new WareDelivered { JobId = job.Id, CarrierId = c.Id, Ware = job.Ware, BuildingId = dst.Id });
@@ -131,8 +147,14 @@ namespace World.Sim.Economy
             }
 
             int storeV = EconomyLogic.Storehouse(s).Vertex;
-            if (c.State == CarrierState.Idle && c.AtVertex != storeV) c.State = CarrierState.Returning;
+            if (c.State == CarrierState.Idle && c.AtVertex != storeV)
+            {
+                // Wait here a while for the next job before walking home.
+                c.IdleTicks++;
+                if (c.IdleTicks >= e.Tuning.CarrierWaitTicks) c.State = CarrierState.Returning;
+            }
             if (c.State == CarrierState.Returning && c.AtVertex == storeV) c.State = CarrierState.Idle;
+            if (c.State == CarrierState.Idle && c.AtVertex == storeV) c.IdleTicks = 0;
 
             int target;
             switch (c.State)

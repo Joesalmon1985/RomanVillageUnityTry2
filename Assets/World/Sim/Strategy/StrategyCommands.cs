@@ -2,7 +2,7 @@ using World.Sim.Economy;
 
 namespace World.Sim.Strategy
 {
-    /// <summary>Found a city on a flag touching one of your roads (2 VP; extends territory and batches).</summary>
+    /// <summary>Found a city on a hex corner touching one of your roads (2 VP; extends territory and batches; its corner joins the infection deck).</summary>
     public sealed class FoundCity : Command { public int Vertex; }
 
     /// <summary>Market: give TradeRate x Count of Give from the storehouse for Count of Get.</summary>
@@ -109,6 +109,10 @@ namespace World.Sim.Strategy
             StrategyLogic.Pay(s, s.Strategy.Tuning.CityCost, s.Strategy.Ledger.Cities);
             int id = EconomyApi.AddCity(s, PlayerIds.Human, c.Vertex);
             for (int i = 0; i < s.Strategy.Tuning.CarriersPerCity; i++) EconomyApi.AddCarrier(s);
+            // The new city is a site the demons can reach: its corner is shuffled into the draw pile.
+            var st = s.Strategy;
+            if (!st.InfectionDeck.Contains(c.Vertex) && !st.InfectionDiscard.Contains(c.Vertex))
+                st.InfectionDeck.Insert(st.InfectionRng.NextInt(st.InfectionDeck.Count + 1), c.Vertex);
             ev.Add(new CityFounded { PlayerId = PlayerIds.Human, Vertex = c.Vertex, CityId = id });
             return CommandResult.Accept();
         }
@@ -273,6 +277,7 @@ namespace World.Sim.Strategy
             side.Hand.Remove(c.CardId);
             side.Built.Add(new BuiltCard { CardId = c.CardId, CityVertex = c.CityVertex, Tick = s.Tick });
             if (d.HeroMoves > 0) s.Strategy.HeroMovesLeft += d.HeroMoves;
+            StrategyLogic.SyncEconomyBonuses(s);
             ev.Add(new CardBuilt { PlayerId = PlayerIds.Human, CardId = c.CardId, DefId = d.Id, CityVertex = c.CityVertex });
             return CommandResult.Accept();
         }

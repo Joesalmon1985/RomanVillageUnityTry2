@@ -13,6 +13,7 @@ namespace World.Sim.Military
         {
             var hooks = EconomyApi.Hooks(sim);
             hooks.IsPowered = MilitaryLogic.IsPowered;
+            hooks.PowerDemanded = MilitaryLogic.PowerDemanded;
             hooks.IsVertexBlocked.Add(MilitaryLogic.RaidBlocks);
 
             sim.AddSystem(SystemOrder.Power + 50, new PowerEventSystem());

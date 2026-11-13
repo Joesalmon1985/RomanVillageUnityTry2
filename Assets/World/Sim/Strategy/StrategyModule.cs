@@ -16,6 +16,7 @@ namespace World.Sim.Strategy
             hooks.OnRoundStarted.Add(StrategyLogic.OnRoundStarted);
             hooks.BatchModifiers.Add(StrategyLogic.ModifyBatch);
             hooks.IsVertexBlocked.Add((s, v) => s.Strategy != null && s.Strategy.Demons[v] > 0);
+            hooks.IsHexStopped.Add(StrategyLogic.HexRobbed);
             hooks.EndRoundGuards.Add(StrategyLogic.EndRoundGuard);
 
             sim.AddSystem(SystemOrder.Construction + 50, new WonderSystem());

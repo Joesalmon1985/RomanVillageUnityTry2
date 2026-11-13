@@ -168,11 +168,19 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void Pasture_YieldsNoWareYet()
+        public void EveryResourceTerrain_YieldsItsRawWare_AndBack()
         {
-            Assert.IsNull(TerrainInfo.RawWare(Terrain.Pasture));
+            Assert.AreEqual(Ware.Logs, TerrainInfo.RawWare(Terrain.Forest));
+            Assert.AreEqual(Ware.Clay, TerrainInfo.RawWare(Terrain.Hills));
+            Assert.AreEqual(Ware.Wheat, TerrainInfo.RawWare(Terrain.Fields));
+            Assert.AreEqual(Ware.Sheep, TerrainInfo.RawWare(Terrain.Pasture));
+            Assert.AreEqual(Ware.Ore, TerrainInfo.RawWare(Terrain.Mountain));
+            Assert.IsNull(TerrainInfo.RawWare(Terrain.Meadow));
             Assert.IsTrue(TerrainInfo.IsResource(Terrain.Pasture));
-            Assert.AreEqual(Ware.Timber, TerrainInfo.RawWare(Terrain.Forest));
+            foreach (var w in Wares.Raw) Assert.AreEqual(w, TerrainInfo.RawWare(TerrainInfo.TerrainOf(w)));
+            Assert.AreEqual(Terrain.Meadow, TerrainInfo.TerrainOf(Ware.Planks));
+            Assert.AreEqual(Wares.RawCount, Wares.Raw.Length);
+            Assert.AreEqual(Wares.Count, Wares.All.Length);
         }
 
         [Test]

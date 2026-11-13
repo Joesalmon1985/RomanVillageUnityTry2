@@ -19,7 +19,11 @@ namespace World.Sim.Tests
             // A long game: no ending by rounds, points or breaches, so commands keep being exercised.
             s.Strategy.Tuning.RoundsPerAge = 400;
             s.Strategy.Tuning.VictoryPoints = 999;
-            s.Strategy.Tuning.BreachLimit = 999;
+            s.Strategy.Tuning.BreachLimit = int.MaxValue;
+            // Demons keep coming (draws, outbreaks, an epidemic or two) but slowly enough that random hero moves
+            // and squads keep the village usable for 20,000 ticks.
+            s.Strategy.Tuning.InfectionPerAge = 0;
+            s.Strategy.Tuning.DemonCap = 5;
             var rng = new Rng(777);
             var script = new CommissionScript(sim);
             int accepted = 0, refused = 0;
@@ -34,7 +38,7 @@ namespace World.Sim.Tests
                     kinds[pk] = kinds.TryGetValue(pk, out int pn) ? pn + 1 : 1;
                 }
                 script.Act();
-                if (t % 150 == 0) K.Give(s, (Ware)rng.NextInt(Wares.Count), 1 + rng.NextInt(4), Ware.Planks, 3, Ware.Stone, 2);
+                if (t % 150 == 0) K.Give(s, (Ware)rng.NextInt(Wares.Count), 1 + rng.NextInt(4), Ware.Planks, 3, Ware.Bricks, 2);
                 if (t % 500 == 0) s.Player(0).Coin += 3;
                 if (rng.Chance(1, 4))
                 {
@@ -50,7 +54,7 @@ namespace World.Sim.Tests
                 var err = K.CheckInvariants(s);
                 if (err != null) Assert.Fail("tick " + s.Tick + ": " + err);
             }
-            TestContext.WriteLine("accepted " + accepted + ", refused " + refused);
+            TestContext.WriteLine("accepted " + accepted + ", refused " + refused + "; outcome " + s.Strategy.Outcome + " " + s.Strategy.OutcomeReason + " at " + s.Strategy.EndedTick + " breaches " + s.Strategy.Breaches);
             foreach (var kv in kinds.OrderBy(k => k.Key)) TestContext.WriteLine(kv.Key + " " + kv.Value);
             Assert.Greater(accepted, 300);
             Assert.Greater(refused, 300);
@@ -98,7 +102,7 @@ namespace World.Sim.Tests
                     return new BuildCard { CardId = handCard, CityVertex = cities.Count > 0 && rng.Chance(4, 5) ? cities[rng.NextInt(cities.Count)] : v };
                 case 7: return new DiscardCard { CardId = handCard };
                 case 8: return new BuildWonderStage { PlayerId = rng.Chance(1, 8) ? PlayerIds.Rival : PlayerIds.Human };
-                case 9: return new PlaceBuilding { Type = (BuildingType)rng.NextInt(14), Vertex = v };
+                case 9: return new PlaceBuilding { Type = (BuildingType)rng.NextInt(BuildingDefs.Count), Vertex = v };
                 case 10: return new PlaceRoad { Edge = rng.NextInt(topo.EdgeCount + 2) - 1 };
                 case 11: return new QueueUnit { BarracksId = rng.NextInt(s.Economy.Buildings.Count + 1), Count = rng.NextInt(3) };
                 case 12: return new OrderSquad { SquadId = rng.NextInt(squads + 1), Order = (OrderKind)rng.NextInt(4), Target = v };

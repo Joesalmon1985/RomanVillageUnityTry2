@@ -49,27 +49,32 @@ namespace World.Sim.Tests
             Assert.IsTrue(c.HasLoad);
             Assert.AreEqual(Ware.Planks, c.Load);
             Assert.GreaterOrEqual(c.CurrentEdge, 0, "already walking at tick 0");
-            Assert.AreEqual(4, e.Carriers.Count);
+            Assert.AreEqual(e.Tuning.Carriers, e.Carriers.Count);
             Assert.IsNull(EconomyTestKit.CheckInvariants(s));
             sim.Step(10);
             Assert.AreEqual(10, s.Economy.Carriers[0].Progress, "visibly walking in the first second");
         }
 
         [Test]
-        public void Starter_StockCoversTheFourBuildingsAndTheirRoads()
+        public void Starter_StockCoversTheSixCommissionBuildingsAndTheirRoads()
         {
             var t = new EconomyTuning();
-            int planks = t.StarterStock[(int)Ware.Planks], stone = t.StarterStock[(int)Ware.Stone];
-            foreach (var bt in new[] { BuildingType.Forester, BuildingType.Woodcutter, BuildingType.Sawmill, BuildingType.Quarry })
+            int planks = t.StarterStock[(int)Ware.Planks], bricks = t.StarterStock[(int)Ware.Bricks];
+            foreach (var bt in new[] { BuildingType.Forester, BuildingType.Woodcutter, BuildingType.Sawmill, BuildingType.ClayPit, BuildingType.CharcoalKiln, BuildingType.BrickKiln })
             {
                 planks -= t.Def(bt).Cost[(int)Ware.Planks];
-                stone -= t.Def(bt).Cost[(int)Ware.Stone];
+                bricks -= t.Def(bt).Cost[(int)Ware.Bricks];
             }
-            // About 3 road segments to connect them; one RoadCost pays for RoadSegmentsPerCost segments.
-            planks -= (3 + t.RoadSegmentsPerCost - 1) / t.RoadSegmentsPerCost * t.RoadCost[(int)Ware.Planks];
-            Assert.GreaterOrEqual(planks, 0);
-            Assert.GreaterOrEqual(stone, 0);
-            Assert.Less(planks, 10, "the commission needs real production");
+            // About 5 road segments to connect them; one RoadCost pays for RoadSegmentsPerCost segments.
+            int payments = (5 + t.RoadSegmentsPerCost - 1) / t.RoadSegmentsPerCost;
+            planks -= payments * t.RoadCost[(int)Ware.Planks];
+            bricks -= payments * t.RoadCost[(int)Ware.Bricks];
+            Assert.GreaterOrEqual(planks, 0, "the first buildings can be placed before any brick is made");
+            Assert.GreaterOrEqual(bricks, 0);
+            Assert.Less(planks, t.CommissionPlanks, "the commission needs real production");
+            Assert.Less(bricks, t.CommissionBricks);
+            Assert.Greater(t.StarterStock[(int)Ware.Coal], 0, "a little coal lets the brick kiln start first");
+            Assert.GreaterOrEqual(t.StarterStock[(int)Ware.Rations], new Strategy.StrategyTuning().CityCost[(int)Ware.Rations], "rations for the first city");
         }
 
         // ---------------- Batches ----------------
@@ -88,12 +93,13 @@ namespace World.Sim.Tests
             CollectionAssert.AreEquivalent(new[] { s.Board.HexNumber[forest], s.Board.HexNumber[hills] }, started.Numbers, "starter round 1");
             var batches = evs.OfType<BatchAuthorised>().ToList();
             Assert.AreEqual(batches.Count, batches.Select(b => b.Hex).Distinct().Count(), "one batch per hex");
-            Assert.IsTrue(batches.Any(b => b.Hex == forest && b.Amount == 3), "forest halved without an active forester");
-            Assert.IsTrue(batches.Any(b => b.Hex == hills && b.Amount == 6));
+            int size = s.Economy.Tuning.BatchSize;
+            Assert.IsTrue(batches.Any(b => b.Hex == forest && b.Amount == (size + 1) / 2), "forest halved without an active forester");
+            Assert.IsTrue(batches.Any(b => b.Hex == hills && b.Amount == size));
 
             int before = s.Economy.HexBatchRemaining[hills];
             var ev = new EventBuffer();
-            Assert.IsFalse(EconomyApi.AuthoriseBatch(s, hills, 6, ev), "second authorisation in the same round");
+            Assert.IsFalse(EconomyApi.AuthoriseBatch(s, hills, size, ev), "second authorisation in the same round");
             Assert.AreEqual(before, s.Economy.HexBatchRemaining[hills]);
             Assert.AreEqual(0, ev.Count);
 
@@ -116,8 +122,11 @@ namespace World.Sim.Tests
                 a.Step();
                 b.Step();
                 CollectionAssert.AreEqual(a.State.Economy.LastDraw, b.State.Economy.LastDraw);
-                Assert.AreEqual(2, a.State.Economy.LastDraw.Distinct().Count());
-                Assert.IsTrue(a.State.Economy.LastDraw.All(n => n >= 1 && n <= 4));
+                var draw = a.State.Economy.LastDraw;
+                Assert.AreEqual(draw.Length, draw.Distinct().Count(), "distinct numbers");
+                // Prologue starter rounds draw 2 numbers (home forest + hills or fields); afterwards NumbersDrawn.
+                Assert.AreEqual(a.State.Economy.Round <= a.State.Economy.Tuning.StarterRounds ? 2 : a.State.Economy.Tuning.NumbersDrawn, draw.Length);
+                Assert.IsTrue(draw.All(n => n >= 1 && n <= 4));
                 a.Submit(new EndRound());
                 b.Submit(new EndRound());
             }
@@ -130,7 +139,7 @@ namespace World.Sim.Tests
             var s = sim.State;
             int forest = EconomyTestKit.HomeHex(s, Terrain.Forest);
             StepUntil(sim, () => s.Economy.Buildings[1].State == BuildingState.Active, 2000);
-            EconomyApi.Hooks(sim).BatchModifiers.Add((st, hex, ware, amount) => ware == Ware.Timber ? amount + 2 : amount);
+            EconomyApi.Hooks(sim).BatchModifiers.Add((st, hex, ware, amount) => ware == Ware.Logs ? amount + 2 : amount);
             // Round 2 or 3 of the starter sequence draws the home forest.
             var evs = new List<SimEvent>();
             for (int i = 0; i < 2; i++)
@@ -139,24 +148,24 @@ namespace World.Sim.Tests
                 sim.Step();
                 evs.AddRange(sim.DrainEvents());
             }
-            var fb = evs.OfType<BatchAuthorised>().Single(b => b.Hex == forest);
-            Assert.AreEqual(8, fb.Amount, "6 + 2 from the modifier, not halved with the forester active");
+            var fb = evs.OfType<BatchAuthorised>().First(b => b.Hex == forest);
+            Assert.AreEqual(s.Economy.Tuning.BatchSize + 2, fb.Amount, "batch + 2 from the modifier, not halved with the forester active");
         }
 
         // ---------------- Recipe ----------------
 
         [Test]
-        public void Recipe_SawmillConsumesOneTimberYieldsOnePlanks()
+        public void Recipe_SawmillConsumesOneLogsYieldsOnePlanks()
         {
             var sim = NewSim();
             var s = sim.State;
             int saw = EconomyTestKit.Build(sim, BuildingType.Sawmill);
             sim.DrainEvents();
             var l = s.Economy.Ledger;
-            int consumed0 = l.Consumed[(int)Ware.Timber], produced0 = l.Produced[(int)Ware.Planks];
-            int timberBefore = EconomyApi.WaresInWorld(s)[(int)Ware.Timber];
-            Assert.AreEqual(0, timberBefore);
-            EconomyApi.AddToStorehouse(s, Ware.Timber, 1);
+            int consumed0 = l.Consumed[(int)Ware.Logs], produced0 = l.Produced[(int)Ware.Planks];
+            int logsBefore = EconomyApi.WaresInWorld(s)[(int)Ware.Logs];
+            Assert.AreEqual(0, logsBefore);
+            EconomyApi.AddToStorehouse(s, Ware.Logs, 1);
             var evs = new List<SimEvent>();
             StepUntil(sim, () => evs.OfType<ProductionCycle>().Any(), 1000, evs);
             sim.Step(200);
@@ -165,9 +174,9 @@ namespace World.Sim.Tests
             Assert.AreEqual(1, cycles.Count);
             Assert.AreEqual(Ware.Planks, cycles[0].Output);
             Assert.AreEqual(1, cycles[0].Amount);
-            Assert.AreEqual(consumed0 + 1, l.Consumed[(int)Ware.Timber]);
+            Assert.AreEqual(consumed0 + 1, l.Consumed[(int)Ware.Logs]);
             Assert.AreEqual(produced0 + 1, l.Produced[(int)Ware.Planks]);
-            Assert.AreEqual(0, EconomyApi.WaresInWorld(s)[(int)Ware.Timber]);
+            Assert.AreEqual(0, EconomyApi.WaresInWorld(s)[(int)Ware.Logs]);
             Assert.IsNull(EconomyTestKit.CheckInvariants(s));
         }
 
@@ -182,7 +191,8 @@ namespace World.Sim.Tests
             int saw = EconomyTestKit.Build(sim, BuildingType.Sawmill);
             Assert.AreEqual(BuildingState.Active, s.Economy.Buildings[saw].State);
             Assert.IsTrue(s.Economy.Buildings[saw].Stock.All(n => n == 0), "construction wares consumed");
-            Assert.GreaterOrEqual(s.Economy.Ledger.Consumed[(int)Ware.Planks] - planks0, 2);
+            Assert.GreaterOrEqual(s.Economy.Ledger.Consumed[(int)Ware.Planks] - planks0, EconomyApi.Def(s, BuildingType.Sawmill).Cost[(int)Ware.Planks]);
+            Assert.AreEqual(EconomyApi.Def(s, BuildingType.Sawmill).Cost[(int)Ware.Bricks], s.Economy.Ledger.Construction[(int)Ware.Bricks], "construction booked as its own sink");
             Assert.IsNull(EconomyTestKit.CheckInvariants(s));
         }
 
@@ -191,7 +201,7 @@ namespace World.Sim.Tests
         {
             var sim = NewSim();
             var s = sim.State;
-            Assert.IsTrue(EconomyApi.TrySpendFromStorehouse(s, Ware.Stone, EconomyApi.StorehouseCount(s, Ware.Stone)));
+            Assert.IsTrue(EconomyApi.TrySpendFromStorehouse(s, Ware.Bricks, EconomyApi.StorehouseCount(s, Ware.Bricks)));
             int v = EconomyTestKit.ChooseVertex(s, BuildingType.Sawmill);
             EconomyTestKit.Submit(sim, new PlaceBuilding { Type = BuildingType.Sawmill, Vertex = v });
             sim.Step();
@@ -202,19 +212,19 @@ namespace World.Sim.Tests
             }
             int id = EconomyApi.BuildingAt(s, v);
             var b = s.Economy.Buildings[id];
-            StepUntil(sim, () => b.Stock[(int)Ware.Planks] == 2, 500);
+            StepUntil(sim, () => b.Stock[(int)Ware.Planks] == EconomyApi.Def(s, BuildingType.Sawmill).Cost[(int)Ware.Planks], 500);
             sim.Step(100);
             Assert.AreEqual(BuildingState.Site, b.State);
             Assert.AreEqual(Reasons.WaitingWare, b.Reason);
-            Assert.AreEqual((int)Ware.Stone, b.ReasonWare);
+            Assert.AreEqual((int)Ware.Bricks, b.ReasonWare);
             var info = EconomyApi.Describe(s, id);
-            Assert.AreEqual("Sawmill site is waiting for stone.", info.Status);
-            Assert.IsTrue(info.StockLines.Any(x => x.StartsWith("stone 0/1")));
+            Assert.AreEqual("Sawmill site is waiting for bricks.", info.Status);
+            Assert.IsTrue(info.StockLines.Any(x => x.StartsWith("bricks 0/1")));
 
-            EconomyApi.AddToStorehouse(s, Ware.Stone, 1);
+            EconomyApi.AddToStorehouse(s, Ware.Bricks, 1);
             StepUntil(sim, () => b.State == BuildingState.Active, 500);
             sim.Step();
-            Assert.AreEqual(Reasons.InputMissing, b.Reason, "built; now an idle sawmill without timber");
+            Assert.AreEqual(Reasons.InputMissing, b.Reason, "built; now an idle sawmill without logs");
             Assert.IsNull(EconomyTestKit.CheckInvariants(s));
         }
 
@@ -233,7 +243,7 @@ namespace World.Sim.Tests
             Assert.AreEqual(before, EconomyApi.WaresInWorld(s)[(int)Ware.Planks]);
             sim.Step(400);
             Assert.AreEqual(0, s.Economy.Jobs.Count, "redirected shipments land in the storehouse");
-            Assert.AreEqual(14, s.Economy.Buildings[0].Stock[(int)Ware.Planks]);
+            Assert.AreEqual(s.Economy.Tuning.StarterStock[(int)Ware.Planks], s.Economy.Buildings[0].Stock[(int)Ware.Planks]);
             Assert.IsNull(EconomyTestKit.CheckInvariants(s));
         }
 
@@ -267,10 +277,13 @@ namespace World.Sim.Tests
         {
             var sim = NewSim();
             var s = sim.State;
+            // Only the four first carriers, and none joining with new buildings: more jobs than carriers.
+            s.Economy.Carriers.RemoveRange(4, s.Economy.Carriers.Count - 4);
+            s.Economy.Tuning.CarriersPerBuilding = 0;
             EconomyApi.AddToStorehouse(s, Ware.Planks, 20);
-            EconomyApi.AddToStorehouse(s, Ware.Stone, 20);
+            EconomyApi.AddToStorehouse(s, Ware.Bricks, 20);
             var evs = new List<SimEvent>();
-            var types = new[] { BuildingType.Market, BuildingType.GrainMill, BuildingType.Bakery };
+            var types = new[] { BuildingType.Market, BuildingType.Mill, BuildingType.Bakery };
             foreach (var t in types)
             {
                 int v = EconomyTestKit.ChooseVertex(s, t);
@@ -303,7 +316,7 @@ namespace World.Sim.Tests
             evs.AddRange(sim.DrainEvents());
             var site = s.Economy.Buildings[1];
             Assert.AreEqual(Reasons.DemonOnRoute, site.Reason);
-            Assert.AreEqual("A demon blocks the route to the Forester site.", EconomyApi.Describe(s, 1).Status);
+            Assert.AreEqual("A demon on its flag stops the Forester site.", EconomyApi.Describe(s, 1).Status);
             Assert.IsTrue(evs.OfType<JobStalled>().Any(j => j.Reason == Reasons.DemonOnRoute));
             block = false;
             StepUntil(sim, () => site.State != BuildingState.Site, 500, evs);
@@ -337,11 +350,11 @@ namespace World.Sim.Tests
             sim.Step(5);
             var b = s.Economy.Buildings[saw];
             Assert.AreEqual(Reasons.InputMissing, b.Reason);
-            Assert.AreEqual("Sawmill needs timber to work.", EconomyApi.Describe(s, saw).Status);
-            EconomyApi.AddToStorehouse(s, Ware.Timber, 1);
+            Assert.AreEqual("Sawmill needs logs to work.", EconomyApi.Describe(s, saw).Status);
+            EconomyApi.AddToStorehouse(s, Ware.Logs, 1);
             sim.Step(2);
             Assert.AreEqual(Reasons.WaitingWare, b.Reason);
-            Assert.AreEqual("Sawmill is waiting for timber.", EconomyApi.Describe(s, saw).Status);
+            Assert.AreEqual("Sawmill is waiting for logs.", EconomyApi.Describe(s, saw).Status);
             StepUntil(sim, () => b.WorkProgress > 0, 500);
             sim.Step();
             Assert.IsNull(b.Reason);
@@ -352,10 +365,10 @@ namespace World.Sim.Tests
         {
             var sim = NewSim();
             var s = sim.State;
-            EconomyApi.AddToStorehouse(s, Ware.Stone, 5);
+            EconomyApi.AddToStorehouse(s, Ware.Bricks, 5);
             bool power = false;
             EconomyApi.Hooks(sim).IsPowered = (st, id) => power;
-            int r = EconomyTestKit.Build(sim, BuildingType.Refinery);
+            int r = EconomyTestKit.Build(sim, BuildingType.Smelter);
             sim.Step(2);
             var b = s.Economy.Buildings[r];
             Assert.AreEqual(Reasons.NoPower, b.Reason);
@@ -371,10 +384,10 @@ namespace World.Sim.Tests
             var sim = NewSim();
             var s = sim.State;
             int hills = EconomyTestKit.HomeHex(s, Terrain.Hills);
-            int q = EconomyTestKit.Build(sim, BuildingType.Quarry, EconomyTestKit.Touches(s, hills));
+            int q = EconomyTestKit.Build(sim, BuildingType.ClayPit, EconomyTestKit.Touches(s, hills));
             var b = s.Economy.Buildings[q];
             StepUntil(sim, () => b.Reason == Reasons.NoBatch, 3000);
-            Assert.AreEqual("Quarry has no authorised batch this round.", EconomyApi.Describe(s, q).Status);
+            Assert.AreEqual("Clay pit has no authorised batch this round.", EconomyApi.Describe(s, q).Status);
             s.Economy.HexBatchRound[hills] = 0;
             Assert.IsTrue(EconomyApi.AuthoriseBatch(s, hills, 2, new EventBuffer()));
             sim.Step(2);
@@ -498,7 +511,7 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void RoadsCostPlanks_OnePlankPerThreeSegments_AndRefuseWithoutStock()
+        public void RoadsCostPlanksAndBricks_OnePaymentPerThreeSegments_AndRefuseWithoutStock()
         {
             var sim = NewSim();
             var s = sim.State;
@@ -509,9 +522,9 @@ namespace World.Sim.Tests
             int he = topo.CornerHexEdges(store).First(x => topo.HexEdgeSegments(x).All(seg => !s.Economy.Roads[seg]));
             var flags = topo.HexEdgeFlags(he);
             if (flags[0] != store) flags = flags.Reverse().ToArray();
-            int consumed0 = s.Economy.Ledger.Consumed[(int)Ware.Planks];
-            CollectionAssert.AreEqual(EconomyTuning.W(Ware.Planks, 1), EconomyApi.RoadCostFor(s, 1));
-            CollectionAssert.AreEqual(EconomyTuning.W(Ware.Planks, 2), EconomyApi.RoadCostFor(s, 4));
+            int consumed0 = s.Economy.Ledger.Consumed[(int)Ware.Planks], bricks0 = s.Economy.Ledger.Consumed[(int)Ware.Bricks];
+            CollectionAssert.AreEqual(EconomyTuning.W(Ware.Planks, 1, Ware.Bricks, 1), EconomyApi.RoadCostFor(s, 1));
+            CollectionAssert.AreEqual(EconomyTuning.W(Ware.Planks, 2, Ware.Bricks, 2), EconomyApi.RoadCostFor(s, 4));
             for (int k = 0; k < 3; k++)
             {
                 EconomyTestKit.Submit(sim, new PlaceRoad { Edge = topo.EdgeBetween(flags[k], flags[k + 1]) });
@@ -519,6 +532,8 @@ namespace World.Sim.Tests
                 Assert.IsTrue(s.Economy.Roads[topo.EdgeBetween(flags[k], flags[k + 1])]);
             }
             Assert.AreEqual(consumed0 + 1, s.Economy.Ledger.Consumed[(int)Ware.Planks], "one hex edge (3 segments) cost 1 planks");
+            Assert.AreEqual(bricks0 + 1, s.Economy.Ledger.Consumed[(int)Ware.Bricks], "and 1 bricks");
+            Assert.AreEqual(1, s.Economy.Ledger.Roads[(int)Ware.Bricks], "booked as a road sink");
             Assert.AreEqual(0, s.Economy.RoadCredit);
 
             // Next segment pays again; with no planks it is refused, but a paid credit still builds.
@@ -526,7 +541,7 @@ namespace World.Sim.Tests
             int next = topo.VertexEdges(flags[3]).First(x => !s.Economy.Roads[x]);
             var r = sim.Submit(new PlaceRoad { Edge = next });
             Assert.AreEqual(EconomyRefusals.NotEnoughWares, r.Reason);
-            Assert.AreEqual("A road needs 1 planks in the storehouse (it pays for 3 segments).", r.Message);
+            Assert.AreEqual("A road needs 1 planks and 1 bricks in the storehouse (it pays for 3 segments).", r.Message);
             s.Economy.RoadCredit = 1;
             Assert.IsTrue(sim.Submit(new PlaceRoad { Edge = next }).Ok, "paid-for segment needs no stock");
             sim.Step();
@@ -561,7 +576,7 @@ namespace World.Sim.Tests
             int mid = Enumerable.Range(topo.CornerCount, topo.VertexCount - topo.CornerCount)
                 .First(v => EconomyApi.IsInTerritory(s, 0, v) && !EconomyApi.IsVertexOccupied(s, v) && v != s.Board.WarehouseVertex
                     && topo.VertexHexes(v).Any(h => s.Board.HexTerrain[h] == Terrain.Hills));
-            Assert.IsTrue(sim.Check(new PlaceBuilding { Type = BuildingType.Quarry, Vertex = mid }).Ok);
+            Assert.IsTrue(sim.Check(new PlaceBuilding { Type = BuildingType.ClayPit, Vertex = mid }).Ok);
             // A flag holding a city cannot hold a building (the home corner also holds the storehouse).
             Assert.AreEqual(Reasons.InvalidSite, sim.Check(new PlaceBuilding { Type = BuildingType.Sawmill, Vertex = home }).Reason);
             int corner1 = topo.CornerNeighbours(home)[0];
@@ -577,19 +592,20 @@ namespace World.Sim.Tests
             var sim = NewSim();
             var s = sim.State;
             EconomyApi.AddToStorehouse(s, Ware.Planks, 10);
-            EconomyApi.AddToStorehouse(s, Ware.Stone, 10);
-            EconomyApi.AddToStorehouse(s, Ware.Rations, 3);
+            EconomyApi.AddToStorehouse(s, Ware.Bricks, 10);
+            EconomyApi.AddToStorehouse(s, Ware.Weapons, 3);
             int m = EconomyTestKit.Build(sim, BuildingType.Market);
-            Assert.IsTrue(EconomyApi.RequestWares(s, m, Ware.Rations, 3));
+            Assert.IsTrue(EconomyApi.RequestWares(s, m, Ware.Weapons, 3));
             sim.Step();
             Assert.AreEqual(Reasons.WaitingWare, s.Economy.Buildings[m].Reason);
-            Assert.AreEqual(0, EconomyApi.StorehouseCount(s, Ware.Rations), "reserved rations are not spendable");
-            Assert.IsFalse(EconomyApi.TrySpendFromStorehouse(s, Ware.Rations, 1));
-            StepUntil(sim, () => s.Economy.Buildings[m].Stock[(int)Ware.Rations] == 3, 1000);
+            Assert.AreEqual(0, EconomyApi.StorehouseCount(s, Ware.Weapons), "reserved weapons are not spendable");
+            Assert.IsFalse(EconomyApi.TrySpendFromStorehouse(s, Ware.Weapons, 1));
+            StepUntil(sim, () => s.Economy.Buildings[m].Stock[(int)Ware.Weapons] == 3, 1000);
             sim.Step();
             Assert.IsNull(s.Economy.Buildings[m].Reason);
-            Assert.IsTrue(EconomyApi.TryConsume(s, m, Ware.Rations, 2));
-            Assert.IsFalse(EconomyApi.TryConsume(s, m, Ware.Rations, 2));
+            Assert.IsTrue(EconomyApi.TryConsume(s, m, Ware.Weapons, 2));
+            Assert.IsFalse(EconomyApi.TryConsume(s, m, Ware.Weapons, 2));
+            Assert.AreEqual(2, s.Economy.Ledger.External[(int)Ware.Weapons], "booked as an external sink");
             Assert.IsNull(EconomyTestKit.CheckInvariants(s));
         }
 

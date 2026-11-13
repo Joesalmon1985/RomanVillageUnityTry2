@@ -73,8 +73,21 @@ namespace World.Sim.Military
             return Math.Max(1, s.Military.Tuning.TrainingTicks * Math.Max(1, pct) / 100);
         }
 
-        internal static int UnitRations(WorldState s) =>
-            Math.Max(0, s.Military.Tuning.UnitRations - StrategyApi.Effects(s, PlayerIds.Human).UnitRationDiscount);
+        internal static int UnitRations(WorldState s) => Math.Max(0, s.Military.Tuning.UnitRations);
+
+        /// <summary>
+        /// Shields for the age-end military comparison. Player: soldiers alive in its field squads plus military card
+        /// shields. Rival: its living garrison guards at the outpost plus its military card shields (raiders out on
+        /// a raid do not defend the outpost and do not count).
+        /// </summary>
+        internal static int Shields(WorldState s, int player)
+        {
+            int n = 0;
+            if (s.Military != null)
+                foreach (var sq in s.Military.Squads)
+                    if (sq.Alive && sq.Owner == player && (player == PlayerIds.Human || sq.Kind == SquadKind.Garrison)) n += sq.Units.Count;
+            return n + StrategyApi.Effects(s, player).Shields;
+        }
 
         // ---------------- Power ----------------
 
@@ -91,7 +104,18 @@ namespace World.Sim.Military
                 if (b.Type == BuildingType.PowerPlant && EconomyApi.IsFuelled(s, b.Id)) supply += t.SupplyPerPlant;
                 if (!b.Enabled) continue;
                 int d = 0;
-                if (b.Type == BuildingType.Refinery) d = t.RefineryDemand;
+                if (b.Type == BuildingType.Smelter)
+                {
+                    // A smelter only wants power while it works or has a cycle of inputs ready.
+                    var def = EconomyApi.Def(s, b.Type);
+                    bool ready = b.WorkProgress > 0;
+                    if (!ready)
+                    {
+                        ready = true;
+                        for (int w = 0; w < Wares.Count; w++) if (def.Inputs[w] > 0 && b.Available((Ware)w) < def.Inputs[w]) ready = false;
+                    }
+                    if (ready) d = t.SmelterDemand;
+                }
                 else if (b.Type == BuildingType.Barracks)
                 {
                     var q = Queue(s, b.Id, false);
@@ -116,6 +140,14 @@ namespace World.Sim.Military
                 sorted.Add(c);
             }
             return sorted;
+        }
+
+        /// <summary>True while an enabled smelter or a barracks with a queue wants power (plants only burn fuel then).</summary>
+        internal static bool PowerDemanded(WorldState s)
+        {
+            if (s.Military == null) return true;
+            Allocate(s, out _, out int demand);
+            return demand > 0;
         }
 
         internal static bool IsPowered(WorldState s, int buildingId)
@@ -146,23 +178,24 @@ namespace World.Sim.Military
                 {
                     var head = q.Orders[0];
                     if (!b.Enabled) reason = Reasons.Disabled;
+                    else if (b.Blocked) reason = Reasons.DemonOnRoute; // a demon or raid on the barracks flag stops it
                     else
                     {
                         if (!head.Supplied)
                         {
-                            if (b.Available(Ware.Rations) >= head.Rations && b.Available(Ware.Ingots) >= head.Ingots)
+                            if (b.Available(Ware.Weapons) >= head.Weapons && b.Available(Ware.Rations) >= head.Rations)
                             {
+                                if (head.Weapons > 0) EconomyApi.TryConsume(s, b.Id, Ware.Weapons, head.Weapons);
                                 if (head.Rations > 0) EconomyApi.TryConsume(s, b.Id, Ware.Rations, head.Rations);
-                                if (head.Ingots > 0) EconomyApi.TryConsume(s, b.Id, Ware.Ingots, head.Ingots);
+                                m.ConsumedForUnits[(int)Ware.Weapons] += head.Weapons;
                                 m.ConsumedForUnits[(int)Ware.Rations] += head.Rations;
-                                m.ConsumedForUnits[(int)Ware.Ingots] += head.Ingots;
                                 head.Supplied = true;
                                 ev?.Add(new TrainingStarted { BarracksId = b.Id });
                             }
                             else
                             {
                                 reason = Reasons.WaitingWare;
-                                ware = b.Available(Ware.Rations) < head.Rations ? (int)Ware.Rations : (int)Ware.Ingots;
+                                ware = b.Available(Ware.Weapons) < head.Weapons ? (int)Ware.Weapons : (int)Ware.Rations;
                             }
                         }
                         if (head.Supplied)

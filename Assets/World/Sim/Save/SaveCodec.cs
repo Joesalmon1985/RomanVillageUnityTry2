@@ -34,7 +34,11 @@ namespace World.Sim.Save
     /// </summary>
     public static class SaveCodec
     {
-        public const int CurrentVersion = 1;
+        /// <summary>2 = unified economy (14 wares, 20 building types, outbreaks, military comparison). Version 1 saves are refused.</summary>
+        public const int CurrentVersion = 2;
+
+        /// <summary>Oldest save version this build reads.</summary>
+        public const int OldestVersion = 2;
 
         private static JsonSerializerSettings Settings() => new JsonSerializerSettings
         {
@@ -53,7 +57,7 @@ namespace World.Sim.Save
             return JsonConvert.SerializeObject(m, Settings());
         }
 
-        /// <summary>Parse a save. Throws <see cref="FormatException"/> for an empty, unreadable or newer save.</summary>
+        /// <summary>Parse a save. Throws <see cref="FormatException"/> for an empty, unreadable, older or newer save.</summary>
         public static SaveModel FromJson(string json)
         {
             if (string.IsNullOrWhiteSpace(json)) throw new FormatException("The save is empty.");
@@ -68,6 +72,7 @@ namespace World.Sim.Save
             }
             if (m == null || m.State == null) throw new FormatException("The save holds no world.");
             if (m.Version > CurrentVersion) throw new FormatException("The save is from a newer version (" + m.Version + ").");
+            if (m.Version < OldestVersion) throw new FormatException("The save is from an older version (" + m.Version + ") with a different economy.");
             if (m.Extras == null) m.Extras = new SortedDictionary<string, string>(StringComparer.Ordinal);
             return m;
         }

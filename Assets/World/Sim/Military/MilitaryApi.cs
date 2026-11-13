@@ -25,7 +25,7 @@ namespace World.Sim.Military
         public int TrainingTicks;
         /// <summary>Reason code (<see cref="Reasons"/>) or null while training/idle.</summary>
         public string Reason;
-        /// <summary>Wares the head order still waits for, e.g. "1 rations" (empty when supplied).</summary>
+        /// <summary>Wares the head order still waits for, e.g. "1 weapons" (empty when supplied).</summary>
         public string[] WaitingFor;
         /// <summary>One sentence: "The barracks is waiting for rations.", "The barracks has no power.", "Training Wardens (40%)."</summary>
         public string Status;
@@ -52,6 +52,28 @@ namespace World.Sim.Military
         public OrderKind Order;
         public int Target;
         public string OrderText;
+    }
+
+    /// <summary>Shields on both sides for the military comparison panel.</summary>
+    public struct ShieldSummary
+    {
+        public int PlayerShields;
+        public int PlayerSoldiers;
+        public int PlayerCardShields;
+        public int RivalShields;
+        public int RivalGuards;
+        /// <summary>Rival soldiers out on raids: they do not count in the comparison.</summary>
+        public int RivalRaiders;
+        public int RivalCardShields;
+        /// <summary>Age whose end brings the next comparison (0 in the prologue).</summary>
+        public int NextComparisonAge;
+        /// <summary>Rounds after the current one before that comparison.</summary>
+        public int RoundsLeftInAge;
+        /// <summary>Points a win would give now; LossVp is negative.</summary>
+        public int WinVp;
+        public int LossVp;
+        /// <summary>"Shields 3 (2 soldiers, 1 from cards) against the rival's 2 (...): at the end of Age I you would win 1 point."</summary>
+        public string Sentence;
     }
 
     public struct OutpostInfo
@@ -91,7 +113,7 @@ namespace World.Sim.Military
 
         /// <summary>Wares per unit now (after cards).</summary>
         public static string UnitCostText(WorldState s) =>
-            MilitaryLogic.UnitRations(s) + " rations and " + s.Military.Tuning.UnitIngots + " ingots per " + UnitName(s, 1);
+            s.Military.Tuning.UnitWeapons + " weapons and " + MilitaryLogic.UnitRations(s) + " rations per " + UnitName(s, 1);
 
         public static string UnitName(WorldState s, int n) => n == 1 ? "Warden" : s.Military.Tuning.UnitName;
 
@@ -124,15 +146,16 @@ namespace World.Sim.Military
             var waiting = new List<string>();
             if (!head.Supplied)
             {
-                int r = head.Rations - b.Available(Ware.Rations), g = head.Ingots - b.Available(Ware.Ingots);
+                int g = head.Weapons - b.Available(Ware.Weapons), r = head.Rations - b.Available(Ware.Rations);
+                if (g > 0) waiting.Add(g + " weapons");
                 if (r > 0) waiting.Add(r + " rations");
-                if (g > 0) waiting.Add(g + " ingots");
             }
             info.WaitingFor = waiting.ToArray();
             switch (q.Reason)
             {
                 case Reasons.NoPower: info.Status = Reasons.Sentence(Reasons.NoPower, "The barracks"); break;
                 case Reasons.Disabled: info.Status = Reasons.Sentence(Reasons.Disabled, "The barracks"); break;
+                case Reasons.DemonOnRoute: info.Status = "A demon on its flag stops the barracks."; break;
                 case Reasons.WaitingWare:
                     // Show why the delivery is not coming when the economy knows (no road, demon on the route).
                     if (b.Reason == Reasons.NoRoad || b.Reason == Reasons.DemonOnRoute)
@@ -214,6 +237,45 @@ namespace World.Sim.Military
         }
 
         public static bool IsOutpostDestroyed(WorldState s) => s.Military != null && s.Military.Outpost.Destroyed;
+
+        // ---- Shields (age-end military comparison) ----
+
+        /// <summary>Shields of a side now: living soldiers (player field squads; rival guards and raiders) plus military card shields.</summary>
+        public static int Shields(WorldState s, int player) => MilitaryLogic.Shields(s, player);
+
+        /// <summary>Both sides' shields, what they are made of, and what the next comparison would give.</summary>
+        public static ShieldSummary ShieldSummary(WorldState s)
+        {
+            var sum = new ShieldSummary();
+            foreach (var sq in s.Military.Squads)
+            {
+                if (!sq.Alive) continue;
+                if (sq.Owner == PlayerIds.Human) sum.PlayerSoldiers += sq.Units.Count;
+                else if (sq.Kind == SquadKind.Raid) sum.RivalRaiders += sq.Units.Count;
+                else sum.RivalGuards += sq.Units.Count;
+            }
+            sum.PlayerCardShields = Strategy.StrategyApi.Effects(s, PlayerIds.Human).Shields;
+            sum.RivalCardShields = Strategy.StrategyApi.Effects(s, PlayerIds.Rival).Shields;
+            sum.PlayerShields = sum.PlayerSoldiers + sum.PlayerCardShields;
+            sum.RivalShields = sum.RivalGuards + sum.RivalCardShields; // raiders away on a raid do not defend
+            var st = s.Strategy;
+            int age = st == null ? 0 : st.Age;
+            sum.NextComparisonAge = age;
+            if (st != null && age >= 1)
+            {
+                var t = st.Tuning;
+                sum.WinVp = t.MilitaryWinVp[System.Math.Min(age, t.MilitaryWinVp.Length) - 1];
+                sum.LossVp = t.MilitaryLossVp;
+                sum.RoundsLeftInAge = System.Math.Max(0, t.RoundsPerAge - st.RoundInAge);
+            }
+            string lead = sum.PlayerShields > sum.RivalShields ? "you would win " + sum.WinVp + (sum.WinVp == 1 ? " point" : " points")
+                : sum.PlayerShields < sum.RivalShields ? "you would lose " + (-sum.LossVp) + " point" + (sum.LossVp == -1 ? "" : "s")
+                : "it would be a tie (no points)";
+            sum.Sentence = "Shields " + sum.PlayerShields + " (" + sum.PlayerSoldiers + " soldiers, " + sum.PlayerCardShields + " from cards) against the rival's "
+                + sum.RivalShields + " (" + sum.RivalGuards + " guards at the outpost, " + sum.RivalCardShields + " from cards)"
+                + (age >= 1 ? ": at the end of Age " + Strategy.StrategyApi.Roman(age) + " " + lead + "." : ".");
+            return sum;
+        }
 
         public static long OutpostDestroyedTick(WorldState s) => s.Military == null ? -1 : s.Military.Outpost.DestroyedTick;
 

@@ -46,22 +46,37 @@ namespace World.Sim
         Hills = 2,
         Fields = 3,
         Mountain = 4,
-        /// <summary>Grazing land. Yields no ware yet (the ware rework adds Sheep); it already gets production numbers.</summary>
+        /// <summary>Grazing land: yields Sheep.</summary>
         Pasture = 5,
     }
 
     public static class TerrainInfo
     {
-        /// <summary>Raw ware a terrain yields, or null for Meadow and (for now) Pasture.</summary>
+        /// <summary>Raw ware a terrain yields (Forest Logs, Hills Clay, Fields Wheat, Pasture Sheep, Mountain Ore), or null for Meadow.</summary>
         public static Ware? RawWare(Terrain t)
         {
             switch (t)
             {
-                case Terrain.Forest: return Ware.Timber;
-                case Terrain.Hills: return Ware.Stone;
-                case Terrain.Fields: return Ware.Grain;
+                case Terrain.Forest: return Ware.Logs;
+                case Terrain.Hills: return Ware.Clay;
+                case Terrain.Fields: return Ware.Wheat;
+                case Terrain.Pasture: return Ware.Sheep;
                 case Terrain.Mountain: return Ware.Ore;
                 default: return null;
+            }
+        }
+
+        /// <summary>The terrain that yields a raw ware (inverse of RawWare), or Meadow for processed wares.</summary>
+        public static Terrain TerrainOf(Ware w)
+        {
+            switch (w)
+            {
+                case Ware.Logs: return Terrain.Forest;
+                case Ware.Clay: return Terrain.Hills;
+                case Ware.Wheat: return Terrain.Fields;
+                case Ware.Sheep: return Terrain.Pasture;
+                case Ware.Ore: return Terrain.Mountain;
+                default: return Terrain.Meadow;
             }
         }
 
