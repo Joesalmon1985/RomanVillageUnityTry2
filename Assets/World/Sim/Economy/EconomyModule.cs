@@ -13,12 +13,12 @@ namespace World.Sim.Economy
         {
             var hooks = EconomyApi.Hooks(sim);
             sim.AddSystem(SystemOrder.Rounds, new RoundSystem(hooks));
-            sim.AddSystem(SystemOrder.Harvest, new HarvestSystem());
+            sim.AddSystem(SystemOrder.Harvest, new HarvestSystem(hooks));
             sim.AddSystem(SystemOrder.Production, new ProductionSystem(hooks));
             sim.AddSystem(SystemOrder.Construction, new ConstructionSystem());
             sim.AddSystem(SystemOrder.Jobs, new JobSystem(hooks));
             sim.AddSystem(SystemOrder.Carriers, new CarrierSystem(hooks));
-            sim.AddSystem(SystemOrder.Power, new PowerSystem());
+            sim.AddSystem(SystemOrder.Power, new PowerSystem(hooks));
             sim.AddSystem(SystemOrder.Diagnostics, new DiagnosticsSystem(hooks));
             sim.RegisterHandler(new PlaceRoadHandler());
             sim.RegisterHandler(new RemoveRoadHandler());
@@ -42,6 +42,7 @@ namespace World.Sim.Economy
             e.RoundRng = s.Rng.Fork("economy.rounds");
             e.HexBatchRound = new int[topo.HexCount];
             e.HexBatchRemaining = new int[topo.HexCount];
+            e.HexStopped = new bool[topo.HexCount];
             e.Roads = new bool[topo.EdgeCount];
 
             int home = s.Board.HomeCityVertex;

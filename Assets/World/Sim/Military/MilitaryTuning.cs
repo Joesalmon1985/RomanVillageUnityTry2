@@ -6,14 +6,15 @@ namespace World.Sim.Military
         // ---- Power ----
         /// <summary>Power from each fuelled power plant.</summary>
         public int SupplyPerPlant = 4;
-        public int RefineryDemand = 2;
+        public int SmelterDemand = 2;
         public int BarracksDemand = 2;
 
         // ---- Barracks ----
         /// <summary>Player-facing name of the one infantry type.</summary>
         public string UnitName = "Wardens";
+        /// <summary>A soldier costs 1 Weapons + 1 Rations, delivered to the barracks (design section 4).</summary>
         public int UnitRations = 1;
-        public int UnitIngots = 1;
+        public int UnitWeapons = 1;
         public int TrainingTicks = 150;
         public int MaxQueue = 8;
         public int MaxSquadSize = 4;
@@ -30,12 +31,12 @@ namespace World.Sim.Military
 
         // ---- Rival ----
         public int OutpostHp = 60;
-        public int GarrisonBase = 2;
+        public int GarrisonBase = 1;
         public int GarrisonPerAge = 1;
         public int GuardHp = 8;
         public int GuardDamage = 2;
         /// <summary>Raids start in this age.</summary>
         public int RaidFromAge = 2;
-        public int RaidSize = 2;
+        public int RaidSize = 1;
     }
 }

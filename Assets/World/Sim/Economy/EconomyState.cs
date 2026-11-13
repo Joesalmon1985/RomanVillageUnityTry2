@@ -2,22 +2,41 @@ using System.Collections.Generic;
 
 namespace World.Sim.Economy
 {
+    /// <summary>
+    /// Building types (ECONOMY_DESIGN section 3). Ids 0-13 keep their old numbers (Quarry is now the Clay pit,
+    /// Grain mill the Mill, Ore pit the Mine, Refinery the Smelter); 14-19 are new.
+    /// </summary>
     public enum BuildingType
     {
         Storehouse = 0,
         Forester = 1,
         Woodcutter = 2,
         Sawmill = 3,
-        Quarry = 4,
+        ClayPit = 4,
         Farm = 5,
-        GrainMill = 6,
+        Mill = 6,
         Bakery = 7,
-        OrePit = 8,
-        Refinery = 9,
+        Mine = 8,
+        Smelter = 9,
         PowerPlant = 10,
         Barracks = 11,
         Market = 12,
         WonderSite = 13,
+        Sheepfold = 14,
+        Butcher = 15,
+        Tavern = 16,
+        CharcoalKiln = 17,
+        BrickKiln = 18,
+        Smithy = 19,
+    }
+
+    /// <summary>Construction size class; the cost in Planks and Bricks follows from it (EconomyTuning.SizeCost).</summary>
+    public enum BuildingSize
+    {
+        Small = 0,
+        Medium = 1,
+        Large = 2,
+        Huge = 3,
     }
 
     /// <summary>How a building behaves in the economy.</summary>
@@ -27,11 +46,11 @@ namespace World.Sim.Economy
         Store,
         /// <summary>Passive: keeps forest batches whole for the forest hexes it touches.</summary>
         Forester,
-        /// <summary>Works one cycle per unit of an authorised batch on a touching hex.</summary>
+        /// <summary>Works one cycle per unit of an authorised batch on a touching hex (the Mine also uses up Rations).</summary>
         Harvester,
         /// <summary>Recipe: inputs to outputs per cycle.</summary>
         Producer,
-        /// <summary>Burns timber; <see cref="EconomyApi.IsFuelled"/> while fuel time is left.</summary>
+        /// <summary>Burns coal; <see cref="EconomyApi.IsFuelled"/> while fuel time is left.</summary>
         PowerPlant,
         /// <summary>Construction and a store that receives requested wares; other modules add behaviour.</summary>
         Plain,
@@ -91,6 +110,11 @@ namespace World.Sim.Economy
         public int[] HexBatchRound = new int[0];
         /// <summary>Per hex id: raw units still to harvest.</summary>
         public int[] HexBatchRemaining = new int[0];
+        /// <summary>
+        /// Per hex id: true while the robber stops the hex (a demon on every player city touching it). Refreshed at
+        /// the start of every economy tick from EconomyHooks.IsHexStopped; read by views and diagnostics.
+        /// </summary>
+        public bool[] HexStopped = new bool[0];
 
         /// <summary>Per road segment id (BoardTopology fine edge): true when the player has a road there.</summary>
         public bool[] Roads = new bool[0];
@@ -113,6 +137,18 @@ namespace World.Sim.Economy
 
         public WareLedger Ledger = new WareLedger();
         public CommissionState Commission = new CommissionState();
+
+        /// <summary>Effects of built cards on the economy, written by the strategy module (EconomyApi.SetBonuses).</summary>
+        public EconomyBonuses Bonus = new EconomyBonuses();
+    }
+
+    /// <summary>Card effects the economy applies (kept in state so static API calls see them).</summary>
+    public sealed class EconomyBonuses
+    {
+        /// <summary>Per building type: extra units of its main output per cycle.</summary>
+        public int[] ExtraOutput = new int[BuildingDefs.Count];
+        /// <summary>Extra road segments paid for by one road cost.</summary>
+        public int RoadSegments;
     }
 
     /// <summary>A city: occupies a hex corner flag, extends territory and brings its touching hexes into production. No store.</summary>
@@ -142,6 +178,13 @@ namespace World.Sim.Economy
         public int WorkHex = -1;
         /// <summary>Power plant: ticks of fuel left.</summary>
         public int FuelLeft;
+        /// <summary>Harvester with an upkeep (the Mine): cycles already paid for by consumed inputs.</summary>
+        public int InputCredit;
+        /// <summary>
+        /// True while a demon or a raid holds this building's flag: it does no work (harvest, recipe, construction,
+        /// fuel, training, wonder stage). Refreshed at the start of every economy tick from EconomyHooks.IsVertexBlocked.
+        /// </summary>
+        public bool Blocked;
 
         /// <summary>Per ware (index = (int)Ware): wares physically here (sites: delivered materials).</summary>
         public int[] Stock = new int[Wares.Count];
@@ -194,9 +237,16 @@ namespace World.Sim.Economy
         public bool HasLoad;
         public Ware Load;
         public int JobId = -1;
+        /// <summary>Ticks spent idle away from the storehouse (it walks home after Tuning.CarrierWaitTicks).</summary>
+        public int IdleTicks;
     }
 
-    /// <summary>Ware accounting per ware (index = (int)Ware). In world = Starting + Harvested + Produced + Added - Consumed.</summary>
+    /// <summary>
+    /// Ware accounting per ware (index = (int)Ware). In world = Starting + Harvested + Produced + Added - Consumed.
+    /// Consumed is also split by sink: Consumed = sum(RecipeIn) + Construction + Roads + External, and
+    /// Produced = sum(RecipeOut). RecipeIn/RecipeOut/Cycles are indexed by (int)BuildingType (recipe inputs,
+    /// mine upkeep and power plant fuel count as RecipeIn of that building type).
+    /// </summary>
     public sealed class WareLedger
     {
         public int[] Starting = new int[Wares.Count];
@@ -204,8 +254,31 @@ namespace World.Sim.Economy
         public int[] Produced = new int[Wares.Count];
         /// <summary>Added from outside the economy (<see cref="EconomyApi.AddToStorehouse"/>).</summary>
         public int[] Added = new int[Wares.Count];
-        /// <summary>Recipe inputs, fuel, construction, roads and external spending.</summary>
+        /// <summary>Recipe inputs, mine upkeep, fuel, construction, roads and external spending.</summary>
         public int[] Consumed = new int[Wares.Count];
+
+        /// <summary>Per building type, per ware: inputs used up (recipes, mine rations, power plant coal).</summary>
+        public int[][] RecipeIn = NewTable();
+        /// <summary>Per building type, per ware: outputs made (recipes) or harvested (harvesters).</summary>
+        public int[][] RecipeOut = NewTable();
+        /// <summary>Per building type: finished work cycles (recipe cycles, harvest cycles, fuel units burned).</summary>
+        public int[] Cycles = new int[BuildingDefs.Count];
+        /// <summary>Per ware: used up by finished construction sites.</summary>
+        public int[] Construction = new int[Wares.Count];
+        /// <summary>Per ware: paid for road segments.</summary>
+        public int[] Roads = new int[Wares.Count];
+        /// <summary>Per raw ware: batch units authorised by round draws (after modifiers), and the part lost to the carry-over cap.</summary>
+        public int[] BatchAuthorised = new int[Wares.Count];
+        public int[] BatchLost = new int[Wares.Count];
+        /// <summary>Per ware: spent through EconomyApi.TryConsume / TrySpendFromStorehouse by other modules (cities, cards, wonder, market, soldiers).</summary>
+        public int[] External = new int[Wares.Count];
+
+        public static int[][] NewTable()
+        {
+            var t = new int[BuildingDefs.Count][];
+            for (int i = 0; i < t.Length; i++) t[i] = new int[Wares.Count];
+            return t;
+        }
     }
 
     public sealed class CommissionState

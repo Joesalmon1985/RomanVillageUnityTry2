@@ -19,7 +19,7 @@ namespace World.Sim.Economy
     /// from <c>WorldState.Economy</c>; writes from other modules go through these methods only.
     /// The economy belongs to <see cref="PlayerIds.Human"/>.
     /// </summary>
-    public static class EconomyApi
+    public static partial class EconomyApi
     {
         private static readonly ConditionalWeakTable<WorldSim, EconomyHooks> HookTable = new ConditionalWeakTable<WorldSim, EconomyHooks>();
 
@@ -104,7 +104,7 @@ namespace World.Sim.Economy
         public static bool IsFuelled(WorldState s, int buildingId)
         {
             var b = EconomyLogic.Get(s, buildingId);
-            return b != null && b.State == BuildingState.Active && b.Enabled && b.FuelLeft > 0;
+            return b != null && b.State == BuildingState.Active && b.Enabled && !b.Blocked && b.FuelLeft > 0;
         }
 
         public static bool HasRoad(WorldState s, int edge) => edge >= 0 && edge < s.Economy.Roads.Length && s.Economy.Roads[edge];
@@ -135,6 +135,7 @@ namespace World.Sim.Economy
             if (!EconomyLogic.IsLive(b) || count < 0 || b.Available(ware) < count) return false;
             b.Stock[(int)ware] -= count;
             s.Economy.Ledger.Consumed[(int)ware] += count;
+            s.Economy.Ledger.External[(int)ware] += count;
             return true;
         }
 
@@ -242,7 +243,19 @@ namespace World.Sim.Economy
             switch (b.Reason)
             {
                 case Reasons.NoRoad: return Reasons.Sentence(Reasons.NoRoad, "the " + subject, "the storehouse");
-                case Reasons.DemonOnRoute: return Reasons.Sentence(Reasons.DemonOnRoute, "the " + subject);
+                case Reasons.DemonOnRoute:
+                    if (b.Blocked) return "A demon on its flag stops the " + subject + ".";
+                    return Reasons.Sentence(Reasons.DemonOnRoute, "the " + subject);
+                case Reasons.NoBatch:
+                {
+                    // The robber: batch units wait on a touching hex, but a demon on the city stops it producing.
+                    var def = EconomyLogic.Def(s, b);
+                    var e = s.Economy;
+                    foreach (int h in s.Board.Topology.VertexHexes(b.Vertex))
+                        if (s.Board.HexTerrain[h] == def.Terrain && e.HexStopped != null && h < e.HexStopped.Length && e.HexStopped[h])
+                            return "A demon on your city stops the " + def.Terrain.ToString().ToLowerInvariant() + " producing for the " + subject + ".";
+                    return Reasons.Sentence(b.Reason, subject);
+                }
                 case Reasons.WaitingWare:
                 case Reasons.InputMissing:
                     return ware != null ? Reasons.Sentence(b.Reason, subject, ware) : Reasons.Sentence(b.Reason, subject);

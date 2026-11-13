@@ -40,8 +40,11 @@ namespace World.Sim.Tests
         /// <summary>Planks for a building's road connection of n new segments (road credit counted).</summary>
         public static int RoadPlanks(WorldState s, int segments) => EconomyApi.RoadCostFor(s, segments)[(int)Ware.Planks];
 
-        /// <summary>Best free vertex for a building: valid placement, filter ok, fewest new roads, then lowest id.</summary>
-        public static int ChooseVertex(WorldState s, BuildingType type, Func<int, bool> filter = null)
+        /// <summary>
+        /// Best free vertex for a building: valid placement, filter ok, fewest new roads, then closest to the storehouse.
+        /// With an anchor flag (the building it trades with), closeness to the anchor counts most.
+        /// </summary>
+        public static int ChooseVertex(WorldState s, BuildingType type, Func<int, bool> filter = null, int anchor = -1)
         {
             int best = -1, bestCost = int.MaxValue;
             for (int v = 0; v < s.Board.Topology.VertexCount; v++)
@@ -53,8 +56,9 @@ namespace World.Sim.Tests
                 int cost = 0;
                 var edges = s.Board.Topology.PathEdges(p);
                 foreach (int e in edges) if (!s.Economy.Roads[e]) cost++;
-                // Fewest new roads first, then closest (by edges) to the storehouse.
-                cost = cost * 100 + s.Board.Topology.Distance(v, s.Board.StorehouseVertex);
+                // Fewest new roads first, then closest (by edges) to the storehouse; with an anchor, near it.
+                if (anchor >= 0) cost = cost * 15 + 10 * s.Board.Topology.Distance(v, anchor) + s.Board.Topology.Distance(v, s.Board.StorehouseVertex);
+                else cost = cost * 100 + s.Board.Topology.Distance(v, s.Board.StorehouseVertex);
                 if (cost < bestCost)
                 {
                     best = v;
@@ -122,6 +126,18 @@ namespace World.Sim.Tests
             {
                 int expected = l.Starting[w] + l.Harvested[w] + l.Produced[w] + l.Added[w] - l.Consumed[w];
                 if (inWorld[w] != expected) return $"ledger {(Ware)w}: in world {inWorld[w]} expected {expected}";
+                // Every unit consumed went to a named sink; every unit produced came out of a recipe; every unit harvested from a harvester.
+                int recipeIn = 0, recipeOut = 0, harvestOut = 0;
+                for (int t = 0; t < BuildingDefs.Count; t++)
+                {
+                    recipeIn += l.RecipeIn[t][w];
+                    if (e.Tuning.Buildings[t].Kind == BuildingKind.Harvester) harvestOut += l.RecipeOut[t][w];
+                    else recipeOut += l.RecipeOut[t][w];
+                }
+                if (l.Consumed[w] != recipeIn + l.Construction[w] + l.Roads[w] + l.External[w])
+                    return $"ledger {(Ware)w}: consumed {l.Consumed[w]} != recipes {recipeIn} + construction {l.Construction[w]} + roads {l.Roads[w]} + external {l.External[w]}";
+                if (l.Produced[w] != recipeOut) return $"ledger {(Ware)w}: produced {l.Produced[w]} != recipe outputs {recipeOut}";
+                if (l.Harvested[w] != harvestOut) return $"ledger {(Ware)w}: harvested {l.Harvested[w]} != harvester outputs {harvestOut}";
             }
             var ids = new HashSet<int>();
             foreach (var j in e.Jobs)
@@ -179,9 +195,9 @@ namespace World.Sim.Tests
     }
 
     /// <summary>
-    /// Headless commission player: places a woodcutter on the home forest, a quarry on the home hills
-    /// and a sawmill (the forester site is pre-placed), connects each by road, and ends the round
-    /// whenever the home forest and hills batches are used up. No trading.
+    /// Headless commission player: places a woodcutter on the home forest, a clay pit on the home hills, then a
+    /// sawmill, a charcoal kiln and a brick kiln (the forester site is pre-placed), connects each by road, and ends
+    /// the round whenever the home forest and hills batches are used up. No trading.
     /// </summary>
     internal sealed class CommissionScript
     {
@@ -209,8 +225,10 @@ namespace World.Sim.Tests
         private void Plan(WorldState s)
         {
             if (TryPlan(s, BuildingType.Woodcutter, EconomyTestKit.Touches(s, _forestHex))) return;
-            if (TryPlan(s, BuildingType.Quarry, EconomyTestKit.Touches(s, _hillsHex))) return;
+            if (TryPlan(s, BuildingType.ClayPit, EconomyTestKit.Touches(s, _hillsHex))) return;
             if (TryPlan(s, BuildingType.Sawmill, null)) return;
+            if (TryPlan(s, BuildingType.CharcoalKiln, null)) return;
+            if (TryPlan(s, BuildingType.BrickKiln, null)) return;
             if (s.Economy.RoundStartPending || _sim.PendingCommands.Count > 0) return;
             if (s.Economy.HexBatchRemaining[_forestHex] == 0 && s.Economy.HexBatchRemaining[_hillsHex] == 0)
                 _queue.Enqueue(new EndRound { PlayerId = PlayerIds.Human });

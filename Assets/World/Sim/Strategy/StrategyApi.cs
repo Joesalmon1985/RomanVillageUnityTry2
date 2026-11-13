@@ -10,12 +10,19 @@ namespace World.Sim.Strategy
         public string DefId;
         public string Name;
         public int Age;
+        public CardFamily Family;
+        /// <summary>"Raw and crafted", "Commerce", "Civic", "Military", "Lore".</summary>
+        public string FamilyName;
+        /// <summary>Suggested card colour "#RRGGBB" by family.</summary>
+        public string Colour;
         public string CostText;
         public string EffectText;
         /// <summary>Built cards: the city flag; else -1.</summary>
         public int CityVertex;
         /// <summary>Hand cards: affordable right now.</summary>
         public bool Affordable;
+        /// <summary>What is missing to build it ("1 rations, 2 coin"), or null when affordable.</summary>
+        public string MissingText;
     }
 
     /// <summary>A flag and why a city can or cannot be founded there.</summary>
@@ -40,6 +47,8 @@ namespace World.Sim.Strategy
         /// <summary>"planks 4/6" per ware of the stage in progress (or the next stage).</summary>
         public string[] Lines;
         public bool CanOrder;
+        /// <summary>Points per stage (index = stage - 1).</summary>
+        public int[] StageVp;
     }
 
     /// <summary>Snapshot of the round, age and ending for the HUD.</summary>
@@ -62,6 +71,32 @@ namespace World.Sim.Strategy
         public int HeroMovesLeft;
         public int NextInfection;
         public int Coin;
+        public int VictoryPoints;
+    }
+
+    /// <summary>What the demons will do next: deck, discard, draw rate, sites about to outbreak.</summary>
+    public struct InfectionForecast
+    {
+        /// <summary>Cards left in the draw pile and in the discard pile.</summary>
+        public int DeckSize;
+        public int DiscardSize;
+        /// <summary>Discarded sites (already drawn since the last reshuffle), ascending.</summary>
+        public int[] Discard;
+        /// <summary>Cards drawn at the end of this round.</summary>
+        public int NextDraws;
+        /// <summary>Most demons a site holds; one more outbreaks.</summary>
+        public int DemonCap;
+        /// <summary>Sites holding DemonCap demons: drawing one of them, or an outbreak next to it, outbreaks.</summary>
+        public int[] SitesAtCap;
+        /// <summary>Sites at the cap whose card is in the discard pile (safe until the next reshuffle or epidemic).</summary>
+        public int[] SitesAtCapInDiscard;
+        public int Breaches;
+        public int BreachLimit;
+        public int Epidemics;
+        /// <summary>True when the next round start begins a new age (and so brings an epidemic).</summary>
+        public bool EpidemicNextRound;
+        /// <summary>"2 cards drawn at round end; 9 in the deck, 6 in the discard; 1 site at 3 demons; breaches 1 of 6."</summary>
+        public string Sentence;
     }
 
     /// <summary>Public read surface of the strategy layer (plus the few writes other modules need).</summary>
@@ -92,12 +127,13 @@ namespace World.Sim.Strategy
                 HeroMovesLeft = st.HeroMovesLeft,
                 NextInfection = st.Started ? StrategyLogic.InfectionCount(s) : 0,
                 Coin = s.Player(PlayerIds.Human).Coin,
+                VictoryPoints = t.VictoryPoints,
             };
             r.Headline = Headline(s);
             return r;
         }
 
-        /// <summary>"Prologue: finish the quartermaster's commission.", "Age II, round 1 of 2.", "Victory: 8 points to 5."</summary>
+        /// <summary>"Prologue: finish the quartermaster's commission.", "Age II, round 1 of 2.", "Victory: 12 points to 5."</summary>
         public static string Headline(WorldState s)
         {
             var st = s.Strategy;
@@ -130,15 +166,21 @@ namespace World.Sim.Strategy
 
         public static ScoreBreakdown Score(WorldState s, int player) => StrategyLogic.Score(s, player);
 
-        /// <summary>"Cities 4, cards 1, wonder 1, outpost 0: 6 of 8."</summary>
+        /// <summary>Score breakdowns of both sides: [0] player, [1] rival.</summary>
+        public static ScoreBreakdown[] Scores(WorldState s) => new[] { Score(s, PlayerIds.Human), Score(s, PlayerIds.Rival) };
+
+        /// <summary>"Cities 4, wonder 2, cards 1, military 1, outpost 0: 8 of 12." (rival: "Plan 2, cards 1, military -1: 2 of 12.")</summary>
         public static string ScoreText(WorldState s, int player)
         {
             var sc = Score(s, player);
             int target = s.Strategy.Tuning.VictoryPoints;
             if (player == PlayerIds.Human)
-                return "Cities " + sc.Cities + ", cards " + sc.Cards + ", wonder " + sc.Wonder + ", outpost " + sc.Outpost + ": " + sc.Total + " of " + target + ".";
-            return "Plan " + sc.Plan + ", cards " + sc.Cards + ": " + sc.Total + " of " + target + ".";
+                return "Cities " + sc.Cities + ", wonder " + sc.Wonder + ", cards " + sc.Cards + ", military " + sc.Military + ", outpost " + sc.Outpost + ": " + sc.Total + " of " + target + ".";
+            return "Plan " + sc.Plan + ", cards " + sc.Cards + ", military " + sc.Military + ": " + sc.Total + " of " + target + ".";
         }
+
+        /// <summary>Every age-end military comparison so far (age, shields, result, tokens).</summary>
+        public static List<MilitaryComparison> Comparisons(WorldState s) => new List<MilitaryComparison>(s.Strategy.Comparisons);
 
         // ---- Cities ----
 
@@ -205,9 +247,55 @@ namespace World.Sim.Strategy
         public static int DemonsAt(WorldState s, int vertex) =>
             vertex >= 0 && vertex < s.Strategy.Demons.Length ? s.Strategy.Demons[vertex] : 0;
 
-        public static int BreachThreshold(WorldState s) => StrategyLogic.BreachThreshold(s);
+        /// <summary>Most demons a site holds; one more makes it outbreak (3; 4 with Ward Stones).</summary>
+        public static int DemonCap(WorldState s) => StrategyLogic.DemonCap(s);
 
+        /// <summary>Infection cards drawn at the end of this round (2, 3, 4 by age; Beacon Tower -1).</summary>
         public static int InfectionCount(WorldState s) => StrategyLogic.InfectionCount(s);
+
+        /// <summary>Sites that receive a demon when this flag outbreaks (see StrategyLogic.OutbreakNeighbours for the rule).</summary>
+        public static List<int> OutbreakNeighbours(WorldState s, int vertex) => StrategyLogic.OutbreakNeighbours(s, vertex);
+
+        /// <summary>True when a drawn card for this flag would place a demon (corners; intermediate flags holding something).</summary>
+        public static bool TakesDemons(WorldState s, int vertex) => StrategyLogic.TakesDemons(s, vertex);
+
+        /// <summary>True when the robber stops this hex (every one of your cities touching it holds a demon).</summary>
+        public static bool IsHexRobbed(WorldState s, int hex) => StrategyLogic.HexRobbed(s, hex);
+
+        public static InfectionForecast Forecast(WorldState s)
+        {
+            var st = s.Strategy;
+            int cap = DemonCap(s);
+            var atCap = new List<int>();
+            var atCapDiscard = new List<int>();
+            for (int v = 0; v < st.Demons.Length; v++)
+            {
+                if (st.Demons[v] < cap) continue;
+                atCap.Add(v);
+                if (st.InfectionDiscard.Contains(v)) atCapDiscard.Add(v);
+            }
+            var discard = new List<int>(st.InfectionDiscard);
+            discard.Sort();
+            var f = new InfectionForecast
+            {
+                DeckSize = st.InfectionDeck.Count,
+                DiscardSize = st.InfectionDiscard.Count,
+                Discard = discard.ToArray(),
+                NextDraws = st.Started ? StrategyLogic.InfectionCount(s) : 0,
+                DemonCap = cap,
+                SitesAtCap = atCap.ToArray(),
+                SitesAtCapInDiscard = atCapDiscard.ToArray(),
+                Breaches = st.Breaches,
+                BreachLimit = st.Tuning.BreachLimit,
+                Epidemics = st.Epidemics,
+                EpidemicNextRound = st.Started && st.Tuning.Epidemics && st.RoundInAge >= st.Tuning.RoundsPerAge && st.Age < st.Tuning.Ages,
+            };
+            f.Sentence = (st.Started ? f.NextDraws + " infection cards drawn at round end; " : "No infection before Age I; ")
+                + f.DeckSize + " in the deck, " + f.DiscardSize + " in the discard; "
+                + atCap.Count + (atCap.Count == 1 ? " site" : " sites") + " at " + cap + " demons; breaches " + st.Breaches + " of " + st.Tuning.BreachLimit + "."
+                + (f.EpidemicNextRound ? " An epidemic strikes when the next age begins." : "");
+            return f;
+        }
 
         /// <summary>Corners the hero can move to now, one hex edge away (empty when out of moves).</summary>
         public static List<int> HeroMoveTargets(WorldState s)
@@ -241,10 +329,14 @@ namespace World.Sim.Strategy
                 DefId = d.Id,
                 Name = d.Name,
                 Age = d.Age,
+                Family = d.Family,
+                FamilyName = CardTable.FamilyName(d.Family),
+                Colour = CardTable.FamilyColour(d.Family),
                 CostText = StrategyLogic.CostText(d.Cost, d.CoinCost),
                 EffectText = d.Text,
                 CityVertex = city,
                 Affordable = StrategyLogic.CanPay(s, d.Cost, d.CoinCost),
+                MissingText = StrategyLogic.MissingText(s, d.Cost, d.CoinCost),
             };
         }
 
@@ -256,6 +348,22 @@ namespace World.Sim.Strategy
         {
             var ids = new List<int>();
             foreach (var b in s.Strategy.Sides[player].Built) ids.Add(b.CardId);
+            return Views(s, ids);
+        }
+
+        /// <summary>Every card of the game (one per card id) in a family, by age then table order.</summary>
+        public static List<CardView> CardsByFamily(WorldState s, CardFamily family)
+        {
+            var ids = new List<int>();
+            foreach (var c in s.Strategy.Cards)
+                if (CardTable.Get(c.DefId).Family == family) ids.Add(c.Id);
+            ids.Sort((a, b) =>
+            {
+                var da = CardTable.Get(s.Strategy.Cards[a].DefId);
+                var db = CardTable.Get(s.Strategy.Cards[b].DefId);
+                if (da.Age != db.Age) return da.Age.CompareTo(db.Age);
+                return System.Array.IndexOf(CardTable.All, da).CompareTo(System.Array.IndexOf(CardTable.All, db));
+            });
             return Views(s, ids);
         }
 
@@ -296,6 +404,7 @@ namespace World.Sim.Strategy
                 StageCount = t.WonderStages.Length,
                 InProgressStage = w.InProgressStage,
                 BuildingId = site,
+                StageVp = (int[])t.WonderStageVp.Clone(),
             };
             int shown = w.InProgressStage > 0 ? w.InProgressStage : w.StagesDone + 1;
             var lines = new List<string>();

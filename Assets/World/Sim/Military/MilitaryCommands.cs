@@ -2,7 +2,7 @@ using World.Sim.Economy;
 
 namespace World.Sim.Military
 {
-    /// <summary>Queue Count units at a barracks: their rations and ingots are requested and must be delivered there.</summary>
+    /// <summary>Queue Count units at a barracks: their weapons and rations are requested and must be delivered there.</summary>
     public sealed class QueueUnit : Command { public int BarracksId; public int Count = 1; }
 
     /// <summary>Give a player squad a delegated order: Defend (walk to the flag and hold it) or Attack (walk there and fight).</summary>
@@ -66,12 +66,12 @@ namespace World.Sim.Military
         {
             var q = MilitaryLogic.Queue(s, c.BarracksId, true);
             int rations = MilitaryLogic.UnitRations(s);
-            int ingots = s.Military.Tuning.UnitIngots;
+            int weapons = s.Military.Tuning.UnitWeapons;
             for (int i = 0; i < c.Count; i++)
             {
-                q.Orders.Add(new QueuedUnit { Rations = rations, Ingots = ingots });
+                q.Orders.Add(new QueuedUnit { Rations = rations, Weapons = weapons });
+                if (weapons > 0) EconomyApi.RequestWares(s, c.BarracksId, Ware.Weapons, weapons);
                 if (rations > 0) EconomyApi.RequestWares(s, c.BarracksId, Ware.Rations, rations);
-                if (ingots > 0) EconomyApi.RequestWares(s, c.BarracksId, Ware.Ingots, ingots);
             }
             ev.Add(new UnitQueued { BarracksId = c.BarracksId, QueueLength = q.Orders.Count });
             return CommandResult.Accept();

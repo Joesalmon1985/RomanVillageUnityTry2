@@ -21,7 +21,25 @@ namespace World.Sim.Strategy
     /// <summary>A demon was drawn onto the hero's flag and cleared at once.</summary>
     public sealed class DemonRepelled : SimEvent { public int Vertex; }
 
+    /// <summary>The breach track advanced (one step per outbreak). Vertex = the site that outbroke.</summary>
     public sealed class BreachAdvanced : SimEvent { public int Vertex; public int Breaches; public int Limit; }
+
+    /// <summary>A site that would have gained one demon too many outbroke: each of its Neighbours gains one (chains possible).</summary>
+    public sealed class OutbreakOccurred : SimEvent { public int Vertex; public int[] Neighbours; public int Breaches; public int Limit; public bool Chained; }
+
+    /// <summary>Epidemic at an age change: the deck's bottom site was filled to Demons, then the discard went back on top.</summary>
+    public sealed class EpidemicStruck : SimEvent { public int Vertex; public int Age; public int Demons; public bool Outbreak; }
+
+    /// <summary>End-of-age military comparison (shields on both sides and the tokens awarded).</summary>
+    public sealed class MilitaryCompared : SimEvent
+    {
+        public int Age;
+        public int PlayerShields;
+        public int RivalShields;
+        public ComparisonResult Result;
+        public int PlayerVp;
+        public int RivalVp;
+    }
 
     /// <summary>Demons on a flag were cleared. By: "hero" or "squad".</summary>
     public sealed class DemonsCleared : SimEvent { public int Vertex; public int Count; public string By; }

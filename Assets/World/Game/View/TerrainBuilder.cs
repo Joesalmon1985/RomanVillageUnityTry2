@@ -18,8 +18,7 @@ namespace World.Game
             get
             {
                 var ware = TerrainInfo.RawWare(Terrain);
-                if (ware.HasValue) yield return "Gives " + ware.Value.ToString().ToLowerInvariant() + ".";
-                else if (Terrain == Terrain.Pasture) yield return "Grazing land. Gives nothing yet.";
+                if (ware.HasValue) yield return "Gives " + Wares.DisplayName(ware.Value) + ".";
                 else yield return "Gives nothing (open meadow).";
                 if (Number > 0) yield return "Production number " + Number + ".";
                 yield return "Hex id " + HexId + ".";

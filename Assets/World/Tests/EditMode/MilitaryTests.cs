@@ -24,7 +24,7 @@ namespace World.Sim.Tests
             Assert.IsTrue(done(), "condition not reached in " + max + " ticks");
         }
 
-        /// <summary>Age I game with a fuelled power plant and an active barracks; storehouse emptied of rations and ingots.</summary>
+        /// <summary>Age I game with a fuelled power plant and an active barracks (no weapons in the storehouse).</summary>
         private static WorldSim Camp(out int plant, out int barracks, ulong seed = EconomyTestKit.DefaultSeed)
         {
             var sim = K.NewSim(seed);
@@ -32,11 +32,11 @@ namespace World.Sim.Tests
             s.Economy.Tuning.Buildings[(int)BuildingType.PowerPlant].FuelTicks = 100;
             K.Step(sim);
             K.FinishDraft(sim);
-            K.Give(s, Ware.Planks, 30, Ware.Stone, 20, Ware.Timber, 4);
+            K.Give(s, Ware.Planks, 30, Ware.Bricks, 20, Ware.Coal, 4);
             plant = K.Build(sim, BuildingType.PowerPlant);
             barracks = K.Build(sim, BuildingType.Barracks);
-            int p = plant;
-            StepUntil(sim, () => EconomyApi.IsFuelled(s, p), 500);
+            // The plant lights its coal only when a consumer needs power (a queued unit, a working smelter).
+            Assert.IsFalse(EconomyApi.IsFuelled(s, plant), "no demand, no fuel burned");
             return sim;
         }
 
@@ -47,18 +47,18 @@ namespace World.Sim.Tests
         {
             var sim = Camp(out int plant, out int barracks);
             var s = sim.State;
-            K.Give(s, Ware.Rations, 1, Ware.Ingots, 1);
+            K.Give(s, Ware.Rations, 1, Ware.Weapons, 1);
             K.Do(sim, new QueueUnit { BarracksId = barracks });
             StepUntil(sim, () => Head(s, barracks).Progress >= 20, 400);
             var power = MilitaryApi.Power(s);
             Assert.AreEqual(4, power.Supply);
             Assert.AreEqual(2, power.Demand);
 
-            // Burn out the fuel: take the plant's timber and keep the storehouse dry.
+            // Burn out the fuel: take the plant's coal and keep the storehouse dry.
             var evs = new List<SimEvent>();
-            EconomyApi.TrySpendFromStorehouse(s, Ware.Timber, EconomyApi.StorehouseCount(s, Ware.Timber));
-            StepUntil(sim, () => s.Economy.Buildings[plant].Incoming[(int)Ware.Timber] == 0, 300, evs);
-            EconomyApi.TryConsume(s, plant, Ware.Timber, EconomyApi.Available(s, plant, Ware.Timber));
+            EconomyApi.TrySpendFromStorehouse(s, Ware.Coal, EconomyApi.StorehouseCount(s, Ware.Coal));
+            StepUntil(sim, () => s.Economy.Buildings[plant].Incoming[(int)Ware.Coal] == 0, 300, evs);
+            EconomyApi.TryConsume(s, plant, Ware.Coal, EconomyApi.Available(s, plant, Ware.Coal));
             StepUntil(sim, () => !EconomyApi.IsFuelled(s, plant) && Head(s, barracks).Progress > 0, 300, evs);
             K.Step(sim, 2);
             int frozen = Head(s, barracks).Progress;
@@ -82,8 +82,8 @@ namespace World.Sim.Tests
             Assert.AreEqual(0, power.Supply);
             StringAssert.Contains("Barracks has no power", power.Sentence);
 
-            // Restore fuel: timber is carried to the plant, it burns, the queue continues from the same progress.
-            K.Give(s, Ware.Timber, 2);
+            // Restore fuel: coal is carried to the plant, it burns, the queue continues from the same progress.
+            K.Give(s, Ware.Coal, 2);
             StepUntil(sim, () => EconomyApi.IsFuelled(s, plant), 300);
             // The power system runs before the barracks queue, so the tick the plant relights already counts.
             Assert.AreEqual(frozen + 1, Head(s, barracks).Progress, "resumes from the same progress");
@@ -98,12 +98,14 @@ namespace World.Sim.Tests
         {
             var sim = Camp(out int plant, out int b1);
             var s = sim.State;
-            K.Give(s, Ware.Planks, 20, Ware.Stone, 20, Ware.Rations, 20, Ware.Ingots, 10);
+            K.Give(s, Ware.Planks, 20, Ware.Bricks, 20, Ware.Rations, 20, Ware.Weapons, 10, Ware.Ore, 4, Ware.Coal, 6);
             int b2 = K.Build(sim, BuildingType.Barracks);
-            int refinery = K.Build(sim, BuildingType.Refinery);
+            int refinery = K.Build(sim, BuildingType.Smelter);
             K.Do(sim, new QueueUnit { BarracksId = b1, Count = 2 });
             K.Do(sim, new QueueUnit { BarracksId = b2, Count = 2 });
             StepUntil(sim, () => EconomyApi.IsFuelled(s, plant), 300);
+            // The smelter only asks for power once a cycle of ore and coal has been delivered.
+            StepUntil(sim, () => MilitaryApi.Power(s).Demand == 6, 600);
             var p = MilitaryApi.Power(s);
             Assert.AreEqual(4, p.Supply);
             Assert.AreEqual(6, p.Demand);
@@ -122,12 +124,13 @@ namespace World.Sim.Tests
             var sim = Camp(out _, out int barracks);
             var s = sim.State;
             Assert.AreEqual(MilitaryRefusals.NoBarracks, sim.Check(new QueueUnit { BarracksId = s.Economy.StorehouseId }).Reason);
+            EconomyApi.TrySpendFromStorehouse(s, Ware.Rations, EconomyApi.StorehouseCount(s, Ware.Rations)); // no starting rations here
             K.Do(sim, new QueueUnit { BarracksId = barracks });
             K.Step(sim, 100);
             var info = MilitaryApi.DescribeBarracks(s, barracks);
             Assert.AreEqual(Reasons.WaitingWare, info.Reason);
-            CollectionAssert.AreEqual(new[] { "1 rations", "1 ingots" }, info.WaitingFor);
-            Assert.AreEqual("The barracks is waiting for 1 rations and 1 ingots.", info.Status);
+            CollectionAssert.AreEqual(new[] { "1 weapons", "1 rations" }, info.WaitingFor);
+            Assert.AreEqual("The barracks is waiting for 1 weapons and 1 rations.", info.Status);
             Assert.AreEqual(0, Head(s, barracks).Progress);
 
             // Rations in the storehouse are not enough: they must be carried to the barracks flag.
@@ -138,38 +141,43 @@ namespace World.Sim.Tests
             Assert.AreEqual(2, EconomyApi.StorehouseCount(s, Ware.Rations));
             K.Step(sim, 5);
             info = MilitaryApi.DescribeBarracks(s, barracks);
-            CollectionAssert.AreEqual(new[] { "1 ingots" }, info.WaitingFor);
-            Assert.AreEqual((int)Ware.Ingots, s.Military.Queues[0].ReasonWare);
+            CollectionAssert.AreEqual(new[] { "1 weapons" }, info.WaitingFor);
+            Assert.AreEqual((int)Ware.Weapons, s.Military.Queues[0].ReasonWare);
             Assert.IsFalse(Head(s, barracks).Supplied);
 
-            K.Give(s, Ware.Ingots, 1);
+            K.Give(s, Ware.Weapons, 1);
             evs.Clear();
             StepUntil(sim, () => s.Military.UnitsTrained == 1, 500, evs);
-            long delivered = evs.OfType<WareDelivered>().Single(d => d.BuildingId == barracks && d.Ware == Ware.Ingots).Tick;
+            long delivered = evs.OfType<WareDelivered>().Single(d => d.BuildingId == barracks && d.Ware == Ware.Weapons).Tick;
             long started = evs.OfType<TrainingStarted>().Single().Tick;
             long trained = evs.OfType<UnitTrained>().Single().Tick;
-            Assert.GreaterOrEqual(started, delivered, "training starts only after the ingots arrive");
+            Assert.GreaterOrEqual(started, delivered, "training starts only after the weapons arrive");
             Assert.AreEqual(MilitaryApi.TrainingTicks(s) - 1, trained - started);
             Assert.AreEqual(1, s.Military.ConsumedForUnits[(int)Ware.Rations]);
+            Assert.AreEqual(1, s.Military.ConsumedForUnits[(int)Ware.Weapons]);
             Assert.AreEqual(0, s.Economy.Buildings[barracks].Stock[(int)Ware.Rations], "consumed from the barracks store");
             Assert.AreEqual(1, MilitaryApi.Squads(s, PlayerIds.Human).Single().Units);
             Assert.IsNull(K.CheckInvariants(s));
         }
 
         [Test]
-        public void Cards_DrillYardAndMessHallChangeTraining()
+        public void Cards_DrillYardAndArmouryChangeTrainingShieldsAndDamage()
         {
             var sim = Camp(out _, out int barracks);
             var s = sim.State;
             Assert.AreEqual(150, MilitaryApi.TrainingTicks(s));
+            Assert.AreEqual(0, MilitaryApi.Shields(s, PlayerIds.Human));
             K.ForceIntoHand(s, "drill_yard");
-            K.ForceIntoHand(s, "mess_hall");
-            K.Give(s, Ware.Planks, 4, Ware.Stone, 3);
+            K.ForceIntoHand(s, "armoury");
+            K.Give(s, Ware.Bricks, 2, Ware.Rations, 2, Ware.Iron, 1);
             K.Do(sim, new BuildCard { CardId = K.CardOf(s, "drill_yard"), CityVertex = s.Board.HomeCityVertex });
-            K.Do(sim, new BuildCard { CardId = K.CardOf(s, "mess_hall"), CityVertex = s.Board.HomeCityVertex });
-            Assert.AreEqual(90, MilitaryApi.TrainingTicks(s));
+            K.Do(sim, new BuildCard { CardId = K.CardOf(s, "armoury"), CityVertex = s.Board.HomeCityVertex });
+            Assert.AreEqual(90, MilitaryApi.TrainingTicks(s), "Drill Yard: 40% faster");
+            Assert.AreEqual(3, MilitaryApi.Shields(s, PlayerIds.Human), "Drill Yard 1 + Armoury 2 shields");
+            Assert.AreEqual(1, StrategyApi.Effects(s, PlayerIds.Human).DamageBonus);
             K.Do(sim, new QueueUnit { BarracksId = barracks });
-            Assert.AreEqual(0, Head(s, barracks).Rations, "Mess Hall: 1 fewer rations");
+            Assert.AreEqual(1, Head(s, barracks).Weapons);
+            Assert.AreEqual(1, Head(s, barracks).Rations);
         }
 
         /// <summary>Train a full squad, order it to attack the outpost, run to the outcome. Returns the event log.</summary>
@@ -177,7 +185,7 @@ namespace World.Sim.Tests
         {
             sim = Camp(out _, out int barracks, seed);
             var s = sim.State;
-            K.Give(s, Ware.Rations, 8, Ware.Ingots, 4, Ware.Timber, 12);
+            K.Give(s, Ware.Rations, 8, Ware.Weapons, 4, Ware.Coal, 12);
             K.Do(sim, new QueueUnit { BarracksId = barracks, Count = 4 });
             var w = sim;
             StepUntil(sim, () => w.State.Military.UnitsTrained == 4, 2000);
@@ -235,7 +243,7 @@ namespace World.Sim.Tests
                 for (int i = 1; i < ticks.Count; i++)
                     Assert.AreEqual(0, (ticks[i] - ticks[0]) % s.Military.Tuning.AttackCooldown, "attacks on fixed ticks");
             }
-            Assert.IsTrue(s.Military.Outpost.Destroyed, "4 Wardens beat 2 guards and the outpost");
+            Assert.IsTrue(s.Military.Outpost.Destroyed, "4 Wardens beat the guards and the outpost");
             Assert.AreEqual(1, log.OfType<OutpostDestroyed>().Count());
             Assert.AreEqual(2, StrategyApi.Score(s, 0).Outpost);
             Assert.AreEqual(4, StrategyApi.Score(s, 0).Total);
@@ -251,7 +259,7 @@ namespace World.Sim.Tests
             var s = sim.State;
             Assert.AreEqual(MilitaryRefusals.UnknownSquad,
                 sim.Check(new OrderSquad { SquadId = s.Military.Outpost.GarrisonSquadId, Order = OrderKind.Attack, Target = 0 }).Reason);
-            K.Give(s, Ware.Rations, 1, Ware.Ingots, 1);
+            K.Give(s, Ware.Rations, 1, Ware.Weapons, 1);
             K.Do(sim, new QueueUnit { BarracksId = barracks });
             StepUntil(sim, () => s.Military.UnitsTrained == 1, 1000);
             int id = MilitaryApi.Squads(s, 0).Single().Id;
@@ -277,13 +285,14 @@ namespace World.Sim.Tests
             var sim = K.NewSim();
             var s = sim.State;
             K.Step(sim);
-            K.EndRound(sim);
+            for (int r = 0; r < s.Strategy.Tuning.RoundsPerAge - 1; r++) K.EndRound(sim);
             Assert.IsFalse(s.Military.Squads.Any(q => q.Kind == SquadKind.Raid), "no raids in Age I");
             K.EndRound(sim);
             Assert.AreEqual(2, s.Strategy.Age);
-            Assert.AreEqual(2, MilitaryApi.Outpost(s).Guards);
+            var mt = s.Military.Tuning;
+            Assert.AreEqual(mt.GarrisonBase, MilitaryApi.Outpost(s).Guards);
             var evs = K.EndRound(sim);
-            Assert.AreEqual(3, MilitaryApi.Outpost(s).Guards, "garrison +1 per age");
+            Assert.AreEqual(mt.GarrisonBase + mt.GarrisonPerAge, MilitaryApi.Outpost(s).Guards, "garrison grows each age");
             var launched = evs.OfType<RaidLaunched>().Single();
             Assert.AreEqual(MilitaryLogicTarget(s), launched.Target, "nearest flag on the player's roads");
             var occ = new List<SimEvent>();

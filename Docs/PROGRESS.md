@@ -119,3 +119,34 @@ Ran:
 - Captures inspected (git-ignored): map_god_whole_island, map_god_home, map_spawn, map_warehouse_interior, map_village_from_hill, map_outpost, map_pasture.
 
 Not done / caveats: no economy views (roads, buildings, carriers; feat/econview not merged); no fast travel; the outpost has no colliders (walk-through placeholder); mountain peaks keep convex colliders; nobody played it by hand.
+
+## Unified economy (simulation) and its headless proof (13 Nov 2026, feat/sim-integration)
+
+Built (pure C#; `Docs/ECONOMY_DESIGN.md` sections 1-9, all rows of section 10; status IMPLEMENTED, tuned numbers in its section 11):
+- Wares (Core): raw Logs, Clay, Wheat, Sheep, Ore (Pasture yields Sheep); processed Planks, Coal, Bricks, Flour, Bread, Meat, Rations, Iron, Weapons. Timber/Stone/Grain/Ingots removed. Save version 2 (older saves refused).
+- Economy: 20 building types (Clay pit, Mine, Smelter replace Quarry, Ore pit, Refinery; new Sheepfold, Butcher, Tavern, Charcoal kiln, Brick kiln, Smithy); construction cost in Planks/Bricks by size; roads 1 planks + 1 bricks per 3 segments; the Mine eats 1 rations per 2 ore; power plants burn coal only while something needs power; a demon or raid on a building's flag stops it; the robber stops a city's hexes; fair-share deliveries (least on hand first), stockpiling jobs last, carriers wait at their last flag, +2 carriers per finished building; detailed sink ledger (recipes, construction, roads, external) and batch ledger; new commission (six chain buildings, 10 planks + 10 bricks); prologue starter draws; UI helpers (ware names and colours, build menu with needs/makes/recipe text, legal build flags, waiting-for).
+- Strategy: outbreaks to the connected neighbouring sites with chains (each site once per draw), epidemic at each age change, infection deck = the village core plus city corners; age-end military comparison (+1/+3/+5, -1, mirrored, recorded); 18 cards in five families with real hooks (batches, workshop output, market, coin, roads, points, shields, training, damage, hero moves, demon cap, infection draws); city cost 3 planks + 3 bricks + 2 rations; wonder stages Planks + Bricks then Iron + Rations (2 and 3 points); target 12, breach limit 5; rival with a visible plan, garrison shields and raids. Forecast, shields summary, score breakdowns, cards by family.
+- Military: soldiers cost 1 weapons + 1 rations delivered to a powered barracks; shields; smelter power demand only when ready.
+- Scripted players rewritten for the new chain (commission, food chain, iron chain, barracks, wonder, cities, coal management, chain-aware placement, round ending when the forest is felled); `GameRuns` shares the full games between the playthrough tests and the proof.
+- Proof: `EconomyProofReport` writes `Docs/ECONOMY_PROOF.md` (ware audit, five traced chains from real events, six paired cross-system runs, conservation over four 20,000-tick random runs, endings on 11 seeds x 4 players, balance table with verdicts, known weaknesses) and asserts every claim.
+- Docs: ECONOMY_API and STRATEGY_API rewritten; CONTRACTS, MAP_MIGRATION, ECONOMY_DESIGN updated.
+
+Ran:
+- `dotnet test DotNet`: all passed (number in the commit message of this step; 181 before; no test removed, every adapted; new `UnifiedEconomyTests` and the proof).
+- Proof headlines (`Docs/ECONOMY_PROOF.md`): every ware made and used; five raw chains traced draw -> harvest -> carries -> recipes -> final use; conservation error 0 over 4 x 20,000 random ticks; competent player wins 11 of 11 seeds in 8.1-13.3 min; careless player loses 10 of 11 (8 at the breach limit); passive player loses 11 of 11 (by breach, about 3.3 min); logs are the binding bottleneck in 9 of 11 games; commission at 1.8 min on every seed (target was 4-5: a known weakness).
+
+Not run: nothing in Unity (no compile there, no EditMode or PlayMode run in the editor). The Unity layer still uses the old ware and building names; it must be rebuilt from `Docs/ECONOMY_API.md` and `Docs/STRATEGY_API.md` once the owner has read the proof.
+
+## Unified economy merged into main (13 Nov 2026, main)
+
+Merged feat/sim-integration (`c76a8a3`, `58d8c2e`, `b94c7a4`) into main; conflicts only in PROGRESS and MAP_MIGRATION (both sides kept). Unity-generated `.meta` files for the new sim and test files committed. `Assets/World/Sim` untouched. Game-layer changes, kept minimal:
+- `Actors/VillageNpcs.cs`: Quartermaster Bram's greeting says planks and bricks (no stone); his lines are rebuilt each time the dialogue opens and describe the new commission from the economy helpers (`EconomyApi.DescribeType(..).Name` for the six buildings, `EconomyApi.CostText` with `Tuning.CommissionPlanks/Bricks`, `StorehouseCount`/`WareName` for current stock; "done" once `Commission.Complete`). The six types mirror the documented rule because the sim keeps its list internal. Hesta says bread instead of grain.
+- `View/TerrainBuilder.cs`: the hex inspect line uses `Wares.DisplayName` (Pasture now gives sheep; the "gives nothing yet" branch is gone).
+- `Tests/EditMode/EconomyProofReport.cs`: `[Timeout(1200000)]` on the proof test; Unity's EditMode runner timed it out at its 180 s default (it passes under .NET). No assertion changed.
+
+Ran:
+- `dotnet test DotNet`: 209 passed, 0 failed (203 from the branch + main's 6 encounter rule tests).
+- Unity: recompile 0 errors; EditMode 209 passed (first run 208 + the proof test timing out, then 209 after the timeout attribute); PlayMode 21 passed; console 0 errors.
+- Editor Play Mode (1920x1080 Game view): AutoPlay `boot_tour` OK (about 323 fps first person, 304 God View) and `first_five` OK (duel Victory after 3 casts; phrase 4/4 blocks, 20 perfect, Balcony). Quartermaster lines read back in Play Mode.
+
+Not done: no economy views (feat/econview still unmerged and written against the old board and wares); Windows player not rebuilt; no captures; nobody played it by hand.

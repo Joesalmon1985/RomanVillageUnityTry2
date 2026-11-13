@@ -34,6 +34,29 @@ namespace World.Sim.Economy
         /// <summary>(state, buildingId) -> powered, for NeedsPower buildings. Default: always powered.</summary>
         public Func<WorldState, int, bool> IsPowered = (s, id) => true;
 
+        /// <summary>(state) -> true while some building needs power; a power plant only lights a new unit of fuel then. Default: always.</summary>
+        public Func<WorldState, bool> PowerDemanded = s => true;
+
+        /// <summary>
+        /// (state, hex) -> true when the hex produces nothing (the robber: a demon on every player city touching it).
+        /// A stopped hex gets no round batch and its harvesters do not take units from it.
+        /// </summary>
+        public readonly List<Func<WorldState, int, bool>> IsHexStopped = new List<Func<WorldState, int, bool>>();
+
+        /// <summary>True when any IsVertexBlocked hook blocks the flag.</summary>
+        public bool Blocks(WorldState s, int vertex)
+        {
+            foreach (var f in IsVertexBlocked) if (f(s, vertex)) return true;
+            return false;
+        }
+
+        /// <summary>True when any IsHexStopped hook stops the hex.</summary>
+        public bool HexStopped(WorldState s, int hex)
+        {
+            foreach (var f in IsHexStopped) if (f(s, hex)) return true;
+            return false;
+        }
+
         internal bool[] ComputeBlocked(WorldState s)
         {
             if (IsVertexBlocked.Count == 0) return null;

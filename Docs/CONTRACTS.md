@@ -20,7 +20,7 @@ All of `Assets/World/Sim` is one assembly, `World.Sim` (noEngineReferences, Newt
 ## Core types (`World.Sim`)
 
 - `Rng` (SplitMix64): `ulong State` (public field, the whole state); `NextULong()`, `NextInt(n)` [0,n), `NextRange(min, maxExcl)`, `Chance(num, den)`, `Shuffle(IList<T>)`, `Fork(label)` (derived stream; does not advance the parent), `Clone()`.
-- `Ware` enum: Timber, Planks, Stone, Grain, Flour, Rations, Ore, Ingots. `Wares.All`, `Wares.Count`. Coin is `PlayerState.Coin` (int), never a ware.
+- `Ware` enum (unified economy, 13 Nov 2026): raw Logs 0, Clay 1, Wheat 2, Sheep 3, Ore 4; processed Planks 5, Coal 6, Bricks 7, Flour 8, Bread 9, Meat 10, Rations 11, Iron 12, Weapons 13. `Wares.All`, `Wares.Raw`, `Wares.Count` (14), `Wares.RawCount` (5), `Wares.IsRaw`, `Wares.DisplayName` (lower case), `Wares.Title`. Coin is `PlayerState.Coin` (int), never a ware. Save version 2 (older saves are refused).
 - `WorldState` (sealed **partial**): `ulong Seed`, `long Tick`, `Rng Rng`, `Board Board`, `List<PlayerState> Players` (index = id), `Player(id)`.
 - `PlayerState` (sealed **partial**): `int Id`, `string Name`, `int Coin`. `PlayerIds.Human = 0`, `PlayerIds.Rival = 1`.
 - `Command` (abstract): `int PlayerId`. Your commands subclass it with plain public fields.
@@ -37,7 +37,7 @@ All of `Assets/World/Sim` is one assembly, `World.Sim` (noEngineReferences, Newt
 
 ## Board (`World.Sim`)
 
-- `HexCoord` (axial Q, R; `S`, `DistanceTo`, `Neighbour(dir)`, `Ring`); `Terrain` {Meadow 0, Forest 1, Hills 2, Fields 3, Mountain 4, Pasture 5}; `TerrainInfo.RawWare(t)` (null for Meadow and, until the ware rework adds Sheep, Pasture), `IsResource(t)` (numbered: everything but Meadow).
+- `HexCoord` (axial Q, R; `S`, `DistanceTo`, `Neighbour(dir)`, `Ring`); `Terrain` {Meadow 0, Forest 1, Hills 2, Fields 3, Mountain 4, Pasture 5}; `TerrainInfo.RawWare(t)` (Forest Logs, Hills Clay, Fields Wheat, Pasture Sheep, Mountain Ore; null for Meadow), `TerrainOf(rawWare)`, `IsResource(t)` (numbered: everything but Meadow).
 - Two graph levels in one `BoardTopology.Get(radius)` (cached, immutable, derived; never store it). Ids are plain `int`, `-1` = none.
   - COARSE (Catan): hexes, hex CORNERS and HEX EDGES (60 m). Cities, the rival outpost, the city distance rule and the hero live here.
   - FINE (Widelands): each hex edge is split into 3 road SEGMENTS (20 m) by 2 intermediate points. FLAGS = corners + intermediate points. Buildings stand on flags, roads are per segment, carriers, squads and raids walk segment to segment.
@@ -50,7 +50,9 @@ All of `Assets/World/Sim` is one assembly, `World.Sim` (noEngineReferences, Newt
 - `Board` (in `WorldState.Board`): `Radius`, `Terrain[] HexTerrain`, `int[] HexNumber` (1..4, 0 for Meadow), `HomeCityVertex` (corner), `RivalOutpostVertex` (corner), `StorehouseVertex` (= home), `MarketVertex` (= home), `WarehouseVertex` (intermediate flag 2 segments from home, beside the square; never buildable), `SuggestedCitySites` (corner ids, nearest home first), `Topology` ([JsonIgnore]).
 - `BoardGenerator.CreateMvpBoard(seed)`: fixed radius-4 layout (see its doc comment, `MvpRadius = 4`); numbers dealt by seed, evenly within each terrain; the three home hexes (Fields, Forest, Hills) get distinct numbers. Home corner 70 (a corner of the centre hex), rival outpost corner 97 (5 hex edges north-west, its own Forest/Hills/Fields), Mountain range of 4 hexes north-east outside the home territory, 14 suggested city sites. Occupancy (cities, buildings, roads, demons) belongs to the modules. See `Docs/MAP_MIGRATION.md` for what the views must change.
 
-Rules on the two levels (Economy, Strategy, Military): buildings on any free flag in territory (flags within `EconomyTuning.TerritorySegments` = 4 segments of one of your city corners; terrain from `VertexHexes(flag)`); roads per segment; cities only on corners, needing a road segment touching the corner and no city or outpost on a `CornerNeighbour`; the hero moves one hex edge per move. Details in `Docs/ECONOMY_API.md` and `Docs/STRATEGY_API.md`.
+Rules on the two levels (Economy, Strategy, Military): buildings on any free flag in territory (flags within `EconomyTuning.TerritorySegments` = 4 segments of one of your city corners; terrain from `VertexHexes(flag)`); roads per segment; cities only on corners, needing a road segment touching the corner and no city or outpost on a `CornerNeighbour`; the hero moves one hex edge per move; demons sit on flags, and an outbreak spreads to the connected neighbouring sites (straight-line walk on the flag graph to the first flag that can hold demons). Details in `Docs/ECONOMY_API.md` and `Docs/STRATEGY_API.md`; the economy design is `Docs/ECONOMY_DESIGN.md` and its proof `Docs/ECONOMY_PROOF.md` (written by the test `EconomyProofReport`).
+
+Cross-module hooks (per sim, `EconomyApi.Hooks(sim)`, re-added by every module's `Register`): `OnRoundEnding`, `OnRoundStarted`, `BatchModifiers`, `IsVertexBlocked` (demons, raids), `IsHexStopped` (the robber), `IsPowered` and `PowerDemanded` (Military), `EndRoundGuards`. Card effects the economy applies are written into `EconomyState.Bonus` by Strategy (`SyncEconomyBonuses`), so static API calls see them.
 
 ## How a module plugs in (no edits outside your folder)
 

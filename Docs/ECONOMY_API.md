@@ -1,38 +1,96 @@
 # Economy API
 
-Road economy (Milestone 3, simulation). Code: `Assets/World/Sim/Economy` (namespace `World.Sim.Economy`). The economy belongs to `PlayerIds.Human`; commands from other players are refused (`not_owner`).
+Road economy of the unified design (`Docs/ECONOMY_DESIGN.md`, implemented 13 Nov 2026). Code: `Assets/World/Sim/Economy` (namespace `World.Sim.Economy`). The economy belongs to `PlayerIds.Human`; commands from other players are refused (`not_owner`). Proof that it works: `Docs/ECONOMY_PROOF.md`. Views read state and these helpers; they never write state.
 
-**State** (`WorldState.Economy`, plain data, ids = list indices, never Dictionary-driven):
-- `Tuning` (`EconomyTuning`), `Round` (from 1), `RoundStartPending`, `LastDraw` (numbers of this round), `RoundRng`.
-- `HexBatchRound[hex]`, `HexBatchRemaining[hex]`; `Roads[segment]` (bool, indexed by BoardTopology fine edge = 20 m road segment); `RoadCredit` (segments already paid for); `Cities` (`City{Id, Owner, Vertex}`, Vertex = a hex corner).
-- `Buildings` (`Building{Id, Type, Owner, Vertex, State: Site|Constructing|Active|Removed, Enabled, Priority, BuildProgress, WorkProgress, WorkHex, FuelLeft, Stock[], Reserved[], Incoming[], Requested[], Reason, ReasonWare}`; ware arrays indexed by `(int)Ware`; cancelled sites stay as `Removed`).
-- `Jobs` (open `DeliveryJob{Id, Ware, SourceId, DestId, State: Waiting|ToPickup|Carrying, CarrierId, Reason, ...}`; finished jobs are removed).
-- `Carriers` (`Carrier{Id, State: Idle|ToPickup|Carrying|Returning, AtVertex, CurrentEdge, FromVertex, ToVertex, Progress, HasLoad, Load, JobId}`). On a segment, interpolate `FromVertex -> ToVertex` by `Progress / Tuning.TicksPerEdge`; at a flag `CurrentEdge = -1`. Vertex = flag, edge = segment throughout (see CONTRACTS, Board).
-- `StorehouseId`, `DemoVertexA/B`, `Ledger` (Starting, Harvested, Produced, Added, Consumed per ware), `Commission{Complete, CompletedTick}`.
+## Wares (`World.Sim.Ware`, Core)
 
-**Commands** (`WorldSim.Submit`; refusals give a code and a sentence):
-`PlaceRoad{Edge}` (one segment; must touch your city/building/site/road; `Tuning.RoadCost` = 1 planks pays for `RoadSegmentsPerCost` = 3 segments: the first segment pays, the next two use `RoadCredit`), `RemoveRoad{Edge}`, `PlaceBuilding{Type, Vertex}` (any free flag, corner or intermediate; not a city, outpost or the warehouse flag; in territory; terrain rule on `VertexHexes(flag)`), `CancelSite{BuildingId}` (wares back to the storehouse at once), `SetPriority{BuildingId, Priority}`, `ToggleBuilding{BuildingId, Enabled}`, `EndRound`.
-Refusal codes: `invalid_site` (placement) and `EconomyRefusals.*` (`not_connected`, `road_exists`, `no_road_here`, `not_enough_wares`, `unknown_building`, `not_a_site`, `not_toggleable`, `round_starting`, `not_owner`, `bad_place`, `unknown_type`).
+| Id | Ware | Kind | Made by | Suggested colour (`EconomyApi.WareColour`) |
+|---|---|---|---|---|
+| 0 | Logs | raw (Forest) | Woodcutter, 2 per batch unit | #7A4E2D |
+| 1 | Clay | raw (Hills) | Clay pit | #B5653A |
+| 2 | Wheat | raw (Fields) | Farm | #E3C04A |
+| 3 | Sheep | raw (Pasture) | Sheepfold | #EDEDE4 |
+| 4 | Ore | raw (Mountain) | Mine (eats rations) | #5E6670 |
+| 5 | Planks | processed | Sawmill | #C89B5E |
+| 6 | Coal | processed | Charcoal kiln | #2B2B2B |
+| 7 | Bricks | processed | Brick kiln | #A33A2A |
+| 8 | Flour | processed | Mill | #F2EBD9 |
+| 9 | Bread | processed | Bakery | #C98A3D |
+| 10 | Meat | processed | Butcher | #B5474B |
+| 11 | Rations | processed | Tavern | #6E8B3D |
+| 12 | Iron | processed | Smelter | #9AA3AD |
+| 13 | Weapons | processed | Smithy | #4A5A78 |
 
-**Events** (plain fields): `RoadPlaced/RoadRemoved{Edge}`, `SitePlaced/SiteCompleted/SiteCancelled{BuildingId, Type, Vertex}`, `BuildingStateChanged{BuildingId, State, Enabled, Reason, ReasonWare}`, `JobCreated{JobId, Ware, SourceId, DestId}`, `WarePickedUp/WareDelivered{JobId, CarrierId, Ware, BuildingId}`, `JobStalled{JobId, Reason}`, `JobResumed{JobId}`, `JobReleased{JobId, Reason}`, `HarvestCycle{BuildingId, Hex, Ware}`, `ProductionCycle{BuildingId, Output, Amount}`, `RoundStarted{Round, Numbers}`, `BatchAuthorised{Hex, Ware, Amount}`, `CommissionCompleted`.
+`Wares.All`, `Wares.Raw`, `Wares.Count` (14), `Wares.RawCount` (5), `Wares.IsRaw(w)`, `Wares.DisplayName(w)` ("logs", for sentences), `Wares.Title(w)` ("Logs", for labels). `TerrainInfo.RawWare(terrain)` and `TerrainInfo.TerrainOf(rawWare)`. Coin is `PlayerState.Coin`, never a ware.
 
-**EconomyApi** (static, `WorldState` first):
-- `Hooks(sim)` -> `EconomyHooks`: `OnRoundEnding`, `OnRoundStarted` (lists of `Action<WorldState, EventBuffer>`), `BatchModifiers` (`Func<WorldState, hex, Ware, amount, int>`, applied to round-draw batches before the forester rule), `IsVertexBlocked` (`Func<WorldState, vertex, bool>`, demons), `IsPowered` (`Func<WorldState, buildingId, bool>`, default true), `EndRoundGuards` (`Func<WorldState, CommandResult>`, added in M4 by Strategy: `EndRound` is refused with the first non-Ok result, e.g. `draft_pending`, `game_over`). Held per sim, not in state: add them in your `Register`, and re-add after building a sim around a loaded state.
-- Rounds: `AuthoriseBatch(s, hex, amount, ev)` (once per hex per round; forest halved, rounded up, unless an active Forester touches the hex), `BatchRemaining(s, hex)`.
-- Cities: `AddCity(s, player, vertex)` (-1 if the flag is taken), `IsInTerritory(s, player, vertex)` (within `TerritorySegments` = 4 segments, 80 m, of a city corner, walking the flag graph; roads not needed; refusal "That flag is outside your territory (more than 4 road segments, 80 m, from your cities)."), `RoadCostFor(s, segments)` (storehouse wares for the next n segments, credit counted), `IsVertexOccupied`, `CheckPlacement(s, player, type, vertex)`.
-- Buildings: `FindBuilding(s, type, activeOnly)`, `BuildingAt(s, vertex)`, `GetBuilding`, `Def(s, type)`, `IsConnected(s, id)`, `IsFuelled(s, id)`, `HasRoad(s, edge)`.
-- Carriers: `AddCarrier(s)` (idle at the storehouse; Strategy adds 2 per founded city).
-- Wares: `RequestWares(s, id, ware, count)` (carriers bring them to that active building), `Available(s, id, ware)`, `TryConsume(s, id, ware, count)` (unreserved only), `StorehouseCount` (unreserved), `TrySpendFromStorehouse`, `AddToStorehouse`, `WaresInWorld`.
-- Diagnostics: `Describe(s, buildingId)` / `DescribeJob(s, jobId)` -> `EconomyInfo{Title, Status, Reason, StockLines}`; e.g. "Sawmill is waiting for timber.", "No road connects the Storehouse to the Forester site.".
+## Buildings (`BuildingType`, table in `EconomyTuning.Buildings`, index = (int)type)
 
-**Rules in brief.** Tick slots: Rounds (draw), Harvest, Production, Construction, Jobs (create + reserve), Carriers (assign + move), Power, Diagnostics (reasons, commission). Producers push outputs to a building that needs them (nearest, by priority), else to the storehouse; while an active recipe building uses the ware they keep up to `HoldForConsumer` units. Sites, recipe buildings (input buffer) and requests pull from the storehouse. Jobs are only created when a route exists. A carrier re-plans at every flag, so a removed road stops it at the next flag with its load (`no_road`, or `demon_on_route` when only a blocked flag is in the way) until a route returns. A job not yet picked up that has had no route for `ReleaseStalledJobTicks` is released (`JobReleased`) so its reserved wares can pay for the fix. Building reasons: site `no_road`/`demon_on_route`, else `waiting_ware` (named); active: `disabled`, `no_power`, `no_road`, `output_full`, `no_batch`, `waiting_ware` / `input_missing` (named).
+| Id | Type | Kind | Size (cost) | Recipe / role |
+|---|---|---|---|---|
+| 0 | Storehouse | Store | (not placeable) | holds the village's goods, at the home corner |
+| 1 | Forester | Forester | Small (1 P) | forest batches it touches are not halved |
+| 2 | Woodcutter | Harvester, Forest | Small | 1 forest batch unit -> 2 logs (80 ticks) |
+| 3 | Sawmill | Producer | Medium (1 P + 1 B) | 1 logs -> 1 planks (30) |
+| 4 | ClayPit | Harvester, Hills | Small | 1 unit -> 1 clay |
+| 5 | Farm | Harvester, Fields | Small | 1 unit -> 1 wheat |
+| 6 | Mill | Producer | Medium | 1 wheat -> 1 flour (30) |
+| 7 | Bakery | Producer | Medium | 1 flour -> 2 bread (40) |
+| 8 | Mine | Harvester, Mountain | Medium | 1 unit -> 1 ore; pays 1 rations per 2 ore |
+| 9 | Smelter | Producer, needs power | Large (2 P + 1 B) | 1 ore + 1 coal -> 1 iron (50) |
+| 10 | PowerPlant | PowerPlant | Large | burns 1 coal per 600 ticks while something needs power; supplies 4 |
+| 11 | Barracks | Plain, needs power | Huge (2 P + 2 B) | trains soldiers (Military) |
+| 12 | Market | Plain | Large | market rate -1 |
+| 13 | WonderSite | Plain | Huge | receives wonder stage goods (Strategy) |
+| 14 | Sheepfold | Harvester, Pasture | Small | 1 unit -> 1 sheep |
+| 15 | Butcher | Producer | Medium | 1 sheep -> 2 meat (40) |
+| 16 | Tavern | Producer | Medium | 1 bread + 1 meat -> 2 rations (40) |
+| 17 | CharcoalKiln | Producer | Medium | 2 logs -> 1 coal (40) |
+| 18 | BrickKiln | Producer | Medium | 1 clay + 1 coal -> 2 bricks (40) |
+| 19 | Smithy | Producer | Large | 1 iron + 1 planks -> 1 weapons (50) |
 
-**Rounds.** Round 1 starts on the first tick. Each round start draws 2 distinct numbers from 1..4 and authorises `BatchSize` (6) for every resource hex touching a player city with a drawn number (unused units carry over up to `BatchCap` 12). Starter sequence: round 1 = home forest + home hills numbers; round 2 = home fields + one of them (seeded); round 3 = the other one + a random number; then random.
+`BuildingDef`: `Type, Name, Kind (Store|Forester|Harvester|Producer|PowerPlant|Plain), Size (Small|Medium|Large|Huge), Cost[], NeedsTerrain, Terrain, Inputs[], CyclesPerInput (Mine 2), Outputs[], WorkTicks, Capacity (8), NeedsPower, BuildTicks (100), FuelTicks, Placeable, Purpose` (one line). Sizes cost (`EconomyTuning.SizeCost`): Small 1 planks; Medium 1 planks + 1 bricks; Large 2 planks + 1 bricks; Huge 2 planks + 2 bricks (`ApplySizeCosts()` after changing them).
 
-**Commission.** Complete when an active, road-connected Forester, Woodcutter, Sawmill and Quarry exist and the storehouse holds >= 10 planks and >= 10 stone; `CommissionCompleted` fires once.
+## State (`WorldState.Economy`, plain data, ids = list indices)
 
-**Tuning defaults** (`EconomyTuning`): `TicksPerEdge` 60 (per 20 m segment, as per old edge), `Carriers` 4, `BatchSize` 6, `BatchCap` 12, `NumbersDrawn` 2, `TerritorySegments` 4, `InputBuffer` 3, `FuelBuffer` 2, `HarvestTicks` 30, `HoldForConsumer` 4, `ReleaseStalledJobTicks` 150, `RoadCost` 1 planks per `RoadSegmentsPerCost` 3 segments (one hex edge costs what one old 20 m edge cost; the home village's own roads are 1-2 segments, so local roads got cheaper), `StarterStock` 14 planks + 4 stone, `Buildings` (table, index = `(int)BuildingType`): costs Forester/Woodcutter/Quarry 2 planks; Sawmill 2 planks + 1 stone; Farm 2+1; Grain mill, Bakery 2+2; Ore pit 3+1; Refinery 2+3; Power plant 3+2; Barracks 4+3; Market 3+2; Wonder site 2+2. Recipes: Sawmill timber->planks 30 ticks, Grain mill grain->flour 40, Bakery flour->rations 40, Refinery ore->ingots 60 (NeedsPower); Power plant burns 1 timber per 300 ticks; Barracks NeedsPower (plain store). Build time 50 ticks; output capacity 6.
+- `Tuning` (`EconomyTuning`), `Round` (from 1), `RoundStartPending`, `LastDraw`, `RoundRng`.
+- `HexBatchRound[hex]`, `HexBatchRemaining[hex]`, `HexStopped[hex]` (true while the robber stops the hex; derived each tick), `Roads[segment]`, `RoadCredit`, `Cities` (`City{Id, Owner, Vertex}`; the rival outpost is a rival city).
+- `Buildings` (`Building{Id, Type, Owner, Vertex, State: Site|Constructing|Active|Removed, Enabled, Priority, BuildProgress, WorkProgress, WorkHex, FuelLeft, InputCredit (Mine: ore cycles already paid), Blocked (a demon or raid on its flag: it does no work), Stock[], Reserved[], Incoming[], Requested[], Reason, ReasonWare}`).
+- `Jobs` (open `DeliveryJob{Id, Ware, SourceId, DestId, State: Waiting|ToPickup|Carrying, CarrierId, Reason, ...}`), `Carriers` (`Carrier{Id, State: Idle|ToPickup|Carrying|Returning, AtVertex, CurrentEdge, FromVertex, ToVertex, Progress, HasLoad, Load, JobId, IdleTicks}`). On a segment interpolate `FromVertex -> ToVertex` by `Progress / Tuning.TicksPerEdge` (30); at a flag `CurrentEdge = -1`.
+- `StorehouseId`, `DemoVertexA/B`, `Commission{Complete, CompletedTick}`, `Bonus` (`EconomyBonuses{ExtraOutput[type], RoadSegments}`: card effects the economy applies, written by Strategy).
+- `Ledger` (`WareLedger`, per ware): `Starting, Harvested, Produced, Added, Consumed` (in world = Starting + Harvested + Produced + Added - Consumed) and the sink split `RecipeIn[type][ware], RecipeOut[type][ware], Cycles[type], Construction[], Roads[], External[]` (Consumed = sum RecipeIn + Construction + Roads + External; Produced = sum RecipeOut of producers), plus `BatchAuthorised[]` and `BatchLost[]` (raw units lost to the carry-over cap).
 
-**Starter layout, default seed 20261113 (radius-4 map).** Home city / storehouse / market corner 70; warehouse flag 361 (intermediate, 2 segments out on the Fields/Hills hex edge; not buildable). Home hexes: 22 Forest (#2), 30 Fields (#1), 31 Hills (#4). Demonstration road: segments 275 (70-333) and 274 (333-332) of hex edge 91 (Forest/Fields); Forester site on flag 332 (2 segments, 40 m out; the edge's far corner is 3 segments out); carrier 0 starts on segment 275 carrying 1 planks for it. The home territory is the 16 flags within 4 segments (80 m) of corner 70. The headless script then places a Woodcutter on 333, a Quarry on 335 and a Sawmill on 360 (each 1 segment from home) and completes the commission at tick 1452 in round 4 (was tick 2052 in round 6 on the radius-2 map; 20 other seeds: worst 1692, was 2173). It is faster because the three free flags next to home are 1 segment out (the old map had the warehouse on one of them) and the sawmill no longer sits 2 edges away.
+## Commands (`WorldSim.Submit`; refusals give a code and a sentence)
 
-**Not here (owned elsewhere).** The Market building is optional (its flag is the storehouse's): trade goes through the storehouse methods. Power supply logic, barracks queue, wonder stages, demons and rival cities plug in through the hooks and API above.
+`PlaceRoad{Edge}` (one 20 m segment touching your network; every `RoadSegmentsPerCost` = 3 segments cost `RoadCost` = 1 planks + 1 bricks from the storehouse, paid on the first, Road Guild +3 segments), `RemoveRoad{Edge}`, `PlaceBuilding{Type, Vertex}` (any free flag in territory, terrain rule on `VertexHexes(flag)`; not a city, the outpost or the warehouse flag), `CancelSite{BuildingId}`, `SetPriority{BuildingId, Priority}`, `ToggleBuilding{BuildingId, Enabled}`, `EndRound`.
+Refusal codes: `invalid_site` and `EconomyRefusals.*` (`not_connected`, `road_exists`, `no_road_here`, `not_enough_wares`, `unknown_building`, `not_a_site`, `not_toggleable`, `round_starting`, `not_owner`, `bad_place`, `unknown_type`). `EndRound` also refuses `draft_pending` and `game_over` (Strategy guards).
+
+## Events (plain fields; `Tick` stamped)
+
+`RoadPlaced/RoadRemoved{Edge}`, `SitePlaced/SiteCompleted/SiteCancelled{BuildingId, Type, Vertex}`, `BuildingStateChanged{BuildingId, State, Enabled, Reason, ReasonWare}`, `JobCreated{JobId, Ware, SourceId, DestId}`, `WarePickedUp/WareDelivered{JobId, CarrierId, Ware, BuildingId}`, `JobStalled{JobId, Reason}`, `JobResumed`, `JobReleased`, `HarvestCycle{BuildingId, Hex, Ware, Amount}`, `ProductionStarted{BuildingId}` (inputs used), `ProductionCycle{BuildingId, Output, Amount}`, `UpkeepPaid{BuildingId, Ware, Amount, Cycles}` (Mine ate rations), `FuelBurned{BuildingId, Ware, Amount}`, `RoundStarted{Round, Numbers}`, `BatchAuthorised{Hex, Ware, Amount}`, `CommissionCompleted`.
+
+## EconomyApi (static, `WorldState` first)
+
+- Hooks per sim (`Hooks(sim)`, not saved; modules add them in `Register`): `OnRoundEnding`, `OnRoundStarted`, `BatchModifiers`, `IsVertexBlocked` (demons, raids), `IsHexStopped` (robber), `IsPowered`, `PowerDemanded`, `EndRoundGuards`; `Blocks(s, v)`, `HexStopped(s, hex)`.
+- Rounds: `AuthoriseBatch`, `BatchRemaining`. Cities: `AddCity`, `IsInTerritory`, `RoadCostFor(s, segments)`, `IsVertexOccupied`, `CheckPlacement`.
+- Buildings: `FindBuilding`, `BuildingAt`, `GetBuilding`, `Def`, `IsConnected`, `IsFuelled`, `HasRoad`. Carriers: `AddCarrier`.
+- Wares for other modules: `RequestWares`, `Available`, `TryConsume` (booked as External), `StorehouseCount` (unreserved), `TrySpendFromStorehouse`, `AddToStorehouse`, `WaresInWorld`.
+- **UI helpers** (build every panel from these):
+  - `WareName(w)`, `WareTitle(w)`, `WareColour(w)` ("#RRGGBB"), `CostText(int[])` ("1 planks and 1 bricks").
+  - `DescribeType(s, type)` -> `BuildingTypeView{Type, Name, Purpose, Size, CostText, NeedsText ("Needs: 1 clay and 1 coal per cycle."), MakesText ("Makes: 2 bricks per cycle."), RecipeText ("1 clay and 1 coal -> 2 bricks (4 s)"), TerrainText, NeedsPower, Placeable}`; `BuildMenu(s)` (all placeable types); `RecipeText(s, type)` (includes card bonuses).
+  - `LegalBuildFlags(s, type)` (flags where a site may be placed now; roads not needed), `ProducersOf(s, ware)`, `ConsumersOf(s, ware)`.
+  - `WaitingFor(s, buildingId)` -> `WaitInfo{BuildingId, Reason, Ware, Working, Sentence}`; `Describe(s, id)` -> `EconomyInfo{Title, Status, Reason, StockLines}`; `DescribeJob(s, jobId)`.
+  - Sentences include: "Sawmill is waiting for logs.", "Mine needs rations to work.", "Smelter has no power.", "A demon on its flag stops the Sawmill.", "A demon blocks the route to the Forester site.", "A demon on your city stops the forest producing for the Woodcutter.", "No road connects the Storehouse to the Forester site.".
+
+## Rules in brief
+
+Tick slots: Rounds (refresh `Blocked`/`HexStopped`, then the round-start draw), Harvest, Production, Construction, Jobs (create + reserve), Carriers (advance, assign, act and step), Power, Diagnostics (one reason per building, commission).
+- **Batches.** Each round start draws `NumbersDrawn` = 3 distinct numbers of 1..4 and authorises `BatchSize` = 12 units (+2 per age, + card bonuses) on every resource hex touching one of your cities with a drawn number; unused units carry over up to `BatchCap` = 24. Forest batches are halved (rounded up) unless an active Forester touches the hex. Prologue starter sequence: until the commission (at most `StarterRounds` = 8) the draw is the home forest's number plus, in turn, the home hills' and the home fields'. A hex whose every touching player city holds a demon gets no batch and its harvesters stop (the robber).
+- **Harvest.** A harvester takes one unit from a touching hex of its terrain and works `HarvestTicks` = 80; the Woodcutter yields 2 logs per unit. The Mine pays 1 rations before every 2 cycles (`InputCredit`); without rations it reports `input_missing` (rations).
+- **Recipes.** Inputs are used at the start of a cycle, outputs appear at the end (plus `Bonus.ExtraOutput` on the main output). No progress without power or while `Blocked`.
+- **Power.** Each fuelled plant gives 4; smelters need 2 while working or holding a cycle of inputs, barracks 2 while a unit is queued; allocation by priority then id (Military). A plant lights a new coal only while some building needs power.
+- **Deliveries.** Producers push outputs to a consumer that needs them (priority first, then the one with the least on hand in cycles, then the nearest), else keep `HoldForConsumer` = 4 for a local recipe consumer and send the rest to the storehouse. Sites, recipe buildings, the Mine's rations, fuel and external requests pull from the storehouse the same way. Carriers serve jobs to buildings before stockpiling jobs; after a delivery a carrier waits `CarrierWaitTicks` = 150 at that flag, then walks home (taking jobs at any flag on the way). Carriers re-plan at each flag (removed road or demon: they stop with their load). A job not yet picked up that has had no route for 150 ticks is released.
+- **Carriers.** 8 at the start, +2 per finished building (`CarriersPerBuilding`), +2 per founded city (Strategy).
+- **Reasons.** Site: `no_road`/`demon_on_route`, else `waiting_ware` (named); constructing under a demon: `demon_on_route`; active: `disabled`, `demon_on_route` (own flag blocked), `no_power`, `no_road`, `output_full`, `no_batch`, `waiting_ware`/`input_missing` (named).
+- **Commission.** Complete when an active, road-connected Forester, Woodcutter, Sawmill, Clay pit, Charcoal kiln and Brick kiln exist and the storehouse holds >= 10 planks and >= 10 bricks; `CommissionCompleted` fires once.
+
+**Starter (default seed 20261113).** Home corner 70 (storehouse and market), warehouse flag 361. Home hexes: 22 Forest, 30 Fields, 31 Hills. Demonstration road 70-333-332 with a Forester site on 332 and its planks already on carrier 0. Starting stock 16 planks, 6 bricks, 2 coal, 4 rations; 8 carriers. The headless commission script (`CommissionScript`) completes the commission at tick 1052 (1.8 minutes) on the default seed and on 20 others alike (the prologue draws are the fixed starter sequence); see `Docs/ECONOMY_PROOF.md` for the full games.

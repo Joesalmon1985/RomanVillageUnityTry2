@@ -101,6 +101,7 @@ namespace World.Sim.Economy
                 case Terrain.Hills: return "hills";
                 case Terrain.Fields: return "fields";
                 case Terrain.Mountain: return "a mountain";
+                case Terrain.Pasture: return "a pasture";
                 default: return "meadow";
             }
         }
@@ -137,20 +138,26 @@ namespace World.Sim.Economy
             return true;
         }
 
-        internal static void Pay(WorldState s, Building store, int[] cost)
+        /// <summary>Take wares from a store and book them as consumed (and into the given sink row of the ledger).</summary>
+        internal static void Pay(WorldState s, Building store, int[] cost, int[] sinkRow)
         {
             for (int w = 0; w < Wares.Count; w++)
             {
                 store.Stock[w] -= cost[w];
                 s.Economy.Ledger.Consumed[w] += cost[w];
+                if (sinkRow != null) sinkRow[w] += cost[w];
             }
         }
+
+        /// <summary>Road segments one road cost pays for (tuning plus card bonus).</summary>
+        internal static int RoadSegmentsPerCost(WorldState s) =>
+            Math.Max(1, s.Economy.Tuning.RoadSegmentsPerCost + (s.Economy.Bonus != null ? s.Economy.Bonus.RoadSegments : 0));
 
         /// <summary>Wares to take from the storehouse for the next n road segments, given the current road credit.</summary>
         internal static int[] RoadCostFor(WorldState s, int segments)
         {
             var t = s.Economy.Tuning;
-            int per = Math.Max(1, t.RoadSegmentsPerCost);
+            int per = RoadSegmentsPerCost(s);
             int unpaid = Math.Max(0, segments - s.Economy.RoadCredit);
             int payments = (unpaid + per - 1) / per;
             var c = new int[Wares.Count];
@@ -167,8 +174,8 @@ namespace World.Sim.Economy
                 e.RoadCredit--;
                 return;
             }
-            Pay(s, Storehouse(s), e.Tuning.RoadCost);
-            e.RoadCredit = Math.Max(1, e.Tuning.RoadSegmentsPerCost) - 1;
+            Pay(s, Storehouse(s), e.Tuning.RoadCost, e.Ledger.Roads);
+            e.RoadCredit = RoadSegmentsPerCost(s) - 1;
         }
 
         internal static string CostText(int[] cost)
@@ -221,6 +228,8 @@ namespace World.Sim.Economy
                     n = s.Economy.Tuning.InputBuffer * def.Inputs[w] - b.Stock[w] - b.Incoming[w];
                 else if (def.Kind == BuildingKind.PowerPlant && def.Inputs[w] > 0)
                     n = s.Economy.Tuning.FuelBuffer * def.Inputs[w] - b.Stock[w] - b.Incoming[w];
+                else if (def.Kind == BuildingKind.Harvester && def.Inputs[w] > 0)
+                    n = s.Economy.Tuning.UpkeepBuffer * def.Inputs[w] - b.Stock[w] - b.Incoming[w];
             }
             return n > 0 ? n : 0;
         }
@@ -232,14 +241,14 @@ namespace World.Sim.Economy
             return RecipeNeed(s, b, w) + req;
         }
 
-        /// <summary>True when another active, enabled building uses ware w as a recipe input or fuel.</summary>
+        /// <summary>True when another active, enabled building uses ware w as a recipe input, upkeep or fuel.</summary>
         internal static bool HasRecipeConsumer(WorldState s, Building p, int w)
         {
             foreach (var b in s.Economy.Buildings)
             {
                 if (b == p || b.State != BuildingState.Active || !b.Enabled) continue;
                 var d = Def(s, b);
-                if ((d.Kind == BuildingKind.Producer || d.Kind == BuildingKind.PowerPlant) && d.Inputs[w] > 0) return true;
+                if (d.Kind != BuildingKind.Store && d.Kind != BuildingKind.Plain && d.Inputs[w] > 0) return true;
             }
             return false;
         }
@@ -295,17 +304,22 @@ namespace World.Sim.Economy
                     if (pd.Outputs[w] <= 0) continue;
                     while (p.Stock[w] - p.Reserved[w] > 0)
                     {
+                        // Fair share: highest priority first, then the consumer with the least on hand (in cycles of
+                        // its recipe), then the nearest. So two workshops sharing one input both keep working.
                         Building best = null;
-                        int bestLen = int.MaxValue;
+                        int bestFill = int.MaxValue, bestLen = int.MaxValue;
                         foreach (var c in order)
                         {
                             if (c == p || Need(s, c, w) <= 0) continue;
                             if (best != null && c.Priority < best.Priority) break; // order is priority-desc
+                            int fill = Fill(s, c, w);
+                            if (best != null && fill > bestFill) continue;
                             var path = Route(s, blocked, p.Vertex, c.Vertex);
                             if (path == null) continue;
-                            if (best == null || path.Length < bestLen)
+                            if (best == null || fill < bestFill || (fill == bestFill && path.Length < bestLen))
                             {
                                 best = c;
+                                bestFill = fill;
                                 bestLen = path.Length;
                             }
                         }
@@ -322,26 +336,44 @@ namespace World.Sim.Economy
                 }
             }
 
-            // Pull from the storehouse.
-            foreach (var c in order)
+            // Pull from the storehouse, one unit at a time to the consumer with the least on hand (priority first).
+            var routeOk = new int[e.Buildings.Count]; // 0 unknown, 1 ok, 2 none
+            for (int w = 0; w < Wares.Count; w++)
             {
-                if (c == store) continue;
-                bool routeChecked = false, routeOk = false;
-                for (int w = 0; w < Wares.Count; w++)
+                while (store.Stock[w] - store.Reserved[w] > 0)
                 {
-                    while (Need(s, c, w) > 0 && store.Stock[w] - store.Reserved[w] > 0)
+                    Building best = null;
+                    int bestFill = int.MaxValue;
+                    foreach (var c in order)
                     {
-                        if (!routeChecked)
-                        {
-                            routeChecked = true;
-                            routeOk = Route(s, blocked, store.Vertex, c.Vertex) != null;
-                        }
-                        if (!routeOk) break;
-                        CreateJob(s, ev, (Ware)w, store, c);
+                        if (c == store || Need(s, c, w) <= 0) continue;
+                        if (best != null && c.Priority < best.Priority) break;
+                        int fill = Fill(s, c, w);
+                        if (best != null && fill >= bestFill) continue;
+                        if (routeOk[c.Id] == 0) routeOk[c.Id] = Route(s, blocked, store.Vertex, c.Vertex) != null ? 1 : 2;
+                        if (routeOk[c.Id] != 1) continue;
+                        best = c;
+                        bestFill = fill;
                     }
-                    if (routeChecked && !routeOk) break;
+                    if (best == null) break;
+                    CreateJob(s, ev, (Ware)w, store, best);
                 }
             }
+        }
+
+        /// <summary>
+        /// How well a consumer is supplied with ware w, in hundredths of what one cycle (recipe, fuel, upkeep) or the
+        /// whole construction cost needs; external requests count as empty (0). Lower = served first.
+        /// </summary>
+        internal static int Fill(WorldState s, Building c, int w)
+        {
+            var d = Def(s, c);
+            int have = c.Stock[w] + c.Incoming[w];
+            int per;
+            if (c.State == BuildingState.Site) per = d.Cost[w];
+            else if (c.Requested[w] > 0 && RecipeNeed(s, c, w) == 0) return 0;
+            else per = d.Inputs[w];
+            return per <= 0 ? 0 : have * 100 / per;
         }
 
         internal static void SetJobReason(DeliveryJob j, string reason, EventBuffer ev, long tick = -1)
@@ -456,11 +488,17 @@ namespace World.Sim.Economy
             e.HexBatchRound[hex] = e.Round;
             int before = e.HexBatchRemaining[hex];
             e.HexBatchRemaining[hex] = Math.Min(e.Tuning.BatchCap, before + amount);
+            e.Ledger.BatchAuthorised[(int)raw.Value] += amount;
+            e.Ledger.BatchLost[(int)raw.Value] += before + amount - e.HexBatchRemaining[hex];
             ev?.Add(new BatchAuthorised { Hex = hex, Ware = raw.Value, Amount = amount });
             return true;
         }
 
-        /// <summary>Production numbers for a round: seeded starter sequence for rounds 1-3, then random.</summary>
+        /// <summary>
+        /// Production numbers for a round. Prologue starter sequence: while the commission is not complete (and for at
+        /// most Tuning.StarterRounds rounds) the draw is two numbers: the home forest's, plus in turn the home hills'
+        /// (odd rounds) and the home fields' (even rounds). Afterwards NumbersDrawn distinct random numbers from 1..4.
+        /// </summary>
         internal static int[] DrawNumbers(WorldState s)
         {
             var e = s.Economy;
@@ -476,28 +514,9 @@ namespace World.Sim.Economy
                 }
             }
             int[] nums = null;
-            bool starter = forestN > 0 && hillsN > 0 && fieldsN > 0 && e.Tuning.NumbersDrawn == 2;
-            if (starter && e.Round == 1)
-            {
-                nums = new[] { forestN, hillsN };
-            }
-            else if (starter && (e.Round == 2 || e.Round == 3))
-            {
-                // Round 2 repeats one of forest/hills (seeded) with fields; round 3 the other one plus a random number.
-                if (e.Round == 2)
-                {
-                    bool forestFirst = rng.NextInt(2) == 0;
-                    nums = new[] { fieldsN, forestFirst ? forestN : hillsN };
-                }
-                else
-                {
-                    bool hadForest = Array.IndexOf(e.LastDraw, forestN) >= 0;
-                    int must = hadForest ? hillsN : forestN;
-                    var rest = new List<int>();
-                    for (int n = 1; n <= 4; n++) if (n != must) rest.Add(n);
-                    nums = new[] { must, rest[rng.NextInt(rest.Count)] };
-                }
-            }
+            bool starter = forestN > 0 && hillsN > 0 && fieldsN > 0 && e.Tuning.NumbersDrawn >= 2
+                           && !e.Commission.Complete && e.Round <= e.Tuning.StarterRounds;
+            if (starter) nums = new[] { forestN, e.Round % 2 == 1 ? hillsN : fieldsN };
             if (nums == null)
             {
                 var pool = new List<int> { 1, 2, 3, 4 };
@@ -519,6 +538,7 @@ namespace World.Sim.Economy
             foreach (int h in CityHexes(s, PlayerIds.Human))
             {
                 if (Array.IndexOf(nums, s.Board.HexNumber[h]) < 0) continue;
+                if (hooks != null && hooks.HexStopped(s, h)) continue; // the robber: a demon on every city of this hex
                 var raw = TerrainInfo.RawWare(s.Board.HexTerrain[h]);
                 if (raw == null) continue;
                 int amount = e.Tuning.BatchSize;
@@ -526,6 +546,28 @@ namespace World.Sim.Economy
                 AuthoriseBatch(s, h, amount, ev);
             }
             if (hooks != null) foreach (var a in hooks.OnRoundStarted) a(s, ev);
+        }
+
+        /// <summary>True when a touching hex of the harvester's terrain has batch units left and is not stopped by the robber.</summary>
+        internal static bool HasHarvestableHex(WorldState s, EconomyHooks hooks, Building b, BuildingDef def)
+        {
+            foreach (int h in s.Board.Topology.VertexHexes(b.Vertex))
+            {
+                if (s.Board.HexTerrain[h] != def.Terrain || s.Economy.HexBatchRemaining[h] <= 0) continue;
+                if (hooks != null && hooks.HexStopped(s, h)) continue;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Set Building.Blocked for every live building from the blocked-flag hooks (demons, raids), and EconomyState.HexStopped (robber).</summary>
+        internal static void RefreshBlocked(WorldState s, EconomyHooks hooks)
+        {
+            foreach (var b in s.Economy.Buildings)
+                b.Blocked = b.State != BuildingState.Removed && hooks != null && hooks.Blocks(s, b.Vertex);
+            var e = s.Economy;
+            if (e.HexStopped == null || e.HexStopped.Length != e.HexBatchRemaining.Length) e.HexStopped = new bool[e.HexBatchRemaining.Length];
+            for (int h = 0; h < e.HexStopped.Length; h++) e.HexStopped[h] = hooks != null && hooks.HexStopped(s, h);
         }
 
         // ---------------- Diagnostics ----------------
@@ -553,11 +595,21 @@ namespace World.Sim.Economy
                 }
                 return;
             }
-            if (b.State == BuildingState.Constructing) return;
+            if (b.State == BuildingState.Constructing)
+            {
+                if (b.Blocked) reason = Reasons.DemonOnRoute;
+                return;
+            }
 
             if (!b.Enabled)
             {
                 reason = Reasons.Disabled;
+                return;
+            }
+            if (b.Blocked)
+            {
+                // A demon (or a raid) on the building's own flag stops it.
+                reason = Reasons.DemonOnRoute;
                 return;
             }
             bool powered = hooks == null || hooks.Powered(s, b);
@@ -601,7 +653,21 @@ namespace World.Sim.Economy
             }
             if (def.Kind == BuildingKind.Harvester)
             {
-                reason = Reasons.NoBatch;
+                if (!HasHarvestableHex(s, hooks, b, def))
+                {
+                    reason = Reasons.NoBatch;
+                    return;
+                }
+                if (b.InputCredit > 0) return;
+                for (int w = 0; w < Wares.Count; w++)
+                {
+                    if (def.Inputs[w] > 0 && b.Stock[w] - b.Reserved[w] < def.Inputs[w])
+                    {
+                        reason = b.Incoming[w] > 0 ? Reasons.WaitingWare : Reasons.InputMissing;
+                        ware = w;
+                        return;
+                    }
+                }
                 return;
             }
             for (int w = 0; w < Wares.Count; w++)
@@ -639,11 +705,12 @@ namespace World.Sim.Economy
             }
         }
 
+        /// <summary>Buildings the quartermaster's commission needs active and road-connected.</summary>
         internal static readonly BuildingType[] CommissionTypes =
-            { BuildingType.Forester, BuildingType.Woodcutter, BuildingType.Sawmill, BuildingType.Quarry };
-
-        internal const int CommissionPlanks = 10;
-        internal const int CommissionStone = 10;
+        {
+            BuildingType.Forester, BuildingType.Woodcutter, BuildingType.Sawmill,
+            BuildingType.ClayPit, BuildingType.CharcoalKiln, BuildingType.BrickKiln,
+        };
 
         internal static bool CommissionBuildingsReady(WorldState s, BuildingType t)
         {
@@ -659,8 +726,9 @@ namespace World.Sim.Economy
         internal static bool CommissionMet(WorldState s)
         {
             var store = Storehouse(s);
-            if (store.Stock[(int)Ware.Planks] < CommissionPlanks || store.Stock[(int)Ware.Stone] < CommissionStone) return false;
-            foreach (var t in CommissionTypes) if (!CommissionBuildingsReady(s, t)) return false;
+            var t = s.Economy.Tuning;
+            if (store.Stock[(int)Ware.Planks] < t.CommissionPlanks || store.Stock[(int)Ware.Bricks] < t.CommissionBricks) return false;
+            foreach (var bt in CommissionTypes) if (!CommissionBuildingsReady(s, bt)) return false;
             return true;
         }
     }

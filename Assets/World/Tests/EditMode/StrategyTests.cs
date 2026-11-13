@@ -35,19 +35,20 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void Rounds_ThreeAgesOfTwo_ThenTheGameEndsByPoints()
+        public void Rounds_ThreeAgesOfThree_ThenTheGameEndsByPoints()
         {
             var sim = K.NewSim();
             var s = sim.State;
-            s.Strategy.Tuning.Intensify = false; // no hero play here: keep demons from breaching (tested separately)
+            s.Strategy.Tuning.BreachLimit = 99; // no hero play here: keep demons from ending the game (tested separately)
+            s.Strategy.Tuning.VictoryPoints = 99; // the rival would reach the target on the last bell: test the age-end comparison
             K.Step(sim);
             var ages = new List<int>();
-            for (int r = 0; r < 6; r++)
+            for (int r = 0; r < 9; r++)
             {
                 ages.Add(s.Strategy.Age * 10 + s.Strategy.RoundInAge);
                 K.EndRound(sim);
             }
-            CollectionAssert.AreEqual(new[] { 11, 12, 21, 22, 31, 32 }, ages);
+            CollectionAssert.AreEqual(new[] { 11, 12, 13, 21, 22, 23, 31, 32, 33 }, ages, "three ages of three rounds");
             Assert.IsTrue(s.Strategy.GameOver);
             Assert.AreEqual(OutcomeReasons.AgeEnd, s.Strategy.OutcomeReason);
             var r2 = sim.Submit(new EndRound());
@@ -63,7 +64,7 @@ namespace World.Sim.Tests
             var s = sim.State;
             var topo = s.Board.Topology;
             int home = s.Board.HomeCityVertex;
-            K.Give(s, Ware.Planks, 20, Ware.Stone, 10, Ware.Grain, 3);
+            K.Give(s, Ware.Planks, 20, Ware.Bricks, 10, Ware.Rations, 3);
             K.Step(sim);
 
             // Cities stand on corners only: the demo road's intermediate flags are refused.
@@ -118,9 +119,12 @@ namespace World.Sim.Tests
             var topo = s.Board.Topology;
             K.Step(sim);
             int site = K.RoadToSecondCitySite(sim);
+            Assert.IsTrue(sim.Check(new FoundCity { Vertex = site }).Ok, "the starting stock pays for the first city");
+            EconomyApi.TrySpendFromStorehouse(s, Ware.Rations, EconomyApi.StorehouseCount(s, Ware.Rations) - 1);
             var r = sim.Check(new FoundCity { Vertex = site });
             Assert.AreEqual(StrategyRefusals.CannotAfford, r.Reason);
-            StringAssert.Contains("grain", r.Message);
+            StringAssert.Contains("1 rations", r.Message);
+            Assert.AreEqual("3 planks, 3 bricks, 2 rations", StrategyApi.CityCostText(s));
             Assert.IsTrue(s.Economy.Cities.Any(c => c.Owner == PlayerIds.Rival && c.Vertex == s.Board.RivalOutpostVertex));
             int nearOutpost = topo.CornerNeighbours(s.Board.RivalOutpostVertex)[0];
             Assert.AreEqual(StrategyRefusals.TooClose, StrategyApi.CheckCity(s, nearOutpost).Reason);
@@ -135,40 +139,40 @@ namespace World.Sim.Tests
             var s = sim.State;
             K.Step(sim);
             Assert.AreEqual(4, StrategyApi.TradeRate(s));
-            int p = EconomyApi.StorehouseCount(s, Ware.Planks), st = EconomyApi.StorehouseCount(s, Ware.Stone);
-            K.Do(sim, new Trade { Give = Ware.Planks, Get = Ware.Stone, Count = 2 });
+            int p = EconomyApi.StorehouseCount(s, Ware.Planks), st = EconomyApi.StorehouseCount(s, Ware.Bricks);
+            K.Do(sim, new Trade { Give = Ware.Planks, Get = Ware.Bricks, Count = 2 });
             Assert.AreEqual(p - 8, EconomyApi.StorehouseCount(s, Ware.Planks));
-            Assert.AreEqual(st + 2, EconomyApi.StorehouseCount(s, Ware.Stone));
-            var r = sim.Check(new Trade { Give = Ware.Ingots, Get = Ware.Stone, Count = 1 });
+            Assert.AreEqual(st + 2, EconomyApi.StorehouseCount(s, Ware.Bricks));
+            var r = sim.Check(new Trade { Give = Ware.Weapons, Get = Ware.Bricks, Count = 1 });
             Assert.AreEqual(StrategyRefusals.CannotAfford, r.Reason);
-            StringAssert.Contains("4 ingots", r.Message);
-            Assert.AreEqual(StrategyRefusals.SameWare, sim.Check(new Trade { Give = Ware.Stone, Get = Ware.Stone }).Reason);
-            Assert.AreEqual(StrategyRefusals.BadCount, sim.Check(new Trade { Give = Ware.Planks, Get = Ware.Stone, Count = 0 }).Reason);
+            StringAssert.Contains("4 weapons", r.Message);
+            Assert.AreEqual(StrategyRefusals.SameWare, sim.Check(new Trade { Give = Ware.Bricks, Get = Ware.Bricks }).Reason);
+            Assert.AreEqual(StrategyRefusals.BadCount, sim.Check(new Trade { Give = Ware.Planks, Get = Ware.Bricks, Count = 0 }).Reason);
 
             // Sell 2 for 1 coin; buy 1 for 3 coin.
-            K.Do(sim, new Sell { Ware = Ware.Stone, Count = 2 });
+            K.Do(sim, new Sell { Ware = Ware.Bricks, Count = 2 });
             Assert.AreEqual(1, s.Player(0).Coin);
-            Assert.AreEqual(StrategyRefusals.BadCount, sim.Check(new Sell { Ware = Ware.Stone, Count = 3 }).Reason);
-            Assert.AreEqual(StrategyRefusals.CannotAfford, sim.Check(new Buy { Ware = Ware.Grain, Count = 1 }).Reason);
+            Assert.AreEqual(StrategyRefusals.BadCount, sim.Check(new Sell { Ware = Ware.Bricks, Count = 3 }).Reason);
+            Assert.AreEqual(StrategyRefusals.CannotAfford, sim.Check(new Buy { Ware = Ware.Wheat, Count = 1 }).Reason);
             s.Player(0).Coin = 3;
-            K.Do(sim, new Buy { Ware = Ware.Grain, Count = 1 });
-            Assert.AreEqual(1, EconomyApi.StorehouseCount(s, Ware.Grain));
+            K.Do(sim, new Buy { Ware = Ware.Wheat, Count = 1 });
+            Assert.AreEqual(1, EconomyApi.StorehouseCount(s, Ware.Wheat));
             Assert.AreEqual(0, s.Player(0).Coin);
             Assert.IsNull(K.CheckInvariants(s));
         }
 
         [Test]
-        public void Trade_CharterAndMarketImproveTheRate()
+        public void Trade_MerchantGuildAndMarketImproveTheRate()
         {
             var sim = K.NewSim();
             var s = sim.State;
             K.Step(sim);
             K.FinishDraft(sim);
-            K.ForceIntoHand(s, "trade_charter");
-            s.Player(0).Coin = 2;
-            K.Do(sim, new BuildCard { CardId = K.CardOf(s, "trade_charter"), CityVertex = s.Board.HomeCityVertex });
+            K.ForceIntoHand(s, "merchant_guild");
+            K.Give(s, Ware.Iron, 1);
+            K.Do(sim, new BuildCard { CardId = K.CardOf(s, "merchant_guild"), CityVertex = s.Board.HomeCityVertex });
             Assert.AreEqual(3, StrategyApi.TradeRate(s));
-            K.Give(s, Ware.Planks, 10, Ware.Stone, 10);
+            K.Give(s, Ware.Planks, 10, Ware.Bricks, 10);
             K.Build(sim, BuildingType.Market);
             Assert.AreEqual(2, StrategyApi.TradeRate(s));
         }
@@ -181,6 +185,9 @@ namespace World.Sim.Tests
             var a = K.NewSim();
             var b = K.NewSim();
             var s = a.State;
+            // No hero play here: keep the demons from ending the game before the third draft (tested separately).
+            a.State.Strategy.Tuning.BreachLimit = 99;
+            b.State.Strategy.Tuning.BreachLimit = 99;
             K.Step(a);
             K.Step(b);
             var rivalPicksA = new List<int>();
@@ -218,7 +225,7 @@ namespace World.Sim.Tests
                 rivalPicksA.AddRange(e1.Concat(e2).OfType<DraftPicked>().Where(p => p.PlayerId == 1).Select(p => p.CardId));
                 rivalPicksB.AddRange(b.DrainEvents().OfType<DraftPicked>().Select(p => p.CardId));
                 Assert.IsNull(K.CheckInvariants(s));
-                for (int r = 0; r < 2 && !s.Strategy.GameOver; r++)
+                for (int r = 0; r < s.Strategy.Tuning.RoundsPerAge && !s.Strategy.GameOver; r++)
                 {
                     K.EndRound(a);
                     K.EndRound(b);
@@ -242,28 +249,37 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void Draft_RivalPrefersPointCards()
+        public void Draft_RivalPrefersShieldCards_AndBuildsThemOnlyWhenTuned()
         {
-            var sim = K.NewSim();
-            var s = sim.State;
-            K.Step(sim);
-            // Put the Monument in the rival's age II hand by hand.
-            K.EndRound(sim);
-            K.EndRound(sim);
-            Assert.AreEqual(2, s.Strategy.Age);
-            int mon = K.CardOf(s, "monument");
-            var hp = s.Strategy.Sides[0].DraftHand;
-            var hr = s.Strategy.Sides[1].DraftHand;
-            if (hp.Contains(mon))
+            foreach (int maxBuilt in new[] { 0, 3 })
             {
-                int swap = hr[0];
-                hp[hp.IndexOf(mon)] = swap;
-                hr[0] = mon;
+                var sim = K.NewSim();
+                var s = sim.State;
+                s.Strategy.Tuning.RivalMaxBuilt = maxBuilt;
+                s.Strategy.Tuning.BreachLimit = 99;
+                K.Step(sim);
+                // Put the Drill Yard (shields) and the Monument (points) in the rival's age II hand.
+                for (int r = 0; r < s.Strategy.Tuning.RoundsPerAge; r++) K.EndRound(sim);
+                Assert.AreEqual(2, s.Strategy.Age);
+                int drill = K.CardOf(s, "drill_yard"), mon = K.CardOf(s, "monument");
+                var hp = s.Strategy.Sides[0].DraftHand;
+                var hr = s.Strategy.Sides[1].DraftHand;
+                foreach (int c in new[] { drill, mon })
+                {
+                    if (hr.Contains(c)) continue;
+                    int other = hr.First(x => x != drill && x != mon);
+                    if (hp.Contains(c)) hp[hp.IndexOf(c)] = other;
+                    else { s.Strategy.Sides[0].Discarded.Remove(c); s.Strategy.Sides[1].Discarded.Remove(c); }
+                    hr[hr.IndexOf(other)] = c;
+                }
+                int shields = MilitaryApi.Shields(s, PlayerIds.Rival);
+                var evs = K.Do(sim, new DraftPick { CardId = hp[0] });
+                Assert.AreEqual(drill, evs.OfType<DraftPicked>().Single(p => p.PlayerId == 1).CardId, "shields first");
+                bool built = s.Strategy.Sides[1].Built.Any(x => x.CardId == drill);
+                Assert.AreEqual(maxBuilt > 0, built, "built only when RivalMaxBuilt allows");
+                Assert.AreEqual(shields + (built ? 1 : 0), MilitaryApi.Shields(s, PlayerIds.Rival));
+                Assert.AreEqual(0, StrategyApi.Score(s, PlayerIds.Rival).Cards, "the rival's points come from its plan, not cards");
             }
-            var evs = K.Do(sim, new DraftPick { CardId = hp[0] });
-            Assert.AreEqual(mon, evs.OfType<DraftPicked>().Single(p => p.PlayerId == 1).CardId);
-            Assert.IsTrue(s.Strategy.Sides[1].Built.Any(x => x.CardId == mon), "the rival builds its point card");
-            Assert.AreEqual(1, StrategyApi.Score(s, PlayerIds.Rival).Cards);
         }
 
         [Test]
@@ -274,12 +290,15 @@ namespace World.Sim.Tests
             K.Step(sim);
             K.FinishDraft(sim);
             int home = s.Board.HomeCityVertex;
-            foreach (var id in new[] { "lumber_camp", "stone_cutters", "granary", "ranger_post" }) K.ForceIntoHand(s, id);
+            foreach (var id in new[] { "lumber_camp", "clay_diggers", "granary", "ranger_post" }) K.ForceIntoHand(s, id);
             Assert.AreEqual(StrategyRefusals.NoCity, sim.Check(new BuildCard { CardId = K.CardOf(s, "lumber_camp"), CityVertex = s.Economy.DemoVertexA }).Reason);
             Assert.AreEqual(StrategyRefusals.NotInHand, sim.Check(new BuildCard { CardId = K.CardOf(s, "great_hall"), CityVertex = home }).Reason);
-            K.Give(s, Ware.Planks, 10, Ware.Stone, 5);
+            var cost = sim.Check(new BuildCard { CardId = K.CardOf(s, "clay_diggers"), CityVertex = home });
+            Assert.AreEqual(StrategyRefusals.CannotAfford, cost.Reason, "Clay Diggers costs coin");
+            StringAssert.Contains("2 coin", cost.Message);
+            s.Player(0).Coin = 4;
             int moves = s.Strategy.HeroMovesLeft;
-            foreach (var id in new[] { "lumber_camp", "stone_cutters", "ranger_post" })
+            foreach (var id in new[] { "lumber_camp", "clay_diggers", "ranger_post" })
                 Assert.AreEqual(1, K.Do(sim, new BuildCard { CardId = K.CardOf(s, id), CityVertex = home }).OfType<CardBuilt>().Count(), id);
             Assert.AreEqual(moves + 1, s.Strategy.HeroMovesLeft, "Ranger Post adds a move at once");
             Assert.AreEqual(StrategyRefusals.CityFull, sim.Check(new BuildCard { CardId = K.CardOf(s, "granary"), CityVertex = home }).Reason);
@@ -322,12 +341,14 @@ namespace World.Sim.Tests
             var s = sim.State;
             var topo = s.Board.Topology;
             int home = s.Board.HomeCityVertex;
-            // The deck: every flag within 4 segments of home except home (16 territory flags - 1).
-            Assert.AreEqual(15, s.Strategy.InfectionDeck.Count);
-            Assert.IsTrue(s.Strategy.InfectionDeck.All(v => topo.Distance(home, v) <= 4 && v != home));
+            // The deck: every flag within InfectionRadius (2) segments of home except home: its 6 nearest flags.
+            int radius = s.Strategy.Tuning.InfectionRadius;
+            Assert.AreEqual(Enumerable.Range(0, topo.VertexCount).Count(v => v != home && topo.Distance(home, v) <= radius), s.Strategy.InfectionDeck.Count);
+            Assert.AreEqual(6, s.Strategy.InfectionDeck.Count);
+            Assert.IsTrue(s.Strategy.InfectionDeck.All(v => topo.Distance(home, v) <= radius && v != home));
             K.Step(sim);
-            int empty = s.Strategy.InfectionDeck.First(v => !topo.IsCorner(v) && !EconomyApi.IsVertexOccupied(s, v)
-                && topo.VertexEdges(v).All(e => !s.Economy.Roads[e]));
+            int empty = Enumerable.Range(0, topo.VertexCount).First(v => !topo.IsCorner(v) && !EconomyApi.IsVertexOccupied(s, v)
+                && topo.VertexEdges(v).All(e => !s.Economy.Roads[e]) && topo.Distance(home, v) <= 4);
             int corner = K.DemoCorner(s);
             RigInfection(s, empty, corner);
             s.Strategy.Tuning.InfectionBase = 1;
@@ -365,17 +386,22 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void Demons_InfectionAddsDemon_FourthAddsBreach()
+        public void Demons_InfectionAddsDemon_FourthOutbreaksAndAdvancesTheBreachTrack()
         {
             var sim = K.NewSim();
             var s = sim.State;
             K.Step(sim);
             int v = K.DemoCorner(s);
+            var neighbours = StrategyApi.OutbreakNeighbours(s, v);
             RigInfection(s, v, v, v, v);
             var evs = K.EndRound(sim);
-            Assert.AreEqual(3, s.Strategy.Demons[v]);
-            Assert.AreEqual(3, evs.OfType<DemonSpawned>().Count());
-            Assert.AreEqual(1, s.Strategy.Breaches, "a fourth draw on a full flag adds a breach instead");
+            Assert.AreEqual(3, s.Strategy.Demons[v], "a site holds at most 3");
+            Assert.AreEqual(1, s.Strategy.Breaches, "a fourth draw on a full site outbreaks: the breach track advances");
+            var ob = evs.OfType<OutbreakOccurred>().Single();
+            Assert.AreEqual(v, ob.Vertex);
+            CollectionAssert.AreEqual(neighbours, ob.Neighbours);
+            foreach (int n in neighbours)
+                Assert.AreEqual(n == s.Strategy.HeroVertex ? 0 : 1, s.Strategy.Demons[n], "each connected neighbouring site gains one");
             Assert.AreEqual(1, evs.OfType<BreachAdvanced>().Count());
             Assert.IsFalse(s.Strategy.GameOver);
         }
@@ -388,7 +414,7 @@ namespace World.Sim.Tests
             K.Step(sim);
             K.FinishDraft(sim);
             K.ForceIntoHand(s, "ward_stones");
-            K.Give(s, Ware.Stone, 3);
+            K.Give(s, Ware.Bricks, 2, Ware.Rations, 1);
             K.Do(sim, new BuildCard { CardId = K.CardOf(s, "ward_stones"), CityVertex = s.Board.HomeCityVertex });
             int v = K.DemoCorner(s);
             RigInfection(s, v, v, v, v);
@@ -398,15 +424,16 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void Demons_FourBreaches_EndTheGameAsALoss()
+        public void Demons_BreachLimit_EndsTheGameAsALoss()
         {
             var sim = K.NewSim();
             var s = sim.State;
             K.Step(sim);
             int v = K.DemoCorner(s);
-            RigInfection(s, v, v, v, v, v, v, v);
+            int limit = s.Strategy.Tuning.BreachLimit;
+            RigInfection(s, Enumerable.Repeat(v, 3 + limit).ToArray());
             var evs = K.EndRound(sim);
-            Assert.AreEqual(4, s.Strategy.Breaches);
+            Assert.AreEqual(limit, s.Strategy.Breaches, "the game stops at the limit");
             Assert.IsTrue(s.Strategy.GameOver);
             Assert.AreEqual(GameOutcome.Defeat, s.Strategy.Outcome);
             Assert.AreEqual(OutcomeReasons.Breach, s.Strategy.OutcomeReason);
@@ -508,46 +535,46 @@ namespace World.Sim.Tests
             K.Step(sim);
             K.FinishDraft(sim);
             Assert.AreEqual(StrategyRefusals.NoWonder, sim.Check(new BuildWonderStage()).Reason);
-            K.Give(s, Ware.Planks, 10, Ware.Stone, 4);
+            K.Give(s, Ware.Planks, 10, Ware.Bricks, 4);
             int site = K.Build(sim, BuildingType.WonderSite);
-            EconomyApi.TrySpendFromStorehouse(s, Ware.Stone, EconomyApi.StorehouseCount(s, Ware.Stone));
-            int stoneNow = 0;
+            EconomyApi.TrySpendFromStorehouse(s, Ware.Bricks, EconomyApi.StorehouseCount(s, Ware.Bricks));
+            int bricksNow = 0;
             K.Do(sim, new BuildWonderStage());
             Assert.AreEqual(StrategyRefusals.StageInProgress, sim.Check(new BuildWonderStage()).Reason);
             K.Step(sim, 300);
             Assert.AreEqual(0, s.Strategy.Wonder.StagesDone);
             var info = StrategyApi.Wonder(s);
-            StringAssert.Contains("stone", info.Status);
+            StringAssert.Contains("bricks", info.Status);
             var stage = s.Strategy.Tuning.WonderStages[0];
-            StringAssert.Contains((stage[(int)Ware.Stone] - stoneNow) + " stone", info.Status);
+            StringAssert.Contains((stage[(int)Ware.Bricks] - bricksNow) + " bricks", info.Status);
             Assert.AreEqual(stage[(int)Ware.Planks], s.Economy.Buildings[site].Stock[(int)Ware.Planks], "planks arrived at the wonder site");
 
-            // Stone in the storehouse is not enough: the stage completes only once it is delivered.
-            K.Give(s, Ware.Stone, stage[(int)Ware.Stone]);
+            // Bricks in the storehouse are not enough: the stage completes only once they are delivered.
+            K.Give(s, Ware.Bricks, stage[(int)Ware.Bricks]);
             var evs = K.Step(sim, 1);
             Assert.AreEqual(0, s.Strategy.Wonder.StagesDone, "not complete before delivery");
             evs.AddRange(K.Step(sim, 300));
             Assert.AreEqual(1, s.Strategy.Wonder.StagesDone);
             var done = evs.OfType<WonderStageCompleted>().Single();
-            Assert.AreEqual(1, done.Vp);
+            Assert.AreEqual(2, done.Vp);
             int lastDelivery = evs.OfType<WareDelivered>().Where(d => d.BuildingId == site).Max(d => (int)d.Tick);
             Assert.GreaterOrEqual(done.Tick, lastDelivery);
-            Assert.AreEqual(1, StrategyApi.Score(s, 0).Wonder);
-            Assert.AreEqual(stage[(int)Ware.Stone], s.Strategy.Ledger.Wonder[(int)Ware.Stone]);
+            Assert.AreEqual(2, StrategyApi.Score(s, 0).Wonder);
+            Assert.AreEqual(stage[(int)Ware.Bricks], s.Strategy.Ledger.Wonder[(int)Ware.Bricks]);
             Assert.IsNull(K.CheckInvariants(s));
         }
 
         // ---------------- Victory paths ----------------
 
         [Test]
-        public void Victory_ScriptedGameReachesEightPoints_AndWins()
+        public void Victory_ScriptedGameReachesTwelvePoints_AndWins()
         {
             var sim = K.NewSim();
             var s = sim.State;
             var topo = s.Board.Topology;
             K.Step(sim);
             K.FinishDraft(sim);
-            K.Give(s, Ware.Planks, 60, Ware.Stone, 40, Ware.Grain, 4, Ware.Rations, 4, Ware.Ingots, 4);
+            K.Give(s, Ware.Planks, 60, Ware.Bricks, 40, Ware.Rations, 10, Ware.Iron, 4);
             // Two more cities along a road west from the forester site.
             for (int c = 0; c < 2; c++)
             {
@@ -567,14 +594,18 @@ namespace World.Sim.Tests
             K.Build(sim, BuildingType.WonderSite);
             K.Do(sim, new BuildWonderStage());
             K.Step(sim, 400);
-            Assert.AreEqual(7, StrategyApi.Score(s, 0).Total);
+            Assert.AreEqual(8, StrategyApi.Score(s, 0).Total, "wonder stage 1 is worth 2");
+            K.ForceIntoHand(s, "shrine");
+            s.Player(0).Coin = 1;
+            K.Do(sim, new BuildCard { CardId = K.CardOf(s, "shrine"), CityVertex = s.Board.HomeCityVertex });
+            Assert.AreEqual(9, StrategyApi.Score(s, 0).Total, "a civic card scores as printed");
             Assert.IsFalse(s.Strategy.GameOver);
             K.Do(sim, new BuildWonderStage());
             var evs = K.Step(sim, 400);
             var end = evs.OfType<GameEnded>().Single();
             Assert.AreEqual(GameOutcome.Victory, end.Outcome);
             Assert.AreEqual(OutcomeReasons.Points, end.Reason);
-            Assert.AreEqual(9, end.PlayerVp);
+            Assert.AreEqual(12, end.PlayerVp, "wonder stage 2 is worth 3");
             Assert.AreEqual(end.Tick, evs.OfType<WonderStageCompleted>().Last().Tick, "checked at the tick boundary of the stage");
             Assert.IsNull(K.CheckInvariants(s));
         }
@@ -584,15 +615,18 @@ namespace World.Sim.Tests
         {
             var sim = K.NewSim();
             var s = sim.State;
-            s.Strategy.Tuning.Intensify = false; // no hero play here: keep demons from breaching (tested separately)
+            s.Strategy.Tuning.BreachLimit = 99; // no hero play here: keep demons from ending the game (tested separately)
+            s.Strategy.Tuning.VictoryPoints = 99; // the rival would reach the target on the last bell: test the age-end comparison
             K.Step(sim);
             GameEnded end = null;
-            for (int r = 0; r < 6; r++) end = K.EndRound(sim).OfType<GameEnded>().FirstOrDefault() ?? end;
+            for (int r = 0; r < s.Strategy.Tuning.Ages * s.Strategy.Tuning.RoundsPerAge; r++) end = K.EndRound(sim).OfType<GameEnded>().FirstOrDefault() ?? end;
             Assert.IsNotNull(end);
             Assert.AreEqual(OutcomeReasons.AgeEnd, end.Reason);
             var p = StrategyApi.Score(s, 0).Total;
             var rv = StrategyApi.Score(s, 1).Total;
-            Assert.AreEqual(2, p, "a passive player keeps only the home city");
+            Assert.AreEqual(2, StrategyApi.Score(s, 0).Cities, "a passive player keeps only the home city");
+            Assert.AreEqual(-3, StrategyApi.Score(s, 0).Military, "and loses all three military comparisons");
+            Assert.AreEqual(3, s.Strategy.Comparisons.Count);
             Assert.Greater(rv, p);
             Assert.AreEqual(GameOutcome.Defeat, end.Outcome);
             TestContext.WriteLine("passive: player " + p + " rival " + rv + " -> " + StrategyApi.Headline(s));

@@ -39,9 +39,20 @@ namespace World.Sim.Economy
     /// <summary>A job stalled on its route before pickup was dropped; its wares are free again and demand re-creates it.</summary>
     public sealed class JobReleased : SimEvent { public int JobId; public string Reason; }
 
-    public sealed class HarvestCycle : SimEvent { public int BuildingId; public int Hex; public Ware Ware; }
+    /// <summary>A harvester finished one batch unit: Amount units of Ware (Woodcutter 2, others 1) appeared in its store.</summary>
+    public sealed class HarvestCycle : SimEvent { public int BuildingId; public int Hex; public Ware Ware; public int Amount = 1; }
 
+    /// <summary>A recipe finished: Amount units of Output appeared in the building's store.</summary>
     public sealed class ProductionCycle : SimEvent { public int BuildingId; public Ware Output; public int Amount; }
+
+    /// <summary>A recipe cycle began: the building used up one cycle of its inputs (see its BuildingDef.Inputs).</summary>
+    public sealed class ProductionStarted : SimEvent { public int BuildingId; }
+
+    /// <summary>A harvester with an upkeep (the Mine) used up Amount of Ware, paying for the next Cycles harvest cycles.</summary>
+    public sealed class UpkeepPaid : SimEvent { public int BuildingId; public Ware Ware; public int Amount; public int Cycles; }
+
+    /// <summary>A power plant burned fuel (it now supplies power for FuelTicks).</summary>
+    public sealed class FuelBurned : SimEvent { public int BuildingId; public Ware Ware; public int Amount; }
 
     public sealed class RoundStarted : SimEvent { public int Round; public int[] Numbers; }
 

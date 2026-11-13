@@ -91,7 +91,7 @@ namespace World.Sim.Military
         public bool Supplied;
         public int Progress;
         public int Rations;
-        public int Ingots;
+        public int Weapons;
     }
 
     public sealed class BarracksQueue

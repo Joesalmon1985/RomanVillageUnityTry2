@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
+using World.Sim;
+using World.Sim.Economy;
 
 namespace World.Game
 {
@@ -37,12 +39,13 @@ namespace World.Game
 
             var qmYaw = Face(L.QuartermasterSpot, L.Home);
             var qm = Npc.Spawn(NpcIds.Quartermaster, "Quartermaster Bram", "Runs the storehouse. Buildings and roads.",
-                "We need planks and stone. Roads first, then we build.", new Color(0.75f, 0.55f, 0.20f), L.QuartermasterSpot, qmYaw);
-            qm.Lines.Add("Carriers walk the roads between flags. No road, no delivery.");
+                "We need planks and bricks. Roads first, then we build.", new Color(0.75f, 0.55f, 0.20f), L.QuartermasterSpot, qmYaw);
+            qm.DialogueBuilder = n => QuartermasterLines(boot, n);
+            QuartermasterLines(boot, qm);
             qm.Options.Add(DialogueOption.Leave());
 
             var keeper = Npc.Spawn(NpcIds.MarketKeeper, "Hesta", "Market keeper. Trade.",
-                "Fresh grain, fair prices. Trading opens soon.", new Color(0.30f, 0.60f, 0.30f), L.KeeperSpot, L.MarketYaw);
+                "Fresh bread, fair prices. Trading opens soon.", new Color(0.30f, 0.60f, 0.30f), L.KeeperSpot, L.MarketYaw);
             keeper.Lines.Add("Come back when the stalls are stocked.");
             keeper.Options.Add(DialogueOption.Leave());
 
@@ -55,6 +58,55 @@ namespace World.Game
                 "My ledgers are nearly ready. Cards and wonder plans soon.", new Color(0.25f, 0.35f, 0.70f), L.ScribeSpot, Face(L.ScribeSpot, L.Home));
             scribe.Lines.Add("Every card has a cost in carried wares. Nothing is free.");
             scribe.Options.Add(DialogueOption.Leave());
+        }
+
+        /// <summary>
+        /// The quartermaster's commission (Docs/ECONOMY_API.md, Rules: Commission), read from the sim each time the
+        /// dialogue opens. Names and amounts come from the economy UI helpers and tuning; the list of six building types
+        /// mirrors the documented rule (the sim keeps its own list internal).
+        /// </summary>
+        private static readonly BuildingType[] CommissionTypes =
+        {
+            BuildingType.Forester, BuildingType.Woodcutter, BuildingType.Sawmill,
+            BuildingType.ClayPit, BuildingType.CharcoalKiln, BuildingType.BrickKiln,
+        };
+
+        private static void QuartermasterLines(WorldBootstrap boot, Npc npc)
+        {
+            npc.Lines.Clear();
+            var s = boot.Sim?.State;
+            if (s?.Economy == null)
+            {
+                npc.Lines.Add("Carriers walk the roads between flags. No road, no delivery.");
+                return;
+            }
+
+            var names = new List<string>();
+            foreach (var t in CommissionTypes) names.Add(EconomyApi.DescribeType(s, t).Name);
+            var stock = new int[Wares.Count];
+            stock[(int)Ware.Planks] = s.Economy.Tuning.CommissionPlanks;
+            stock[(int)Ware.Bricks] = s.Economy.Tuning.CommissionBricks;
+
+            if (s.Economy.Commission.Complete)
+            {
+                npc.Lines.Add("The commission is done. The workshops run and the storehouse is stocked.");
+            }
+            else
+            {
+                npc.Lines.Add("The commission: a working " + JoinAnd(names) + ", all on the road, and "
+                    + EconomyApi.CostText(stock) + " in the storehouse.");
+                npc.Lines.Add("The storehouse holds " + EconomyApi.StorehouseCount(s, Ware.Planks) + " "
+                    + EconomyApi.WareName(Ware.Planks) + " and " + EconomyApi.StorehouseCount(s, Ware.Bricks) + " "
+                    + EconomyApi.WareName(Ware.Bricks) + " right now.");
+            }
+            npc.Lines.Add("Carriers walk the roads between flags. No road, no delivery.");
+        }
+
+        private static string JoinAnd(List<string> items)
+        {
+            if (items.Count == 0) return "";
+            if (items.Count == 1) return items[0];
+            return string.Join(", ", items.GetRange(0, items.Count - 1)) + " and " + items[items.Count - 1];
         }
     }
 }

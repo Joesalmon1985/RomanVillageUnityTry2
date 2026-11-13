@@ -123,7 +123,7 @@ namespace World.Sim.Tests
             var s = a.State;
             K.Step(a);
             K.FinishDraft(a);
-            K.Give(s, Ware.Planks, 20, Ware.Stone, 10, Ware.Rations, 1, Ware.Ingots, 1);
+            K.Give(s, Ware.Planks, 20, Ware.Bricks, 10, Ware.Rations, 1, Ware.Weapons, 1);
             int barracks = K.Build(a, BuildingType.Barracks);
             K.Do(a, new QueueUnit { BarracksId = barracks });
             K.Step(a, 200);
@@ -142,7 +142,7 @@ namespace World.Sim.Tests
             Assert.Throws<FormatException>(() => SaveCodec.FromJson("{ not json"));
             Assert.Throws<FormatException>(() => SaveCodec.FromJson("{\"Version\":1}"));
             var sim = K.NewSim();
-            string json = SaveCodec.ToJson(sim.State).Replace("\"Version\":1", "\"Version\":99");
+            string json = SaveCodec.ToJson(sim.State).Replace("\"Version\":" + SaveCodec.CurrentVersion, "\"Version\":99");
             Assert.Throws<FormatException>(() => SaveCodec.FromJson(json));
         }
     }

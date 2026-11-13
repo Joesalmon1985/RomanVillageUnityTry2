@@ -25,7 +25,7 @@ namespace World.Sim.Tests
             hooks.IsVertexBlocked.Add((st, v) => blocked[v]);
             hooks.IsPowered = (st, id) => power;
             EconomyApi.AddToStorehouse(s, Ware.Planks, 30);
-            EconomyApi.AddToStorehouse(s, Ware.Stone, 30);
+            EconomyApi.AddToStorehouse(s, Ware.Bricks, 30);
             var script = new CommissionScript(sim);
 
             int accepted = 0, refused = 0, delivered = 0, harvested = 0, produced = 0;
@@ -34,6 +34,7 @@ namespace World.Sim.Tests
                 script.Act();
                 if (t % 25 == 0) RepairOneRoad(sim);
                 if (t % 100 == 0 && EconomyApi.StorehouseCount(s, Ware.Planks) < 6) EconomyApi.AddToStorehouse(s, Ware.Planks, 6);
+                if (t % 100 == 0 && EconomyApi.StorehouseCount(s, Ware.Bricks) < 6) EconomyApi.AddToStorehouse(s, Ware.Bricks, 6);
                 if (t % 300 == 0) Array.Clear(blocked, 0, blocked.Length);
                 if (rng.Chance(1, 6))
                 {
@@ -103,7 +104,7 @@ namespace World.Sim.Tests
                 case 0:
                 case 1:
                 case 2:
-                    return new PlaceBuilding { Type = (BuildingType)rng.NextInt(14), Vertex = rng.NextInt(topo.VertexCount + 2) - 1 };
+                    return new PlaceBuilding { Type = (BuildingType)rng.NextInt(BuildingDefs.Count), Vertex = rng.NextInt(topo.VertexCount + 2) - 1 };
                 case 3:
                 case 4:
                     return new PlaceRoad { Edge = rng.NextInt(topo.EdgeCount + 2) - 1 };

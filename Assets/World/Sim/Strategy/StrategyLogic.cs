@@ -104,11 +104,11 @@ namespace World.Sim.Strategy
             return Math.Max(t.MinTradeRate, r);
         }
 
-        internal static int SellWaresPerCoin(WorldState s) =>
-            Effects(s, PlayerIds.Human).SellOneForOne ? 1 : Math.Max(1, s.Strategy.Tuning.SellWaresPerCoin);
+        internal static int SellWaresPerCoin(WorldState s) => Math.Max(1, s.Strategy.Tuning.SellWaresPerCoin);
 
-        internal static int BreachThreshold(WorldState s) =>
-            s.Strategy.Tuning.BreachThreshold + Effects(s, PlayerIds.Human).BreachThresholdBonus;
+        /// <summary>Most demons a site holds; one more makes it outbreak (3, Ward Stones 4).</summary>
+        internal static int DemonCap(WorldState s) =>
+            s.Strategy.Tuning.DemonCap + Effects(s, PlayerIds.Human).DemonCapBonus;
 
         internal static int InfectionCount(WorldState s)
         {
@@ -127,20 +127,20 @@ namespace World.Sim.Strategy
             var t = s.Strategy.Tuning;
             var sc = new ScoreBreakdown { PlayerId = player };
             var fx = Effects(s, player);
+            int cities = CityCount(s, player);
+            sc.Cards = fx.Vp + fx.VpPerCity * cities;
+            foreach (var mc in s.Strategy.Comparisons) sc.Military += player == PlayerIds.Human ? mc.PlayerVp : mc.RivalVp;
             if (player == PlayerIds.Human)
             {
-                int cities = CityCount(s, player);
                 sc.Cities = cities * t.VpPerCity;
-                sc.Cards = fx.Vp + fx.VpPerExtraCity * Math.Min(2, Math.Max(0, cities - 1));
                 for (int i = 0; i < s.Strategy.Wonder.StagesDone && i < t.WonderStageVp.Length; i++) sc.Wonder += t.WonderStageVp[i];
                 sc.Outpost = MilitaryApi.IsOutpostDestroyed(s) ? t.OutpostVp : 0;
             }
             else
             {
                 sc.Plan = Side(s, player).PlanVp;
-                sc.Cards = fx.Vp;
             }
-            sc.Total = sc.Cities + sc.Cards + sc.Wonder + sc.Outpost + sc.Plan;
+            sc.Total = sc.Cities + sc.Cards + sc.Wonder + sc.Military + sc.Outpost + sc.Plan;
             return sc;
         }
 
@@ -219,6 +219,8 @@ namespace World.Sim.Strategy
                     if (!st.InfectionDeck.Contains(home) && !st.InfectionDiscard.Contains(home))
                         st.InfectionDeck.Insert(st.InfectionRng.NextInt(st.InfectionDeck.Count + 1), home);
                 }
+                if (age >= 2 && t.Epidemics) Epidemic(s, ev);
+                if (st.GameOver) return;
                 Deal(s, age, ev);
             }
             ev?.Add(new StrategyRoundStarted { Age = st.Age, RoundInAge = st.RoundInAge, HeroMoves = st.HeroMovesLeft });
@@ -230,12 +232,15 @@ namespace World.Sim.Strategy
             if (st.GameOver || !st.Started) return;
             int rr = AgeRound(s);
 
+            // End of an age: military comparison on the field as it stands when the bell rings.
+            if (st.Age >= 1 && st.RoundInAge >= st.Tuning.RoundsPerAge) CompareMilitary(s, ev);
+
             // Rival turn: plan points, then garrison and raids.
             if (!MilitaryApi.IsOutpostDestroyed(s) && Array.IndexOf(st.Tuning.RivalPlanRounds, rr) >= 0)
             {
                 var side = Side(s, PlayerIds.Rival);
-                side.PlanVp++;
-                ev?.Add(new RivalScored { Vp = 1, Total = Score(s, PlayerIds.Rival).Total });
+                side.PlanVp += st.Tuning.RivalPlanVp;
+                ev?.Add(new RivalScored { Vp = st.Tuning.RivalPlanVp, Total = Score(s, PlayerIds.Rival).Total });
             }
             MilitaryApi.RivalRoundEnd(s, ev);
 
@@ -253,13 +258,7 @@ namespace World.Sim.Strategy
         {
             var st = s.Strategy;
             st.LastInfection.Clear();
-            if (st.Tuning.Intensify && st.Age >= 2 && st.InfectionDiscard.Count > 0)
-            {
-                // The drawn flags go back on top (end of the list), shuffled.
-                st.InfectionRng.Shuffle(st.InfectionDiscard);
-                st.InfectionDeck.AddRange(st.InfectionDiscard);
-                st.InfectionDiscard.Clear();
-            }
+            st.LastOutbreaks.Clear();
             // Cards for empty intermediate flags are discarded without effect and do not count as a draw
             // (bounded so a deck of only empty flags cannot loop).
             int skips = st.InfectionDeck.Count + st.InfectionDiscard.Count;
@@ -282,9 +281,127 @@ namespace World.Sim.Strategy
                     continue;
                 }
                 st.LastInfection.Add(v);
-                PlaceDemon(s, v, ev);
+                // Each drawn card is one "draw": a site outbreaks at most once per draw.
+                AddDemon(s, v, new bool[st.Demons.Length], false, ev);
             }
             ev?.Add(new InfectionDrawn { Vertices = st.LastInfection.ToArray() });
+        }
+
+        /// <summary>
+        /// Epidemic (age change): the bottom card of the deck whose site can hold demons is drawn and its site filled
+        /// to EpidemicFill demons (an outbreak if it already held demons, as in Pandemic); then the discard pile,
+        /// with that card, is shuffled and put back on top of the deck. The higher draw rate comes with the new age.
+        /// </summary>
+        internal static void Epidemic(WorldState s, EventBuffer ev)
+        {
+            var st = s.Strategy;
+            st.LastOutbreaks.Clear();
+            int idx = -1;
+            for (int i = 0; i < st.InfectionDeck.Count && idx < 0; i++) if (TakesDemons(s, st.InfectionDeck[i])) idx = i;
+            if (idx < 0) return;
+            int v = st.InfectionDeck[idx];
+            st.InfectionDeck.RemoveAt(idx);
+            st.InfectionDiscard.Add(v);
+            st.Epidemics++;
+            bool outbreak = false;
+            if (v == st.HeroVertex) ev?.Add(new DemonRepelled { Vertex = v });
+            else
+            {
+                int had = st.Demons[v];
+                int fill = Math.Min(st.Tuning.EpidemicFill, DemonCap(s));
+                if (st.Demons[v] < fill)
+                {
+                    st.Demons[v] = fill;
+                    ev?.Add(new DemonSpawned { Vertex = v, Count = fill });
+                }
+                if (had > 0)
+                {
+                    outbreak = true;
+                    Outbreak(s, v, new bool[st.Demons.Length], false, ev);
+                }
+            }
+            ev?.Add(new EpidemicStruck { Vertex = v, Age = st.Age, Demons = st.Demons[v], Outbreak = outbreak });
+            st.InfectionRng.Shuffle(st.InfectionDiscard);
+            st.InfectionDeck.AddRange(st.InfectionDiscard); // top = end of the list
+            st.InfectionDiscard.Clear();
+        }
+
+        /// <summary>
+        /// One demon arrives at a site: repelled on the hero's flag; a site already at the cap outbreaks instead
+        /// (at most once per draw: outbroken marks the sites that already did).
+        /// </summary>
+        internal static void AddDemon(WorldState s, int v, bool[] outbroken, bool chained, EventBuffer ev)
+        {
+            var st = s.Strategy;
+            if (st.GameOver) return;
+            if (v == st.HeroVertex)
+            {
+                ev?.Add(new DemonRepelled { Vertex = v });
+                return;
+            }
+            if (st.Demons[v] >= DemonCap(s))
+            {
+                Outbreak(s, v, outbroken, chained, ev);
+                return;
+            }
+            st.Demons[v]++;
+            ev?.Add(new DemonSpawned { Vertex = v, Count = st.Demons[v] });
+        }
+
+        /// <summary>
+        /// Outbreak at v: the breach track advances by one, then each connected neighbouring site gains one demon
+        /// (a neighbour already at the cap outbreaks in turn, unless it already did in this draw).
+        /// </summary>
+        internal static void Outbreak(WorldState s, int v, bool[] outbroken, bool chained, EventBuffer ev)
+        {
+            var st = s.Strategy;
+            if (outbroken[v] || st.GameOver) return;
+            outbroken[v] = true;
+            st.Breaches++;
+            st.LastOutbreaks.Add(v);
+            var nb = OutbreakNeighbours(s, v);
+            ev?.Add(new OutbreakOccurred { Vertex = v, Neighbours = nb.ToArray(), Breaches = st.Breaches, Limit = st.Tuning.BreachLimit, Chained = chained });
+            ev?.Add(new BreachAdvanced { Vertex = v, Breaches = st.Breaches, Limit = st.Tuning.BreachLimit });
+            if (st.Breaches >= st.Tuning.BreachLimit)
+            {
+                EndGame(s, GameOutcome.Defeat, OutcomeReasons.Breach, ev);
+                return;
+            }
+            foreach (int n in nb)
+            {
+                if (st.GameOver) return;
+                if (outbroken[n]) continue;
+                AddDemon(s, n, outbroken, true, ev);
+            }
+        }
+
+        /// <summary>
+        /// The connected neighbouring sites of a flag (fine graph): walk out along each of its road segments (built
+        /// or not) in a straight line, flag by flag, and stop at the first flag that can hold demons
+        /// (<see cref="TakesDemons"/>); that flag is a neighbour. Corners always hold demons, so a walk never passes
+        /// a corner: a corner has up to three neighbours (one per hex edge: the nearest occupied flag on that edge,
+        /// else the next corner) and an intermediate flag two. The rival outpost is never a neighbour. Ascending ids.
+        /// </summary>
+        internal static List<int> OutbreakNeighbours(WorldState s, int v)
+        {
+            var topo = s.Board.Topology;
+            var list = new List<int>();
+            foreach (int first in topo.VertexNeighbours(v))
+            {
+                int prev = v, cur = first;
+                while (cur >= 0 && !TakesDemons(s, cur))
+                {
+                    // An empty intermediate flag has exactly two neighbours: keep walking straight on.
+                    int next = -1;
+                    foreach (int w in topo.VertexNeighbours(cur)) if (w != prev) next = w;
+                    prev = cur;
+                    cur = next;
+                }
+                if (cur < 0 || cur == v || cur == s.Board.RivalOutpostVertex || list.Contains(cur)) continue;
+                list.Add(cur);
+            }
+            list.Sort();
+            return list;
         }
 
         /// <summary>
@@ -318,25 +435,9 @@ namespace World.Sim.Strategy
             ClearDemons(s, to, "hero", ev);
         }
 
-        /// <summary>One infection on a flag: repelled by the hero, a demon, or a breach when the flag is full.</summary>
-        internal static void PlaceDemon(WorldState s, int v, EventBuffer ev)
-        {
-            var st = s.Strategy;
-            if (v == st.HeroVertex)
-            {
-                ev?.Add(new DemonRepelled { Vertex = v });
-                return;
-            }
-            if (st.Demons[v] >= BreachThreshold(s))
-            {
-                st.Breaches++;
-                ev?.Add(new BreachAdvanced { Vertex = v, Breaches = st.Breaches, Limit = st.Tuning.BreachLimit });
-                if (st.Breaches >= st.Tuning.BreachLimit) EndGame(s, GameOutcome.Defeat, OutcomeReasons.Breach, ev);
-                return;
-            }
-            st.Demons[v]++;
-            ev?.Add(new DemonSpawned { Vertex = v, Count = st.Demons[v] });
-        }
+        /// <summary>One infection on a flag (a draw of its own): repelled by the hero, a demon, or an outbreak when the site is full.</summary>
+        internal static void PlaceDemon(WorldState s, int v, EventBuffer ev) =>
+            AddDemon(s, v, new bool[s.Strategy.Demons.Length], false, ev);
 
         internal static int ClearDemons(WorldState s, int v, string by, EventBuffer ev)
         {
@@ -367,11 +468,11 @@ namespace World.Sim.Strategy
             ev?.Add(new DraftDealt { Age = age, PlayerCards = human.DraftHand.ToArray() });
         }
 
-        /// <summary>Rival's deterministic preference: points, then military, then economy; table order breaks ties.</summary>
+        /// <summary>Rival's deterministic draft preference: shields, then points (denying you), then economy; table order breaks ties.</summary>
         internal static int RivalCardScore(CardDef d)
         {
-            int score = d.Vp * 100 + d.VpPerExtraCity * 20 + d.DamageBonus * 50 + d.CoinPerRound * 15 + d.TradeRateBonus * 10;
-            score += (d.ForestBatch + d.HillsBatch + d.FieldsBatch + d.MountainBatch + d.AllBatch) * 3;
+            int score = d.Shields * 200 + d.Vp * 60 + d.VpPerCity * 40 + d.DamageBonus * 20 + d.CoinPerRound * 15 + d.TradeRateBonus * 10;
+            score += (d.ForestBatch + d.HillsBatch + d.FieldsBatch + d.PastureBatch + d.MountainBatch + d.AllBatch + d.ExtraOutput) * 3;
             score *= 100;
             score -= Array.IndexOf(CardTable.All, d);
             return score;
@@ -431,13 +532,18 @@ namespace World.Sim.Strategy
             ev?.Add(new DraftFinished { Age = st.DraftAge, DiscardedCards = discarded.ToArray() });
         }
 
-        /// <summary>The rival builds point and military cards at its outpost (up to RivalMaxBuilt), keeps the rest.</summary>
+        /// <summary>
+        /// The rival builds a military (shields) card at its outpost, free, at most one per age and RivalMaxBuilt in
+        /// all (its first such pick of the age); it keeps the rest (they only deny you).
+        /// </summary>
         internal static void RivalTakeCard(WorldState s, int cardId, EventBuffer ev)
         {
             var rival = Side(s, PlayerIds.Rival);
             var d = Def(s, cardId);
-            bool useful = d.Vp > 0 || d.DamageBonus > 0;
-            if (useful && rival.Built.Count < s.Strategy.Tuning.RivalMaxBuilt && !MilitaryApi.IsOutpostDestroyed(s))
+            bool useful = d.Shields > 0; // the rival's points come from its plan; it builds shields
+            bool builtThisAge = false;
+            foreach (var b in rival.Built) if (s.Strategy.Cards[b.CardId].Age == d.Age) builtThisAge = true;
+            if (useful && !builtThisAge && rival.Built.Count < s.Strategy.Tuning.RivalMaxBuilt && !MilitaryApi.IsOutpostDestroyed(s))
             {
                 rival.Built.Add(new BuiltCard { CardId = cardId, CityVertex = s.Board.RivalOutpostVertex, Tick = s.Tick });
                 ev?.Add(new CardBuilt { PlayerId = PlayerIds.Rival, CardId = cardId, DefId = d.Id, CityVertex = s.Board.RivalOutpostVertex });
@@ -475,7 +581,7 @@ namespace World.Sim.Strategy
             return parts.Count == 0 ? "nothing" : string.Join(", ", parts);
         }
 
-        /// <summary>"3 planks and 1 stone" missing from the storehouse for a cost, or null when affordable.</summary>
+        /// <summary>"3 planks, 1 bricks" missing from the storehouse for a cost, or null when affordable.</summary>
         internal static string MissingText(WorldState s, int[] cost, int coin)
         {
             var parts = new List<string>();
@@ -496,7 +602,7 @@ namespace World.Sim.Strategy
             var w = s.Strategy.Wonder;
             if (w.InProgressStage <= 0) return;
             var b = EconomyApi.GetBuilding(s, w.BuildingId);
-            if (b == null || b.State != BuildingState.Active) return;
+            if (b == null || b.State != BuildingState.Active || b.Blocked) return; // a demon on the site stops the work
             var cost = s.Strategy.Tuning.WonderStages[w.InProgressStage - 1];
             for (int i = 0; i < Wares.Count; i++) if (cost[i] > 0 && b.Available((Ware)i) < cost[i]) return;
             for (int i = 0; i < Wares.Count; i++)
@@ -518,7 +624,18 @@ namespace World.Sim.Strategy
         {
             var st = s.Strategy;
             if (st == null) return amount;
-            // A demon on a city flag stops that city's production: a hex only counts cities without demons.
+            int ageBonus = st.Started && st.Age > 0 ? st.Age * st.Tuning.AgeBatchBonus : 0;
+            return amount + ageBonus + Effects(s, PlayerIds.Human).BatchBonus(s.Board.HexTerrain[hex]);
+        }
+
+        /// <summary>
+        /// The robber: a hex touching your cities produces nothing while every one of your cities touching it holds
+        /// a demon (no new batch, and its harvesters stop taking units from it).
+        /// </summary>
+        internal static bool HexRobbed(WorldState s, int hex)
+        {
+            var st = s.Strategy;
+            if (st == null) return false;
             bool anyClear = false, anyCity = false;
             foreach (int v in s.Board.Topology.HexCorners(hex))
             {
@@ -526,9 +643,37 @@ namespace World.Sim.Strategy
                 anyCity = true;
                 if (st.Demons[v] == 0) anyClear = true;
             }
-            if (anyCity && !anyClear) return 0;
-            int ageBonus = st.Started && st.Age > 0 ? st.Age * st.Tuning.AgeBatchBonus : 0;
-            return amount + ageBonus + Effects(s, PlayerIds.Human).BatchBonus(s.Board.HexTerrain[hex]);
+            return anyCity && !anyClear;
+        }
+
+        // ---------------- Military comparison ----------------
+
+        /// <summary>
+        /// Compare shields with the neighbouring power (the rival): win +1/+3/+5 by age, lose -1, tie nothing.
+        /// Tokens are mirrored for the rival. Recorded in Comparisons and as a MilitaryCompared event.
+        /// </summary>
+        internal static void CompareMilitary(WorldState s, EventBuffer ev)
+        {
+            var st = s.Strategy;
+            var t = st.Tuning;
+            int age = st.Age;
+            foreach (var c in st.Comparisons) if (c.Age == age) return;
+            int ps = MilitaryApi.Shields(s, PlayerIds.Human), rs = MilitaryApi.Shields(s, PlayerIds.Rival);
+            int win = age - 1 < t.MilitaryWinVp.Length ? t.MilitaryWinVp[age - 1] : t.MilitaryWinVp[t.MilitaryWinVp.Length - 1];
+            var mc = new MilitaryComparison { Age = age, Tick = s.Tick, PlayerShields = ps, RivalShields = rs };
+            if (ps > rs) { mc.Result = ComparisonResult.Win; mc.PlayerVp = win; mc.RivalVp = t.MilitaryLossVp; }
+            else if (ps < rs) { mc.Result = ComparisonResult.Loss; mc.PlayerVp = t.MilitaryLossVp; mc.RivalVp = win; }
+            st.Comparisons.Add(mc);
+            ev?.Add(new MilitaryCompared { Age = age, PlayerShields = ps, RivalShields = rs, Result = mc.Result, PlayerVp = mc.PlayerVp, RivalVp = mc.RivalVp });
+        }
+
+        /// <summary>Copy the player's card effects that the economy applies (workshop output, road segments) into EconomyState.Bonus.</summary>
+        internal static void SyncEconomyBonuses(WorldState s)
+        {
+            var fx = Effects(s, PlayerIds.Human);
+            var b = s.Economy.Bonus ?? (s.Economy.Bonus = new EconomyBonuses());
+            b.RoadSegments = fx.RoadSegments;
+            b.ExtraOutput = fx.ExtraOutput != null ? (int[])fx.ExtraOutput.Clone() : new int[BuildingDefs.Count];
         }
 
         internal static CommandResult EndRoundGuard(WorldState s)
@@ -548,6 +693,8 @@ namespace World.Sim.Strategy
         public int Cities;
         public int Cards;
         public int Wonder;
+        /// <summary>Military comparison tokens (can be negative).</summary>
+        public int Military;
         public int Outpost;
         /// <summary>Rival only: points from its seeded plan.</summary>
         public int Plan;
