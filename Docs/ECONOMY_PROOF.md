@@ -10,20 +10,20 @@ For every ware: what makes it, what uses it, and how much of it was really made 
 
 | Ware | Made by | Used by (recipes) | Spent on | Made in the game | Used in the game |
 |---|---|---|---|---|---|
-| Logs | Woodcutter (1 forest batch unit -> 2 logs (8 s)) | Sawmill (recipe); Charcoal kiln (recipe) | - | 104 | 94 |
-| Clay | Clay pit (1 hills batch unit -> 1 clay (8 s)) | Brick kiln (recipe) | - | 50 | 35 |
-| Wheat | Farm (1 fields batch unit -> 1 wheat (8 s)) | Mill (recipe) | - | 36 | 34 |
-| Sheep | Sheepfold (1 pasture batch unit -> 1 sheep (8 s)) | Butcher (recipe) | - | 35 | 29 |
-| Ore | Mine (1 mountain batch unit -> 1 ore (8 s), 1 rations per 2) | Smelter (recipe) | - | 16 | 11 |
-| Planks | Sawmill (1 logs -> 1 planks (3 s)) | Smithy (recipe) | buildings (small, medium, large, huge); roads; new cities; wonder stage 1 | 46 | 53 |
-| Coal | Charcoal kiln (2 logs -> 1 coal (4 s)) | Smelter (recipe); Power plant (fuel); Brick kiln (recipe) | - | 23 | 22 |
-| Bricks | Brick kiln (1 clay and 1 coal -> 2 bricks (4 s)) | - | buildings (medium, large, huge); roads; new cities; cards (6: Granary, Charcoal Guild, Road Guild, Monument, Drill Yard, Ward Stones); wonder stage 1 | 22 | 36 |
-| Flour | Mill (1 wheat -> 1 flour (3 s)) | Bakery (recipe) | - | 34 | 29 |
-| Bread | Bakery (1 flour -> 2 bread (4 s)) | Tavern (recipe) | - | 58 | 27 |
-| Meat | Butcher (1 sheep -> 2 meat (4 s)) | Tavern (recipe) | - | 56 | 27 |
-| Rations | Tavern (1 bread and 1 meat -> 2 rations (4 s)) | Mine (miners' food) | new cities; cards (14: Lumber Camp, Shrine, Granary, Charcoal Guild, Road Guild, Monument, Drill Yard, Ward Stones, Master Smiths, Merchant Guild, Great Hall, Census Hall, Armoury, Beacon Tower); soldiers; wonder stage 2 | 30 | 19 |
-| Iron | Smelter (1 ore and 1 coal -> 1 iron (5 s)) | Smithy (recipe) | cards (6: Master Smiths, Merchant Guild, Great Hall, Census Hall, Armoury, Beacon Tower); wonder stage 2 | 7 | 9 |
-| Weapons | Smithy (1 planks and 1 iron -> 1 weapons (5 s)) | - | soldiers | 9 | 4 |
+| Logs | Woodcutter (1 forest batch unit -> 2 logs (5 s)) | Sawmill (recipe); Charcoal kiln (recipe) | - | 242 | 182 |
+| Clay | Clay pit (1 hills batch unit -> 1 clay (5 s)) | Brick kiln (recipe) | - | 87 | 58 |
+| Wheat | Farm (1 fields batch unit -> 1 wheat (5 s)) | Mill (recipe) | - | 70 | 53 |
+| Sheep | Sheepfold (1 pasture batch unit -> 1 sheep (5 s)) | Butcher (recipe) | - | 75 | 39 |
+| Ore | Mine (1 mountain batch unit -> 1 ore (5 s), 1 rations per 3) | Smelter (recipe) | - | 65 | 48 |
+| Planks | Sawmill (1 logs -> 1 planks (3 s)) | Smithy (recipe) | buildings (small, medium, large, huge); roads; new cities; wonder stage 1 | 63 | 55 |
+| Coal | Charcoal kiln (1 logs -> 1 coal (4 s)) | Smelter (recipe); Power plant (fuel); Brick kiln (recipe) | - | 87 | 67 |
+| Bricks | Brick kiln (2 clay and 1 coal -> 2 bricks (4 s)) | - | buildings (medium, large, huge); roads; new cities; cards (8: Granary, Charcoal Guild, Road Guild, Monument, Drill Yard, Ward Stones, Aqueduct, Stockade); wonder stage 1 | 54 | 49 |
+| Flour | Mill (1 wheat -> 1 flour (3 s)) | Bakery (recipe) | - | 53 | 39 |
+| Bread | Bakery (1 flour -> 1 bread (4 s)) | Tavern (recipe) | - | 39 | 26 |
+| Meat | Butcher (1 sheep -> 1 meat (4 s)) | Tavern (recipe) | - | 39 | 26 |
+| Rations | Tavern (1 bread and 1 meat -> 2 rations (4 s)) | Mine (miners' food) | new cities; cards (20: Lumber Camp, Shrine, Village Green, Watch Post, Granary, Charcoal Guild, Road Guild, Monument, Drill Yard, Ward Stones, Aqueduct, Stockade, Master Smiths, Merchant Guild, Great Hall, Census Hall, Armoury, Beacon Tower, Forum, Siege Works); soldiers; wonder stage 2 | 52 | 40 |
+| Iron | Smelter (2 ore and 1 coal -> 1 iron (5 s)) | Smithy (recipe) | cards (8: Master Smiths, Merchant Guild, Great Hall, Census Hall, Armoury, Beacon Tower, Forum, Siege Works); wonder stage 2 | 24 | 13 |
+| Weapons | Smithy (1 planks and 1 iron -> 1 weapons (5 s)) | - | soldiers | 9 | 5 |
 
 Every ware has at least one maker and at least one use, and every ware was both made and used in the scripted games (checked).
 
@@ -35,18 +35,18 @@ Every ware has at least one maker and at least one use, and every ware was both 
 | Clay pit | Small: 1 planks | a hills hex next to it, drawn in a round. | clay from the batch drawn for a hills hex next to it. Digs the hills' batch into clay. | 22 of 22 |
 | Farm | Small: 1 planks | a fields hex next to it, drawn in a round. | wheat from the batch drawn for a fields hex next to it. Reaps the fields' batch into wheat. | 22 of 22 |
 | Mill | Medium: 1 planks and 1 bricks | 1 wheat per cycle. | 1 flour per cycle. Grinds wheat into flour. | 22 of 22 |
-| Bakery | Medium: 1 planks and 1 bricks | 1 flour per cycle. | 2 bread per cycle. Bakes flour into bread. | 22 of 22 |
-| Mine | Medium: 1 planks and 1 bricks | a mountain hex next to it, drawn in a round; 1 rations per 2 ore. | ore from the batch drawn for a mountain hex next to it. Digs the mountain's batch into ore; the miners eat rations. | 22 of 22 |
-| Smelter | Large: 2 planks and 1 bricks | 1 ore and 1 coal per cycle; power. | 1 iron per cycle. Smelts ore with coal into iron; needs power. | 22 of 22 |
+| Bakery | Medium: 1 planks and 1 bricks | 1 flour per cycle. | 1 bread per cycle. Bakes flour into bread. | 22 of 22 |
+| Mine | Medium: 1 planks and 1 bricks | a mountain hex next to it, drawn in a round; 1 rations per 3 ore. | ore from the batch drawn for a mountain hex next to it. Digs the mountain's batch into ore; the miners eat rations. | 22 of 22 |
+| Smelter | Large: 2 planks and 1 bricks | 2 ore and 1 coal per cycle; power. | 1 iron per cycle. Smelts ore with coal into iron; needs power. | 22 of 22 |
 | Power plant | Large: 2 planks and 1 bricks | 1 coal per 60 s of power. | power for the smelter and the barracks. Burns coal to power the smelter and the barracks. | 22 of 22 |
 | Barracks | Huge: 2 planks and 2 bricks | power. | soldiers. Trains soldiers from delivered weapons and rations; needs power. | 22 of 22 |
-| Market | Large: 2 planks and 1 bricks |  | a better market rate. Improves the market rate by 1. | 8 of 22 |
+| Market | Large: 2 planks and 1 bricks |  | a better market rate. Improves the market rate by 1. | 11 of 22 |
 | Wonder site | Huge: 2 planks and 2 bricks |  | wonder stages. Receives the goods for each wonder stage. | 22 of 22 |
 | Sheepfold | Small: 1 planks | a pasture hex next to it, drawn in a round. | sheep from the batch drawn for a pasture hex next to it. Herds the pasture's batch into sheep. | 22 of 22 |
-| Butcher | Medium: 1 planks and 1 bricks | 1 sheep per cycle. | 2 meat per cycle. Turns sheep into meat. | 22 of 22 |
+| Butcher | Medium: 1 planks and 1 bricks | 1 sheep per cycle. | 1 meat per cycle. Turns sheep into meat. | 22 of 22 |
 | Tavern | Medium: 1 planks and 1 bricks | 1 bread and 1 meat per cycle. | 2 rations per cycle. Packs bread and meat into rations. | 22 of 22 |
-| Charcoal kiln | Medium: 1 planks and 1 bricks | 2 logs per cycle. | 1 coal per cycle. Burns logs into coal. | 22 of 22 |
-| Brick kiln | Medium: 1 planks and 1 bricks | 1 clay and 1 coal per cycle. | 2 bricks per cycle. Fires clay with coal into bricks. | 22 of 22 |
+| Charcoal kiln | Medium: 1 planks and 1 bricks | 1 logs per cycle. | 1 coal per cycle. Burns logs into coal. | 22 of 22 |
+| Brick kiln | Medium: 1 planks and 1 bricks | 2 clay and 1 coal per cycle. | 2 bricks per cycle. Fires clay with coal into bricks. | 22 of 22 |
 | Smithy | Large: 2 planks and 1 bricks | 1 planks and 1 iron per cycle. | 1 weapons per cycle. Forges iron and planks into weapons. | 22 of 22 |
 
 Every building's inputs are made by another building, its terrain is on the map, its output is used (or it has a role: forester, power, soldiers, market rate, wonder), and the scripted players built every one of them at least once (checked).
@@ -69,25 +69,26 @@ Each table follows real events of one game (default seed 20261113, the scripted 
 
 | Tick (time) | Step | What happened |
 |---|---|---|
-| 2304 (3.8 min) | Draw | round 5 draws numbers 1, 2, 4: hex 22 gets a batch of 14 logs units |
-| 3023 (5.0 min) | Harvest | Woodcutter (flag 333) finishes 1 batch unit on hex 22: 2 logs |
-| 3113 (5.2 min) | Carry | carrier 4 takes 1 logs from Woodcutter (flag 333) (picked up at tick 3053) to Sawmill (flag 360) |
-| 3143 (5.2 min) | Recipe | Sawmill (flag 360) turns 1 logs into 1 planks (started at tick 3114) |
-| 3274 (5.5 min) | Carry | carrier 33 takes 1 planks from Sawmill (flag 360) (picked up at tick 3154) to Wonder site (flag 61) |
-| 3275 (5.5 min) | Final use | wonder stage 1 completes with the planks and bricks delivered to Wonder site (flag 61) (+2 points) |
+| 3640 (6.1 min) | Draw | round 7 draws numbers 1, 2, 4: hex 22 gets a batch of 15 logs units |
+| 3939 (6.6 min) | Harvest | Woodcutter (flag 333) finishes 1 batch unit on hex 22: 2 logs |
+| 4011 (6.7 min) | Carry | carrier 35 takes 1 logs from Woodcutter (flag 333) (picked up at tick 3951) to Sawmill (flag 360) |
+| 4041 (6.7 min) | Recipe | Sawmill (flag 360) turns 1 logs into 1 planks (started at tick 4012) |
+| 4071 (6.8 min) | Carry | carrier 35 takes 1 planks from Sawmill (flag 360) (picked up at tick 4041) to Storehouse (flag 70) |
+| 4354 (7.3 min) | Carry | carrier 16 takes 1 planks from Storehouse (flag 70) (picked up at tick 4264) to Wonder site (flag 61) |
+| 4355 (7.3 min) | Final use | wonder stage 1 completes with the planks and bricks delivered to Wonder site (flag 61) (+2 points) |
 
-Logs became planks and the planks became part of the wonder (2 carries).
+Logs became planks and the planks became part of the wonder (3 carries).
 
 **2. Clay: hills draw -> clay pit -> brick kiln (with coal) -> bricks -> a new city**
 
 | Tick (time) | Step | What happened |
 |---|---|---|
-| 1 (0.0 min) | Draw | round 1 draws numbers 2, 4: hex 31 gets a batch of 12 clay units |
-| 1094 (1.8 min) | Harvest | Clay pit (flag 335) finishes 1 batch unit on hex 31: 1 clay |
-| 1781 (3.0 min) | Carry | carrier 2 takes 1 clay from Clay pit (flag 335) (picked up at tick 1661) to Brick kiln (flag 60) |
-| 1830 (3.1 min) | Recipe | Brick kiln (flag 60) turns 1 clay and 1 coal into 2 bricks (started at tick 1791) |
-| 1920 (3.2 min) | Carry | carrier 4 takes 1 bricks from Brick kiln (flag 60) (picked up at tick 1830) to Storehouse (flag 70) |
-| 2013 (3.4 min) | Final use | a city is founded on corner 99, paid from the storehouse (3 planks, 3 bricks, 2 rations): +2 points |
+| 1236 (2.1 min) | Draw | round 3 draws numbers 2, 4: hex 31 gets a batch of 10 clay units |
+| 1735 (2.9 min) | Harvest | Clay pit (flag 335) finishes 1 batch unit on hex 31: 1 clay |
+| 1885 (3.1 min) | Carry | carrier 1 takes 1 clay from Clay pit (flag 335) (picked up at tick 1765) to Brick kiln (flag 60) |
+| 1925 (3.2 min) | Recipe | Brick kiln (flag 60) turns 2 clay and 1 coal into 2 bricks (started at tick 1886) |
+| 2015 (3.4 min) | Carry | carrier 10 takes 1 bricks from Brick kiln (flag 60) (picked up at tick 1925) to Storehouse (flag 70) |
+| 2449 (4.1 min) | Final use | a city is founded on corner 99, paid from the storehouse (3 planks, 3 bricks, 2 rations): +2 points |
 
 Clay became bricks (the kiln also burns one coal per two bricks) and the bricks paid for the final use (2 carries).
 
@@ -95,16 +96,16 @@ Clay became bricks (the kiln also burns one coal per two bricks) and the bricks 
 
 | Tick (time) | Step | What happened |
 |---|---|---|
-| 2304 (3.8 min) | Draw | round 5 draws numbers 1, 2, 4: hex 30 gets a batch of 14 wheat units |
-| 2613 (4.4 min) | Harvest | Farm (flag 80) finishes 1 batch unit on hex 30: 1 wheat |
-| 2653 (4.4 min) | Carry | carrier 2 takes 1 wheat from Farm (flag 80) (picked up at tick 2623) to Mill (flag 388) |
-| 2683 (4.5 min) | Recipe | Mill (flag 388) turns 1 wheat into 1 flour (started at tick 2654) |
-| 2833 (4.7 min) | Carry | carrier 2 takes 1 flour from Mill (flag 388) (picked up at tick 2683) to Bakery (flag 393) |
-| 2873 (4.8 min) | Recipe | Bakery (flag 393) turns 1 flour into 2 bread (started at tick 2834) |
-| 3063 (5.1 min) | Carry | carrier 29 takes 1 bread from Bakery (flag 393) (picked up at tick 2883) to Tavern (flag 443) |
-| 3133 (5.2 min) | Recipe | Tavern (flag 443) turns 1 bread and 1 meat into 2 rations (started at tick 3094) |
-| 3313 (5.5 min) | Carry | carrier 20 takes 1 rations from Tavern (flag 443) (picked up at tick 3163) to Mine (flag 90) |
-| 3314 (5.5 min) | Final use | the Mine (flag 90) eats 1 rations, paying for its next 2 ore (the first of them dug at tick 3393) |
+| 2438 (4.1 min) | Draw | round 5 draws numbers 1, 3, 4: hex 30 gets a batch of 8 wheat units |
+| 2849 (4.7 min) | Harvest | Farm (flag 80) finishes 1 batch unit on hex 30: 1 wheat |
+| 2919 (4.9 min) | Carry | carrier 36 takes 1 wheat from Farm (flag 80) (picked up at tick 2889) to Mill (flag 388) |
+| 2969 (4.9 min) | Recipe | Mill (flag 388) turns 1 wheat into 1 flour (started at tick 2940) |
+| 3119 (5.2 min) | Carry | carrier 40 takes 1 flour from Mill (flag 388) (picked up at tick 2969) to Bakery (flag 393) |
+| 3169 (5.3 min) | Recipe | Bakery (flag 393) turns 1 flour into 1 bread (started at tick 3130) |
+| 3349 (5.6 min) | Carry | carrier 40 takes 1 bread from Bakery (flag 393) (picked up at tick 3169) to Tavern (flag 443) |
+| 3408 (5.7 min) | Recipe | Tavern (flag 443) turns 1 bread and 1 meat into 2 rations (started at tick 3369) |
+| 3438 (5.7 min) | Carry | carrier 29 takes 1 rations from Tavern (flag 443) (picked up at tick 3408) to Mine (flag 107) |
+| 3439 (5.7 min) | Final use | the Mine (flag 107) eats 1 rations, paying for its next 3 ore (the first of them dug at tick 3488) |
 
 Wheat became flour, bread and rations, and the rations fed the miners (4 carries).
 
@@ -112,49 +113,52 @@ Wheat became flour, bread and rations, and the rations fed the miners (4 carries
 
 | Tick (time) | Step | What happened |
 |---|---|---|
-| 2304 (3.8 min) | Draw | round 5 draws numbers 1, 2, 4: hex 39 gets a batch of 14 sheep units |
-| 2404 (4.0 min) | Harvest | Sheepfold (flag 390) finishes 1 batch unit on hex 39: 1 sheep |
-| 2534 (4.2 min) | Carry | carrier 0 takes 1 sheep from Sheepfold (flag 390) (picked up at tick 2414) to Storehouse (flag 70) |
-| 2835 (4.7 min) | Carry | carrier 0 takes 1 sheep from Storehouse (flag 70) (picked up at tick 2535) to Butcher (flag 442) |
-| 2914 (4.9 min) | Recipe | Butcher (flag 442) turns 1 sheep into 2 meat (started at tick 2875) |
-| 3004 (5.0 min) | Carry | carrier 32 takes 1 meat from Butcher (flag 442) (picked up at tick 2974) to Tavern (flag 443) |
-| 3093 (5.2 min) | Recipe | Tavern (flag 443) turns 1 bread and 1 meat into 2 rations (started at tick 3054) |
-| 3183 (5.3 min) | Carry | carrier 14 takes 1 rations from Tavern (flag 443) (picked up at tick 3093) to Barracks (flag 444) |
-| 3363 (5.6 min) | Final use | the Barracks (flag 444) takes 1 weapons and 1 rations from its store and trains a soldier (ready at tick 3512) |
+| 3039 (5.1 min) | Draw | round 6 draws numbers 1, 3, 4: hex 39 gets a batch of 9 sheep units |
+| 3238 (5.4 min) | Harvest | Sheepfold (flag 390) finishes 1 batch unit on hex 39: 1 sheep |
+| 3458 (5.8 min) | Carry | carrier 19 takes 1 sheep from Sheepfold (flag 390) (picked up at tick 3278) to Butcher (flag 442) |
+| 3498 (5.8 min) | Recipe | Butcher (flag 442) turns 1 sheep into 1 meat (started at tick 3459) |
+| 3528 (5.9 min) | Carry | carrier 19 takes 1 meat from Butcher (flag 442) (picked up at tick 3498) to Tavern (flag 443) |
+| 3568 (5.9 min) | Recipe | Tavern (flag 443) turns 1 bread and 1 meat into 2 rations (started at tick 3529) |
+| 3688 (6.1 min) | Carry | carrier 27 takes 1 rations from Tavern (flag 443) (picked up at tick 3598) to Barracks (flag 444) |
+| 3998 (6.7 min) | Final use | the Barracks (flag 444) takes 1 weapons and 1 rations from its store and trains a soldier (ready at tick 4147) |
 
-Sheep became meat and rations, and the rations fed a new soldier (4 carries).
+Sheep became meat and rations, and the rations fed a new soldier (3 carries).
 
 **5. Ore: mountain draw -> mine -> smelter (coal, power) -> iron -> smithy (planks) -> weapons -> soldier -> military comparison**
 
 | Tick (time) | Step | What happened |
 |---|---|---|
-| 2304 (3.8 min) | Draw | round 5 draws numbers 1, 2, 4: hex 40 gets a batch of 14 ore units |
-| 2715 (4.5 min) | Harvest | Mine (flag 90) finishes 1 batch unit on hex 40: 1 ore |
-| 2805 (4.7 min) | Carry | carrier 26 takes 1 ore from Mine (flag 90) (picked up at tick 2775) to Smelter (flag 416) |
-| 3103 (5.2 min) | Recipe | Smelter (flag 416) turns 1 ore and 1 coal into 1 iron (started at tick 3054) |
-| 3253 (5.4 min) | Carry | carrier 32 takes 1 iron from Smelter (flag 416) (picked up at tick 3223) to Smithy (flag 417) |
-| 3303 (5.5 min) | Recipe | Smithy (flag 417) turns 1 planks and 1 iron into 1 weapons (started at tick 3254) |
-| 3363 (5.6 min) | Carry | carrier 32 takes 1 weapons from Smithy (flag 417) (picked up at tick 3303) to Barracks (flag 444) |
-| 3363 (5.6 min) | Training | the barracks takes the delivered weapons and rations and starts training |
-| 3512 (5.9 min) | Soldier | a soldier is trained at Barracks (flag 444) and joins squad 2 |
-| 4608 (7.7 min) | Final use | end of Age II: shields 4 against the rival's 2 -> Win (+3 points) |
+| 3039 (5.1 min) | Draw | round 6 draws numbers 1, 3, 4: hex 47 gets a batch of 6 ore units |
+| 3538 (5.9 min) | Harvest | Mine (flag 107) finishes 1 batch unit on hex 47: 1 ore |
+| 3718 (6.2 min) | Carry | carrier 19 takes 1 ore from Mine (flag 107) (picked up at tick 3568) to Smelter (flag 416) |
+| 3768 (6.3 min) | Recipe | Smelter (flag 416) turns 2 ore and 1 coal into 1 iron (started at tick 3719) |
+| 3798 (6.3 min) | Carry | carrier 19 takes 1 iron from Smelter (flag 416) (picked up at tick 3768) to Smithy (flag 417) |
+| 3848 (6.4 min) | Recipe | Smithy (flag 417) turns 1 planks and 1 iron into 1 weapons (started at tick 3799) |
+| 3998 (6.7 min) | Carry | carrier 14 takes 1 weapons from Smithy (flag 417) (picked up at tick 3938) to Barracks (flag 444) |
+| 3998 (6.7 min) | Training | the barracks takes the delivered weapons and rations and starts training |
+| 4147 (6.9 min) | Soldier | a soldier is trained at Barracks (flag 444) and joins squad 1 |
+| 4380 (7.3 min) | Final use | end of Age I: shields 1 against the rival's 3 -> Loss (-1 points) |
 
-Ore became iron and weapons, the weapons armed a soldier, and the soldier counted as a shield at the next age end. In this game the first comparison won was Age II (4 shields against 2, +3 points).
+Ore became iron and weapons, the weapons armed a soldier, and the soldier counted as a shield at the next age end. In this game the first comparison won was Age II (6 shields against 4, +3 points).
 
 ## C. Cross-system links
 
-Each link is shown by two runs from the same starting state that differ in one thing only (default seed, Age I started at once, fast carriers).
+Each link is shown by two runs from the same starting state that differ in one thing only (default seed, Age I started at once, fast carriers, the bell free to ring; the last two rows are paired scripted games).
 
 | Link | Run without | Run with | Result |
 |---|---|---|---|
 | Raw card -> harvest | next forest batch 7 units | with Lumber Camp built: 8 units | the card adds 2 to the batch the draw authorises (halved here like the batch itself, because this test village has no active forester) |
-| Demon on a city -> production (the robber) | 10 logs felled in 40 s; 2 home batches next round | demon on the home city: 2 logs (only the cycle already running); 0 home batches next round | cleared: 10 logs in the next 40 s, production resumes |
-| Demon on a road flag -> carriers | (no demon: deliveries walk through) | demon on the corner between the storehouse and a sawmill site: job stalls with demon_on_route at tick 66, nothing reaches the site in 20 s | hero clears it at tick 217; the job resumes at 217 and the ware arrives at 397 |
-| Power cut -> smelter and barracks | power plant burning coal: the smelter made 2 iron in 20 s and the soldier's training ran | coal taken away at tick 535: barracks no_power, smelter no_power; in the next 20 s iron +0, training stuck at 126 ticks | coal back: power at tick 741, the soldier is trained, the smelter makes iron again |
-| Food -> mining | no rations: 0 ore in 80 s, the mine reports input_missing (rations) | 4 rations delivered: 6 ore in 80 s from the same batch | the mine needs 1 rations for every 2 ore |
-| Soldiers -> military comparison | scripted player without barracks: Age II shields 0 against 2 -> Loss (-1 points) | same seed, squad trained (first soldier at tick 3512): shields 4 against 2 -> Win (+3 points) | the comparison flips |
+| Demon on a city -> production (the robber) | 16 logs felled in 40 s; 2 home batches next round | demon on the home city: 2 logs (only the cycle already running); 0 home batches next round | cleared: 16 logs in the next 40 s, production resumes |
+| Demon on a road flag -> carriers | (no demon: deliveries walk through) | demon on the corner between the storehouse and a sawmill site: job stalls with demon_on_route at tick 65, nothing reaches the site in 20 s | hero clears it at tick 216; the job resumes at 216 and the ware arrives at 396 |
+| Power cut -> smelter and barracks | power plant burning coal: the smelter made 2 iron in 20 s and the soldier's training ran | coal taken away at tick 534: barracks no_power, smelter no_power; in the next 20 s iron +0, training stuck at 126 ticks | coal back: power at tick 740, the soldier is trained, the smelter makes iron again |
+| Food -> mining | no rations: 0 ore in 80 s, the mine reports input_missing (rations) | 4 rations delivered: 6 ore in 80 s from the same batch | the mine needs 1 rations for every 3 ore |
+| Soldiers -> military comparison | scripted player without barracks: Age II shields 0 against 4 -> Loss (-1 points) | same seed, squad trained (first soldier at tick 4147): shields 6 against 4 -> Win (+3 points) | the comparison flips |
+| Commerce card -> road cost | the same 4 road segments out to a city site cost 4 wares (planks and bricks) | with Road Guild built: 2 wares | one road payment covers 6 segments instead of 3 |
+| Military cards -> military comparison | no soldiers, no military card: end of Age I shields 0 against the rival's 3 -> Loss (-1 points) | Armoury, Siege Works and Drill Yard built: shields 4 against 3 -> Win (+1 points) | card shields count like soldiers |
+| Lore card -> outbreaks | four infection cards on one corner: the fourth demon outbreaks, breach track 1 (3 demons left there) | with Ward Stones built: the site holds 4 demons, breach track 0 | a site holds one more demon before it outbreaks |
+| Draft -> the rival's points and shields | scripted player drafting the first card offered: the rival builds Palisade, Village Green, Monument, Aqueduct, Forum, Siege Works (cards 9 points, 2 shields) | same seed, the competent drafter (takes what it needs and what the rival wants): the rival builds Palisade, Shrine, Monument, Drill Yard, Forum, Siege Works (7 points, 3 shields) | the rival builds the point and shield cards it is passed; final score 22-11 against 18-9 |
 
-All six links are checked by the test (direction and size of the effect).
+All ten links are checked by the test (direction and size of the effect).
 
 ## D. Conservation
 
@@ -162,10 +166,10 @@ Long games driven by random valid and invalid commands of every kind (roads, bui
 
 | Seed | Ticks | Commands accepted / refused | Units harvested | Units made | Units used | Balance error | Sink error | Recipe error |
 |---|---|---|---|---|---|---|---|---|
-| 4242 | 20000 | 1050 / 3990 | 569 | 644 | 1570 | 0 | 0 | 0 |
-| 20261113 | 20000 | 1105 / 3893 | 670 | 765 | 1694 | 0 | 0 | 0 |
-| 99 | 20000 | 1014 / 4020 | 607 | 704 | 1490 | 0 | 0 | 0 |
-| 123456 | 20000 | 1039 / 4022 | 641 | 744 | 1595 | 0 | 0 | 0 |
+| 4242 | 20000 | 1242 / 3805 | 963 | 239 | 1332 | 0 | 0 | 0 |
+| 20261113 | 20000 | 1193 / 3829 | 1078 | 249 | 1303 | 0 | 0 | 0 |
+| 99 | 20000 | 1178 / 3859 | 1048 | 145 | 1201 | 0 | 0 | 0 |
+| 123456 | 20000 | 1193 / 3866 | 1001 | 219 | 1367 | 0 | 0 | 0 |
 
 Total error over all seeds and wares: 0 units. Sinks counted: recipe inputs, the miners' rations, power plant coal, construction, roads, and spending by cities, cards, the wonder, the market and soldiers (which must equal what those systems report spending). Recipes: inputs used match started cycles, outputs match finished cycles.
 
@@ -175,126 +179,132 @@ Full scripted games, default seed and ten others, four players: competent (build
 
 | Seed | Competent | Full | Careless | Passive |
 |---|---|---|---|---|
-| 20261113 | W points 9.7 15-5 | W outpost 8.5 12-4 | L breach 12.2 2-8 | L breach 3.3 1-3 |
-| 104740 | W points 11.3 12-3 | W points 11.3 12-3 | L breach 13.5 2-8 | L breach 3.5 0-8 |
-| 209469 | W points 13.3 14-2 | W points 11.9 12-1 | L breach 18.3 3-15 | L breach 3.3 1-3 |
-| 314198 | W points 8.1 12-3 | W points 8.1 12-3 | L breach 15.3 5-8 | L breach 3.3 1-3 |
-| 418927 | W points 9.8 12-4 | W points 9.8 12-4 | L breach 18.3 3-15 | L breach 3.3 1-3 |
-| 523656 | W points 10.5 12-1 | W points 10.5 12-1 | W points 13.2 12-8 | L breach 3.3 1-3 |
-| 628385 | W points 9.1 12-3 | W points 9.1 12-3 | L breach 14.9 7-3 | L breach 3.3 1-3 |
-| 733114 | W points 10.7 14-4 | W points 10.7 14-4 | L breach 14.9 9-8 | L breach 3.3 1-3 |
-| 837843 | W points 9.6 12-3 | W points 9.6 12-3 | L points 18.3 8-15 | L breach 3.3 1-3 |
-| 942572 | W points 11.9 12-4 | W points 11.9 12-4 | L points 16.9 8-15 | L breach 3.0 1-3 |
-| 1047301 | W points 10.0 12-3 | W points 10.0 12-3 | L breach 13.6 2-8 | L breach 3.3 1-3 |
+| 20261113 | W points 12.6 18-9 | W points 12.9 20-9 | L points 13.1 3-19 | L breach 11.0 1-5 |
+| 104740 | W age_end 14.2 16-9 | W outpost 11.7 18-8 | L breach 13.8 3-18 | L breach 12.0 0-9 |
+| 209469 | W points 12.1 18-9 | W points 12.2 20-9 | L breach 13.4 3-19 | L breach 11.0 1-5 |
+| 314198 | W points 10.3 19-8 | W points 10.2 19-8 | L points 14.1 8-18 | L breach 11.0 1-5 |
+| 418927 | W points 12.1 19-8 | W points 12.0 19-8 | L breach 13.3 3-18 | L breach 11.0 1-5 |
+| 523656 | W points 12.3 18-9 | W points 12.5 20-9 | L breach 13.5 13-19 | L breach 11.0 1-5 |
+| 628385 | W points 12.5 18-9 | W points 13.9 22-8 | L breach 11.8 4-13 | L breach 11.0 1-5 |
+| 733114 | W points 14.6 18-8 | W points 14.4 22-4 | L breach 13.0 12-9 | L breach 11.0 1-5 |
+| 837843 | W points 14.7 18-9 | W points 14.8 22-8 | L points 13.8 11-19 | L breach 11.0 1-5 |
+| 942572 | W points 14.1 20-9 | W points 14.1 20-9 | L breach 13.2 11-19 | L breach 10.0 1-5 |
+| 1047301 | W points 15.6 20-8 | W points 15.3 20-5 | L breach 12.4 6-12 | L breach 11.0 1-5 |
 
-All three endings occur: a points win, a breach loss, and games that run to the Age III comparison (checked). 0 of 44 games ended by comparing points after Age III with nobody at the target; 5 games reached the Age III comparison.
+All three endings occur: a points win, a breach loss, and games that run to the Age III comparison (checked). 1 of 44 games ended by comparing points after Age III with nobody at the target; 15 games reached the Age III comparison.
 
-**A points win** (seed 20261113, competent player): Victory by points at 9.7 min.
-
-| Round | Age | Starts at | Score at the round start | Breaches |
-|---|---|---|---|---|
-| 1 | prologue | 0.0 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 2 | prologue | 1.7 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 3 | I (1) | 3.3 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 4 | I (2) | 3.6 min | you 4 (cities 4, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 5 | I (3) | 3.8 min | you 4 (cities 4, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 6 | II (1) | 5.5 min | you 5 (cities 4, wonder 2, cards 0, military -1, outpost 0); rival 3 (plan 2, cards 0, military 1) | 0 |
-| 7 | II (2) | 5.8 min | you 5 (cities 4, wonder 2, cards 0, military -1, outpost 0); rival 3 (plan 2, cards 0, military 1) | 0 |
-| 8 | II (3) | 6.0 min | you 5 (cities 4, wonder 2, cards 0, military -1, outpost 0); rival 3 (plan 2, cards 0, military 1) | 0 |
-| 9 | III (1) | 7.7 min | you 10 (cities 6, wonder 2, cards 0, military 2, outpost 0); rival 4 (plan 4, cards 0, military 0) | 0 |
-| 10 | III (2) | 7.9 min | you 10 (cities 6, wonder 2, cards 0, military 2, outpost 0); rival 4 (plan 4, cards 0, military 0) | 0 |
-| 11 | III (3) | 8.2 min | you 10 (cities 6, wonder 2, cards 0, military 2, outpost 0); rival 4 (plan 4, cards 0, military 0) | 0 |
-| 12 | III (3) | 9.7 min | you 15 (cities 6, wonder 2, cards 0, military 7, outpost 0); rival 5 (plan 6, cards 0, military -1) | 0 |
-| end | | 9.7 min | you 15 (cities 6, wonder 2, cards 0, military 7, outpost 0); rival 5 (plan 6, cards 0, military -1) | 0 |
-
-Military comparisons: Age I 0 v 1 Loss (you -1, rival +1); Age II 4 v 2 Win (you +3, rival -1); Age III 5 v 3 Win (you +5, rival -1).
-
-**A breach loss** (seed 20261113, careless player): Defeat by breach at 12.2 min.
+**A points win** (seed 20261113, competent player): Victory by points at 12.6 min.
 
 | Round | Age | Starts at | Score at the round start | Breaches |
 |---|---|---|---|---|
 | 1 | prologue | 0.0 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 2 | prologue | 1.7 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 3 | I (1) | 3.3 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 4 | I (2) | 3.6 min | you 4 (cities 4, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 5 | I (3) | 3.8 min | you 4 (cities 4, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 6 | II (1) | 5.5 min | you 3 (cities 4, wonder 0, cards 0, military -1, outpost 0); rival 3 (plan 2, cards 0, military 1) | 0 |
-| 7 | II (2) | 7.2 min | you 3 (cities 4, wonder 0, cards 0, military -1, outpost 0); rival 3 (plan 2, cards 0, military 1) | 0 |
-| 8 | II (3) | 8.8 min | you 3 (cities 4, wonder 0, cards 0, military -1, outpost 0); rival 3 (plan 2, cards 0, military 1) | 0 |
-| 9 | III (1) | 10.5 min | you 2 (cities 4, wonder 0, cards 0, military -2, outpost 0); rival 8 (plan 4, cards 0, military 4) | 1 |
-| 10 | III (1) | 12.2 min | you 2 (cities 4, wonder 0, cards 0, military -2, outpost 0); rival 8 (plan 4, cards 0, military 4) | 5 |
-| end | | 12.2 min | you 2 (cities 4, wonder 0, cards 0, military -2, outpost 0); rival 8 (plan 4, cards 0, military 4) | 5 |
+| 2 | prologue | 1.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 3 | prologue | 2.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 4 | prologue | 3.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 5 | I (1) | 4.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 6 | I (2) | 5.1 min | you 6 (cities 6, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 7 | I (3) | 6.1 min | you 6 (cities 6, wonder 0, cards 0, military 0, outpost 0); rival 1 (plan 0, cards 1, military 0) | 0 |
+| 8 | II (1) | 7.3 min | you 7 (cities 6, wonder 2, cards 0, military -1, outpost 0); rival 3 (plan 1, cards 1, military 1) | 0 |
+| 9 | II (2) | 8.6 min | you 9 (cities 6, wonder 2, cards 2, military -1, outpost 0); rival 5 (plan 1, cards 3, military 1) | 0 |
+| 10 | II (3) | 9.6 min | you 9 (cities 6, wonder 2, cards 2, military -1, outpost 0); rival 5 (plan 1, cards 3, military 1) | 0 |
+| 11 | III (1) | 10.6 min | you 15 (cities 6, wonder 5, cards 2, military 2, outpost 0); rival 5 (plan 2, cards 3, military 0) | 0 |
+| 12 | III (2) | 11.6 min | you 15 (cities 6, wonder 5, cards 2, military 2, outpost 0); rival 9 (plan 2, cards 7, military 0) | 0 |
+| 13 | III (3) | 12.6 min | you 15 (cities 6, wonder 5, cards 2, military 2, outpost 0); rival 9 (plan 2, cards 7, military 0) | 0 |
+| end | | 12.6 min | you 18 (cities 6, wonder 5, cards 5, military 2, outpost 0); rival 9 (plan 2, cards 7, military 0) | 0 |
 
-Military comparisons: Age I 0 v 1 Loss (you -1, rival +1); Age II 1 v 2 Loss (you -1, rival +3).
+Military comparisons: Age I 1 v 3 Loss (you -1, rival +1); Age II 6 v 4 Win (you +3, rival -1).
 
-**A game that runs to the Age III comparison** (seed 209469, careless player): Defeat by breach at 18.3 min.
+**A breach loss** (seed 104740, careless player): Defeat by breach at 13.8 min.
 
 | Round | Age | Starts at | Score at the round start | Breaches |
 |---|---|---|---|---|
 | 1 | prologue | 0.0 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 2 | prologue | 1.7 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 3 | I (1) | 3.3 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 4 | I (2) | 4.9 min | you 4 (cities 4, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 5 | I (3) | 6.6 min | you 6 (cities 6, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
-| 6 | II (1) | 8.3 min | you 5 (cities 6, wonder 0, cards 0, military -1, outpost 0); rival 3 (plan 2, cards 0, military 1) | 0 |
-| 7 | II (2) | 9.9 min | you 5 (cities 6, wonder 0, cards 0, military -1, outpost 0); rival 3 (plan 2, cards 0, military 1) | 1 |
-| 8 | II (3) | 11.6 min | you 5 (cities 6, wonder 0, cards 0, military -1, outpost 0); rival 3 (plan 2, cards 0, military 1) | 1 |
-| 9 | III (1) | 13.3 min | you 4 (cities 6, wonder 0, cards 0, military -2, outpost 0); rival 8 (plan 4, cards 0, military 4) | 1 |
-| 10 | III (2) | 14.9 min | you 4 (cities 6, wonder 0, cards 0, military -2, outpost 0); rival 8 (plan 4, cards 0, military 4) | 1 |
-| 11 | III (3) | 16.6 min | you 4 (cities 6, wonder 0, cards 0, military -2, outpost 0); rival 8 (plan 4, cards 0, military 4) | 2 |
-| 12 | III (3) | 18.3 min | you 3 (cities 6, wonder 0, cards 0, military -3, outpost 0); rival 15 (plan 6, cards 0, military 9) | 5 |
-| end | | 18.3 min | you 3 (cities 6, wonder 0, cards 0, military -3, outpost 0); rival 15 (plan 6, cards 0, military 9) | 5 |
+| 2 | prologue | 1.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 3 | prologue | 2.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 4 | prologue | 3.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 5 | I (1) | 4.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 6 | I (2) | 5.2 min | you 6 (cities 6, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 7 | I (3) | 6.7 min | you 6 (cities 6, wonder 0, cards 0, military 0, outpost 0); rival 1 (plan 0, cards 1, military 0) | 0 |
+| 8 | II (1) | 7.8 min | you 5 (cities 6, wonder 0, cards 0, military -1, outpost 0); rival 3 (plan 1, cards 1, military 1) | 0 |
+| 9 | II (2) | 8.8 min | you 5 (cities 6, wonder 0, cards 0, military -1, outpost 0); rival 5 (plan 1, cards 3, military 1) | 0 |
+| 10 | II (3) | 9.8 min | you 5 (cities 6, wonder 0, cards 0, military -1, outpost 0); rival 5 (plan 1, cards 3, military 1) | 1 |
+| 11 | III (1) | 10.8 min | you 4 (cities 6, wonder 0, cards 0, military -2, outpost 0); rival 9 (plan 2, cards 3, military 4) | 1 |
+| 12 | III (2) | 11.8 min | you 4 (cities 6, wonder 0, cards 0, military -2, outpost 0); rival 12 (plan 2, cards 6, military 4) | 1 |
+| 13 | III (3) | 12.8 min | you 4 (cities 6, wonder 0, cards 0, military -2, outpost 0); rival 12 (plan 2, cards 6, military 4) | 3 |
+| end | | 13.8 min | you 3 (cities 6, wonder 0, cards 0, military -3, outpost 0); rival 18 (plan 3, cards 6, military 9) | 5 |
 
-Military comparisons: Age I 0 v 1 Loss (you -1, rival +1); Age II 0 v 2 Loss (you -1, rival +3); Age III 0 v 3 Loss (you -1, rival +5).
+Military comparisons: Age I 1 v 3 Loss (you -1, rival +1); Age II 1 v 4 Loss (you -1, rival +3); Age III 1 v 5 Loss (you -1, rival +5).
+
+**A game that runs to the Age III comparison** (seed 20261113, careless player): Defeat by points at 13.1 min.
+
+| Round | Age | Starts at | Score at the round start | Breaches |
+|---|---|---|---|---|
+| 1 | prologue | 0.0 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 2 | prologue | 1.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 3 | prologue | 2.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 4 | prologue | 3.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 5 | I (1) | 4.1 min | you 2 (cities 2, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 6 | I (2) | 5.1 min | you 6 (cities 6, wonder 0, cards 0, military 0, outpost 0); rival 0 (plan 0, cards 0, military 0) | 0 |
+| 7 | I (3) | 6.1 min | you 6 (cities 6, wonder 0, cards 0, military 0, outpost 0); rival 1 (plan 0, cards 1, military 0) | 0 |
+| 8 | II (1) | 7.1 min | you 5 (cities 6, wonder 0, cards 0, military -1, outpost 0); rival 3 (plan 1, cards 1, military 1) | 0 |
+| 9 | II (2) | 8.1 min | you 5 (cities 6, wonder 0, cards 0, military -1, outpost 0); rival 5 (plan 1, cards 3, military 1) | 0 |
+| 10 | II (3) | 9.1 min | you 5 (cities 6, wonder 0, cards 0, military -1, outpost 0); rival 5 (plan 1, cards 3, military 1) | 0 |
+| 11 | III (1) | 10.1 min | you 4 (cities 6, wonder 0, cards 0, military -2, outpost 0); rival 9 (plan 2, cards 3, military 4) | 0 |
+| 12 | III (2) | 11.1 min | you 4 (cities 6, wonder 0, cards 0, military -2, outpost 0); rival 13 (plan 2, cards 7, military 4) | 0 |
+| 13 | III (3) | 12.1 min | you 4 (cities 6, wonder 0, cards 0, military -2, outpost 0); rival 13 (plan 2, cards 7, military 4) | 0 |
+| end | | 13.1 min | you 3 (cities 6, wonder 0, cards 0, military -3, outpost 0); rival 19 (plan 3, cards 7, military 9) | 4 |
+
+Military comparisons: Age I 1 v 3 Loss (you -1, rival +1); Age II 2 v 4 Loss (you -1, rival +3); Age III 2 v 5 Loss (you -1, rival +5).
 
 ## F. Balance
 
-Competent scripted player, default seed and ten others. Times in minutes ("-" = never). Bottleneck = the ware buildings waited for longest (building-ticks of "waiting for" and "needs" naming it). Carriers busy = share of carrier time spent on a delivery.
+Competent scripted player, default seed and ten others. Times in minutes ("-" = never). Ages: minutes from the first round of the age to the first round of the next (or the end of the game). Round: the mean length of the rounds of the ages in seconds (the bell can ring 60 s after a round starts). Cards: built by you (distinct families) and their points; rival: cards it built, their points and shields. Bottleneck = the ware buildings waited for longest (building-ticks of "waiting for" and "needs" naming it). Carriers busy = share of carrier time spent on a delivery.
 
-| Seed | Commission | Second city | First soldier | Wonder 1 | Wonder 2 | Result | Bottleneck | Carriers busy |
-|---|---|---|---|---|---|---|---|---|
-| 20261113 | 1.8 | 3.4 | 5.9 | 5.5 | - | won 15-5 at 9.7 | logs | 60% of 50 |
-| 104740 | 1.8 | 3.4 | 7.3 | 5.3 | - | won 12-3 at 11.3 | logs | 50% of 50 |
-| 209469 | 1.8 | 3.4 | 7.1 | 5.0 | - | won 14-2 at 13.3 | coal | 64% of 50 |
-| 314198 | 1.8 | 3.4 | 7.4 | 5.3 | - | won 12-3 at 8.1 | logs | 57% of 50 |
-| 418927 | 1.8 | 3.4 | 7.5 | 5.3 | - | won 12-4 at 9.8 | logs | 48% of 50 |
-| 523656 | 1.8 | 3.4 | 7.5 | 5.0 | - | won 12-1 at 10.5 | logs | 56% of 48 |
-| 628385 | 1.8 | 3.4 | - | 5.0 | - | won 12-3 at 9.1 | logs | 39% of 50 |
-| 733114 | 1.8 | 3.4 | 7.4 | 5.0 | - | won 14-4 at 10.7 | logs | 45% of 48 |
-| 837843 | 1.8 | 3.4 | 8.4 | 5.0 | - | won 12-3 at 9.6 | logs | 39% of 50 |
-| 942572 | 1.8 | 3.4 | 7.4 | 5.3 | - | won 12-4 at 11.9 | logs | 50% of 50 |
-| 1047301 | 1.8 | 3.4 | - | 5.2 | - | won 12-3 at 10.0 | coal | 46% of 48 |
+| Seed | Commission | Age I | Age II | Age III | Round | Second city | First soldier | Wonder 1 | Wonder 2 | Cards | Rival cards | Result | Bottleneck | Carriers busy |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 20261113 | 3.2 | 3.2 | 3.3 | 2.0 | 64 | 4.1 | 6.9 | 7.3 | 10.5 | 7 (4 families), 5 pts | 6, 7 pts, 3 shields | won 18-9 at 12.6 | logs | 64% of 54 |
+| 104740 | 3.2 | 3.1 | 4.0 | 3.0 | 68 | 4.1 | 7.7 | 6.1 | 11.1 | 6 (3 families), 3 pts | 6, 6 pts, 3 shields | won 16-9 at 14.2 | rations | 46% of 54 |
+| 209469 | 3.2 | 3.3 | 3.9 | 0.8 | 72 | 4.1 | 7.9 | 5.5 | 10.8 | 7 (3 families), 5 pts | 5, 7 pts, 2 shields | won 18-9 at 12.1 | rations | 56% of 54 |
+| 314198 | 3.2 | 3.0 | 3.2 | 0.0 | 62 | 4.1 | 6.8 | 6.1 | 9.1 | 6 (3 families), 5 pts | 5, 7 pts, 2 shields | won 19-8 at 10.3 | planks | 57% of 54 |
+| 418927 | 3.2 | 3.2 | 3.2 | 1.7 | 63 | 4.1 | 8.3 | 6.1 | 10.9 | 7 (3 families), 6 pts | 6, 6 pts, 4 shields | won 19-8 at 12.1 | rations | 53% of 54 |
+| 523656 | 3.2 | 3.1 | 3.5 | 1.6 | 65 | 4.1 | 7.0 | 5.5 | 9.8 | 7 (3 families), 5 pts | 5, 7 pts, 2 shields | won 18-9 at 12.3 | planks | 58% of 54 |
+| 628385 | 3.2 | 3.3 | 3.2 | 2.1 | 63 | 4.1 | 8.2 | 5.5 | 10.6 | 6 (3 families), 5 pts | 6, 7 pts, 4 shields | won 18-9 at 12.5 | rations | 57% of 54 |
+| 733114 | 3.2 | 3.7 | 3.5 | 3.3 | 72 | 4.1 | 7.7 | 5.5 | 11.0 | 6 (4 families), 5 pts | 6, 6 pts, 4 shields | won 18-8 at 14.6 | planks | 44% of 54 |
+| 837843 | 3.2 | 3.6 | 3.3 | 3.7 | 72 | 4.1 | 7.9 | 5.5 | 11.2 | 7 (3 families), 5 pts | 6, 7 pts, 4 shields | won 18-9 at 14.7 | planks | 48% of 54 |
+| 942572 | 3.2 | 3.1 | 3.0 | 3.9 | 67 | 4.1 | 7.8 | 6.1 | 9.9 | 6 (4 families), 2 pts | 6, 7 pts, 4 shields | won 20-9 at 14.1 | rations | 47% of 54 |
+| 1047301 | 3.2 | 3.9 | 4.1 | 3.6 | 78 | 4.1 | 7.7 | 6.7 | 11.6 | 6 (3 families), 2 pts | 6, 6 pts, 4 shields | won 20-8 at 15.6 | ore | 51% of 54 |
 
-Binding bottleneck most often: **logs** (9 of 11 games). Over all eleven games the wares waited for longest were: logs 145 building-minutes, coal 120 building-minutes, planks 76 building-minutes, rations 46 building-minutes, iron 46 building-minutes.
+Binding bottleneck by game: rations 5, planks 4, logs 1, ore 1 (of 11). Over all eleven games the wares waited for longest were: planks 89 building-minutes, rations 74 building-minutes, logs 64 building-minutes, ore 64 building-minutes, iron 59 building-minutes.
 
-Raw supply in these games (units authorised by draws / lost to the carry-over cap): logs 964 / 1; clay 804 / 105; wheat 780 / 128; sheep 590 / 81; ore 814 / 238.
+Raw supply in these games (units authorised by draws / lost to the carry-over cap): logs 1812 / 4 (0.2%, worst game 2%); clay 899 / 0 (0.0%, worst game 0%); wheat 766 / 1 (0.1%, worst game 1%); sheep 911 / 3 (0.3%, worst game 3%); ore 549 / 0 (0.0%, worst game 0%).
+
+Rounds of the ages last 60-90 s (mean 68 s); a whole age lasts Age I 3.0-3.9 min, Age II 3.0-4.1 min, Age III 0.0-3.9 min (an age that ends the game is cut short). Every round brings a draft pick and a harvest season of at least 60 s.
 
 **Verdicts on the design goals**
 
 | Goal | Measured | Verdict |
 |---|---|---|
-| Every one of the five resources is needed | in 10 of 11 competent games all five raw wares were harvested and used; logs feed planks and coal, clay feeds bricks, wheat and sheep feed rations (cities, cards, miners, soldiers), ore feeds iron (weapons, wonder stage 2); seed 1047301 won without using ore | mostly |
-| A full game lasts 10-15 minutes | full player: 6 of 11 games end between 10 and 15 minutes (range 8.1-11.9); competent: 6 of 11 (8.1-13.3). Games that run all three ages (careless, passive aside) last up to 18.3 | mostly: a strong player often reaches 12 points before 10 minutes |
-| Careless play loses to breaches | careless player (never moves the hero): loses 10 of 11, 8 of them at the breach limit; the competent player suffered 0 breaches in 11 games | mostly |
-| Passive play loses | passive player loses 11 of 11 (11 by breach, at 3.0-3.5 min) | yes |
+| Every one of the five resources is needed | in 11 of 11 competent games all five raw wares were harvested and used; logs feed planks and coal, clay feeds bricks, wheat and sheep feed rations (cities, cards, miners, soldiers, wonder), ore feeds iron (weapons, wonder stage 2, Age III cards); the binding ware differs by game (rations 5, planks 4, logs 1, ore 1) | yes |
+| A full game lasts 10-15 minutes | target 18 points; full player: 10 of 11 games end between 10 and 15 minutes (range 10.2-15.3); competent: 10 of 11 (10.3-15.6); iron, weapons and soldiers in all 22 | mostly |
+| The draft and the wonder matter (7 Wonders) | competent: cards from 3 or more families in 11 of 11 games (6-7 cards built); civic cards scored in 11 (2-6 card points); wonder stage 2 in 11; the rival built cards in 11 (6-7 points, 2-4 shields from cards) | yes |
+| Careless play loses to breaches | careless player (never moves the hero): loses 11 of 11, 8 of them at the breach limit; the competent player suffered 0 breaches in 11 games | yes |
+| Passive play loses | passive player loses 11 of 11 (11 by breach, at 10.0-12.0 min) | yes |
 
-The competent player won 11 of 11 games; the full player 11 of 11 (1 destroyed the outpost).
+The competent player won 11 of 11 games; the full player 11 of 11 (8 destroyed the outpost).
+
+The quartermaster's commission (18 planks and 18 bricks in the storehouse with the six commission buildings working) completes at 3.2 minutes.
 
 ## G. Known weaknesses
 
-- Every resource needed: on seed 1047301 the competent player reached 12 points without using any ore (it was harvested, 10 ore, but the win came from cities, the first wonder stage, cards and the comparisons before the iron chain ran). Points can be reached without the full chain when the player is quick.
-- Game length: 5 of 11 full-player games end outside 10-15 minutes (shortest 8.1 min): a strong player reaches 12 points early. Raise the target to 13-14 if the owner wants every game to last 10 minutes or more.
-- Careless play: 1 of 11 careless games still win (seed 523656): the demons there caused 1 outbreak before the player reached 12 points at 13.2 minutes. Ignoring the demons is usually, not always, fatal.
-- Careless play: 2 careless losses come from being outscored (demons crippled the economy) rather than from the breach limit.
-- Passive play always ends by breach within 3.5 minutes, never by the rival's points: with no hero moves the demons win before the rival's plan does.
-- Commission time: the quartermaster's commission completes at 1.8 minutes for the scripted player (the target was 4-5). The batch and carrier numbers needed for a lively 10-15 minute game make the six-building chain quick; only a prologue-specific rule (smaller prologue batches or a larger commission) would slow it.
-- The prologue is the same on every seed: its draws are the fixed starter sequence (home forest every round, hills and fields in turn), so the commission and the second city come at the same minute in every game (1.8 and 3.4). Seeds only differ from Age I on.
-- Wonder stage 2 (2 iron + 2 rations, 3 points) was finished in 0 of 11 competent games: the player reaches 12 points first. Iron goes to weapons first because the age-end comparisons pay more (+3, +5).
-- Soldiers: in 2 of 11 competent games no soldier was trained before the win (the iron chain was still starting); those games were won on cities, the wonder and cards.
-- Logs bind the whole economy: planks, coal (2 logs each) and therefore bricks, iron and power all come from one forest hex at the start. It needed a woodcutter yield of 2 logs per batch unit, batches of 12 and draws of 3 numbers out of 4 to make a full game possible; other raw wares are in surplus (see the raw supply line in F: most of the clay, wheat, sheep and ore authorised is lost to the carry-over cap).
-- Carriers: the economy needs many carriers (8 at the start, 2 more per finished building, 2 more per city; 48-50 at the end of the competent games, busy 39-64% of the time). There is one storehouse, so goods for distant cities walk long routes; the Unity layer will have to show many walking figures.
-- The rival is simple: its points are a fixed plan (+2 at the end of each age, stopped if its outpost falls) plus the mirrored military tokens; its shields are its garrison (1, 2, 3 guards by age). It drafts cards (preferring shields, then points) but builds none by default (tuning RivalMaxBuilt = 0), so its cards only deny them to you. Raiders block a road flag but do not count as shields.
+- Game length: 1 competent and 1 full games end outside 10-15 minutes (competent seed 1047301 at 15.6, full seed 1047301 at 15.3).
+- Careless play: 3 of 11 careless losses come from being outscored (demons crippled the economy and the rival's cards and comparisons ran away) rather than from the breach limit.
+- Passive play always ends by breach (10.0-12.0 minutes), never by the rival's points: with no hero moves the demons win before the rival's plan and cards do.
+- The prologue is the same on every seed: its draws are the fixed starter sequence (home forest every round, hills and fields in turn), so the commission comes at the same minute in every game (3.2). Seeds only differ from Age I on. A random starter (forest plus hills or fields at random) was tried: it varied the commission from 2.9 to 7.9 minutes, outside the 3-5 minute target, and left fields batches unworked in the prologue.
+- Surplus raw wares: little is lost to the cap, but not everything harvested is used: share of the harvest consumed over the competent games: logs 58%, clay 59%, wheat 77%, sheep 47%, ore 92%. The rest waits in the storehouse (economy targets stop the workshops once the storehouse holds enough of their output). Every resource matters, but they are not equally scarce.
+- Carriers: the economy needs many carriers (8 at the start, 2 more per finished building, 2 more per city; 54-54 at the end of the competent games, busy 44-64% of the time). One carrier per finished building was tried: 33 carriers were busy 87-92% of the time, logs were lost to the cap (11.5%) and games ran 14-16 minutes, so it stays at 2. There is one storehouse, so goods for distant cities walk long routes; the Unity layer will have to show many walking figures.
+- The rival is still simple: no economy, a plan of +1 point at the end of each age (stopped if its outpost falls), a flat garrison of 2 guards, and it builds (free) the point and shield cards it drafts, at most 2 per age of which 1 a shield card. Its draft is greedy (the card worth most to it now), not a search. Raiders block a road flag but do not count as shields.
 - Outbreaks have no size limit except the breach track: one draw chains from site to site as long as neighbours are full. Stress check: with all 148 corners of the board full and the limit switched off, one card set off 148 outbreaks in a single draw (each site once). In real games the limit of 5 ends the game long before; the long random-command runs of section D, with demons swept every 20 s, ended at breach track 0, 0, 0, 0.
-- The scripted players are rules of thumb, not a search: e.g. they switch the brick kiln off when 12 bricks are stockpiled so coal reaches the smelter, end a round when the forest batch is felled, and place workshops next to their supplier. A human may do better or worse; the balance numbers describe these players.
+- The scripted players are rules of thumb, not a search: e.g. they switch the brick kiln off when 12 bricks are stockpiled so coal reaches the smelter, ring the bell as soon as the round's harvest is in, send the home squad against a raid, train soldiers until their shields beat the rival's, and draft by a fixed table of card values plus a share of what a card is worth to the rival. A human may do better or worse; the balance numbers describe these players.
+- The hero matters a lot: with 6 moves a round (raised from 4) the competent player keeps up with 2-4 infection cards a round; with 4 moves a demon left on a far city stopped its hexes for whole rounds (the robber) and starved the iron chain in some games.
 - Fair-share deliveries were needed: with nearest-first deliveries the sawmill took every log and the charcoal kiln starved (commission never completed at slower harvest speeds). Deliveries now go to the consumer with the least on hand.
 
