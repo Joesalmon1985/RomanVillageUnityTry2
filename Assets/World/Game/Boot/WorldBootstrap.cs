@@ -71,6 +71,7 @@ namespace World.Game
             Saves = gameObject.AddComponent<SaveSystem>(); // F5 / F9, one slot; applies the loaded save's game-layer data in Start
             Saves.Bind(this, loaded);
             TravelTool.Register(); // God View "Go here" (fast travel)
+            Debug.Log("[World] ready: " + (loaded != null ? "loaded save at tick " + Sim.State.Tick : "new game") + ", seed " + Seed + ", " + Screen.width + "x" + Screen.height);
         }
 
         /// <summary>The save slot (F5 save, F9 load).</summary>

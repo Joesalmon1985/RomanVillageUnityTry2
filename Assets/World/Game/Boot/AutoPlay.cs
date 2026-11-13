@@ -41,7 +41,28 @@ namespace World.Game
     public static class AutoPlayScripts
     {
         private static readonly Dictionary<string, Func<AutoPlayScript>> Registry = new Dictionary<string, Func<AutoPlayScript>>();
-        static AutoPlayScripts() { Register("boot_tour", BootTour); }
+        static AutoPlayScripts() { Register("boot_tour", BootTour); Register("capture_tour", CaptureTour); }
+
+        /// <summary>
+        /// Screenshots for checking a packaged build by eye (materials, fonts, UI scale): spawn, the pause menu, the
+        /// warehouse, God View home and whole island. Files go to &lt;exe folder&gt;/Evidence/screenshots (pkg_*.png).
+        /// </summary>
+        public static AutoPlayScript CaptureTour()
+        {
+            var s = new AutoPlayScript("capture_tour");
+            s.Wait(1.5f).Capture("pkg_spawn")
+             .Call(() => Hud.Instance.OpenMenu()).Wait(0.3f).Capture("pkg_menu")
+             .Call(() => { Hud.Instance.MenuPage = Hud.Page.HowToPlay; }).Wait(0.3f).Capture("pkg_menu_howto")
+             .Call(() => Hud.Instance.CloseMenu())
+             .WalkTo(() => WorldBootstrap.Instance.Warehouse.OutsideDoorPosition, 1.0f, true)
+             .WalkTo(() => WorldBootstrap.Instance.Warehouse.DanceFloorPosition, 1.0f)
+             .LookAt(() => WorldBootstrap.Instance.Warehouse.DecksPosition + Vector3.up * 1.5f, 0.4f).Wait(0.3f).Capture("pkg_warehouse")
+             .ToggleView().Wait(0.8f).Capture("pkg_god_home")
+             .Call(() => WorldBootstrap.Instance.GodCam.FrameIsland()).Wait(0.8f).Capture("pkg_god_island")
+             .Log("[AutoPlay] capture_tour OK")
+             .Quit(0);
+            return s;
+        }
 
         public static void Register(string name, Func<AutoPlayScript> factory) => Registry[name] = factory;
         public static bool TryCreate(string name, out AutoPlayScript script)

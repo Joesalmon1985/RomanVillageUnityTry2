@@ -87,7 +87,9 @@ namespace World.Game
         private static AutoPlayScript AfterLoad()
         {
             var s = new AutoPlayScript("save_load (after load)");
-            s.Call(() =>
+            // AutoPlay.Start may run before SaveSystem.Start has applied the saved pose and view: wait for it.
+            s.Step(a => WaitFor(a, () => SaveSystem.LoadCount >= 1, 10f, "no load recorded"))
+             .Call(() =>
              {
                  if (SaveSystem.LoadCount < 1) throw new Exception("no load recorded");
                  if ((B.Avatar.Position - _pos).magnitude > 0.001f) throw new Exception("position not restored: " + B.Avatar.Position + " vs " + _pos);

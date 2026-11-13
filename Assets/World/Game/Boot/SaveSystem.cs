@@ -161,7 +161,8 @@ namespace World.Game
             catch (FormatException e)
             {
                 Debug.LogWarning("[Save] load refused: " + e.Message);
-                Report("Not loaded: " + e.Message + (e.Message.Contains("older") ? " Start a new game; old saves can't be read." : ""), true);
+                string reason = e.Message.StartsWith("The save could not be read") ? "The save file is damaged or is not a save." : e.Message;
+                Report("Not loaded: " + reason + (reason.Contains("older") ? " Start a new game; old saves can't be read." : ""), true);
                 return false;
             }
             catch (Exception e)
