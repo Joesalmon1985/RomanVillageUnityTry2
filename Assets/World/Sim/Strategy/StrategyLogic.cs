@@ -23,7 +23,9 @@ namespace World.Sim.Strategy
             // The rival outpost is a city for the distance rule (and occupies its flag).
             if (s.Board.RivalOutpostVertex >= 0) EconomyApi.AddCity(s, PlayerIds.Rival, s.Board.RivalOutpostVertex);
 
-            // Infection deck: flags near home, excluding the home city (until Age II) and the outpost.
+            // Infection deck: the flags within InfectionRadius segments of home (the home territory), excluding
+            // the home city (until Age II) and the outpost. Corners always take a demon; an intermediate flag only
+            // while it holds a building, a road end or a city (see DrawInfection), so empty ground is skipped.
             st.InfectionRng = s.Rng.Fork("strategy.infection");
             int home = s.Board.HomeCityVertex;
             for (int v = 0; v < topo.VertexCount; v++)
@@ -258,6 +260,9 @@ namespace World.Sim.Strategy
                 st.InfectionDeck.AddRange(st.InfectionDiscard);
                 st.InfectionDiscard.Clear();
             }
+            // Cards for empty intermediate flags are discarded without effect and do not count as a draw
+            // (bounded so a deck of only empty flags cannot loop).
+            int skips = st.InfectionDeck.Count + st.InfectionDiscard.Count;
             for (int i = 0; i < count && !st.GameOver; i++)
             {
                 if (st.InfectionDeck.Count == 0)
@@ -270,10 +275,47 @@ namespace World.Sim.Strategy
                 int v = st.InfectionDeck[st.InfectionDeck.Count - 1];
                 st.InfectionDeck.RemoveAt(st.InfectionDeck.Count - 1);
                 st.InfectionDiscard.Add(v);
+                if (!TakesDemons(s, v))
+                {
+                    if (skips-- <= 0) break;
+                    i--;
+                    continue;
+                }
                 st.LastInfection.Add(v);
                 PlaceDemon(s, v, ev);
             }
             ev?.Add(new InfectionDrawn { Vertices = st.LastInfection.ToArray() });
+        }
+
+        /// <summary>
+        /// A drawn flag takes a demon when it is a hex corner, or an intermediate flag holding a building or
+        /// site, a city, a road end, or demons already.
+        /// </summary>
+        internal static bool TakesDemons(WorldState s, int v)
+        {
+            var topo = s.Board.Topology;
+            if (topo.IsCorner(v) || s.Strategy.Demons[v] > 0) return true;
+            if (EconomyApi.IsVertexOccupied(s, v)) return true;
+            foreach (int e in topo.VertexEdges(v)) if (EconomyApi.HasRoad(s, e)) return true;
+            return false;
+        }
+
+        /// <summary>
+        /// The hero walks one hex edge: demons on the two intermediate flags it passes are cleared, then those
+        /// on the corner it arrives at.
+        /// </summary>
+        internal static void HeroWalk(WorldState s, int from, int to, EventBuffer ev)
+        {
+            var topo = s.Board.Topology;
+            int he = topo.HexEdgeBetween(from, to);
+            if (he >= 0)
+            {
+                var flags = topo.HexEdgeFlags(he);
+                bool forward = flags[0] == from;
+                ClearDemons(s, forward ? flags[1] : flags[2], "hero", ev);
+                ClearDemons(s, forward ? flags[2] : flags[1], "hero", ev);
+            }
+            ClearDemons(s, to, "hero", ev);
         }
 
         /// <summary>One infection on a flag: repelled by the hero, a demon, or a breach when the flag is full.</summary>
@@ -478,7 +520,7 @@ namespace World.Sim.Strategy
             if (st == null) return amount;
             // A demon on a city flag stops that city's production: a hex only counts cities without demons.
             bool anyClear = false, anyCity = false;
-            foreach (int v in s.Board.Topology.HexVertices(hex))
+            foreach (int v in s.Board.Topology.HexCorners(hex))
             {
                 if (!IsPlayerCity(s, PlayerIds.Human, v)) continue;
                 anyCity = true;

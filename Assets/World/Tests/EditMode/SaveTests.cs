@@ -88,7 +88,7 @@ namespace World.Sim.Tests
             var s = a.State;
             K.Step(a);
             K.Do(a, new DraftPick { CardId = s.Strategy.Sides[0].DraftHand[0] }); // first pick made, second pending
-            s.Strategy.Demons[s.Economy.DemoVertexA] = 2;
+            s.Strategy.Demons[K.DemoCorner(s)] = 2;
             Assert.AreEqual(2, s.Strategy.DraftStep);
             var b = SaveCodec.Load(SaveCodec.ToJson(s), out var model);
             var t = b.State;
@@ -100,8 +100,8 @@ namespace World.Sim.Tests
 
             // Hooks are re-registered: EndRound is refused during the draft, demons block flags.
             Assert.AreEqual(StrategyRefusals.DraftPending, b.Submit(new EndRound()).Reason);
-            Assert.IsTrue(EconomyApi.Hooks(b).IsVertexBlocked.Any(f => f(t, s.Economy.DemoVertexA)));
-            Assert.AreEqual(StrategyRefusals.TooClose, b.Check(new FoundCity { Vertex = s.Economy.DemoVertexA }).Reason);
+            Assert.IsTrue(EconomyApi.Hooks(b).IsVertexBlocked.Any(f => f(t, K.DemoCorner(s))));
+            Assert.AreEqual(StrategyRefusals.TooClose, b.Check(new FoundCity { Vertex = K.DemoCorner(s) }).Reason);
 
             // Both finish the draft and end three rounds identically (infection draws from the restored deck).
             var ea = new List<SimEvent>();

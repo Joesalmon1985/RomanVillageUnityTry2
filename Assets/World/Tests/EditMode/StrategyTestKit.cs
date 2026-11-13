@@ -89,6 +89,33 @@ namespace World.Sim.Tests
                 if (!s.Economy.Roads[e]) Do(sim, new PlaceRoad { Edge = e });
         }
 
+        /// <summary>
+        /// The corner at the far end of the demonstration road's hex edge (one hex edge = 3 segments from home;
+        /// the demo road covers the first 2 segments: home -> DemoVertexA -> DemoVertexB -> DemoCorner).
+        /// </summary>
+        public static int DemoCorner(WorldState s)
+        {
+            var topo = s.Board.Topology;
+            int he = topo.HexEdgeOfFlag(s.Economy.DemoVertexA);
+            var f = topo.HexEdgeFlags(he);
+            return f[0] == s.Board.HomeCityVertex ? f[3] : f[0];
+        }
+
+        /// <summary>
+        /// Roads out to a corner two hex edges from home that is a legal city site except for cost:
+        /// home -> demo road -> DemoCorner -> next corner. Returns that corner.
+        /// </summary>
+        public static int RoadToSecondCitySite(WorldSim sim)
+        {
+            var s = sim.State;
+            var topo = s.Board.Topology;
+            int c = DemoCorner(s);
+            int site = topo.CornerNeighbours(c).First(v => v != s.Board.HomeCityVertex
+                && StrategyApi.CheckCity(s, v).Reason == StrategyRefusals.NoRoad);
+            RoadTo(sim, site);
+            return site;
+        }
+
         /// <summary>Null when all economy, strategy and military invariants hold.</summary>
         public static string CheckInvariants(WorldState s)
         {

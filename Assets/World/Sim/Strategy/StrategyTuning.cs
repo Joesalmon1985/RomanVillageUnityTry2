@@ -47,10 +47,14 @@ namespace World.Sim.Strategy
         /// <summary>Infection draws per round end in Age I; +InfectionPerAge each later age.</summary>
         public int InfectionBase = 2;
         public int InfectionPerAge = 1;
-        /// <summary>The infection deck holds the flags within this many edges of the home city.</summary>
-        public int InfectionRadius = 2;
+        /// <summary>
+        /// The infection deck holds the flags within this many road segments of the home city (4 = the home territory).
+        /// A drawn corner always takes a demon; a drawn intermediate flag only while it holds a building, road end or city.
+        /// </summary>
+        public int InfectionRadius = 4;
         /// <summary>A drawn flag already holding this many demons adds a breach instead.</summary>
         public int BreachThreshold = 3;
+        /// <summary>Hero moves per round; one move = one hex edge (corner to neighbouring corner), clearing the flags it passes and arrives at.</summary>
         public int HeroMovesPerRound = 4;
         /// <summary>
         /// Intensify: from Age II, before each infection draw the discard pile is shuffled back on top of the deck,

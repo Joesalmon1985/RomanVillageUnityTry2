@@ -144,7 +144,7 @@ namespace World.Sim.Strategy
 
         public static CommandResult CheckCity(WorldState s, int vertex) => FoundCityHandler.Check(s, PlayerIds.Human, vertex);
 
-        /// <summary>Every flag with its city verdict (Legal ones first are not sorted: index = vertex id).</summary>
+        /// <summary>Every flag with its city verdict (index = flag id; intermediate flags are refused bad_vertex, cities stand on corners).</summary>
         public static List<CitySite> CitySites(WorldState s)
         {
             var list = new List<CitySite>();
@@ -156,11 +156,11 @@ namespace World.Sim.Strategy
             return list;
         }
 
-        /// <summary>Flags where a city can be founded now (ascending), ignoring cost when ignoreCost is true.</summary>
+        /// <summary>Corners where a city can be founded now (ascending), ignoring cost when ignoreCost is true.</summary>
         public static List<int> LegalCitySites(WorldState s, bool ignoreCost = false)
         {
             var list = new List<int>();
-            for (int v = 0; v < s.Board.Topology.VertexCount; v++)
+            foreach (int v in s.Board.Topology.Corners)
             {
                 var r = CheckCity(s, v);
                 if (r.Ok || (ignoreCost && r.Reason == StrategyRefusals.CannotAfford)) list.Add(v);
@@ -209,12 +209,12 @@ namespace World.Sim.Strategy
 
         public static int InfectionCount(WorldState s) => StrategyLogic.InfectionCount(s);
 
-        /// <summary>Flags the hero can move to now (empty when out of moves).</summary>
+        /// <summary>Corners the hero can move to now, one hex edge away (empty when out of moves).</summary>
         public static List<int> HeroMoveTargets(WorldState s)
         {
             var l = new List<int>();
             if (s.Strategy.HeroMovesLeft <= 0 || s.Strategy.GameOver) return l;
-            foreach (int v in s.Board.Topology.VertexNeighbours(s.Strategy.HeroVertex)) l.Add(v);
+            foreach (int v in s.Board.Topology.CornerNeighbours(s.Strategy.HeroVertex)) l.Add(v);
             return l;
         }
 

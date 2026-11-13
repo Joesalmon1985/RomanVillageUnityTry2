@@ -117,24 +117,54 @@ namespace World.Sim.Tests
                 var route = topo.FindPath(store, b.Vertex, e => s.Economy.Roads[e]);
                 if (route != null) foreach (int v in route) if (StrategyApi.DemonsAt(s, v) > 0) critical.Add(v);
             }
-            int best = -1, bestScore = int.MaxValue;
+            int bestMove = -1, bestScore = int.MaxValue;
             foreach (var kv in StrategyApi.Demons(s))
             {
                 if (!Relevant(s, kv.Key) && kv.Value < StrategyApi.BreachThreshold(s) - 1) continue;
-                var p = topo.FindPath(hero, kv.Key);
-                if (p == null) continue;
+                if (!HeroRoute(topo, hero, kv.Key, out int first, out int moves)) continue;
                 // Flags close to breaching come first, then blocked routes, cities, any road flag.
                 int danger = kv.Value >= StrategyApi.BreachThreshold(s) - 1 ? -6 : 0;
-                int score = p.Length + danger + (critical.Contains(kv.Key) ? 0 : StrategyApi.PlayerCities(s).Contains(kv.Key) ? 3 : 6);
+                int score = moves + 1 + danger + (critical.Contains(kv.Key) ? 0 : StrategyApi.PlayerCities(s).Contains(kv.Key) ? 3 : 6);
                 if (score < bestScore)
                 {
-                    best = kv.Key;
+                    bestMove = first;
                     bestScore = score;
                 }
             }
-            if (best < 0) return false;
-            var path = topo.FindPath(hero, best);
-            return Submit(new MoveHero { Vertex = path[1] });
+            if (bestMove < 0) return false;
+            return Submit(new MoveHero { Vertex = bestMove });
+        }
+
+        /// <summary>
+        /// First hero move (a neighbouring corner) and move count to clear a flag: walk to a corner, or walk along
+        /// the hex edge of an intermediate flag (the hero clears the flags it passes).
+        /// </summary>
+        private static bool HeroRoute(BoardTopology topo, int hero, int target, out int first, out int moves)
+        {
+            first = -1;
+            moves = int.MaxValue;
+            if (topo.IsCorner(target))
+            {
+                var p = topo.FindCornerPath(hero, target);
+                if (p == null || p.Length < 2) return false;
+                first = p[1];
+                moves = p.Length - 1;
+                return true;
+            }
+            int he = topo.HexEdgeOfFlag(target);
+            int a = topo.HexEdgeCornerA(he), b = topo.HexEdgeCornerB(he);
+            foreach (var (start, end) in new[] { (a, b), (b, a) })
+            {
+                var p = topo.FindCornerPath(hero, start);
+                if (p == null) continue;
+                int m = p.Length - 1 + 1;
+                if (m < moves)
+                {
+                    moves = m;
+                    first = p.Length > 1 ? p[1] : end;
+                }
+            }
+            return first >= 0;
         }
 
         /// <summary>A demon matters when it sits on the player's road network or a city.</summary>
@@ -220,7 +250,7 @@ namespace World.Sim.Tests
                 int v = EconomyTestKit.ChooseVertex(S, t, filter);
                 if (v < 0) return null;
                 var c = (int[])EconomyApi.Def(S, t).Cost.Clone();
-                c[(int)Ware.Planks] += EconomyTestKit.RoadsToConnect(S, v).Count;
+                c[(int)Ware.Planks] += EconomyTestKit.RoadPlanks(S, EconomyTestKit.RoadsToConnect(S, v).Count);
                 return c;
             },
             Act = () => Place(S, t, filter),
@@ -248,7 +278,7 @@ namespace World.Sim.Tests
                 int site = CitySite(S, out var roads);
                 if (site < 0) return null;
                 var c = (int[])S.Strategy.Tuning.CityCost.Clone();
-                c[(int)Ware.Planks] += roads.Count;
+                c[(int)Ware.Planks] += EconomyTestKit.RoadPlanks(S, roads.Count);
                 return c;
             },
             Act = () =>
@@ -285,7 +315,9 @@ namespace World.Sim.Tests
             {
                 if (b.State == BuildingState.Removed || b.Priority == Priority.High) continue;
                 bool wonderBusy = b.Type == BuildingType.WonderSite && (b.State != BuildingState.Active || s.Strategy.Wonder.InProgressStage > 0);
-                bool barracksBusy = b.Type == BuildingType.Barracks && UnitsTrainedOrQueued(s) > 0;
+                // The power plant feeding the barracks too: on the larger map it stands farther out than the
+                // sawmill, which would otherwise take every log first.
+                bool barracksBusy = (b.Type == BuildingType.Barracks || b.Type == BuildingType.PowerPlant) && UnitsTrainedOrQueued(s) > 0;
                 if (wonderBusy || barracksBusy) return Submit(new SetPriority { BuildingId = b.Id, Priority = Priority.High });
             }
 
@@ -400,7 +432,7 @@ namespace World.Sim.Tests
             var cost = EconomyApi.Def(s, t).Cost;
             for (int w = 0; w < Wares.Count; w++)
             {
-                int need = cost[w] + (w == (int)Ware.Planks ? roads.Count : 0);
+                int need = cost[w] + (w == (int)Ware.Planks ? EconomyTestKit.RoadPlanks(s, roads.Count) : 0);
                 if (Have((Ware)w) < need) return TradeFor(s, (Ware)w, need);
             }
             Mark("place_" + t);
@@ -409,7 +441,10 @@ namespace World.Sim.Tests
             return Submit(_queue.Dequeue());
         }
 
-        /// <summary>Best city flag: legal now, or one that only lacks roads (returned in placeable order); -1 if none.</summary>
+        /// <summary>Longest new road (in segments) the player builds to reach a city corner.</summary>
+        private const int MaxCityRoad = 3;
+
+        /// <summary>Best city corner: legal now, or one that only lacks roads (returned in placeable order); -1 if none.</summary>
         private static int CitySite(WorldState s, out List<int> roads)
         {
             var topo = s.Board.Topology;
@@ -421,7 +456,7 @@ namespace World.Sim.Tests
                 foreach (int h in topo.VertexHexes(v))
                 {
                     var terr = s.Board.HexTerrain[h];
-                    if (terr == Terrain.Meadow) continue;
+                    if (TerrainInfo.RawWare(terr) == null) continue;
                     bool covered = mine.Any(c => topo.VertexHexes(c).Contains(h));
                     val += covered ? 1 : terr == Terrain.Forest ? 6 : terr == Terrain.Hills ? 5 : 3;
                 }
@@ -430,12 +465,13 @@ namespace World.Sim.Tests
             var legal = StrategyApi.LegalCitySites(s, ignoreCost: true);
             if (legal.Count > 0) return legal.OrderByDescending(Value).ThenBy(v => v).First();
             int best = -1, bestScore = int.MinValue;
-            for (int v = 0; v < topo.VertexCount; v++)
+            foreach (int v in topo.Corners)
             {
                 if (StrategyApi.CheckCity(s, v).Reason != StrategyRefusals.NoRoad) continue;
                 var p = EconomyTestKit.PathToNetwork(s, v);
-                if (p == null || p.Length > 4) continue;
-                int score = Value(v) - 3 * (p.Length - 1);
+                // Up to MaxCityRoad new segments (60 m, as the old 3-edge limit); 1 point per segment.
+                if (p == null || p.Length - 1 > MaxCityRoad) continue;
+                int score = Value(v) - (p.Length - 1);
                 if (score > bestScore) { best = v; bestScore = score; }
             }
             if (best < 0) return -1;
@@ -475,7 +511,7 @@ namespace World.Sim.Tests
         {
             if (CoverTarget(s, out var t, out var f) < 0) return null;
             var c = (int[])EconomyApi.Def(s, t).Cost.Clone();
-            c[(int)Ware.Planks] += EconomyTestKit.RoadsToConnect(s, EconomyTestKit.ChooseVertex(s, t, f)).Count;
+            c[(int)Ware.Planks] += EconomyTestKit.RoadPlanks(s, EconomyTestKit.RoadsToConnect(s, EconomyTestKit.ChooseVertex(s, t, f)).Count);
             return c;
         }
 

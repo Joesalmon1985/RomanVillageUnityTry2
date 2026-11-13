@@ -53,7 +53,7 @@ namespace World.Sim.Economy
             {
                 if (c.Owner != player) continue;
                 int d = topo.Distance(c.Vertex, vertex);
-                if (d >= 0 && d <= s.Economy.Tuning.TerritoryRadius) return true;
+                if (d >= 0 && d <= s.Economy.Tuning.TerritorySegments) return true;
             }
             return false;
         }
@@ -84,7 +84,9 @@ namespace World.Sim.Economy
             if (vertex == s.Board.WarehouseVertex)
                 return CommandResult.Reject(Reasons.InvalidSite, "That flag is kept for the warehouse.");
             if (!IsInTerritory(s, player, vertex))
-                return CommandResult.Reject(Reasons.InvalidSite, "That flag is outside your territory.");
+                return CommandResult.Reject(Reasons.InvalidSite, "That flag is outside your territory (more than "
+                    + s.Economy.Tuning.TerritorySegments + " road segments, "
+                    + (int)(s.Economy.Tuning.TerritorySegments * BoardTopology.EdgeLength) + " m, from your cities).");
             if (def.NeedsTerrain && !TouchesTerrain(s, vertex, def.Terrain))
                 return CommandResult.Reject(Reasons.InvalidSite,
                     "A " + def.Name.ToLowerInvariant() + " must stand next to " + TerrainPhrase(def.Terrain) + ".");
@@ -142,6 +144,31 @@ namespace World.Sim.Economy
                 store.Stock[w] -= cost[w];
                 s.Economy.Ledger.Consumed[w] += cost[w];
             }
+        }
+
+        /// <summary>Wares to take from the storehouse for the next n road segments, given the current road credit.</summary>
+        internal static int[] RoadCostFor(WorldState s, int segments)
+        {
+            var t = s.Economy.Tuning;
+            int per = Math.Max(1, t.RoadSegmentsPerCost);
+            int unpaid = Math.Max(0, segments - s.Economy.RoadCredit);
+            int payments = (unpaid + per - 1) / per;
+            var c = new int[Wares.Count];
+            for (int w = 0; w < Wares.Count; w++) c[w] = t.RoadCost[w] * payments;
+            return c;
+        }
+
+        /// <summary>Pays for one road segment: uses the credit, else takes RoadCost and grants credit for the following segments.</summary>
+        internal static void PayRoadSegment(WorldState s)
+        {
+            var e = s.Economy;
+            if (e.RoadCredit > 0)
+            {
+                e.RoadCredit--;
+                return;
+            }
+            Pay(s, Storehouse(s), e.Tuning.RoadCost);
+            e.RoadCredit = Math.Max(1, e.Tuning.RoadSegmentsPerCost) - 1;
         }
 
         internal static string CostText(int[] cost)

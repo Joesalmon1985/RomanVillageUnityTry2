@@ -61,7 +61,7 @@ namespace World.Sim.Tests
             Assert.AreEqual(99UL, sim.State.Seed);
             Assert.AreEqual(0, sim.State.Tick);
             Assert.IsNotNull(sim.State.Board);
-            Assert.AreEqual(54, sim.State.Board.Topology.VertexCount);
+            Assert.AreEqual(570, sim.State.Board.Topology.VertexCount);
             Assert.AreEqual(PlayerIds.Count, sim.State.Players.Count);
             Assert.AreEqual(10, WorldSim.TicksPerSecond);
         }
@@ -159,7 +159,7 @@ namespace World.Sim.Tests
             Assert.AreEqual(sim.State.Rng.State, copy.Rng.State);
             CollectionAssert.AreEqual(sim.State.Board.HexNumber, copy.Board.HexNumber);
             Assert.AreEqual(sim.State.Board.HomeCityVertex, copy.Board.HomeCityVertex);
-            Assert.AreEqual(72, copy.Board.Topology.EdgeCount);
+            Assert.AreEqual(630, copy.Board.Topology.EdgeCount);
             Assert.AreEqual(json, JsonConvert.SerializeObject(copy));
         }
 

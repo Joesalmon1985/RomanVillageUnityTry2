@@ -79,10 +79,11 @@ namespace World.Sim.Strategy
         {
             var topo = s.Board.Topology;
             if (vertex < 0 || vertex >= topo.VertexCount) return CommandResult.Reject(StrategyRefusals.BadVertex, "That is not a flag on the map.");
+            if (!topo.IsCorner(vertex)) return CommandResult.Reject(StrategyRefusals.BadVertex, "A city must stand on a hex corner.");
             if (EconomyApi.IsVertexOccupied(s, vertex) || vertex == s.Board.WarehouseVertex)
                 return CommandResult.Reject(StrategyRefusals.Occupied, "That flag is already taken.");
             foreach (var city in s.Economy.Cities)
-                if (topo.EdgeBetween(city.Vertex, vertex) >= 0)
+                if (topo.HexEdgeBetween(city.Vertex, vertex) >= 0)
                     return CommandResult.Reject(StrategyRefusals.TooClose, city.Owner == PlayerIds.Human
                         ? "A city cannot stand next to another city."
                         : "A city cannot stand next to the rival outpost.");
@@ -207,8 +208,8 @@ namespace World.Sim.Strategy
             var topo = s.Board.Topology;
             if (c.Vertex < 0 || c.Vertex >= topo.VertexCount) return CommandResult.Reject(StrategyRefusals.BadVertex, "That is not a flag on the map.");
             if (s.Strategy.HeroMovesLeft <= 0) return CommandResult.RejectDefault(Reasons.NoTurnAction);
-            if (topo.EdgeBetween(s.Strategy.HeroVertex, c.Vertex) < 0)
-                return CommandResult.Reject(StrategyRefusals.NotAdjacent, "The hero can only move to a neighbouring flag.");
+            if (topo.HexEdgeBetween(s.Strategy.HeroVertex, c.Vertex) < 0)
+                return CommandResult.Reject(StrategyRefusals.NotAdjacent, "The hero moves one hex edge at a time, to a neighbouring corner.");
             return CommandResult.Accept();
         }
 
@@ -219,7 +220,7 @@ namespace World.Sim.Strategy
             st.HeroVertex = c.Vertex;
             st.HeroMovesLeft--;
             ev.Add(new HeroMoved { From = from, To = c.Vertex, MovesLeft = st.HeroMovesLeft });
-            StrategyLogic.ClearDemons(s, c.Vertex, "hero", ev);
+            StrategyLogic.HeroWalk(s, from, c.Vertex, ev);
             return CommandResult.Accept();
         }
     }

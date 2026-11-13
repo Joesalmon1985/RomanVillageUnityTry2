@@ -66,28 +66,33 @@ namespace World.Sim.Tests
             K.Give(s, Ware.Planks, 20, Ware.Stone, 10, Ware.Grain, 3);
             K.Step(sim);
 
-            // Too close: the demo road's first flag touches a road but neighbours the home city.
-            var tooClose = sim.Check(new FoundCity { Vertex = s.Economy.DemoVertexA });
+            // Cities stand on corners only: the demo road's intermediate flags are refused.
+            var notCorner = sim.Check(new FoundCity { Vertex = s.Economy.DemoVertexA });
+            Assert.AreEqual(StrategyRefusals.BadVertex, notCorner.Reason);
+            Assert.AreEqual("A city must stand on a hex corner.", notCorner.Message);
+
+            // Too close: the corner one hex edge from home, reached by extending the demo road.
+            int corner1 = K.DemoCorner(s);
+            K.RoadTo(sim, corner1);
+            var tooClose = sim.Check(new FoundCity { Vertex = corner1 });
             Assert.AreEqual(StrategyRefusals.TooClose, tooClose.Reason);
             StringAssert.Contains("next to another city", tooClose.Message);
 
-            // No road: a free flag two edges from every city with no road touching it.
-            int noRoad = Enumerable.Range(0, topo.VertexCount).First(v =>
-                !EconomyApi.IsVertexOccupied(s, v) && v != s.Board.WarehouseVertex &&
-                s.Economy.Cities.All(c => topo.EdgeBetween(c.Vertex, v) < 0) &&
+            // No road: a free corner two hex edges from every city with no road touching it.
+            int noRoad = topo.Corners.First(v =>
+                !EconomyApi.IsVertexOccupied(s, v) &&
+                s.Economy.Cities.All(c => topo.CornerDistance(c.Vertex, v) >= 2) &&
                 topo.VertexEdges(v).All(e => !s.Economy.Roads[e]));
             var nr = sim.Check(new FoundCity { Vertex = noRoad });
             Assert.AreEqual(StrategyRefusals.NoRoad, nr.Reason);
             StringAssert.Contains("road", nr.Message);
 
-            // Occupied: the forester site.
-            Assert.AreEqual(StrategyRefusals.Occupied, sim.Check(new FoundCity { Vertex = s.Economy.DemoVertexB }).Reason);
+            // Occupied: the rival outpost's corner.
+            Assert.AreEqual(StrategyRefusals.Occupied, sim.Check(new FoundCity { Vertex = s.Board.RivalOutpostVertex }).Reason);
 
-            // Legal: extend the demo road one edge beyond the forester site.
-            int b = s.Economy.DemoVertexB;
-            int site = topo.VertexNeighbours(b).First(v => v != s.Economy.DemoVertexA && !EconomyApi.IsVertexOccupied(s, v)
-                && s.Economy.Cities.All(c => topo.EdgeBetween(c.Vertex, v) < 0));
-            K.Do(sim, new PlaceRoad { Edge = topo.EdgeBetween(b, site) });
+            // Legal: one more hex edge of road beyond corner1 reaches a corner two hex edges from home.
+            int site = K.RoadToSecondCitySite(sim);
+            Assert.AreEqual(2, topo.CornerDistance(s.Board.HomeCityVertex, site));
             CollectionAssert.Contains(StrategyApi.LegalCitySites(s), site);
             int planks = EconomyApi.StorehouseCount(s, Ware.Planks);
             var evs = K.Do(sim, new FoundCity { Vertex = site });
@@ -95,10 +100,13 @@ namespace World.Sim.Tests
             Assert.AreEqual(planks - s.Strategy.Tuning.CityCost[(int)Ware.Planks], EconomyApi.StorehouseCount(s, Ware.Planks));
             Assert.AreEqual(4, StrategyApi.Score(s, PlayerIds.Human).Cities);
             Assert.IsTrue(EconomyApi.IsInTerritory(s, PlayerIds.Human, site));
+            // Its territory reaches 4 segments around its own corner.
+            int far = Enumerable.Range(0, topo.VertexCount).First(v => topo.Distance(site, v) == 4 && topo.Distance(s.Board.HomeCityVertex, v) > 4);
+            Assert.IsTrue(EconomyApi.IsInTerritory(s, PlayerIds.Human, far));
 
-            // The new city is now "another city" for its neighbours.
-            int next = topo.VertexNeighbours(site).First(v => v != b);
-            K.Do(sim, new PlaceRoad { Edge = topo.EdgeBetween(site, next) });
+            // The new city is now "another city" for its neighbouring corners.
+            int next = topo.CornerNeighbours(site).First(v => v != corner1);
+            K.RoadTo(sim, next);
             Assert.AreEqual(StrategyRefusals.TooClose, sim.Check(new FoundCity { Vertex = next }).Reason);
         }
 
@@ -109,14 +117,12 @@ namespace World.Sim.Tests
             var s = sim.State;
             var topo = s.Board.Topology;
             K.Step(sim);
-            int b = s.Economy.DemoVertexB;
-            int site = topo.VertexNeighbours(b).First(v => v != s.Economy.DemoVertexA && !EconomyApi.IsVertexOccupied(s, v));
-            K.Do(sim, new PlaceRoad { Edge = topo.EdgeBetween(b, site) });
+            int site = K.RoadToSecondCitySite(sim);
             var r = sim.Check(new FoundCity { Vertex = site });
             Assert.AreEqual(StrategyRefusals.CannotAfford, r.Reason);
             StringAssert.Contains("grain", r.Message);
             Assert.IsTrue(s.Economy.Cities.Any(c => c.Owner == PlayerIds.Rival && c.Vertex == s.Board.RivalOutpostVertex));
-            int nearOutpost = topo.VertexNeighbours(s.Board.RivalOutpostVertex)[0];
+            int nearOutpost = topo.CornerNeighbours(s.Board.RivalOutpostVertex)[0];
             Assert.AreEqual(StrategyRefusals.TooClose, StrategyApi.CheckCity(s, nearOutpost).Reason);
         }
 
@@ -309,6 +315,48 @@ namespace World.Sim.Tests
 
         // ---------------- Demons and hero ----------------
 
+        [Test]
+        public void Infection_DeckIsTheHomeTerritory_EmptyIntermediateFlagsAreSkipped()
+        {
+            var sim = K.NewSim();
+            var s = sim.State;
+            var topo = s.Board.Topology;
+            int home = s.Board.HomeCityVertex;
+            // The deck: every flag within 4 segments of home except home (16 territory flags - 1).
+            Assert.AreEqual(15, s.Strategy.InfectionDeck.Count);
+            Assert.IsTrue(s.Strategy.InfectionDeck.All(v => topo.Distance(home, v) <= 4 && v != home));
+            K.Step(sim);
+            int empty = s.Strategy.InfectionDeck.First(v => !topo.IsCorner(v) && !EconomyApi.IsVertexOccupied(s, v)
+                && topo.VertexEdges(v).All(e => !s.Economy.Roads[e]));
+            int corner = K.DemoCorner(s);
+            RigInfection(s, empty, corner);
+            s.Strategy.Tuning.InfectionBase = 1;
+            K.EndRound(sim);
+            Assert.AreEqual(0, s.Strategy.Demons[empty], "an empty intermediate flag takes no demon");
+            Assert.AreEqual(1, s.Strategy.Demons[corner], "the next card is drawn instead");
+            CollectionAssert.AreEqual(new[] { corner }, s.Strategy.LastInfection);
+            // A road flag does take demons.
+            RigInfection(s, s.Economy.DemoVertexA);
+            K.EndRound(sim);
+            Assert.AreEqual(1, s.Strategy.Demons[s.Economy.DemoVertexA]);
+        }
+
+        [Test]
+        public void Hero_WalkingAHexEdge_ClearsTheFlagsItPasses()
+        {
+            var sim = K.NewSim();
+            var s = sim.State;
+            K.Step(sim);
+            int corner = K.DemoCorner(s);
+            s.Strategy.Demons[s.Economy.DemoVertexA] = 1;
+            s.Strategy.Demons[s.Economy.DemoVertexB] = 2;
+            s.Strategy.Demons[corner] = 1;
+            var evs = K.Do(sim, new MoveHero { Vertex = corner });
+            Assert.AreEqual(3, evs.OfType<DemonsCleared>().Count());
+            CollectionAssert.AreEqual(new[] { s.Economy.DemoVertexA, s.Economy.DemoVertexB, corner }, evs.OfType<DemonsCleared>().Select(d => d.Vertex).ToArray(), "in walking order");
+            Assert.AreEqual(0, StrategyApi.Demons(s).Count);
+        }
+
         private static void RigInfection(WorldState s, params int[] verticesTopFirst)
         {
             s.Strategy.InfectionDeck.Clear();
@@ -322,7 +370,7 @@ namespace World.Sim.Tests
             var sim = K.NewSim();
             var s = sim.State;
             K.Step(sim);
-            int v = s.Economy.DemoVertexB;
+            int v = K.DemoCorner(s);
             RigInfection(s, v, v, v, v);
             var evs = K.EndRound(sim);
             Assert.AreEqual(3, s.Strategy.Demons[v]);
@@ -342,7 +390,7 @@ namespace World.Sim.Tests
             K.ForceIntoHand(s, "ward_stones");
             K.Give(s, Ware.Stone, 3);
             K.Do(sim, new BuildCard { CardId = K.CardOf(s, "ward_stones"), CityVertex = s.Board.HomeCityVertex });
-            int v = s.Economy.DemoVertexB;
+            int v = K.DemoCorner(s);
             RigInfection(s, v, v, v, v);
             K.EndRound(sim);
             Assert.AreEqual(4, s.Strategy.Demons[v]);
@@ -355,7 +403,7 @@ namespace World.Sim.Tests
             var sim = K.NewSim();
             var s = sim.State;
             K.Step(sim);
-            int v = s.Economy.DemoVertexB;
+            int v = K.DemoCorner(s);
             RigInfection(s, v, v, v, v, v, v, v);
             var evs = K.EndRound(sim);
             Assert.AreEqual(4, s.Strategy.Breaches);
@@ -372,36 +420,36 @@ namespace World.Sim.Tests
             var sim = K.NewSim(ticksPerEdge: 60);
             var s = sim.State;
             var topo = s.Board.Topology;
-            int a = s.Economy.DemoVertexA, b = s.Economy.DemoVertexB;
+            int b = s.Economy.DemoVertexB, corner = K.DemoCorner(s);
             K.Step(sim);
             K.FinishDraft(sim);
-            // A sawmill site one edge beyond the forester site: its deliveries walk storehouse -> A -> B -> C.
-            int c = topo.VertexNeighbours(b).First(v => v != a && EconomyApi.CheckPlacement(s, 0, BuildingType.Sawmill, v).Ok);
-            K.Do(sim, new PlaceRoad { Edge = topo.EdgeBetween(b, c) });
+            // A sawmill site one segment beyond the demo corner: its deliveries walk storehouse -> A -> B -> corner -> site.
+            K.Do(sim, new PlaceRoad { Edge = topo.EdgeBetween(b, corner) });
+            int c = topo.VertexNeighbours(corner).First(v => v != b && EconomyApi.CheckPlacement(s, 0, BuildingType.Sawmill, v).Ok);
+            K.Do(sim, new PlaceRoad { Edge = topo.EdgeBetween(corner, c) });
             K.Do(sim, new PlaceBuilding { Type = BuildingType.Sawmill, Vertex = c });
             int siteId = EconomyApi.BuildingAt(s, c);
             K.Step(sim, 10);
             Assert.IsTrue(s.Economy.Jobs.Any(j => j.DestId == siteId && j.State != JobState.Waiting), "a carrier is on its way");
 
-            // Infection puts a demon on B while the carriers are still before it.
-            RigInfection(s, b);
+            // Infection puts a demon on the corner (demons sit on corners) while the carriers are still before it.
+            RigInfection(s, corner);
             var evs = K.EndRound(sim);
-            Assert.AreEqual(1, s.Strategy.Demons[b]);
+            Assert.AreEqual(1, s.Strategy.Demons[corner]);
             evs.AddRange(K.Step(sim, 200));
             var stalls = evs.OfType<JobStalled>().Where(j => j.Reason == Reasons.DemonOnRoute).ToList();
             Assert.IsNotEmpty(stalls, "a delivery reports demon_on_route");
-            // A loaded carrier waits at A with its ware (jobs not yet picked up may be released and re-created).
+            // A loaded carrier waits on the demo road (A or B) before the corner, with its ware (jobs not yet picked up may be released and re-created).
             var carrying = s.Economy.Jobs.First(j => j.State == JobState.Carrying && j.DestId == siteId && stalls.Any(x => x.JobId == j.Id));
             int stalledJob = carrying.Id;
-            Assert.AreEqual(a, s.Economy.Carriers[carrying.CarrierId].AtVertex);
+            CollectionAssert.Contains(new[] { s.Economy.DemoVertexA, b }, s.Economy.Carriers[carrying.CarrierId].AtVertex, "stopped on the demo road before the corner");
             Assert.AreEqual(Reasons.DemonOnRoute, EconomyApi.DescribeJob(s, stalledJob).Reason);
             Assert.IsFalse(evs.OfType<WareDelivered>().Any(d => d.BuildingId == siteId));
 
-            // The hero walks home -> A -> B; arriving on B clears it.
-            K.Do(sim, new MoveHero { Vertex = a });
-            var hev = K.Do(sim, new MoveHero { Vertex = b });
+            // The hero moves one hex edge, home -> corner; arriving clears it.
+            var hev = K.Do(sim, new MoveHero { Vertex = corner });
             Assert.AreEqual(1, hev.OfType<DemonsCleared>().Single().Count);
-            Assert.AreEqual(0, s.Strategy.Demons[b]);
+            Assert.AreEqual(0, s.Strategy.Demons[corner]);
             hev.AddRange(K.Step(sim, 400));
             Assert.IsTrue(hev.OfType<JobResumed>().Any(j => j.JobId == stalledJob), "the stalled delivery resumes");
             Assert.AreEqual(1, hev.OfType<WareDelivered>().Count(d => d.JobId == stalledJob), "and arrives once");
@@ -415,8 +463,12 @@ namespace World.Sim.Tests
             var s = sim.State;
             K.Step(sim);
             int home = s.Board.HomeCityVertex;
-            int n = s.Economy.DemoVertexA;
-            Assert.AreEqual(StrategyRefusals.NotAdjacent, sim.Check(new MoveHero { Vertex = s.Economy.DemoVertexB }).Reason);
+            int n = K.DemoCorner(s);
+            var topo = s.Board.Topology;
+            CollectionAssert.AreEquivalent(topo.CornerNeighbours(home).ToList(), StrategyApi.HeroMoveTargets(s));
+            Assert.AreEqual(StrategyRefusals.NotAdjacent, sim.Check(new MoveHero { Vertex = s.Economy.DemoVertexA }).Reason, "not to an intermediate flag");
+            int twoAway = topo.Corners.First(v => topo.CornerDistance(home, v) == 2);
+            Assert.AreEqual(StrategyRefusals.NotAdjacent, sim.Check(new MoveHero { Vertex = twoAway }).Reason, "one hex edge per move");
             for (int i = 0; i < 4; i++) K.Do(sim, new MoveHero { Vertex = i % 2 == 0 ? n : home });
             var r = sim.Check(new MoveHero { Vertex = n });
             Assert.AreEqual(Reasons.NoTurnAction, r.Reason);
@@ -438,7 +490,7 @@ namespace World.Sim.Tests
             Assert.AreEqual(0, s.Strategy.Demons[home]);
 
             // Move the hero away and let a demon sit on the home city: no batches there next round.
-            K.Do(sim, new MoveHero { Vertex = s.Economy.DemoVertexA });
+            K.Do(sim, new MoveHero { Vertex = K.DemoCorner(s) });
             RigInfection(s, home);
             K.EndRound(sim);
             Assert.AreEqual(1, s.Strategy.Demons[home]);

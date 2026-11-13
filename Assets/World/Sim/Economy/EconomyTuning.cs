@@ -6,7 +6,7 @@ namespace World.Sim.Economy
     /// </summary>
     public sealed class EconomyTuning
     {
-        /// <summary>Ticks a carrier needs to walk one road edge (10 ticks = 1 s).</summary>
+        /// <summary>Ticks a carrier needs to walk one road segment (20 m; 10 ticks = 1 s). Same as the old per-edge time.</summary>
         public int TicksPerEdge = 60;
         /// <summary>Carriers created at the storehouse at start.</summary>
         public int Carriers = 4;
@@ -16,8 +16,8 @@ namespace World.Sim.Economy
         public int BatchCap = 12;
         /// <summary>Distinct production numbers drawn per round (from 1..4).</summary>
         public int NumbersDrawn = 2;
-        /// <summary>Territory = vertices within this many edges of one of the player's cities.</summary>
-        public int TerritoryRadius = 3;
+        /// <summary>Territory = flags within this many segments (walking the fine graph, roads not needed) of one of the player's city corners. 4 = 80 m.</summary>
+        public int TerritorySegments = 4;
         /// <summary>Recipe buildings keep this many cycles of input on hand or on the way.</summary>
         public int InputBuffer = 3;
         /// <summary>
@@ -31,8 +31,13 @@ namespace World.Sim.Economy
         public int FuelBuffer = 2;
         /// <summary>Ticks of one harvest cycle (one raw unit).</summary>
         public int HarvestTicks = 30;
-        /// <summary>Cost of one road edge, taken from the storehouse.</summary>
+        /// <summary>Cost taken from the storehouse for every <see cref="RoadSegmentsPerCost"/> road segments placed.</summary>
         public int[] RoadCost = EconomyTuning.W(Ware.Planks, 1);
+        /// <summary>
+        /// Road segments paid for by one <see cref="RoadCost"/>: the first segment pays, the next ones use the
+        /// credit (<see cref="EconomyState.RoadCredit"/>). 3 = one hex edge costs what one old 20 m edge cost.
+        /// </summary>
+        public int RoadSegmentsPerCost = 3;
         /// <summary>Storehouse stock at start (one Planks of it is already on a carrier at tick 0).</summary>
         public int[] StarterStock = EconomyTuning.W(Ware.Planks, 14, Ware.Stone, 4);
         /// <summary>Building table, index = (int)BuildingType. Array (not list) so JSON replaces it.</summary>
@@ -57,7 +62,7 @@ namespace World.Sim.Economy
         public BuildingKind Kind;
         /// <summary>Construction cost per ware.</summary>
         public int[] Cost = new int[Wares.Count];
-        /// <summary>When true the vertex must touch a hex of <see cref="Terrain"/>.</summary>
+        /// <summary>When true the flag must touch a hex of <see cref="Terrain"/> (BoardTopology.VertexHexes).</summary>
         public bool NeedsTerrain;
         public Terrain Terrain;
         /// <summary>Recipe inputs per cycle (power plant: fuel ware).</summary>

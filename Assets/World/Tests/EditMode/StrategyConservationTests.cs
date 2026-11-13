@@ -17,7 +17,7 @@ namespace World.Sim.Tests
             var s = sim.State;
             var topo = s.Board.Topology;
             // A long game: no ending by rounds, points or breaches, so commands keep being exercised.
-            s.Strategy.Tuning.RoundsPerAge = 40;
+            s.Strategy.Tuning.RoundsPerAge = 400;
             s.Strategy.Tuning.VictoryPoints = 999;
             s.Strategy.Tuning.BreachLimit = 999;
             var rng = new Rng(777);
@@ -72,9 +72,17 @@ namespace World.Sim.Tests
             {
                 case 0:
                 {
-                    // Prefer flags that only lack a road or are legal.
+                    // Prefer flags that are legal; else often lay the next road segment towards a city corner
+                    // two hex edges out (on the fine map city corners lie beyond the home territory).
                     var legal = StrategyApi.LegalCitySites(s, true);
                     if (legal.Count > 0 && rng.Chance(1, 2)) return new FoundCity { Vertex = legal[rng.NextInt(legal.Count)] };
+                    if (rng.Chance(1, 2))
+                    {
+                        int target = topo.Corners.Where(c => StrategyApi.CheckCity(s, c).Reason == StrategyRefusals.NoRoad
+                            && EconomyTestKit.PathToNetwork(s, c)?.Length <= 8).DefaultIfEmpty(-1).First();
+                        var road = target >= 0 ? EconomyTestKit.RoadsToConnect(s, target) : null;
+                        if (road != null && road.Count > 0) return new PlaceRoad { Edge = road[road.Count - 1] };
+                    }
                     return new FoundCity { Vertex = v };
                 }
                 case 1: return new Trade { Give = (Ware)rng.NextInt(Wares.Count), Get = (Ware)rng.NextInt(Wares.Count), Count = rng.NextInt(3) };
@@ -83,7 +91,7 @@ namespace World.Sim.Tests
                 case 4:
                 case 5:
                 {
-                    var n = topo.VertexNeighbours(s.Strategy.HeroVertex);
+                    var n = topo.CornerNeighbours(s.Strategy.HeroVertex);
                     return new MoveHero { Vertex = rng.Chance(4, 5) ? n[rng.NextInt(n.Count)] : v };
                 }
                 case 6:

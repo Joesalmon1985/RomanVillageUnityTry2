@@ -19,7 +19,11 @@ namespace World.Sim.Military
         public int MaxSquadSize = 4;
 
         // ---- Movement and combat ----
-        public int TicksPerEdge = 40;
+        /// <summary>
+        /// Ticks a squad needs to walk one road segment (20 m); squads walk the fine flag graph. 20 (was 40 per
+        /// old 20 m edge): the outpost is now 12-15 segments away instead of about 6 edges, so marches keep their old length.
+        /// </summary>
+        public int TicksPerEdge = 20;
         public int UnitHp = 10;
         public int UnitDamage = 3;
         public int AttackCooldown = 10;
