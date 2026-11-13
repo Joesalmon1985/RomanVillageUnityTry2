@@ -2,7 +2,7 @@
 
 One Unity game that joins four of the owner's games: a first-person village with a Tab God View, a Ward duel with Mira, a 174 BPM rhythm party in the warehouse, and one connected road, hex, draft and military economy.
 
-**Status: MVP built and packaged (13 Nov 2026): `Builds/Windows/WorldMVP.exe` (rebuild with `AgentScripts/BuildWindows.cs`), how to play in `Docs/PLAY_GUIDE.md`, what ran in `Docs/PROGRESS.md`. Shared sim contracts for parallel work: `Docs/CONTRACTS.md`. Do not change the plan without the owner.**
+**Status: MVP built and packaged on `main` (13 Nov 2026, `189466f`). Branch `refactor/prehistoric`: the owner-agreed prehistoric refactor (Catan dice and growing stock, camps with plots, main roads, the prince and spells, Dungeon Master movement, dance circle) is specified in `Docs/REFACTOR_SPEC.md`, which is binding for all work on that branch; no code written yet. On that branch the spec overrides `CONTRACTS.md`, `ECONOMY_DESIGN.md` and the API docs where they differ. Do not change the plan without the owner.**
 
 Before doing anything, read `Docs/HANDOFF.md`. It gives the state, reading order, machine paths, Unity commands, source file map and rules.
 

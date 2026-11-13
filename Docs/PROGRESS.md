@@ -251,3 +251,9 @@ Ran:
 - Fixed from packaged runs: `save_load` failed once because AutoPlay's `Start` ran before the save's pose was applied (the script now waits for the load); the damaged-save message was a raw JSON parser error (now a plain sentence); the smoke runs' window size was remembered by Unity for the next normal launch (registry prefs reset; HANDOFF explains).
 
 Not run / caveats: nobody has played the build by hand and nobody has listened to the audio. The rhythm phrase and the duel in the exe ran only under their autoplayers. `full_game` and `commission` drive the sim faster than real time, so they say nothing about pacing. Fast travel and the pause menu buttons were exercised by tests and scripts, not by mouse. Saving keeps nothing of a running encounter (refused instead). The Bram greeting after a loaded completed commission falls back to the opening line until the next event. The round-start banner can overlap the What now line on a 720p screen.
+
+## Prehistoric refactor: binding spec (13 Nov 2026, branch `refactor/prehistoric`)
+
+Written: `Docs/REFACTOR_SPEC.md`, the binding spec for the owner-agreed refactor (automatic dice from a 36-card deck, growing stock on hexes, camps with fixed plots and primitive collectors, main roads on hex edges, per-camp stock and shipments, the prince's proposal queue and free build spells, a rival that overruns the weaker people, minimal demons, lattice movement with a free pointer, the dance circle). It gives the rules with starting numbers, wares, buildings and costs, the data model, commands, events, refusals and read helpers (appendix A), the Unity-side interfaces (appendix B), the keep/change/remove map, six work packages (S, P, D, V, N, F) with file ownership and acceptance checks, open risks, and the 37 choices the spec writer made where the owner's decisions left a gap.
+
+Ran: nothing. No code was written and no tests or builds were run; `main` is unchanged.
