@@ -52,6 +52,8 @@ namespace World.Sim.Strategy
         public const string StageInProgress = "stage_in_progress";
         public const string WonderComplete = "wonder_complete";
         public const string DraftPending = "draft_pending";
+        /// <summary>Point-scoring actions (cities, wonder stages) wait for Age I, which begins after the commission.</summary>
+        public const string Prologue = "prologue";
     }
 
     internal static class SGuard
@@ -60,6 +62,13 @@ namespace World.Sim.Strategy
         {
             if (s.Strategy.GameOver) return CommandResult.Reject(StrategyRefusals.GameOver, "The game is over.");
             if (c.PlayerId != PlayerIds.Human) return CommandResult.Reject(StrategyRefusals.NotOwner, "Only the player can do that.");
+            return CommandResult.Accept();
+        }
+
+        internal static CommandResult Ages(WorldState s)
+        {
+            if (!s.Strategy.Started)
+                return CommandResult.Reject(StrategyRefusals.Prologue, "Finish the quartermaster's commission first: the ages begin after it.");
             return CommandResult.Accept();
         }
     }
@@ -90,6 +99,7 @@ namespace World.Sim.Strategy
         protected override CommandResult Validate(WorldState s, FoundCity c)
         {
             var r = SGuard.Basic(s, c);
+            if (r.Ok) r = SGuard.Ages(s);
             return r.Ok ? Check(s, c.PlayerId, c.Vertex) : r;
         }
 
@@ -296,6 +306,8 @@ namespace World.Sim.Strategy
         {
             var r = SGuard.Basic(s, c);
             if (!r.Ok) return r;
+            r = SGuard.Ages(s);
+            if (!r.Ok) return r;
             var w = s.Strategy.Wonder;
             if (w.StagesDone >= s.Strategy.Tuning.WonderStages.Length)
                 return CommandResult.Reject(StrategyRefusals.WonderComplete, "The wonder is complete.");
@@ -318,7 +330,7 @@ namespace World.Sim.Strategy
             var cost = s.Strategy.Tuning.WonderStages[w.InProgressStage - 1];
             for (int i = 0; i < Wares.Count; i++)
             {
-                // Request only what the site does not already hold unspoken for.
+                // Request only what the site does not already hold.
                 int need = cost[i] - EconomyApi.Available(s, id, (Ware)i);
                 if (need > 0) EconomyApi.RequestWares(s, id, (Ware)i, need);
             }

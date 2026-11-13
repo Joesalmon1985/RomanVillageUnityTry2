@@ -162,7 +162,7 @@ namespace World.Sim.Strategy
         internal static void CheckPoints(WorldState s, EventBuffer ev)
         {
             var st = s.Strategy;
-            if (st.GameOver) return;
+            if (st.GameOver || !st.Started) return;
             int p = Score(s, PlayerIds.Human).Total, r = Score(s, PlayerIds.Rival).Total;
             int target = st.Tuning.VictoryPoints;
             if (p < target && r < target) return;
@@ -478,7 +478,8 @@ namespace World.Sim.Strategy
                 if (st.Demons[v] == 0) anyClear = true;
             }
             if (anyCity && !anyClear) return 0;
-            return amount + Effects(s, PlayerIds.Human).BatchBonus(s.Board.HexTerrain[hex]);
+            int ageBonus = st.Started && st.Age > 0 ? st.Age * st.Tuning.AgeBatchBonus : 0;
+            return amount + ageBonus + Effects(s, PlayerIds.Human).BatchBonus(s.Board.HexTerrain[hex]);
         }
 
         internal static CommandResult EndRoundGuard(WorldState s)

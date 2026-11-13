@@ -12,7 +12,7 @@ namespace World.Sim.Military
         // ---- Barracks ----
         /// <summary>Player-facing name of the one infantry type.</summary>
         public string UnitName = "Wardens";
-        public int UnitRations = 2;
+        public int UnitRations = 1;
         public int UnitIngots = 1;
         public int TrainingTicks = 150;
         public int MaxQueue = 8;
@@ -28,8 +28,8 @@ namespace World.Sim.Military
         public int OutpostHp = 60;
         public int GarrisonBase = 2;
         public int GarrisonPerAge = 1;
-        public int GuardHp = 10;
-        public int GuardDamage = 3;
+        public int GuardHp = 8;
+        public int GuardDamage = 2;
         /// <summary>Raids start in this age.</summary>
         public int RaidFromAge = 2;
         public int RaidSize = 2;

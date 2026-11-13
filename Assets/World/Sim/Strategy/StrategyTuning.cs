@@ -16,6 +16,9 @@ namespace World.Sim.Strategy
         /// <summary>Age I begins at the latest at the start of round MaxPrologueRounds + 1.</summary>
         public int MaxPrologueRounds = 8;
 
+        /// <summary>Round-draw batches at your cities grow by this much per age (Age I x1, II x2, III x3): the land yields more as the ages turn.</summary>
+        public int AgeBatchBonus = 2;
+
         // ---- Score and ending ----
         public int VictoryPoints = 8;
         public int VpPerCity = 2;
@@ -25,7 +28,7 @@ namespace World.Sim.Strategy
         public int BreachLimit = 4;
 
         // ---- Cities ----
-        public int[] CityCost = EconomyTuning.W(Ware.Planks, 4, Ware.Stone, 3, Ware.Grain, 1);
+        public int[] CityCost = EconomyTuning.W(Ware.Planks, 2, Ware.Stone, 3, Ware.Grain, 1);
         public int MaxCardsPerCity = 3;
 
         // ---- Market ----
@@ -57,13 +60,13 @@ namespace World.Sim.Strategy
         /// <summary>Wares per stage (index = stage - 1), requested to and delivered at the wonder site.</summary>
         public int[][] WonderStages =
         {
-            EconomyTuning.W(Ware.Planks, 6, Ware.Stone, 6),
-            EconomyTuning.W(Ware.Rations, 4, Ware.Ingots, 4),
+            EconomyTuning.W(Ware.Planks, 4, Ware.Stone, 6),
+            EconomyTuning.W(Ware.Rations, 2, Ware.Ingots, 2),
         };
 
         // ---- Rival ----
         /// <summary>Rounds of an age-run (1-based, counted from Age I) at whose end the rival gains 1 VP.</summary>
-        public int[] RivalPlanRounds = { 2, 4, 5, 6 };
+        public int[] RivalPlanRounds = { 2, 4, 6 };
         /// <summary>The rival builds at most this many of its drafted cards.</summary>
         public int RivalMaxBuilt = 3;
     }

@@ -47,7 +47,7 @@ namespace World.Sim.Tests
         {
             var sim = Camp(out int plant, out int barracks);
             var s = sim.State;
-            K.Give(s, Ware.Rations, 2, Ware.Ingots, 1);
+            K.Give(s, Ware.Rations, 1, Ware.Ingots, 1);
             K.Do(sim, new QueueUnit { BarracksId = barracks });
             StepUntil(sim, () => Head(s, barracks).Progress >= 20, 400);
             var power = MilitaryApi.Power(s);
@@ -126,15 +126,16 @@ namespace World.Sim.Tests
             K.Step(sim, 100);
             var info = MilitaryApi.DescribeBarracks(s, barracks);
             Assert.AreEqual(Reasons.WaitingWare, info.Reason);
-            CollectionAssert.AreEqual(new[] { "2 rations", "1 ingots" }, info.WaitingFor);
-            Assert.AreEqual("The barracks is waiting for 2 rations and 1 ingots.", info.Status);
+            CollectionAssert.AreEqual(new[] { "1 rations", "1 ingots" }, info.WaitingFor);
+            Assert.AreEqual("The barracks is waiting for 1 rations and 1 ingots.", info.Status);
             Assert.AreEqual(0, Head(s, barracks).Progress);
 
             // Rations in the storehouse are not enough: they must be carried to the barracks flag.
-            K.Give(s, Ware.Rations, 2);
+            K.Give(s, Ware.Rations, 3);
             var evs = new List<SimEvent>();
-            StepUntil(sim, () => s.Economy.Buildings[barracks].Stock[(int)Ware.Rations] == 2, 300, evs);
-            Assert.IsTrue(evs.OfType<WareDelivered>().Count(d => d.BuildingId == barracks && d.Ware == Ware.Rations) == 2);
+            StepUntil(sim, () => s.Economy.Buildings[barracks].Stock[(int)Ware.Rations] == 1, 300, evs);
+            Assert.AreEqual(1, evs.OfType<WareDelivered>().Count(d => d.BuildingId == barracks && d.Ware == Ware.Rations), "only what was requested is carried");
+            Assert.AreEqual(2, EconomyApi.StorehouseCount(s, Ware.Rations));
             K.Step(sim, 5);
             info = MilitaryApi.DescribeBarracks(s, barracks);
             CollectionAssert.AreEqual(new[] { "1 ingots" }, info.WaitingFor);
@@ -149,7 +150,7 @@ namespace World.Sim.Tests
             long trained = evs.OfType<UnitTrained>().Single().Tick;
             Assert.GreaterOrEqual(started, delivered, "training starts only after the ingots arrive");
             Assert.AreEqual(MilitaryApi.TrainingTicks(s) - 1, trained - started);
-            Assert.AreEqual(2, s.Military.ConsumedForUnits[(int)Ware.Rations]);
+            Assert.AreEqual(1, s.Military.ConsumedForUnits[(int)Ware.Rations]);
             Assert.AreEqual(0, s.Economy.Buildings[barracks].Stock[(int)Ware.Rations], "consumed from the barracks store");
             Assert.AreEqual(1, MilitaryApi.Squads(s, PlayerIds.Human).Single().Units);
             Assert.IsNull(K.CheckInvariants(s));
@@ -168,7 +169,7 @@ namespace World.Sim.Tests
             K.Do(sim, new BuildCard { CardId = K.CardOf(s, "mess_hall"), CityVertex = s.Board.HomeCityVertex });
             Assert.AreEqual(90, MilitaryApi.TrainingTicks(s));
             K.Do(sim, new QueueUnit { BarracksId = barracks });
-            Assert.AreEqual(1, Head(s, barracks).Rations);
+            Assert.AreEqual(0, Head(s, barracks).Rations, "Mess Hall: 1 fewer rations");
         }
 
         /// <summary>Train a full squad, order it to attack the outpost, run to the outcome. Returns the event log.</summary>
@@ -250,7 +251,7 @@ namespace World.Sim.Tests
             var s = sim.State;
             Assert.AreEqual(MilitaryRefusals.UnknownSquad,
                 sim.Check(new OrderSquad { SquadId = s.Military.Outpost.GarrisonSquadId, Order = OrderKind.Attack, Target = 0 }).Reason);
-            K.Give(s, Ware.Rations, 2, Ware.Ingots, 1);
+            K.Give(s, Ware.Rations, 1, Ware.Ingots, 1);
             K.Do(sim, new QueueUnit { BarracksId = barracks });
             StepUntil(sim, () => s.Military.UnitsTrained == 1, 1000);
             int id = MilitaryApi.Squads(s, 0).Single().Id;

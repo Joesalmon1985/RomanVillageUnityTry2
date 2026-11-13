@@ -24,6 +24,7 @@ namespace World.Sim.Tests
             StringAssert.StartsWith("Prologue", StrategyApi.Headline(s));
             K.Do(sim, new EndRound());
             Assert.IsFalse(s.Strategy.Started, "commission not done yet");
+            Assert.AreEqual(StrategyRefusals.Prologue, sim.Check(new FoundCity { Vertex = 0 }).Reason, "cities wait for Age I");
             s.Economy.Commission.Complete = true;
             var evs = K.Do(sim, new EndRound());
             Assert.IsTrue(s.Strategy.Started);
@@ -90,7 +91,7 @@ namespace World.Sim.Tests
             int planks = EconomyApi.StorehouseCount(s, Ware.Planks);
             var evs = K.Do(sim, new FoundCity { Vertex = site });
             Assert.AreEqual(1, evs.OfType<CityFounded>().Count());
-            Assert.AreEqual(planks - 4, EconomyApi.StorehouseCount(s, Ware.Planks));
+            Assert.AreEqual(planks - s.Strategy.Tuning.CityCost[(int)Ware.Planks], EconomyApi.StorehouseCount(s, Ware.Planks));
             Assert.AreEqual(4, StrategyApi.Score(s, PlayerIds.Human).Cities);
             Assert.IsTrue(EconomyApi.IsInTerritory(s, PlayerIds.Human, site));
 
@@ -302,7 +303,7 @@ namespace World.Sim.Tests
             Assert.IsNotNull(b);
             Assert.AreEqual(a.Tick, b.Tick, "same draw, same seed");
             Assert.Greater(a.Amount, b.Amount, "Lumber Camp enlarges the forest batch");
-            Assert.AreEqual((6 + 2 + 1) / 2, a.Amount, "6 + 2, halved (rounded up) without an active forester");
+            Assert.AreEqual(b.Amount + 1, a.Amount, "+2 before the halving (no active forester)");
         }
 
         // ---------------- Demons and hero ----------------
@@ -464,11 +465,12 @@ namespace World.Sim.Tests
             Assert.AreEqual(0, s.Strategy.Wonder.StagesDone);
             var info = StrategyApi.Wonder(s);
             StringAssert.Contains("stone", info.Status);
-            StringAssert.Contains((6 - stoneNow) + " stone", info.Status);
-            Assert.AreEqual(6, s.Economy.Buildings[site].Stock[(int)Ware.Planks], "planks arrived at the wonder site");
+            var stage = s.Strategy.Tuning.WonderStages[0];
+            StringAssert.Contains((stage[(int)Ware.Stone] - stoneNow) + " stone", info.Status);
+            Assert.AreEqual(stage[(int)Ware.Planks], s.Economy.Buildings[site].Stock[(int)Ware.Planks], "planks arrived at the wonder site");
 
             // Stone in the storehouse is not enough: the stage completes only once it is delivered.
-            K.Give(s, Ware.Stone, 6);
+            K.Give(s, Ware.Stone, stage[(int)Ware.Stone]);
             var evs = K.Step(sim, 1);
             Assert.AreEqual(0, s.Strategy.Wonder.StagesDone, "not complete before delivery");
             evs.AddRange(K.Step(sim, 300));
@@ -478,7 +480,7 @@ namespace World.Sim.Tests
             int lastDelivery = evs.OfType<WareDelivered>().Where(d => d.BuildingId == site).Max(d => (int)d.Tick);
             Assert.GreaterOrEqual(done.Tick, lastDelivery);
             Assert.AreEqual(1, StrategyApi.Score(s, 0).Wonder);
-            Assert.AreEqual(6, s.Strategy.Ledger.Wonder[(int)Ware.Stone]);
+            Assert.AreEqual(stage[(int)Ware.Stone], s.Strategy.Ledger.Wonder[(int)Ware.Stone]);
             Assert.IsNull(K.CheckInvariants(s));
         }
 
