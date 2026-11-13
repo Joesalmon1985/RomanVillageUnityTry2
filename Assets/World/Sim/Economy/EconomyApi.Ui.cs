@@ -12,7 +12,7 @@ namespace World.Sim.Economy
         public BuildingSize Size;
         /// <summary>"2 planks and 1 bricks".</summary>
         public string CostText;
-        /// <summary>"Needs: 2 logs per cycle." / "Needs: a forest next to it." / "Needs: 1 rations per 2 ore." ("" when nothing).</summary>
+        /// <summary>"Needs: 1 logs per cycle." / "Needs: a forest next to it." / "Needs: 1 rations per 3 ore." ("" when nothing).</summary>
         public string NeedsText;
         /// <summary>"Makes: 1 coal." / "Makes: logs from the forest's batch." / "Makes: power." ("" when nothing).</summary>
         public string MakesText;
@@ -122,7 +122,7 @@ namespace World.Sim.Economy
             return l;
         }
 
-        /// <summary>"2 logs -> 1 coal (4 s)"; harvesters "1 forest batch unit -> 2 logs (3 s)", mine "..., 1 rations per 2"; "" for others.</summary>
+        /// <summary>"1 logs -> 1 coal (4 s)"; harvesters "1 forest batch unit -> 2 logs (5 s)", mine "..., 1 rations per 3"; "" for others.</summary>
         public static string RecipeText(WorldState s, BuildingType t)
         {
             var d = Def(s, t);

@@ -144,6 +144,7 @@ namespace World.Sim.Economy
                 {
                     if (def.Inputs[w] > 0 && b.Stock[w] - b.Reserved[w] < def.Inputs[w]) ok = false;
                     if (def.Outputs[w] > 0 && b.Stock[w] >= def.Capacity) ok = false;
+                    if (def.Outputs[w] > 0 && e.Tuning.AtTarget(e, w)) ok = false;
                 }
                 if (!ok) continue;
                 for (int w = 0; w < Wares.Count; w++)

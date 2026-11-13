@@ -75,8 +75,13 @@ namespace World.Sim.Strategy
         public List<CardInstance> Cards = new List<CardInstance>();
         /// <summary>Per age (index age-1): card ids of that age's deck, in deal order.</summary>
         public List<AgeDeck> Decks = new List<AgeDeck>();
-        /// <summary>0 = no draft; 1 = first pick pending; 2 = second pick pending.</summary>
+        /// <summary>0 = no pick pending; n = pick n of the age pending (1..Tuning.DraftPicks).</summary>
         public int DraftStep;
+        /// <summary>
+        /// One pick per round (Tuning.DraftPickPerRound): the pick that becomes pending at the next round start of this
+        /// age (the passed hand already sits in DraftHand); 0 = none.
+        /// </summary>
+        public int DraftNextStep;
         public int DraftAge;
         /// <summary>Per player (index = player id).</summary>
         public List<SideState> Sides = new List<SideState>();
@@ -174,5 +179,7 @@ namespace World.Sim.Strategy
         public int CoinSpentOnCards;
         public int CoinSpentBuying;
         public int CoinFromCards;
+        /// <summary>Coin paid when Age I begins (StrategyTuning.CommissionCoin).</summary>
+        public int CoinFromCommission;
     }
 }

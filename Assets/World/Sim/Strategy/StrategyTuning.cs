@@ -18,14 +18,14 @@ namespace World.Sim.Strategy
         /// </summary>
         public bool StartAfterCommission = true;
         /// <summary>Age I begins at the latest at the start of round MaxPrologueRounds + 1.</summary>
-        public int MaxPrologueRounds = 8;
+        public int MaxPrologueRounds = 6;
 
         /// <summary>Round-draw batches at your cities grow by this much per age (Age I x1, II x2, III x3): the land yields more as the ages turn.</summary>
-        public int AgeBatchBonus = 2;
+        public int AgeBatchBonus = 1;
 
         // ---- Score and ending ----
         /// <summary>First side to this many points wins (tuned from the design's starting value 12).</summary>
-        public int VictoryPoints = 12;
+        public int VictoryPoints = 18;
         public int VpPerCity = 2;
         /// <summary>VP for each wonder stage (index = stage - 1).</summary>
         public int[] WonderStageVp = { 2, 3 };
@@ -74,11 +74,20 @@ namespace World.Sim.Strategy
         /// <summary>Epidemic at each age change (Age II and Age III start).</summary>
         public bool Epidemics = true;
         /// <summary>Hero moves per round; one move = one hex edge (corner to neighbouring corner), clearing the flags it passes and arrives at.</summary>
-        public int HeroMovesPerRound = 4;
+        public int HeroMovesPerRound = 6;
 
         // ---- Draft ----
-        public int DraftHandSize = 3;
-        public int DraftPicks = 2;
+        /// <summary>Cards dealt to each side at the start of an age (tuned from 3: four, so the last pick of the age is still a choice).</summary>
+        public int DraftHandSize = 4;
+        /// <summary>Picks per age for each side (tuned from 2: one per round of the age); the card left in each hand is discarded.</summary>
+        public int DraftPicks = 3;
+        /// <summary>
+        /// When true (tuned) the draft is spread over the age: one pick at the start of each round, hands passed between
+        /// rounds (7 Wonders' pick-and-pass, one card a round). False: all picks at the age start, one after another.
+        /// </summary>
+        public bool DraftPickPerRound = true;
+        /// <summary>Coin paid into your treasury when Age I begins (the quartermaster's reward for the commission).</summary>
+        public int CommissionCoin = 4;
         public int DiscardCoin = 3;
 
         // ---- Wonder ----
@@ -92,11 +101,15 @@ namespace World.Sim.Strategy
         // ---- Rival ----
         /// <summary>Rounds of an age-run (1-based, counted from Age I) at whose end the rival's plan gains RivalPlanVp.</summary>
         public int[] RivalPlanRounds = { 3, 6, 9 };
-        public int RivalPlanVp = 2;
+        public int RivalPlanVp = 1;
         /// <summary>
-        /// The rival builds at most this many of its drafted military cards (one per age). Tuned to 0: the rival's
-        /// shields are its garrison and raiders only; its drafted cards only deny them to you.
+        /// The rival builds (free, at its outpost) the shield and point cards it drafts, at most RivalBuildsPerAge per age
+        /// and this many in all (tuned from 0: the rival's points and shields now depend on what you pass it).
         /// </summary>
-        public int RivalMaxBuilt = 0;
+        public int RivalMaxBuilt = 9;
+        /// <summary>Most cards the rival builds in one age (was 1 when it built only military cards).</summary>
+        public int RivalBuildsPerAge = 2;
+        /// <summary>Of those, at most this many shield (military) cards per age.</summary>
+        public int RivalShieldCardsPerAge = 1;
     }
 }

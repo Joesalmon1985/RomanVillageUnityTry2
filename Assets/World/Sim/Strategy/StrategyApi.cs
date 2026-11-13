@@ -133,7 +133,7 @@ namespace World.Sim.Strategy
             return r;
         }
 
-        /// <summary>"Prologue: finish the quartermaster's commission.", "Age II, round 1 of 2.", "Victory: 12 points to 5."</summary>
+        /// <summary>"Prologue: finish the quartermaster's commission.", "Age II, round 1 of 2.", "Victory: 18 points to 9."</summary>
         public static string Headline(WorldState s)
         {
             var st = s.Strategy;

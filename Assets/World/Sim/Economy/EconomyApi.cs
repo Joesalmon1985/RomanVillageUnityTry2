@@ -36,6 +36,12 @@ namespace World.Sim.Economy
         public static bool AuthoriseBatch(WorldState s, int hex, int amount, EventBuffer ev) =>
             EconomyLogic.AuthoriseBatch(s, hex, amount, ev);
 
+        /// <summary>Ticks until the round's harvest season is over and the bell (EndRound) may ring; 0 = it may ring now.</summary>
+        public static long BellTicksLeft(WorldState s) => EconomyLogic.BellTicksLeft(s);
+
+        /// <summary>Ticks since the current round started (its production draw).</summary>
+        public static long RoundElapsedTicks(WorldState s) => s.Economy.RoundStartPending ? 0 : s.Tick - s.Economy.RoundStartedTick;
+
         /// <summary>Raw units still to harvest on a hex.</summary>
         public static int BatchRemaining(WorldState s, int hex) => s.Economy.HexBatchRemaining[hex];
 
@@ -259,6 +265,10 @@ namespace World.Sim.Economy
                 case Reasons.WaitingWare:
                 case Reasons.InputMissing:
                     return ware != null ? Reasons.Sentence(b.Reason, subject, ware) : Reasons.Sentence(b.Reason, subject);
+                case Reasons.OutputFull:
+                    if (ware != null && b.Stock[b.ReasonWare] < EconomyLogic.Def(s, b).Capacity)
+                        return "The storehouse has enough " + ware + ": the " + subject + " waits until some is used.";
+                    return Reasons.Sentence(b.Reason, subject);
                 default: return Reasons.Sentence(b.Reason, subject);
             }
         }

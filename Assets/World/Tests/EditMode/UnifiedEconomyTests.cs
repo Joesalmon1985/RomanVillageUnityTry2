@@ -86,27 +86,30 @@ namespace World.Sim.Tests
                 Assert.Greater(t.Def(b).Outputs[(int)output], 0, b + " output");
             }
             Check(BuildingType.Sawmill, EconomyTuning.W(Ware.Logs, 1), Ware.Planks);
-            Check(BuildingType.CharcoalKiln, EconomyTuning.W(Ware.Logs, 2), Ware.Coal);
-            Assert.AreEqual(1, t.Def(BuildingType.CharcoalKiln).Outputs[(int)Ware.Coal], "2 logs -> 1 coal");
-            Check(BuildingType.BrickKiln, EconomyTuning.W(Ware.Clay, 1, Ware.Coal, 1), Ware.Bricks);
-            Assert.AreEqual(2, t.Def(BuildingType.BrickKiln).Outputs[(int)Ware.Bricks], "1 clay + 1 coal -> 2 bricks");
+            Check(BuildingType.CharcoalKiln, EconomyTuning.W(Ware.Logs, 1), Ware.Coal);
+            Assert.AreEqual(1, t.Def(BuildingType.CharcoalKiln).Outputs[(int)Ware.Coal], "1 logs -> 1 coal (tuned from 2 logs)");
+            Check(BuildingType.BrickKiln, EconomyTuning.W(Ware.Clay, 2, Ware.Coal, 1), Ware.Bricks);
+            Assert.AreEqual(2, t.Def(BuildingType.BrickKiln).Outputs[(int)Ware.Bricks], "2 clay + 1 coal -> 2 bricks (tuned from 1 clay)");
             Check(BuildingType.Mill, EconomyTuning.W(Ware.Wheat, 1), Ware.Flour);
             Check(BuildingType.Bakery, EconomyTuning.W(Ware.Flour, 1), Ware.Bread);
             Check(BuildingType.Butcher, EconomyTuning.W(Ware.Sheep, 1), Ware.Meat);
             Check(BuildingType.Tavern, EconomyTuning.W(Ware.Bread, 1, Ware.Meat, 1), Ware.Rations);
-            Check(BuildingType.Smelter, EconomyTuning.W(Ware.Ore, 1, Ware.Coal, 1), Ware.Iron);
+            Check(BuildingType.Smelter, EconomyTuning.W(Ware.Ore, 2, Ware.Coal, 1), Ware.Iron);
+            Assert.AreEqual(1, t.Def(BuildingType.Bakery).Outputs[(int)Ware.Bread], "1 flour -> 1 bread (tuned from 2)");
+            Assert.AreEqual(1, t.Def(BuildingType.Butcher).Outputs[(int)Ware.Meat], "1 sheep -> 1 meat (tuned from 2)");
+            Assert.AreEqual(2, t.Def(BuildingType.Tavern).Outputs[(int)Ware.Rations], "1 bread + 1 meat -> 2 rations");
             Assert.IsTrue(t.Def(BuildingType.Smelter).NeedsPower);
             Check(BuildingType.Smithy, EconomyTuning.W(Ware.Iron, 1, Ware.Planks, 1), Ware.Weapons);
             CollectionAssert.AreEqual(EconomyTuning.W(Ware.Coal, 1), t.Def(BuildingType.PowerPlant).Inputs, "power plant burns coal");
             Assert.IsTrue(t.Def(BuildingType.Barracks).NeedsPower);
             CollectionAssert.AreEqual(EconomyTuning.W(Ware.Rations, 1), t.Def(BuildingType.Mine).Inputs);
-            Assert.AreEqual(2, t.Def(BuildingType.Mine).CyclesPerInput, "1 rations per 2 ore");
+            Assert.AreEqual(3, t.Def(BuildingType.Mine).CyclesPerInput, "1 rations per 3 ore (tuned from 2)");
         }
 
         // ---------------- Mine, smelter, power ----------------
 
         [Test]
-        public void Mine_StallsWithoutRations_NamingThem_ThenEatsOneRationPerTwoOre()
+        public void Mine_StallsWithoutRations_NamingThem_ThenEatsOneRationPerThreeOre()
         {
             var sim = K.NewSim();
             var s = sim.State;
@@ -127,8 +130,8 @@ namespace World.Sim.Tests
 
             K.Give(s, Ware.Rations, 3);
             var evs = new List<SimEvent>();
-            StepUntil(sim, () => s.Economy.Ledger.Harvested[(int)Ware.Ore] >= 4, 3000, evs);
-            Assert.AreEqual(2, evs.OfType<UpkeepPaid>().Count(u => u.BuildingId == mine), "4 ore used 2 rations");
+            StepUntil(sim, () => s.Economy.Ledger.Harvested[(int)Ware.Ore] >= 6, 3000, evs);
+            Assert.AreEqual(2, evs.OfType<UpkeepPaid>().Count(u => u.BuildingId == mine), "6 ore used 2 rations");
             Assert.AreEqual(2, s.Economy.Ledger.RecipeIn[(int)BuildingType.Mine][(int)Ware.Rations]);
             Assert.IsNull(K.CheckInvariants(s));
         }
@@ -507,11 +510,11 @@ namespace World.Sim.Tests
             K.Give(s, Ware.Rations, 1, Ware.Bricks, 2);
             K.Do(sim, new BuildCard { CardId = K.CardOf(s, "charcoal_guild"), CityVertex = s.Board.HomeCityVertex });
             Assert.AreEqual(1, s.Economy.Bonus.ExtraOutput[(int)BuildingType.CharcoalKiln]);
-            StringAssert.Contains("2 logs -> 2 coal", EconomyApi.RecipeText(s, BuildingType.CharcoalKiln));
+            StringAssert.Contains("1 logs -> 2 coal", EconomyApi.RecipeText(s, BuildingType.CharcoalKiln));
             K.Give(s, Ware.Logs, 2);
             var evs = new List<SimEvent>();
             StepUntil(sim, () => evs.OfType<ProductionCycle>().Any(p => p.BuildingId == kiln), 600, evs);
-            Assert.AreEqual(2, evs.OfType<ProductionCycle>().First(p => p.BuildingId == kiln).Amount, "2 logs -> 2 coal");
+            Assert.AreEqual(2, evs.OfType<ProductionCycle>().First(p => p.BuildingId == kiln).Amount, "1 logs -> 2 coal");
             Assert.IsNull(K.CheckInvariants(s));
         }
 
@@ -634,11 +637,11 @@ namespace World.Sim.Tests
             Assert.AreEqual(BuildingDefs.Count - 1, menu.Count, "every placeable type");
             var kiln = EconomyApi.DescribeType(s, BuildingType.BrickKiln);
             Assert.AreEqual("Brick kiln", kiln.Name);
-            Assert.AreEqual("1 clay and 1 coal -> 2 bricks (4 s)", kiln.RecipeText);
-            StringAssert.StartsWith("Needs: 1 clay and 1 coal per cycle", kiln.NeedsText);
+            Assert.AreEqual("2 clay and 1 coal -> 2 bricks (4 s)", kiln.RecipeText);
+            StringAssert.StartsWith("Needs: 2 clay and 1 coal per cycle", kiln.NeedsText);
             Assert.AreEqual("Makes: 2 bricks per cycle.", kiln.MakesText);
             var mine = EconomyApi.DescribeType(s, BuildingType.Mine);
-            StringAssert.Contains("1 rations per 2 ore", mine.NeedsText);
+            StringAssert.Contains("1 rations per 3 ore", mine.NeedsText);
             Assert.AreEqual("mountain", mine.TerrainText);
             StringAssert.Contains("2 logs", EconomyApi.DescribeType(s, BuildingType.Woodcutter).RecipeText);
             foreach (int v in EconomyApi.LegalBuildFlags(s, BuildingType.ClayPit))

@@ -11,6 +11,7 @@ namespace World.Sim.Tests
         {
             var sim = WorldSimFactory.CreateNew(seed);
             sim.State.Economy.Tuning.TicksPerEdge = ticksPerEdge;
+            sim.State.Economy.Tuning.MinRoundTicks = 0; // the bell rings at once here (the harvest season has its own test)
             return sim;
         }
 
@@ -93,8 +94,8 @@ namespace World.Sim.Tests
             CollectionAssert.AreEquivalent(new[] { s.Board.HexNumber[forest], s.Board.HexNumber[hills] }, started.Numbers, "starter round 1");
             var batches = evs.OfType<BatchAuthorised>().ToList();
             Assert.AreEqual(batches.Count, batches.Select(b => b.Hex).Distinct().Count(), "one batch per hex");
-            int size = s.Economy.Tuning.BatchSize;
-            Assert.IsTrue(batches.Any(b => b.Hex == forest && b.Amount == (size + 1) / 2), "forest halved without an active forester");
+            int forestSize = s.Economy.Tuning.BatchSizeFor(Terrain.Forest), size = s.Economy.Tuning.BatchSizeFor(Terrain.Hills);
+            Assert.IsTrue(batches.Any(b => b.Hex == forest && b.Amount == (forestSize + 1) / 2), "forest halved without an active forester");
             Assert.IsTrue(batches.Any(b => b.Hex == hills && b.Amount == size));
 
             int before = s.Economy.HexBatchRemaining[hills];
@@ -149,7 +150,7 @@ namespace World.Sim.Tests
                 evs.AddRange(sim.DrainEvents());
             }
             var fb = evs.OfType<BatchAuthorised>().First(b => b.Hex == forest);
-            Assert.AreEqual(s.Economy.Tuning.BatchSize + 2, fb.Amount, "batch + 2 from the modifier, not halved with the forester active");
+            Assert.AreEqual(s.Economy.Tuning.BatchSizeFor(Terrain.Forest) + 2, fb.Amount, "batch + 2 from the modifier, not halved with the forester active");
         }
 
         // ---------------- Recipe ----------------
@@ -621,6 +622,31 @@ namespace World.Sim.Tests
             EconomyTestKit.Submit(sim, new EndRound());
             sim.Step();
             CollectionAssert.AreEqual(new[] { "start1", "end1", "start2" }, log);
+        }
+
+        [Test]
+        public void Round_HarvestSeason_BellRefusedUntilMinRoundTicks()
+        {
+            var sim = WorldSimFactory.CreateNew(EconomyTestKit.DefaultSeed);
+            var s = sim.State;
+            int min = s.Economy.Tuning.MinRoundTicks;
+            Assert.Greater(min, 0, "a round lasts at least a harvest season");
+            sim.Step();
+            Assert.AreEqual(s.Tick, s.Economy.RoundStartedTick, "round 1 started at its draw");
+            Assert.AreEqual(min, EconomyApi.BellTicksLeft(s));
+            var r = sim.Submit(new EndRound { PlayerId = PlayerIds.Human });
+            Assert.AreEqual(EconomyRefusals.RoundTooSoon, r.Reason);
+            StringAssert.Contains("the bell can ring in 60 s", r.Message);
+            for (int i = 0; i < min - 1; i++) sim.Step();
+            Assert.AreEqual(1, EconomyApi.BellTicksLeft(s));
+            Assert.AreEqual(EconomyRefusals.RoundTooSoon, sim.Check(new EndRound { PlayerId = PlayerIds.Human }).Reason);
+            sim.Step();
+            Assert.AreEqual(0, EconomyApi.BellTicksLeft(s));
+            Assert.AreEqual(min, EconomyApi.RoundElapsedTicks(s));
+            Assert.IsTrue(sim.Submit(new EndRound { PlayerId = PlayerIds.Human }).Ok);
+            sim.Step();
+            Assert.AreEqual(2, s.Economy.Round);
+            Assert.AreEqual(min, EconomyApi.BellTicksLeft(s), "a new season starts with the new round");
         }
     }
 }

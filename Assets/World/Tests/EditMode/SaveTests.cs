@@ -82,10 +82,40 @@ namespace World.Sim.Tests
         }
 
         [Test]
+        public void RoundTrip_PerRoundDraftAndHarvestSeason_Survive()
+        {
+            var a = K.NewSim(ticksPerEdge: 60, minRoundTicks: 600);
+            var s = a.State;
+            K.Step(a);
+            K.Do(a, new DraftPick { CardId = s.Strategy.Sides[0].DraftHand[0] }); // pick 1 made; pick 2 waits for the next round
+            K.Step(a, 100);
+            Assert.AreEqual(0, s.Strategy.DraftStep);
+            Assert.AreEqual(2, s.Strategy.DraftNextStep);
+            long left = EconomyApi.BellTicksLeft(s);
+            Assert.Greater(left, 0);
+            var b = SaveCodec.Load(SaveCodec.ToJson(s), out var model);
+            var t = b.State;
+            Assert.AreEqual(3, model.Version);
+            Assert.AreEqual(2, t.Strategy.DraftNextStep, "the passed hand waits for the next round after load");
+            CollectionAssert.AreEqual(s.Strategy.Sides[0].DraftHand, t.Strategy.Sides[0].DraftHand);
+            Assert.AreEqual(s.Economy.RoundStartedTick, t.Economy.RoundStartedTick);
+            Assert.AreEqual(left, EconomyApi.BellTicksLeft(t), "the harvest season continues where it was");
+            Assert.AreEqual(EconomyRefusals.RoundTooSoon, b.Check(new EndRound { PlayerId = PlayerIds.Human }).Reason);
+            K.Step(a, (int)left);
+            K.Step(b, (int)left);
+            var ea = K.Do(a, new EndRound());
+            var eb = K.Do(b, new EndRound());
+            Assert.AreEqual(2, ea.OfType<DraftResumed>().Single().Step);
+            Assert.AreEqual(2, eb.OfType<DraftResumed>().Single().Step);
+            Assert.AreEqual(SaveCodec.StateJson(a.State), SaveCodec.StateJson(b.State));
+        }
+
+        [Test]
         public void RoundTrip_DraftInProgress_InfectionDeckAndHooksSurvive()
         {
             var a = K.NewSim(ticksPerEdge: 60);
             var s = a.State;
+            s.Strategy.Tuning.DraftPickPerRound = false; // both picks at the age start: the second is pending at save (per-round: RoundTrip_PerRoundDraft...)
             K.Step(a);
             K.Do(a, new DraftPick { CardId = s.Strategy.Sides[0].DraftHand[0] }); // first pick made, second pending
             s.Strategy.Demons[K.DemoCorner(s)] = 2;

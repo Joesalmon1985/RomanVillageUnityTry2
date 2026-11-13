@@ -27,6 +27,30 @@ namespace World.Sim.Tests
         public ScoreBreakdown Player, Rival;
         public int Breaches, Cities, CardsBuilt, WonderStages, UnitsTrained, Rounds, Outbreaks, Epidemics;
         public bool OutpostDestroyed;
+        /// <summary>Card definition ids built by the player and by the rival (in build order).</summary>
+        public List<string> PlayerCards = new List<string>(), RivalCards = new List<string>();
+        /// <summary>Card definition ids the player drafted (both picks of every age).</summary>
+        public List<string> PlayerPicks = new List<string>();
+        /// <summary>Shields the rival's built cards give.</summary>
+        public int RivalCardShields => RivalCards.Sum(id => CardTable.Get(id).Shields);
+        /// <summary>Distinct card families among the player's built cards.</summary>
+        public int Families => PlayerCards.Select(id => CardTable.Get(id).Family).Distinct().Count();
+        /// <summary>Ticks from the first round of an age to the first round of the next (or the end); -1 if the age was not reached.</summary>
+        public long AgeTicks(int age)
+        {
+            var first = Timeline.FirstOrDefault(x => x.Age == age && x.RoundInAge == 1);
+            if (first == null) return -1;
+            var next = Timeline.FirstOrDefault(x => x.Age == age + 1 && x.RoundInAge == 1);
+            return (next != null ? next.Tick : Ticks) - first.Tick;
+        }
+        /// <summary>Length in ticks of every round of the ages that was ended by the bell.</summary>
+        public List<long> AgeRoundTicks()
+        {
+            var l = new List<long>();
+            for (int i = 0; i + 1 < Timeline.Count; i++)
+                if (Timeline[i].Age > 0) l.Add(Timeline[i + 1].Tick - Timeline[i].Tick);
+            return l;
+        }
         public SortedDictionary<string, long> Milestones = new SortedDictionary<string, long>(StringComparer.Ordinal);
         public Dictionary<string, int> EventCounts = new Dictionary<string, int>();
         public List<RoundLine> Timeline = new List<RoundLine>();
@@ -76,7 +100,7 @@ namespace World.Sim.Tests
     /// <summary>
     /// Scripted full games shared by the playthrough tests and the proof report (run once per test run, cached).
     /// Modes: competent, full (also attacks the outpost in Age III), careless (never moves the hero), passive (only
-    /// drafts and ends rounds), noarmy (competent without barracks or soldiers).
+    /// drafts and ends rounds), noarmy (competent without barracks or soldiers), firstpick (competent, but drafts the first card offered).
     /// </summary>
     internal static class GameRuns
     {
@@ -100,7 +124,7 @@ namespace World.Sim.Tests
         }
 
         public static StrategyPlayer NewPlayer(WorldSim sim, string mode) =>
-            new StrategyPlayer(sim, mode == "passive", mode == "full") { IgnoreDemons = mode == "careless", NoArmy = mode == "noarmy" };
+            new StrategyPlayer(sim, mode == "passive", mode == "full") { IgnoreDemons = mode == "careless", NoArmy = mode == "noarmy", NaiveDraft = mode == "firstpick" };
 
         public static GameRecord Play(ulong seed, string mode, bool keepEvents)
         {
@@ -119,13 +143,15 @@ namespace World.Sim.Tests
                     rep.EventCounts[k] = rep.EventCounts.TryGetValue(k, out int n) ? n + 1 : 1;
                     if (e is CommandRejected cr && !(cr.Command is EndRound))
                         rep.EventCounts["rejected:" + cr.Command.GetType().Name + ":" + cr.Result.Reason] = 1;
-                    if (e is RoundStarted)
+                    // (After the game ended the economy still opens the next round in the same tick: not a round that was played.)
+                    if (e is RoundStarted && !s.Strategy.GameOver)
                         rep.Timeline.Add(new RoundLine
                         {
                             Round = s.Economy.Round, Age = s.Strategy.Age, RoundInAge = s.Strategy.RoundInAge, Tick = e.Tick,
                             Player = StrategyApi.Score(s, 0), Rival = StrategyApi.Score(s, 1), Breaches = s.Strategy.Breaches,
                         });
                     if (e is OutbreakOccurred) rep.Outbreaks++;
+                    if (e is DraftPicked dp && dp.PlayerId == PlayerIds.Human) rep.PlayerPicks.Add(dp.DefId);
                 }
                 foreach (var b in s.Economy.Buildings)
                     if ((b.Reason == Reasons.WaitingWare || b.Reason == Reasons.InputMissing) && b.ReasonWare >= 0) rep.StallTicksByWare[b.ReasonWare]++;
@@ -153,6 +179,8 @@ namespace World.Sim.Tests
             rep.Epidemics = s.Strategy.Epidemics;
             rep.Cities = StrategyApi.PlayerCities(s).Count;
             rep.CardsBuilt = s.Strategy.Sides[0].Built.Count;
+            foreach (var b in s.Strategy.Sides[0].Built) rep.PlayerCards.Add(s.Strategy.Cards[b.CardId].DefId);
+            foreach (var b in s.Strategy.Sides[1].Built) rep.RivalCards.Add(s.Strategy.Cards[b.CardId].DefId);
             rep.WonderStages = s.Strategy.Wonder.StagesDone;
             rep.UnitsTrained = s.Military.UnitsTrained;
             rep.OutpostDestroyed = s.Military.Outpost.Destroyed;

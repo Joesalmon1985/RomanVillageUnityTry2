@@ -102,6 +102,8 @@ namespace World.Sim.Economy
         public int Round = 1;
         /// <summary>True between EndRound (or game start) and the round-start draw at the next Rounds tick.</summary>
         public bool RoundStartPending = true;
+        /// <summary>Tick at which the current round started (its production draw); the bell may ring Tuning.MinRoundTicks later.</summary>
+        public long RoundStartedTick;
         /// <summary>Production numbers drawn at the start of the current round (ascending).</summary>
         public int[] LastDraw = new int[0];
         public Rng RoundRng = new Rng();
