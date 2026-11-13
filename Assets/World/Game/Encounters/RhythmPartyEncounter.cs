@@ -140,7 +140,7 @@ namespace World.Game
             var floor = w.DanceFloorPosition;
             var fwd = ctx.Stage.Forward;
             var right = Vector3.Cross(Vector3.up, fwd).normalized;
-            Vector3[] offs = { right * -3.2f + fwd * 1.2f, right * 3.0f + fwd * 1.6f, right * -2.2f - fwd * 2.4f, right * 2.6f - fwd * 2.0f, right * -4.6f - fwd * 0.6f, right * 4.8f - fwd * 0.2f };
+            Vector3[] offs = { right * -3.4f + fwd * 3.2f, right * 1.6f + fwd * 4.6f, right * -2.2f - fwd * 2.4f, right * 2.6f - fwd * 2.0f, right * -5.0f + fwd * 0.8f, right * 5.2f - fwd * 1.0f };
             Color[] cols = { new Color(0.9f, 0.3f, 0.5f), new Color(0.3f, 0.8f, 0.6f), new Color(0.95f, 0.75f, 0.2f), new Color(0.5f, 0.4f, 0.95f), new Color(0.95f, 0.45f, 0.2f), new Color(0.3f, 0.6f, 0.95f) };
             for (int i = 0; i < offs.Length; i++)
             {
@@ -204,6 +204,7 @@ namespace World.Game
         {
             if (Session == null || Session.IsEnded || pad < 1 || pad > 4) return null;
             _laneFlash[pad] = 1f;
+            _padDown[pad] = true;
             PressesHandled++;
             var j = Session.Press(pad, songTime);
             DrainSession();
@@ -213,6 +214,7 @@ namespace World.Game
         public Judgement HandleRelease(int pad, double songTime)
         {
             if (Session == null || Session.IsEnded || pad < 1 || pad > 4) return null;
+            _padDown[pad] = false;
             var j = Session.Release(pad, songTime);
             DrainSession();
             return j;
@@ -396,7 +398,6 @@ namespace World.Game
             for (int p = 1; p <= 4; p++)
             {
                 _laneFlash[p] = Mathf.Max(0, _laneFlash[p] - dt * 7f);
-                if (!Input.GetKey(PadKeys[p - 1])) _padDown[p] = false;
             }
             double t = double.IsNaN(SongTime) ? 0 : SongTime;
             double beat = Session.SecondsToBeat(t);
@@ -469,7 +470,7 @@ namespace World.Game
             for (int p = 1; p <= 4; p++)
             {
                 var lane = new Rect(hwX + (p - 1) * laneW, top, laneW, hitY - top + px(10));
-                float flash = Mathf.Max(_laneFlash[p], Input.GetKey(PadKeys[p - 1]) ? 0.45f : 0f);
+                float flash = Mathf.Max(_laneFlash[p], _padDown[p] ? 0.45f : 0f);
                 EncounterUi.Fill(lane, new Color(1, 1, 1, 0.03f + 0.16f * flash));
                 if (p > 1) EncounterUi.Fill(new Rect(lane.x, top, Mathf.Max(1, px(2)), lane.height), new Color(1, 1, 1, 0.12f));
             }
@@ -513,7 +514,7 @@ namespace World.Game
             for (int p = 1; p <= 4; p++)
             {
                 var pr = new Rect(hwX + (p - 1) * laneW + px(10), hitY + px(18), laneW - px(20), px(74));
-                bool down = Input.GetKey(PadKeys[p - 1]) || _laneFlash[p] > 0.5f;
+                bool down = _padDown[p] || _laneFlash[p] > 0.5f;
                 EncounterUi.Fill(pr, down ? new Color(1f, 0.85f, 0.4f, 0.95f) : new Color(0.15f, 0.13f, 0.2f, 0.95f));
                 EncounterUi.Label(pr, keys[p - 1], EncounterUi.Big, down ? Color.black : EncounterUi.Text, TextAnchor.MiddleCenter);
             }

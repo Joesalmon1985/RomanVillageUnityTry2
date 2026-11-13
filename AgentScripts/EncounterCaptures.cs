@@ -109,6 +109,24 @@ public static class EncounterCaptures
         return route + " open " + w.IsRouteOpen(route == "bar" ? Route.Bar : Route.Balcony);
     }
 
+    /// <summary>After a successful phrase: from the decks, walk into the opened route (AutoPlay); poll AutoPlayState.</summary>
+    public static string WalkInto(string route)
+    {
+        Reset();
+        var w = B.Warehouse;
+        Vector3 L(float x, float z) => w.transform.TransformPoint(new Vector3(x, 0, z));
+        B.Avatar.Teleport(w.DecksFrontPosition + Vector3.up * 0.05f, w.DecksYaw + 180f, 0f);
+        var s = new AutoPlayScript("walk_" + route);
+        if (route == "bar")
+            s.WalkTo(L(-8f, -15f), 0.6f).WalkTo(w.RouteInsidePosition(Route.Bar), 0.8f).Turn(-60f, 1f)
+             .LookAt(w.transform.TransformPoint(new Vector3(-17.5f, 1.3f, -11f)), 0.6f);
+        else
+            s.WalkTo(L(4f, -4f), 0.8f).WalkTo(L(10f, -0.8f), 0.6f).WalkTo(L(10f, -9.5f), 0.6f).WalkTo(w.RouteInsidePosition(Route.Balcony), 0.8f)
+             .LookAt(w.transform.TransformPoint(new Vector3(-3f, 0.5f, -16f)), 0.8f);
+        B.AutoPlay.Run(s);
+        return "walking into " + route + " (open " + w.IsRouteOpen(route == "bar" ? Route.Bar : Route.Balcony) + ")";
+    }
+
     public static string FirstFive()
     {
         Reset();
