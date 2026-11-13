@@ -44,6 +44,7 @@ namespace World.Game
             if (!Input.GetKeyDown(KeyCode.Escape)) return;
             if (_menu) CloseMenu();
             else if (DialoguePanel.IsOpen) DialoguePanel.Close();
+            else if (StrategyWindow.IsOpen) StrategyWindow.Close();
             else OpenMenu();
         }
 

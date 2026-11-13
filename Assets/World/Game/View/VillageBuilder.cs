@@ -28,7 +28,15 @@ namespace World.Game
         private AudioSource _audio;
         private float _swing;
 
-        public string Prompt => "Ring the town bell";
+        public string Prompt
+        {
+            get
+            {
+                var b = WorldBootstrap.Instance;
+                long left = b != null ? World.Sim.Economy.EconomyApi.BellTicksLeft(b.Sim.State) : 0;
+                return left > 0 ? "Ring the town bell (the harvest season ends in " + ((left + World.Sim.WorldSim.TicksPerSecond - 1) / World.Sim.WorldSim.TicksPerSecond) + " s)" : "Ring the town bell";
+            }
+        }
         public string Title => "Town bell";
         public IEnumerable<string> Lines { get { yield return "Rings out across the village."; yield return "Ring it (E) to end the round: new numbers are drawn and batches authorised, as with End Round in God View."; } }
 

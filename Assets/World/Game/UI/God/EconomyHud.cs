@@ -113,7 +113,7 @@ namespace World.Game
                 if (BannerBig) st.fontSize = UiStyle.Px(30); else st.normal.textColor = UiStyle.AccentColor;
                 float w = UiStyle.Px(BannerBig ? 1150 : 1000);
                 float h = st.CalcHeight(new GUIContent(BannerText), w - UiStyle.Px(40)) + UiStyle.Px(BannerBig ? 36 : 20);
-                var r = new Rect((Screen.width - w) / 2, UiStyle.Px(BannerBig ? 170 : 72), w, h);
+                var r = new Rect((Screen.width - w) / 2, StrategyHud.StripBottom + UiStyle.Px(BannerBig ? 46 : 8), w, h); // below the strategy strip
                 UiStyle.DrawSolidPanel(r);
                 GUI.DrawTexture(new Rect(r.x, r.y, r.width, UiStyle.Px(4)), UiStyle.SolidTexture(BannerBig ? new Color(0.35f, 0.92f, 0.35f) : UiStyle.AccentColor));
                 GUI.Label(new Rect(r.x + UiStyle.Px(20), r.y, w - UiStyle.Px(40), h), BannerText, st);

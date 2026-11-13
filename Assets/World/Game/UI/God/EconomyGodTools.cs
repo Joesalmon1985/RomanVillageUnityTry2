@@ -27,6 +27,7 @@ namespace World.Game
             {
                 Id = EndRoundId, Label = "End Round", Order = 90, IsAction = true,
                 OnRun = _ => GodCommands.EndRound(),
+                BadgeText = () => BellBadge(),
                 TipText = () =>
                 {
                     var r = GodCommands.CheckEndRound();
@@ -34,6 +35,15 @@ namespace World.Game
                                 : "<color=#FF9A80>" + r.Message + "</color>";
                 },
             });
+        }
+
+        /// <summary>"(23 s)" while the harvest season still holds the bell (EconomyApi.BellTicksLeft), else null.</summary>
+        public static string BellBadge()
+        {
+            var b = WorldBootstrap.Instance;
+            if (b == null) return null;
+            long t = EconomyApi.BellTicksLeft(b.Sim.State);
+            return t > 0 ? "<color=#BBB0A0>(" + ((t + World.Sim.WorldSim.TicksPerSecond - 1) / World.Sim.WorldSim.TicksPerSecond) + " s)</color>" : null;
         }
 
         public static ProblemsTool Problems => GodToolbar.Find(ProblemsTool.ToolId) as ProblemsTool;

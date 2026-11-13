@@ -99,7 +99,8 @@ namespace World.Game
             // "-novsync": uncapped frame rate for performance measurements (MeasureFps).
             if (Array.IndexOf(Environment.GetCommandLineArgs(), "-novsync") >= 0) { QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1; }
             string name = CommandLineScript();
-            if (name == null) return;
+            if (name == null || s_commandLineRan) return;
+            s_commandLineRan = true; // a new game reloads the scene; the command-line script runs once
             if (AutoPlayScripts.TryCreate(name, out var script)) Run(script);
             else
             {
@@ -107,6 +108,8 @@ namespace World.Game
                 if (!Application.isEditor) Application.Quit(2);
             }
         }
+
+        private static bool s_commandLineRan;
 
         public static string CommandLineScript()
         {

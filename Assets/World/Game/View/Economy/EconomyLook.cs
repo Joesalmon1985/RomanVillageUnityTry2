@@ -100,8 +100,8 @@ namespace World.Game
                 case Reasons.NoRoad:
                 case Reasons.DemonOnRoute:
                 case Reasons.NoPower:
-                case Reasons.OutputFull:
                     return EconomyBadge.Blocked;
+                case Reasons.OutputFull: return EconomyBadge.Idle; // stock target reached: normal, not a problem
                 case Reasons.Disabled: return EconomyBadge.Off;
                 default: return EconomyBadge.Waiting;
             }

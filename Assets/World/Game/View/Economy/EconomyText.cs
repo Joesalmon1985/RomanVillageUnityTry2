@@ -168,6 +168,7 @@ namespace World.Game
                 if (b.State == BuildingState.Removed || b.Type == BuildingType.Storehouse) continue;
                 bool robbed = b.State == BuildingState.Active && EconomyLook.RobbedHarvester(s, b);
                 if (b.Reason == null && !b.Blocked && !robbed) continue;
+                if (b.Reason == Reasons.OutputFull && !b.Blocked && !robbed) continue; // stock target reached: normal
                 var w = EconomyApi.WaitingFor(s, b.Id);
                 list.Add(new EconomyProblem { IsJob = false, Id = b.Id, Title = EconomyApi.Describe(s, b.Id).Title, Sentence = w.Sentence, Reason = b.Reason ?? Reasons.DemonOnRoute });
             }

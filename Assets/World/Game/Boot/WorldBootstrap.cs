@@ -29,9 +29,26 @@ namespace World.Game
         public const float SeaY = -0.3f;
         public const float EyeHeight = 1.7f;
 
+        /// <summary>Seed for the next scene load (set by <see cref="NewGame"/>); null keeps the serialized Seed.</summary>
+        public static long? NextSeed;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() => NextSeed = null;
+
+        /// <summary>
+        /// Starts a new game with a fresh seed: reloads the scene, so every view, panel and NPC is rebuilt from the new
+        /// state alone (nothing is carried over from the old game).
+        /// </summary>
+        public void NewGame(long seed)
+        {
+            NextSeed = seed;
+            UnityEngine.SceneManagement.SceneManager.LoadScene(gameObject.scene.name);
+        }
+
         private void Awake()
         {
             Instance = this;
+            if (NextSeed.HasValue) { Seed = NextSeed.Value; NextSeed = null; }
             Sim = WorldSimFactory.CreateNew(unchecked((ulong)Seed));
 
             Clock = gameObject.AddComponent<GameClock>();
@@ -42,6 +59,7 @@ namespace World.Game
             BuildCamera();
             BuildVillage();
             EconomyInstaller.Install(this); // road economy: views, God View tools, quartermaster (Docs/ECONOMY_UI.md)
+            StrategyInstaller.Install(this); // draft, cities, demons, hero, military, end screen (Docs/STRATEGY_UI.md)
         }
 
         // ---- Milestone 1: walkable village ----

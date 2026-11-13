@@ -162,13 +162,13 @@ namespace World.Game
 
         // ---------------- drawing ----------------
 
-        private GUIStyle _btn, _btnOn, _strip;
+        private GUIStyle _btn, _btnOn, _btnSmall, _btnOnSmall, _strip;
 
         public static float BarHeight => UiStyle.Px(56) + UiStyle.Px(40) + UiStyle.Px(18);
         /// <summary>Top of the toolbar in GUI coordinates.</summary>
         public static float BarTop => Screen.height - UiStyle.Px(50) - BarHeight;
         /// <summary>Top and bottom of the left panel column (GUI coordinates).</summary>
-        public static float PanelTop => UiStyle.Px(110);
+        public static float PanelTop => UiStyle.Px(150); // below the strategy strip
         public static float PanelBottom => BarTop - UiStyle.Px(12);
 
         private void OnGUI()
@@ -193,7 +193,7 @@ namespace World.Game
             Active?.Overlay();
 
             // Toolbar.
-            float barW = Mathf.Min(Screen.width - UiStyle.Px(40), UiStyle.Px(1600));
+            float barW = Mathf.Min(Screen.width - UiStyle.Px(40), UiStyle.Px(1840));
             var bar = new Rect((Screen.width - barW) / 2, BarTop, barW, BarHeight);
             AddUiRect(bar);
             UiStyle.DrawPanel(bar);
@@ -205,12 +205,17 @@ namespace World.Game
             {
                 string label = t.Label;
                 string badge = t.Badge;
-                if (!string.IsNullOrEmpty(badge)) label += "  " + badge;
-                if (t.Hotkey != KeyCode.None) label += "  <size=" + UiStyle.Px(16) + "><color=#BBB0A0>[" + KeyName(t.Hotkey) + "]</color></size>";
+                if (!string.IsNullOrEmpty(badge)) label += " " + badge;
+                string withKey = t.Hotkey != KeyCode.None ? label + " <size=" + UiStyle.Px(15) + "><color=#BBB0A0>[" + KeyName(t.Hotkey) + "]</color></size>" : label;
+                var style = Active == t ? _btnOn : _btn;
+                // Many tools: drop the hotkey hint, then shrink the font, so no label is clipped.
+                float room = bw - UiStyle.Px(10);
+                if (style.CalcSize(new GUIContent(withKey)).x <= room) label = withKey;
+                else if (style.CalcSize(new GUIContent(label)).x > room) style = Active == t ? _btnOnSmall : _btnSmall;
                 bool was = GUI.enabled;
                 GUI.enabled = t.Available;
                 var br = new Rect(x, bar.y + pad, bw, bh);
-                if (GUI.Button(br, label, Active == t ? _btnOn : _btn))
+                if (GUI.Button(br, label, style))
                 {
                     if (!t.IsAction && Active == t && t.Id != SelectId) Activate(SelectId); else Activate(t.Id);
                 }
@@ -296,6 +301,8 @@ namespace World.Game
             _btnOn = new GUIStyle(_btn);
             _btnOn.normal.background = _btnOn.hover.background = UiStyle.SolidTexture(new Color(0.62f, 0.44f, 0.16f, 0.98f));
             _btnOn.normal.textColor = _btnOn.hover.textColor = Color.white;
+            _btnSmall = new GUIStyle(_btn) { fontSize = UiStyle.Px(17), padding = new RectOffset(UiStyle.Px(2), UiStyle.Px(2), UiStyle.Px(4), UiStyle.Px(4)) };
+            _btnOnSmall = new GUIStyle(_btnOn) { fontSize = UiStyle.Px(17), padding = new RectOffset(UiStyle.Px(2), UiStyle.Px(2), UiStyle.Px(4), UiStyle.Px(4)) };
             _strip = new GUIStyle(UiStyle.Small) { fontSize = UiStyle.Px(19), alignment = TextAnchor.MiddleLeft, wordWrap = false, richText = true };
         }
     }
