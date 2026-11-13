@@ -25,6 +25,12 @@ namespace World.Sim.Economy
         /// <summary>(state, vertex) -> true when the flag is blocked (demons). Carriers do not route through or onto it.</summary>
         public readonly List<Func<WorldState, int, bool>> IsVertexBlocked = new List<Func<WorldState, int, bool>>();
 
+        /// <summary>
+        /// Extra checks for the EndRound command (draft pending, game over...): (state) -> Accept or a refusal.
+        /// The first refusal wins. Must not mutate state.
+        /// </summary>
+        public readonly List<Func<WorldState, CommandResult>> EndRoundGuards = new List<Func<WorldState, CommandResult>>();
+
         /// <summary>(state, buildingId) -> powered, for NeedsPower buildings. Default: always powered.</summary>
         public Func<WorldState, int, bool> IsPowered = (s, id) => true;
 

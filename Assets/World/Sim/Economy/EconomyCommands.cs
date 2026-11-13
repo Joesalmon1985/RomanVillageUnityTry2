@@ -170,6 +170,11 @@ namespace World.Sim.Economy
             if (!p.Ok) return p;
             if (s.Economy.RoundStartPending)
                 return CommandResult.Reject(EconomyRefusals.RoundStarting, "The new round is still starting.");
+            foreach (var g in _hooks.EndRoundGuards)
+            {
+                var r = g(s);
+                if (!r.Ok) return r;
+            }
             return CommandResult.Accept();
         }
 
