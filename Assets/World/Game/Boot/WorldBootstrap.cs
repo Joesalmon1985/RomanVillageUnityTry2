@@ -41,6 +41,7 @@ namespace World.Game
             BuildGround();
             BuildCamera();
             BuildVillage();
+            EconomyInstaller.Install(this); // road economy: views, God View tools, quartermaster (Docs/ECONOMY_UI.md)
         }
 
         // ---- Milestone 1: walkable village ----
