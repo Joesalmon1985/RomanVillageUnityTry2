@@ -72,6 +72,7 @@ namespace World.Game
             PlayerInstaller.Install(this);   // P: walker, pointer, speech bubbles, spell caster, map, HUD toggle
             CampInstaller.Install(this);     // D: dance circle, camp dressing, Mira and Sol
             LandViewsInstaller.Install(this); // V: terrain and land views
+            LightingInstaller.Install(this); // L: day-night cycle, fires and torches, night readability (after V: it dresses the sky and the views)
             PrinceInstaller.Install(this);   // N: prince, sawyer, merchant, first scene
             DevToolsInstaller.Install(this); // P: F1 developer tools
 
