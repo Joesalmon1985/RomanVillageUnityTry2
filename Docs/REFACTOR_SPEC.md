@@ -839,7 +839,6 @@ Proposal target points and press areas: Building: plot centre, radius 5. Road: h
 11. **Guide text.** `UI/GuideText.cs` (F) holds the pause-menu pages; `Hud` reads `GuideText.ControlsLeft/Right` and `HowToPlayLeft/Right(WorldState)`. The F-0 text describes the interim build.
 12. **Save.** Extras `route.bar`, `route.balcony`, `bram.acknowledged` dropped (the warehouse is gone; the dance ending is not saved). The `save_load` AutoPlay script (`Boot/SaveLoadScript.cs`) is archived; F-1 writes the v4 one.
 
-<<<<<<< HEAD
 **13 Nov 2026, V (land views, branch `pre/v`).** Additions to V's own names; nothing in appendix A or other packages' names changed. Details in `Docs/LAND_UI.md`.
 
 1. **`LandViews` is created by `LandViewsInstaller`** (`LandViews.Create(boot)`), after the terrain. `Synced` fires after every tick's reconcile and after `Inject`. The appendix B lookups (`CarrierView`, `BuildingView`, `ProposalMarker`) return null for unknown or gone ids; `ProposalMarker` exists only for open proposals of your people (faction 0).
@@ -849,7 +848,6 @@ Proposal target points and press areas: Building: plot centre, radius 5. Road: h
 5. **Walk blockers.** Mountain crags are registered as `WalkGrid.AddStaticBlocker(centre, radius, "land.peaks")` (six per Mountain hex, 41 m from the centre towards the hex-edge midpoints, radius about 6.5 m; never on a plot, a stock patch or a hex-edge line).
 6. **`BoardSpace`** gains `Corner`, `Plot`, `PlotYaw`, `PlotPath`, `HexEdgeDir`. The flag and segment members stay (other packages still call them) until F removes the fine graph.
 7. **`Signs`** (V's since F-0) is unchanged; `HexView` (in `TerrainBuilder.cs`) now gives the sentences of `LandText.HexLines`.
-=======
 **13 Nov 2026, D (dance circle and camp dressing; branch `pre/d`).** D's own names; nothing of P, V or N changed.
 
 1. **`CampLayout` additions** (all existing members kept, same meaning): `Forward`, `Right` (the dancer's view axes: corner to fire, and its right), `ReservedPlot`, `MiraYaw` (Mira faces the spawn), `DrummerYaw` (Sol faces the dancer), `FireLeapMark`, `SpiritCallMark`, `CirclePoint(thetaDeg, radius)`, `SpokeDir(sector)`, `Dressing` (`IReadOnlyList<CampProp>`, `CampProp{Kind, Position, Yaw, Radius}`), `Clearings` (`IReadOnlyList<Vector3>`, circles as (x, z, radius), the format of `TerrainBuilder.Build`'s clearings), `static string Obstruction(Board, Vector3, float radius, bool insideCircle = false)` (null when clear of plots, stock patches, hex-edge lines, home local paths, corners and the dance circle), constants `DrumRadius`, `DancerDistance`, `DrummerDistance`, `DrummerAngle`, `SeatRadius`, `DanceRingRadius`, `FireBlockRadius`, `DrumBlockRadius`.
@@ -859,4 +857,3 @@ Proposal target points and press areas: Building: plot centre, radius 5. Road: h
 5. **Removed:** `WarehouseSet` (and its `World.Game.Route` enum), `EncounterContext.Warehouse` (one field and its initialiser in `Encounters/EncounterHost.cs`, the only edit there), the AutoPlay script `first_five` (now `duel_dance`, `DuelDance.Name`). Sol keeps the NPC id `NpcIds.Host` ("host"); the dance keeps the encounter id `rhythm_party`.
 6. **Static blockers:** `WalkGrid.AddStaticBlocker` with owner `"dance_circle"`: the fire (2.5 m) and each drum (1.3 m).
 7. **Interim avatar:** the dance and `duel_dance` place the viewpoint only through `EncounterContext.PlaceAvatar` and read keys and `TouchStrips.Pressed/Held`; the ending-choice tap reads `Input.mousePosition` above the touch band (left or right of the fire's screen point), independent of `PointerInput`. `FirstPersonAvatar` pitch is positive downwards; the dance uses 15 (looking down at the drums), which P's `PlaceExact(position, yaw, pitch)` should keep.
->>>>>>> pre/d
