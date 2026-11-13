@@ -27,3 +27,9 @@ foreach (var e in s.DrainEvents()) ...
 - Cue time in seconds = tick * 60 / (bpm * 960) with absolute phrase ticks (the session already gives `Time`). Bass cues play from the reveal beat: position in the loop = (blockStartBeat - origin) mod 32, origin 0 for drums, the reveal beat for bass.
 - Stage gains per block come from `CurrentGains`; the stage changes at the block boundary.
 - Cues exist only in beats 0-12 of a block; holds are clipped to beat 12; a hold under 480 ticks is a tap.
+
+## The dance at the fire (package D, REFACTOR_SPEC 2.E)
+- The game plays this session as the dance circle round a fire at the home camp (`RhythmPartyEncounter`, encounter id `rhythm_party`, offered by Sol); see `DANCE_UI.md`. Rules, chart, tuning and the DSP scheduling contract above are unchanged.
+- Pads 1-4 are the four drums, left to right as seen from the dancer: keys D F J K and touch strips 1-4.
+- A cue's drum lights from `Time - 1.1 s` (the fall time the lanes used; within the 1.2 s charting lead) and the cue's ember lands on the drum at `Time`; `DanceCircle.Approach(cueTime, songTime, fall)` is 0 when it appears and 1 at the cue time.
+- `Route.Bar` is shown as "Fire leap", `Route.Balcony` as "Spirit call" (`RhythmPartyEncounter.ChoiceName`); `RouteOutcome` picks the ending effect. Nothing is saved.
