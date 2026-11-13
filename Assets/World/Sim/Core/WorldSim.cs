@@ -15,6 +15,15 @@ namespace World.Sim
     /// </summary>
     public static class SystemOrder
     {
+        // Prehistoric refactor (REFACTOR_SPEC section 5): Dice 100, Growth 150, Collect 200, Production 300,
+        // Construction 400, Jobs 500, Carriers 600, Demons 1100, Brain 1150, Strength 1200, Diagnostics 1300.
+        public const int Dice = 100;
+        public const int Growth = 150;
+        public const int Collect = 200;
+        public const int Brain = 1150;
+        public const int Strength = 1200;
+
+        // Older names, kept (same slots).
         public const int Rounds = 100;          // rounds and batches
         public const int Harvest = 200;         // harvest workers
         public const int Production = 300;

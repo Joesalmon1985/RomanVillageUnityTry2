@@ -29,20 +29,21 @@ namespace World.Sim.Save
 
     /// <summary>
     /// Save and load. Save between ticks: commands still queued in the sim (not yet applied) are not part of
-    /// the state and are dropped. Everything else (stores, shipments in flight, queues, rounds and ages, draft,
-    /// infection deck, squads, random state, Ward progress) is in <see cref="WorldState"/>.
+    /// the state and are dropped. Everything else (stock, sites, shipments in flight, dice deck, proposals,
+    /// warnings, demons, random state, Ward progress) is in <see cref="WorldState"/>.
     /// </summary>
     public static class SaveCodec
     {
         /// <summary>
+        /// 4 = prehistoric refactor (dice and hex stock, settlements with plots, main roads, factions, demons). Older saves are refused.
         /// 3 = economy rebalance (harvest season: EconomyState.RoundStartedTick; one draft pick per round:
         /// StrategyState.DraftNextStep; 24 cards; economy targets and per-terrain batch sizes in the tuning).
         /// 2 = unified economy (14 wares, 20 building types, outbreaks, military comparison). Older saves are refused.
         /// </summary>
-        public const int CurrentVersion = 3;
+        public const int CurrentVersion = 4;
 
         /// <summary>Oldest save version this build reads.</summary>
-        public const int OldestVersion = 3;
+        public const int OldestVersion = 4;
 
         private static JsonSerializerSettings Settings() => new JsonSerializerSettings
         {
@@ -76,7 +77,7 @@ namespace World.Sim.Save
             }
             if (m == null || m.State == null) throw new FormatException("The save holds no world.");
             if (m.Version > CurrentVersion) throw new FormatException("The save is from a newer version (" + m.Version + ").");
-            if (m.Version < OldestVersion) throw new FormatException("The save is from an older version (" + m.Version + ") with a different economy.");
+            if (m.Version < OldestVersion) throw new FormatException("The save is from an older version (" + m.Version + ") with a different world.");
             if (m.Extras == null) m.Extras = new SortedDictionary<string, string>(StringComparer.Ordinal);
             return m;
         }
@@ -93,8 +94,8 @@ namespace World.Sim.Save
             if (loaded == null) throw new ArgumentNullException(nameof(loaded));
             var sim = new WorldSim(loaded);
             Economy.EconomyModule.Register(sim);
-            Strategy.StrategyModule.Register(sim);
-            Military.MilitaryModule.Register(sim);
+            Factions.FactionsModule.Register(sim);
+            Demons.DemonsModule.Register(sim);
             return sim;
         }
 

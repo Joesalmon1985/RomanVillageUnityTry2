@@ -2,290 +2,251 @@ using System.Collections.Generic;
 
 namespace World.Sim.Economy
 {
-    /// <summary>
-    /// Building types (ECONOMY_DESIGN section 3). Ids 0-13 keep their old numbers (Quarry is now the Clay pit,
-    /// Grain mill the Mill, Ore pit the Mine, Refinery the Smelter); 14-19 are new.
-    /// </summary>
-    public enum BuildingType
-    {
-        Storehouse = 0,
-        Forester = 1,
-        Woodcutter = 2,
-        Sawmill = 3,
-        ClayPit = 4,
-        Farm = 5,
-        Mill = 6,
-        Bakery = 7,
-        Mine = 8,
-        Smelter = 9,
-        PowerPlant = 10,
-        Barracks = 11,
-        Market = 12,
-        WonderSite = 13,
-        Sheepfold = 14,
-        Butcher = 15,
-        Tavern = 16,
-        CharcoalKiln = 17,
-        BrickKiln = 18,
-        Smithy = 19,
-    }
-
-    /// <summary>Construction size class; the cost in Planks and Bricks follows from it (EconomyTuning.SizeCost).</summary>
-    public enum BuildingSize
-    {
-        Small = 0,
-        Medium = 1,
-        Large = 2,
-        Huge = 3,
-    }
-
-    /// <summary>How a building behaves in the economy.</summary>
-    public enum BuildingKind
-    {
-        /// <summary>The storehouse: default source and sink.</summary>
-        Store,
-        /// <summary>Passive: keeps forest batches whole for the forest hexes it touches.</summary>
-        Forester,
-        /// <summary>Works one cycle per unit of an authorised batch on a touching hex (the Mine also uses up Rations).</summary>
-        Harvester,
-        /// <summary>Recipe: inputs to outputs per cycle.</summary>
-        Producer,
-        /// <summary>Burns coal; <see cref="EconomyApi.IsFuelled"/> while fuel time is left.</summary>
-        PowerPlant,
-        /// <summary>Construction and a store that receives requested wares; other modules add behaviour.</summary>
-        Plain,
-    }
-
     public enum BuildingState
     {
-        /// <summary>Construction site waiting for its cost wares.</summary>
+        /// <summary>Construction site waiting for its goods.</summary>
         Site = 0,
-        /// <summary>All wares arrived; building for BuildTicks.</summary>
+        /// <summary>All goods arrived; building for BuildTicks.</summary>
         Constructing = 1,
         Active = 2,
-        /// <summary>Cancelled site. Kept in the list so ids stay stable.</summary>
-        Removed = 3,
+        /// <summary>A primitive collector replaced by an improved one: finishes its cycle, then its store is carried away.</summary>
+        Retiring = 3,
+        /// <summary>Gone; the plot is free. Kept in the list so ids stay stable.</summary>
+        Retired = 4,
+        /// <summary>A cancelled site (API change log, S-0). Kept in the list so ids stay stable; the plot is free.</summary>
+        Cancelled = 5,
     }
 
-    public enum Priority
+    public enum SettlementState
     {
-        Low = 0,
-        Normal = 1,
-        High = 2,
+        Site = 0,
+        Active = 1,
+        /// <summary>A cancelled settlement site (API change log, S-0). Kept so ids stay stable.</summary>
+        Cancelled = 2,
     }
+
+    public enum UpgradeState { None = 0, Site = 1, Constructing = 2 }
+
+    public enum RoadState
+    {
+        Site = 0,
+        Constructing = 1,
+        Built = 2,
+        /// <summary>A cancelled road site (API change log, S-0). Kept so ids stay stable; RoadOnEdge no longer points to it.</summary>
+        Cancelled = 3,
+    }
+
+    /// <summary>Kinds of construction site (CancelSite, SitePlaced...). City: Id is the settlement id.</summary>
+    public enum SiteKind { Building = 0, Road = 1, Settlement = 2, City = 3 }
+
+    /// <summary>Ends of a job or carrier leg. Storehouse: id = settlement; Building: building; RoadSite: road; SettlementSite: settlement.</summary>
+    public enum PlaceKind { Storehouse = 0, Building = 1, RoadSite = 2, SettlementSite = 3 }
 
     public enum JobState
     {
-        /// <summary>Created, ware reserved at the source, no carrier yet.</summary>
+        /// <summary>Created, no carrier yet.</summary>
         Waiting = 0,
-        /// <summary>Carrier walking to the source.</summary>
+        /// <summary>Carrier walking to the pickup.</summary>
         ToPickup = 1,
-        /// <summary>Ware is on the carrier.</summary>
+        /// <summary>Goods on the carrier.</summary>
         Carrying = 2,
     }
 
-    public enum CarrierState
-    {
-        Idle = 0,
-        ToPickup = 1,
-        Carrying = 2,
-        /// <summary>Walking back to the storehouse; can take a job at the next flag.</summary>
-        Returning = 3,
-    }
+    public enum CarrierState { Idle = 0, ToPickup = 1, Carrying = 2, Returning = 3 }
 
-    /// <summary>All economy state (in <c>WorldState.Economy</c>). Plain data; ids are list indices.</summary>
+    /// <summary>All economy state (WorldState.Economy). Plain data; ids are list indices.</summary>
     public sealed class EconomyState
     {
         public EconomyTuning Tuning = new EconomyTuning();
-
-        /// <summary>Current round, starts at 1.</summary>
-        public int Round = 1;
-        /// <summary>True between EndRound (or game start) and the round-start draw at the next Rounds tick.</summary>
-        public bool RoundStartPending = true;
-        /// <summary>Tick at which the current round started (its production draw); the bell may ring Tuning.MinRoundTicks later.</summary>
-        public long RoundStartedTick;
-        /// <summary>Production numbers drawn at the start of the current round (ascending).</summary>
-        public int[] LastDraw = new int[0];
-        public Rng RoundRng = new Rng();
-
-        /// <summary>Per hex id: round in which a batch was last authorised (0 = never).</summary>
-        public int[] HexBatchRound = new int[0];
-        /// <summary>Per hex id: raw units still to harvest.</summary>
-        public int[] HexBatchRemaining = new int[0];
-        /// <summary>
-        /// Per hex id: true while the robber stops the hex (a demon on every player city touching it). Refreshed at
-        /// the start of every economy tick from EconomyHooks.IsHexStopped; read by views and diagnostics.
-        /// </summary>
-        public bool[] HexStopped = new bool[0];
-
-        /// <summary>Per road segment id (BoardTopology fine edge): true when the player has a road there.</summary>
-        public bool[] Roads = new bool[0];
-        /// <summary>Road segments already paid for (see EconomyTuning.RoadSegmentsPerCost); used before paying again.</summary>
-        public int RoadCredit;
-
-        public List<City> Cities = new List<City>();
-        /// <summary>Index = building id. Cancelled sites stay with State = Removed.</summary>
+        public DiceState Dice = new DiceState();
+        /// <summary>Per hex id (61).</summary>
+        public HexStock[] Hexes = new HexStock[0];
+        public List<Settlement> Settlements = new List<Settlement>();
+        /// <summary>Retired and cancelled buildings stay in the list.</summary>
         public List<Building> Buildings = new List<Building>();
-        /// <summary>Open delivery jobs (finished jobs are removed), ascending id.</summary>
-        public List<DeliveryJob> Jobs = new List<DeliveryJob>();
+        public List<Road> Roads = new List<Road>();
+        /// <summary>Per hex edge id (210): the road on it, or -1.</summary>
+        public int[] RoadOnEdge = new int[0];
+        /// <summary>Open jobs, ascending id.</summary>
+        public List<Job> Jobs = new List<Job>();
         public int NextJobId;
-        /// <summary>Index = carrier id.</summary>
         public List<Carrier> Carriers = new List<Carrier>();
-
-        public int StorehouseId;
-        /// <summary>Demonstration road flags (2 segments along the home forest hex edge): storehouse -> DemoVertexA -> DemoVertexB (pre-placed Forester site).</summary>
-        public int DemoVertexA = -1;
-        public int DemoVertexB = -1;
-
+        public List<Warrior> Warriors = new List<Warrior>();
         public WareLedger Ledger = new WareLedger();
-        public CommissionState Commission = new CommissionState();
-
-        /// <summary>Effects of built cards on the economy, written by the strategy module (EconomyApi.SetBonuses).</summary>
-        public EconomyBonuses Bonus = new EconomyBonuses();
     }
 
-    /// <summary>Card effects the economy applies (kept in state so static API calls see them).</summary>
-    public sealed class EconomyBonuses
+    /// <summary>The dice: a deck of the 36 ordered outcomes encoded d1 * 10 + d2, top = last.</summary>
+    public sealed class DiceState
     {
-        /// <summary>Per building type: extra units of its main output per cycle.</summary>
-        public int[] ExtraOutput = new int[BuildingDefs.Count];
-        /// <summary>Extra road segments paid for by one road cost.</summary>
-        public int RoadSegments;
+        public int[] Deck = new int[0];
+        public Rng Rng = new Rng();
+        public long NextRollTick;
+        public int RollCount;
+        public int LastD1;
+        public int LastD2;
+        /// <summary>-1 before the first roll.</summary>
+        public long LastRollTick = -1;
     }
 
-    /// <summary>A city: occupies a hex corner flag, extends territory and brings its touching hexes into production. No store.</summary>
-    public sealed class City
+    /// <summary>Stock on one hex: young cohorts (in adding order) and mature units.</summary>
+    public sealed class HexStock
+    {
+        public int Hex;
+        public int Mature;
+        public List<StockCohort> Young = new List<StockCohort>();
+    }
+
+    public sealed class StockCohort
+    {
+        public Ware Ware;
+        public int Count;
+        public long AddedTick;
+        public long MatureTick;
+    }
+
+    /// <summary>A camp ("Settlement" in code). Ware arrays are indexed by ware id.</summary>
+    public sealed class Settlement
     {
         public int Id;
-        public int Owner;
-        public int Vertex;
+        public int Faction;
+        public int Corner;
+        public SettlementState State;
+        public bool IsCity;
+        public UpgradeState Upgrade;
+        /// <summary>Settlement site: the settlement its goods come from. -1 for a starting settlement.</summary>
+        public int SourceSettlement = -1;
+        public int BuildProgress;
+        public int UpgradeProgress;
+        /// <summary>Storehouse stock (includes reserved units).</summary>
+        public int[] Stock = new int[Wares.Count];
+        public int[] Reserved = new int[Wares.Count];
+        /// <summary>Units on the way to the storehouse (open jobs heading there).</summary>
+        public int[] Incoming = new int[Wares.Count];
+        /// <summary>Settlement site: goods delivered so far.</summary>
+        public int[] Delivered = new int[Wares.Count];
+        /// <summary>City upgrade: goods moved from Stock so far.</summary>
+        public int[] UpgradeDelivered = new int[Wares.Count];
+        public long FoundedTick;
+        /// <summary>Stall reason code (<see cref="Reasons"/>) or null.</summary>
+        public string Reason;
+        public int ReasonWare = -1;
     }
 
-    /// <summary>A building or construction site on a vertex flag, with its own store.</summary>
     public sealed class Building
     {
         public int Id;
         public BuildingType Type;
-        public int Owner;
-        public int Vertex;
+        public int Faction;
+        public int Settlement;
+        public int Plot;
+        /// <summary>Hex of the plot's sector.</summary>
+        public int Hex;
         public BuildingState State;
-        public bool Enabled = true;
-        public Priority Priority = Priority.Normal;
-
-        /// <summary>Construction ticks done (Constructing).</summary>
-        public int BuildProgress;
-        /// <summary>Ticks into the current work cycle; 0 = idle.</summary>
-        public int WorkProgress;
-        /// <summary>Hex being harvested in the current cycle, or -1.</summary>
-        public int WorkHex = -1;
-        /// <summary>Power plant: ticks of fuel left.</summary>
-        public int FuelLeft;
-        /// <summary>Harvester with an upkeep (the Mine): cycles already paid for by consumed inputs.</summary>
-        public int InputCredit;
-        /// <summary>
-        /// True while a demon or a raid holds this building's flag: it does no work (harvest, recipe, construction,
-        /// fuel, training, wonder stage). Refreshed at the start of every economy tick from EconomyHooks.IsVertexBlocked.
-        /// </summary>
-        public bool Blocked;
-
-        /// <summary>Per ware (index = (int)Ware): wares physically here (sites: delivered materials).</summary>
+        /// <summary>Output store (collectors, workshops).</summary>
         public int[] Stock = new int[Wares.Count];
-        /// <summary>Per ware: part of Stock promised to a delivery job (not spendable).</summary>
         public int[] Reserved = new int[Wares.Count];
-        /// <summary>Per ware: open jobs delivering here.</summary>
         public int[] Incoming = new int[Wares.Count];
-        /// <summary>Per ware: externally requested units not yet assigned to a job (<see cref="EconomyApi.RequestWares"/>).</summary>
-        public int[] Requested = new int[Wares.Count];
-
-        /// <summary>Current stall reason (<see cref="Reasons"/>) or null when progressing/fine. Set by diagnostics.</summary>
+        /// <summary>Site: goods delivered; active workshop or lodge: inputs on hand.</summary>
+        public int[] Delivered = new int[Wares.Count];
+        public int BuildProgress;
+        /// <summary>Ticks into the current cycle; 0 = no cycle running.</summary>
+        public int WorkProgress;
+        /// <summary>Hex the current collect cycle took its unit from, or -1.</summary>
+        public int WorkHex = -1;
         public string Reason;
-        /// <summary>Ware named by the reason, or -1.</summary>
         public int ReasonWare = -1;
-
-        public int Available(Ware w) => Stock[(int)w] - Reserved[(int)w];
     }
 
-    /// <summary>One ware moving from a source building to a destination building or site.</summary>
-    public sealed class DeliveryJob
+    public sealed class Road
     {
         public int Id;
-        public Ware Ware;
-        public int SourceId;
-        public int DestId;
-        public JobState State;
-        public int CarrierId = -1;
-        /// <summary>Stall reason (no_carrier, no_road, demon_on_route) or null while progressing.</summary>
+        public int Faction;
+        public int HexEdge;
+        public RoadState State;
+        public int SourceSettlement = -1;
+        public int[] Delivered = new int[Wares.Count];
+        public int[] Incoming = new int[Wares.Count];
+        public int BuildProgress;
         public string Reason;
-        public long CreatedTick;
-        /// <summary>Tick since which a not-yet-picked-up job has had no route (-1 = routed).</summary>
-        public long RouteStalledSince = -1;
-        /// <summary>Created for an external request (<see cref="EconomyApi.RequestWares"/>); restored if released.</summary>
-        public bool FromRequest;
+        public int ReasonWare = -1;
     }
 
-    /// <summary>
-    /// A carrier walking vertex to vertex along roads. At a flag: CurrentEdge = -1 and AtVertex is the flag.
-    /// On an edge: CurrentEdge, FromVertex -> ToVertex, Progress ticks of TicksPerEdge done (interpolate).
-    /// </summary>
+    public sealed class Job
+    {
+        public int Id;
+        public int Faction;
+        /// <summary>Settlement whose carrier does the job.</summary>
+        public int Settlement;
+        public Ware Ware;
+        public int Count;
+        public PlaceKind FromKind;
+        public int FromId;
+        public PlaceKind ToKind;
+        public int ToId;
+        public bool IsShipment;
+        public JobState State;
+        public int CarrierId = -1;
+        public string Reason;
+        public long CreatedTick;
+    }
+
     public sealed class Carrier
     {
         public int Id;
+        public int Faction;
+        /// <summary>Home settlement id.</summary>
+        public int Home;
         public CarrierState State;
-        public int AtVertex;
-        public int CurrentEdge = -1;
-        public int FromVertex = -1;
-        public int ToVertex = -1;
-        public int Progress;
+        public int JobId = -1;
         public bool HasLoad;
         public Ware Load;
-        public int JobId = -1;
-        /// <summary>Ticks spent idle away from the storehouse (it walks home after Tuning.CarrierWaitTicks).</summary>
-        public int IdleTicks;
+        public int LoadCount;
+        public PlaceKind LegFromKind;
+        public int LegFromId = -1;
+        public PlaceKind LegToKind;
+        public int LegToId = -1;
+        /// <summary>Corner path of a main-road leg; empty for a local leg.</summary>
+        public int[] LegCorners = new int[0];
+        public int LegTicks;
+        public int Progress;
+    }
+
+    public sealed class Warrior
+    {
+        public int Id;
+        public int Faction;
+        /// <summary>Lodge building id.</summary>
+        public int Lodge;
+        public int Settlement;
+        public bool Fed;
+        public long NextMealTick;
     }
 
     /// <summary>
-    /// Ware accounting per ware (index = (int)Ware). In world = Starting + Harvested + Produced + Added - Consumed.
-    /// Consumed is also split by sink: Consumed = sum(RecipeIn) + Construction + Roads + External, and
-    /// Produced = sum(RecipeOut). RecipeIn/RecipeOut/Cycles are indexed by (int)BuildingType (recipe inputs,
-    /// mine upkeep and power plant fuel count as RecipeIn of that building type).
+    /// Accounting (REFACTOR_SPEC 4.4). Per-ware arrays have length <see cref="Wares.Count"/>; RecipeIn and RecipeOut
+    /// are [building type][ware]; hex stock counters (StockAdded/Lost/Taken) are indexed by ware id too (only raw
+    /// wares are ever non-zero).
     /// </summary>
     public sealed class WareLedger
     {
         public int[] Starting = new int[Wares.Count];
-        public int[] Harvested = new int[Wares.Count];
+        public int[] Collected = new int[Wares.Count];
         public int[] Produced = new int[Wares.Count];
-        /// <summary>Added from outside the economy (<see cref="EconomyApi.AddToStorehouse"/>).</summary>
-        public int[] Added = new int[Wares.Count];
-        /// <summary>Recipe inputs, mine upkeep, fuel, construction, roads and external spending.</summary>
         public int[] Consumed = new int[Wares.Count];
-
-        /// <summary>Per building type, per ware: inputs used up (recipes, mine rations, power plant coal).</summary>
         public int[][] RecipeIn = NewTable();
-        /// <summary>Per building type, per ware: outputs made (recipes) or harvested (harvesters).</summary>
         public int[][] RecipeOut = NewTable();
-        /// <summary>Per building type: finished work cycles (recipe cycles, harvest cycles, fuel units burned).</summary>
-        public int[] Cycles = new int[BuildingDefs.Count];
-        /// <summary>Per ware: used up by finished construction sites.</summary>
         public int[] Construction = new int[Wares.Count];
-        /// <summary>Per ware: paid for road segments.</summary>
-        public int[] Roads = new int[Wares.Count];
-        /// <summary>Per raw ware: batch units authorised by round draws (after modifiers), and the part lost to the carry-over cap.</summary>
-        public int[] BatchAuthorised = new int[Wares.Count];
-        public int[] BatchLost = new int[Wares.Count];
-        /// <summary>Per ware: spent through EconomyApi.TryConsume / TrySpendFromStorehouse by other modules (cities, cards, wonder, market, soldiers).</summary>
-        public int[] External = new int[Wares.Count];
+        public int[] Training = new int[Wares.Count];
+        public int[] Meals = new int[Wares.Count];
+        public int[] StockAdded = new int[Wares.Count];
+        public int[] StockLost = new int[Wares.Count];
+        public int[] StockTaken = new int[Wares.Count];
 
-        public static int[][] NewTable()
+        private static int[][] NewTable()
         {
             var t = new int[BuildingDefs.Count][];
             for (int i = 0; i < t.Length; i++) t[i] = new int[Wares.Count];
             return t;
         }
-    }
-
-    public sealed class CommissionState
-    {
-        public bool Complete;
-        public long CompletedTick = -1;
     }
 }

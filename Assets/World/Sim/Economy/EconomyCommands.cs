@@ -1,196 +1,133 @@
 namespace World.Sim.Economy
 {
-    /// <summary>
-    /// Build a road on one segment (BoardTopology fine edge). Must touch the player's network. Every
-    /// Tuning.RoadSegmentsPerCost segments cost Tuning.RoadCost from the storehouse, paid on the first of them.
-    /// </summary>
-    public sealed class PlaceRoad : Command { public int Edge; }
+    // Direct build commands (REFACTOR_SPEC 5.1): used by the F1 developer tools, tests and CastSpell. PlayerId = people.
 
-    /// <summary>Remove a road. Carriers on it stop at the next flag and wait for a route.</summary>
-    public sealed class RemoveRoad : Command { public int Edge; }
+    /// <summary>Building site on a plot.</summary>
+    public sealed class PlaceBuilding : Command { public BuildingType Type; public int Plot; }
 
-    /// <summary>Plan a building: becomes a construction site that requests its cost wares.</summary>
-    public sealed class PlaceBuilding : Command { public BuildingType Type; public int Vertex; }
+    /// <summary>Main-road site on a hex edge; the source settlement is chosen by rule.</summary>
+    public sealed class PlaceRoad : Command { public int HexEdge; }
 
-    /// <summary>Cancel a construction site (Site or Constructing). Delivered wares return to the storehouse at once.</summary>
-    public sealed class CancelSite : Command { public int BuildingId; }
+    /// <summary>Settlement site on a corner; the source settlement is chosen by rule.</summary>
+    public sealed class FoundSettlement : Command { public int Corner; }
 
-    /// <summary>Order in which a building's deliveries are served.</summary>
-    public sealed class SetPriority : Command { public int BuildingId; public Priority Priority; }
+    /// <summary>City upgrade of the settlement on a corner.</summary>
+    public sealed class UpgradeCity : Command { public int Corner; }
 
-    /// <summary>Switch an active building on or off (off: no work, no input requests, reason disabled).</summary>
-    public sealed class ToggleBuilding : Command { public int BuildingId; public bool Enabled; }
+    /// <summary>Cancels an unfinished site; delivered goods go back to the source storehouse. City: Id = settlement id.</summary>
+    public sealed class CancelSite : Command { public SiteKind Kind; public int Id; }
 
-    /// <summary>End the round: OnRoundEnding hooks run, Round increments, and the next round starts this tick.</summary>
-    public sealed class EndRound : Command { }
-
-    internal static class Guard
+    /// <summary>Refusal codes of the economy commands (REFACTOR_SPEC 5.2) and their exact sentences.</summary>
+    public static class EconomyRefusals
     {
-        internal static CommandResult Player(Command c) =>
-            c.PlayerId == PlayerIds.Human
-                ? CommandResult.Accept()
-                : CommandResult.Reject(EconomyRefusals.NotOwner, "Only the player's village can do that.");
+        public const string GameOver = "game_over";
+        public const string NotOwner = "not_owner";
+        public const string UnknownType = "unknown_type";
+        public const string NotPlaceable = "not_placeable";
+        public const string UnknownPlot = "unknown_plot";
+        public const string NoSettlement = "no_settlement";
+        public const string PlotTaken = "plot_taken";
+        public const string PlotLocked = "plot_locked";
+        public const string PlotReserved = "plot_reserved";
+        public const string WrongTerrain = "wrong_terrain";
+        public const string AlreadyBuilt = "already_built";
+        public const string BadCorner = "bad_corner";
+        public const string Occupied = "occupied";
+        public const string TooClose = "too_close";
+        public const string NotConnected = "not_connected";
+        public const string RoadExists = "road_exists";
+        public const string BlockedByRival = "blocked_by_rival";
+        public const string NotASettlement = "not_a_settlement";
+        public const string AlreadyCity = "already_city";
+        public const string UpgradeInProgress = "upgrade_in_progress";
+        public const string NotASite = "not_a_site";
 
-        internal static CommandResult Own(WorldState s, Command c, int id, out Building b)
+        /// <summary>The exact sentence for a code; args fill {Name}/{name}/{terrain} in order.</summary>
+        public static string Sentence(string code, params string[] args)
         {
-            b = EconomyLogic.Get(s, id);
-            var p = Player(c);
-            if (!p.Ok) return p;
-            if (!EconomyLogic.IsLive(b))
-                return CommandResult.Reject(EconomyRefusals.UnknownBuilding, "That building does not exist.");
-            if (b.Owner != c.PlayerId) return CommandResult.Reject(EconomyRefusals.NotOwner, "That building is not yours.");
+            string a0 = args != null && args.Length > 0 ? args[0] : "";
+            string a1 = args != null && args.Length > 1 ? args[1] : "";
+            switch (code)
+            {
+                case GameOver: return "The game is over.";
+                case NotOwner: return "That belongs to another people.";
+                case UnknownType: return "There is no such building.";
+                case NotPlaceable: return a0 + " comes with a camp and cannot be built.";
+                case UnknownPlot: return "There is no plot there.";
+                case NoSettlement: return "None of your camps owns that plot.";
+                case PlotTaken: return "Something already stands on that plot.";
+                case PlotLocked: return "That plot opens when the camp becomes a city.";
+                case PlotReserved: return "That ground is kept for the dance circle.";
+                case WrongTerrain: return "A " + a0 + " must stand by " + a1 + ".";
+                case AlreadyBuilt: return "This camp already has a " + a0 + ".";
+                case BadCorner: return "A camp needs a corner where three lands meet.";
+                case Occupied: return "A camp already stands there.";
+                case TooClose: return "Too close to another camp: leave a road's length between camps.";
+                case NotConnected: return "None of your roads reaches there.";
+                case RoadExists: return "A road already runs there.";
+                case BlockedByRival: return "A camp of another people blocks that road.";
+                case NotASettlement: return "There is no camp of yours there.";
+                case AlreadyCity: return "This camp is already a city.";
+                case UpgradeInProgress: return "This camp is already being raised to a city.";
+                case NotASite: return "There is no unfinished site there.";
+                default: return code;
+            }
+        }
+
+        public static CommandResult Reject(string code, params string[] args) => CommandResult.Reject(code, Sentence(code, args));
+    }
+
+    internal sealed class PlaceBuildingHandler : CommandHandler<PlaceBuilding>
+    {
+        protected override CommandResult Validate(WorldState s, PlaceBuilding c) => EconomyApi.CheckBuilding(s, c.PlayerId, c.Type, c.Plot);
+
+        protected override CommandResult Apply(WorldState s, PlaceBuilding c, EventBuffer ev)
+        {
+            EconomyLogic.PlaceBuildingSite(s, c.PlayerId, c.Type, c.Plot, ev);
             return CommandResult.Accept();
         }
     }
 
     internal sealed class PlaceRoadHandler : CommandHandler<PlaceRoad>
     {
-        protected override CommandResult Validate(WorldState s, PlaceRoad c)
-        {
-            var p = Guard.Player(c);
-            if (!p.Ok) return p;
-            var topo = s.Board.Topology;
-            if (c.Edge < 0 || c.Edge >= topo.EdgeCount)
-                return CommandResult.Reject(EconomyRefusals.BadPlace, "That is not a road place on the map.");
-            if (s.Economy.Roads[c.Edge])
-                return CommandResult.Reject(EconomyRefusals.RoadExists, "There is already a road there.");
-            int a = topo.EdgeVertexA(c.Edge), b = topo.EdgeVertexB(c.Edge);
-            if (!EconomyLogic.OnNetwork(s, c.PlayerId, a) && !EconomyLogic.OnNetwork(s, c.PlayerId, b))
-                return CommandResult.Reject(EconomyRefusals.NotConnected, "A road must connect to your roads, city or buildings.");
-            var cost = EconomyLogic.RoadCostFor(s, 1);
-            if (!EconomyLogic.CanPay(EconomyLogic.Storehouse(s), cost))
-                return CommandResult.Reject(EconomyRefusals.NotEnoughWares,
-                    "A road needs " + EconomyLogic.CostText(cost) + " in the storehouse (it pays for "
-                    + s.Economy.Tuning.RoadSegmentsPerCost + " segments).");
-            return CommandResult.Accept();
-        }
+        protected override CommandResult Validate(WorldState s, PlaceRoad c) => EconomyApi.CheckRoad(s, c.PlayerId, c.HexEdge);
 
         protected override CommandResult Apply(WorldState s, PlaceRoad c, EventBuffer ev)
         {
-            EconomyLogic.PayRoadSegment(s);
-            s.Economy.Roads[c.Edge] = true;
-            ev.Add(new RoadPlaced { Edge = c.Edge, PlayerId = c.PlayerId });
+            EconomyLogic.PlaceRoadSite(s, c.PlayerId, c.HexEdge, ev);
             return CommandResult.Accept();
         }
     }
 
-    internal sealed class RemoveRoadHandler : CommandHandler<RemoveRoad>
+    internal sealed class FoundSettlementHandler : CommandHandler<FoundSettlement>
     {
-        protected override CommandResult Validate(WorldState s, RemoveRoad c)
-        {
-            var p = Guard.Player(c);
-            if (!p.Ok) return p;
-            if (c.Edge < 0 || c.Edge >= s.Economy.Roads.Length || !s.Economy.Roads[c.Edge])
-                return CommandResult.Reject(EconomyRefusals.NoRoadHere, "There is no road there to remove.");
-            return CommandResult.Accept();
-        }
+        protected override CommandResult Validate(WorldState s, FoundSettlement c) => EconomyApi.CheckSettlement(s, c.PlayerId, c.Corner);
 
-        protected override CommandResult Apply(WorldState s, RemoveRoad c, EventBuffer ev)
+        protected override CommandResult Apply(WorldState s, FoundSettlement c, EventBuffer ev)
         {
-            s.Economy.Roads[c.Edge] = false;
-            ev.Add(new RoadRemoved { Edge = c.Edge, PlayerId = c.PlayerId });
+            EconomyLogic.PlaceSettlementSite(s, c.PlayerId, c.Corner, ev);
             return CommandResult.Accept();
         }
     }
 
-    internal sealed class PlaceBuildingHandler : CommandHandler<PlaceBuilding>
+    internal sealed class UpgradeCityHandler : CommandHandler<UpgradeCity>
     {
-        protected override CommandResult Validate(WorldState s, PlaceBuilding c) =>
-            EconomyLogic.CheckPlacement(s, c.PlayerId, c.Type, c.Vertex);
+        protected override CommandResult Validate(WorldState s, UpgradeCity c) => EconomyApi.CheckCity(s, c.PlayerId, c.Corner);
 
-        protected override CommandResult Apply(WorldState s, PlaceBuilding c, EventBuffer ev)
+        protected override CommandResult Apply(WorldState s, UpgradeCity c, EventBuffer ev)
         {
-            var b = EconomyLogic.AddBuilding(s, c.Type, c.PlayerId, c.Vertex, BuildingState.Site);
-            ev.Add(new SitePlaced { BuildingId = b.Id, Type = b.Type, Vertex = b.Vertex });
+            EconomyLogic.PlaceCitySite(s, c.PlayerId, c.Corner, ev);
             return CommandResult.Accept();
         }
     }
 
     internal sealed class CancelSiteHandler : CommandHandler<CancelSite>
     {
-        protected override CommandResult Validate(WorldState s, CancelSite c)
-        {
-            var r = Guard.Own(s, c, c.BuildingId, out var b);
-            if (!r.Ok) return r;
-            if (b.State != BuildingState.Site && b.State != BuildingState.Constructing)
-                return CommandResult.Reject(EconomyRefusals.NotASite, "Only construction sites can be cancelled.");
-            return CommandResult.Accept();
-        }
+        protected override CommandResult Validate(WorldState s, CancelSite c) => EconomyLogic.CheckCancel(s, c.PlayerId, c.Kind, c.Id);
 
         protected override CommandResult Apply(WorldState s, CancelSite c, EventBuffer ev)
         {
-            EconomyLogic.CancelSite(s, s.Economy.Buildings[c.BuildingId], ev);
-            return CommandResult.Accept();
-        }
-    }
-
-    internal sealed class SetPriorityHandler : CommandHandler<SetPriority>
-    {
-        protected override CommandResult Validate(WorldState s, SetPriority c)
-        {
-            var r = Guard.Own(s, c, c.BuildingId, out _);
-            if (!r.Ok) return r;
-            if (c.Priority < Priority.Low || c.Priority > Priority.High)
-                return CommandResult.Reject(EconomyRefusals.BadPlace, "That is not a priority.");
-            return CommandResult.Accept();
-        }
-
-        protected override CommandResult Apply(WorldState s, SetPriority c, EventBuffer ev)
-        {
-            s.Economy.Buildings[c.BuildingId].Priority = c.Priority;
-            return CommandResult.Accept();
-        }
-    }
-
-    internal sealed class ToggleBuildingHandler : CommandHandler<ToggleBuilding>
-    {
-        protected override CommandResult Validate(WorldState s, ToggleBuilding c)
-        {
-            var r = Guard.Own(s, c, c.BuildingId, out var b);
-            if (!r.Ok) return r;
-            if (EconomyLogic.Def(s, b).Kind == BuildingKind.Store)
-                return CommandResult.Reject(EconomyRefusals.NotToggleable, "The storehouse cannot be switched off.");
-            return CommandResult.Accept();
-        }
-
-        protected override CommandResult Apply(WorldState s, ToggleBuilding c, EventBuffer ev)
-        {
-            var b = s.Economy.Buildings[c.BuildingId];
-            if (b.Enabled == c.Enabled) return CommandResult.Accept();
-            b.Enabled = c.Enabled;
-            ev.Add(new BuildingStateChanged { BuildingId = b.Id, State = b.State, Enabled = b.Enabled, Reason = b.Reason, ReasonWare = b.ReasonWare });
-            return CommandResult.Accept();
-        }
-    }
-
-    internal sealed class EndRoundHandler : CommandHandler<EndRound>
-    {
-        private readonly EconomyHooks _hooks;
-        public EndRoundHandler(EconomyHooks hooks) { _hooks = hooks; }
-
-        protected override CommandResult Validate(WorldState s, EndRound c)
-        {
-            var p = Guard.Player(c);
-            if (!p.Ok) return p;
-            if (s.Economy.RoundStartPending)
-                return CommandResult.Reject(EconomyRefusals.RoundStarting, "The new round is still starting.");
-            long left = EconomyLogic.BellTicksLeft(s);
-            if (left > 0)
-                return CommandResult.Reject(EconomyRefusals.RoundTooSoon,
-                    "The harvest season is still on: the bell can ring in " + ((left + 9) / 10) + " s.");
-            foreach (var g in _hooks.EndRoundGuards)
-            {
-                var r = g(s);
-                if (!r.Ok) return r;
-            }
-            return CommandResult.Accept();
-        }
-
-        protected override CommandResult Apply(WorldState s, EndRound c, EventBuffer ev)
-        {
-            foreach (var a in _hooks.OnRoundEnding) a(s, ev);
-            s.Economy.Round++;
-            s.Economy.RoundStartPending = true;
+            EconomyLogic.Cancel(s, c.Kind, c.Id, ev);
             return CommandResult.Accept();
         }
     }

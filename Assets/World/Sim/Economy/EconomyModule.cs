@@ -1,108 +1,69 @@
 namespace World.Sim.Economy
 {
     /// <summary>
-    /// Entry point of the Economy module. Owned by the Economy agent; Core never changes for it.
-    /// InitState adds this module's starting data to WorldState (fields declared in a
-    /// partial WorldState file in this folder). Register adds systems (with SystemOrder slots)
-    /// and command handlers to the sim. Called by WorldSimFactory.CreateNew.
+    /// Entry point of the Economy module (REFACTOR_SPEC A.4). InitState builds the starting economy; Register adds
+    /// systems and command handlers (also on a sim built around a loaded state).
     /// </summary>
     public static class EconomyModule
     {
-        /// <summary>Adds systems and handlers. Also call it on a sim built around a loaded WorldState.</summary>
         public static void Register(WorldSim sim)
         {
             var hooks = EconomyApi.Hooks(sim);
-            sim.AddSystem(SystemOrder.Rounds, new RoundSystem(hooks));
-            sim.AddSystem(SystemOrder.Harvest, new HarvestSystem(hooks));
-            sim.AddSystem(SystemOrder.Production, new ProductionSystem(hooks));
-            sim.AddSystem(SystemOrder.Construction, new ConstructionSystem());
+            sim.AddSystem(SystemOrder.Dice, new DiceSystem(hooks));
+            sim.AddSystem(SystemOrder.Growth, new GrowthSystem());
+            sim.AddSystem(SystemOrder.Collect, new CollectSystem(hooks));
+            sim.AddSystem(SystemOrder.Production, new ProductionSystem());
+            sim.AddSystem(SystemOrder.Construction, new ConstructionSystem(hooks));
             sim.AddSystem(SystemOrder.Jobs, new JobSystem(hooks));
-            sim.AddSystem(SystemOrder.Carriers, new CarrierSystem(hooks));
-            sim.AddSystem(SystemOrder.Power, new PowerSystem(hooks));
-            sim.AddSystem(SystemOrder.Diagnostics, new DiagnosticsSystem(hooks));
-            sim.RegisterHandler(new PlaceRoadHandler());
-            sim.RegisterHandler(new RemoveRoadHandler());
+            sim.AddSystem(SystemOrder.Carriers, new CarrierSystem());
             sim.RegisterHandler(new PlaceBuildingHandler());
+            sim.RegisterHandler(new PlaceRoadHandler());
+            sim.RegisterHandler(new FoundSettlementHandler());
+            sim.RegisterHandler(new UpgradeCityHandler());
             sim.RegisterHandler(new CancelSiteHandler());
-            sim.RegisterHandler(new SetPriorityHandler());
-            sim.RegisterHandler(new ToggleBuildingHandler());
-            sim.RegisterHandler(new EndRoundHandler(hooks));
         }
 
         /// <summary>
-        /// Starting economy: home city and storehouse (starter stock), carriers at the storehouse, a
-        /// 2-segment demonstration road from the storehouse along a home hex edge bordering the forest, a Forester site at
-        /// its end, and that site's first Planks already on a carrier walking the first edge at tick 0.
+        /// Starting economy: dice deck and first roll tick, hex stock (StartMature mature units on every hex next to a
+        /// starting settlement), one active settlement per people on Board.StartCorners with StartStock, StartCarriers
+        /// carriers and a primitive collector on slot 0 of each resource sector.
         /// </summary>
         public static void InitState(WorldState s)
         {
             var topo = s.Board.Topology;
             var e = new EconomyState();
             s.Economy = e;
-            e.RoundRng = s.Rng.Fork("economy.rounds");
-            e.HexBatchRound = new int[topo.HexCount];
-            e.HexBatchRemaining = new int[topo.HexCount];
-            e.HexStopped = new bool[topo.HexCount];
-            e.Roads = new bool[topo.EdgeCount];
+            var tu = e.Tuning;
 
-            int home = s.Board.HomeCityVertex;
-            e.Cities.Add(new City { Id = 0, Owner = PlayerIds.Human, Vertex = home });
+            e.Dice.Rng = s.Rng.Fork("economy.dice");
+            e.Dice.Deck = DiceSystem.NewDeck(e.Dice.Rng);
+            e.Dice.NextRollTick = tu.FirstRollTick;
 
-            var store = EconomyLogic.AddBuilding(s, BuildingType.Storehouse, PlayerIds.Human, s.Board.StorehouseVertex, BuildingState.Active);
-            e.StorehouseId = store.Id;
-            for (int w = 0; w < Wares.Count; w++) store.Stock[w] = e.Tuning.StarterStock[w];
+            e.Hexes = new HexStock[topo.HexCount];
+            for (int h = 0; h < topo.HexCount; h++) e.Hexes[h] = new HexStock { Hex = h };
+            e.RoadOnEdge = new int[topo.HexEdgeCount];
+            for (int i = 0; i < e.RoadOnEdge.Length; i++) e.RoadOnEdge[i] = -1;
 
-            for (int i = 0; i < e.Tuning.Carriers; i++)
-                e.Carriers.Add(new Carrier { Id = i, State = CarrierState.Idle, AtVertex = store.Vertex });
-
-            // Demonstration road: storehouse -> A -> B, two segments along a home hex edge that borders the
-            // home forest (lowest hex edge id first, avoiding the warehouse flag). B touches the forest.
-            int a = -1, b = -1;
-            if (topo.IsCorner(store.Vertex))
+            var starts = s.Board.StartCorners ?? new int[0];
+            var stocked = new bool[topo.HexCount];
+            for (int f = 0; f < starts.Length && f < PlayerIds.Count; f++)
             {
-                foreach (int he in topo.CornerHexEdges(store.Vertex))
+                int corner = starts[f];
+                if (!PlotLayout.IsSettlementCorner(topo, corner)) continue;
+                var st = EconomyLogic.AddSettlement(s, f, corner, SettlementState.Active);
+                for (int w = 0; w < Wares.Count; w++) st.Stock[w] = tu.StartStock[w];
+                EconomyLogic.FurnishSettlement(s, st, tu.StartCarriers);
+                foreach (int h in topo.VertexHexes(corner))
                 {
-                    var flags = topo.HexEdgeFlags(he);
-                    bool fromA = flags[0] == store.Vertex;
-                    int fa = fromA ? flags[1] : flags[2], fb = fromA ? flags[2] : flags[1];
-                    if (fa == s.Board.WarehouseVertex || fb == s.Board.WarehouseVertex) continue;
-                    bool forest = false;
-                    foreach (int h in topo.VertexHexes(fb)) if (s.Board.HexTerrain[h] == Terrain.Forest) forest = true;
-                    if (!forest) continue;
-                    a = fa;
-                    b = fb;
-                    break;
-                }
-            }
-            if (a >= 0)
-            {
-                e.DemoVertexA = a;
-                e.DemoVertexB = b;
-                e.Roads[topo.EdgeBetween(store.Vertex, a)] = true;
-                e.Roads[topo.EdgeBetween(a, b)] = true;
-
-                var site = EconomyLogic.AddBuilding(s, BuildingType.Forester, PlayerIds.Human, b, BuildingState.Site);
-                if (e.Tuning.Def(BuildingType.Forester).Cost[(int)Ware.Planks] > 0 && store.Stock[(int)Ware.Planks] > 0 && e.Carriers.Count > 0)
-                {
-                    var job = EconomyLogic.CreateJob(s, null, Ware.Planks, store, site);
-                    var c = e.Carriers[0];
-                    store.Stock[(int)Ware.Planks]--;
-                    store.Reserved[(int)Ware.Planks]--;
-                    job.State = JobState.Carrying;
-                    job.CarrierId = c.Id;
-                    c.JobId = job.Id;
-                    c.State = CarrierState.Carrying;
-                    c.HasLoad = true;
-                    c.Load = Ware.Planks;
-                    c.FromVertex = store.Vertex;
-                    c.ToVertex = a;
-                    c.CurrentEdge = topo.EdgeBetween(store.Vertex, a);
-                    c.Progress = 0;
+                    var ware = TerrainInfo.RawWare(s.Board.HexTerrain[h]);
+                    if (ware == null || stocked[h]) continue;
+                    stocked[h] = true;
+                    e.Hexes[h].Mature = tu.StartMature;
+                    e.Ledger.StockAdded[(int)ware.Value] += tu.StartMature;
                 }
             }
 
-            e.Ledger.Starting = EconomyApi.WaresInWorld(s);
-            EconomyLogic.UpdateDiagnostics(s, null, null, null);
+            e.Ledger.Starting = EconomyLogic.WaresInWorld(s);
         }
     }
 }

@@ -2,7 +2,7 @@ namespace World.Sim
 {
     public sealed partial class WorldState
     {
-        /// <summary>Road economy: stores, roads, buildings, carriers, jobs, rounds and batches.</summary>
+        /// <summary>Dice, hex stock, settlements, plots, buildings, roads, logistics and warriors.</summary>
         public Economy.EconomyState Economy;
     }
 }

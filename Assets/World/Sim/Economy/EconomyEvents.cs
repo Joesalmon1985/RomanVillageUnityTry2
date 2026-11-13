@@ -1,62 +1,86 @@
 namespace World.Sim.Economy
 {
-    // Events for views. Plain public fields; Tick is stamped by EventBuffer.
+    // Economy events (REFACTOR_SPEC 5.3). Plain public fields; Tick is stamped by EventBuffer.
 
-    public sealed class RoadPlaced : SimEvent { public int Edge; public int PlayerId; }
+    public sealed class DiceRolled : SimEvent { public int D1; public int D2; public int Sum; public int RollIndex; }
 
-    public sealed class RoadRemoved : SimEvent { public int Edge; public int PlayerId; }
+    public sealed class StockAdded : SimEvent { public int Hex; public Ware Ware; public int Count; public long MatureTick; }
 
-    public sealed class SitePlaced : SimEvent { public int BuildingId; public BuildingType Type; public int Vertex; }
+    /// <summary>Units of a batch that did not fit under the hex cap.</summary>
+    public sealed class StockLost : SimEvent { public int Hex; public Ware Ware; public int Count; }
 
-    /// <summary>A site finished building and is now Active.</summary>
-    public sealed class SiteCompleted : SimEvent { public int BuildingId; public BuildingType Type; public int Vertex; }
+    public sealed class StockMatured : SimEvent { public int Hex; public Ware Ware; public int Count; }
 
-    /// <summary>A site was cancelled; its delivered wares went back to the storehouse.</summary>
-    public sealed class SiteCancelled : SimEvent { public int BuildingId; public BuildingType Type; public int Vertex; }
+    public sealed class CollectStarted : SimEvent { public int BuildingId; public int Hex; }
 
-    /// <summary>Lifecycle state, enabled flag or stall reason of a building changed.</summary>
+    public sealed class Collected : SimEvent { public int BuildingId; public int Hex; public Ware Ware; public int Amount; }
+
+    public sealed class ProductionStarted : SimEvent { public int BuildingId; }
+
+    public sealed class ProductionCycle : SimEvent { public int BuildingId; public Ware Ware; public int Amount; }
+
+    public sealed class SitePlaced : SimEvent { public SiteKind Kind; public int Id; public int Faction; }
+
+    public sealed class SiteCompleted : SimEvent { public SiteKind Kind; public int Id; public int Faction; }
+
+    public sealed class SiteCancelled : SimEvent { public SiteKind Kind; public int Id; public int Faction; }
+
     public sealed class BuildingStateChanged : SimEvent
     {
         public int BuildingId;
         public BuildingState State;
-        public bool Enabled;
-        /// <summary>Reason code or null.</summary>
+        /// <summary>Stall reason code or null.</summary>
         public string Reason;
         public int ReasonWare = -1;
     }
 
-    public sealed class JobCreated : SimEvent { public int JobId; public Ware Ware; public int SourceId; public int DestId; }
+    public sealed class BuildingRetired : SimEvent { public int BuildingId; }
 
-    public sealed class WarePickedUp : SimEvent { public int JobId; public int CarrierId; public Ware Ware; public int BuildingId; }
+    public sealed class SettlementFounded : SimEvent { public int SettlementId; public int Corner; public int Faction; }
 
-    /// <summary>A shipment arrived and was credited to BuildingId (once per job).</summary>
-    public sealed class WareDelivered : SimEvent { public int JobId; public int CarrierId; public Ware Ware; public int BuildingId; }
+    public sealed class CityUpgraded : SimEvent { public int SettlementId; public int Corner; public int Faction; }
+
+    public sealed class RoadBuilt : SimEvent { public int RoadId; public int HexEdge; public int Faction; }
+
+    public sealed class JobCreated : SimEvent
+    {
+        public int JobId;
+        public Ware Ware;
+        public int Count;
+        public PlaceKind FromKind;
+        public int FromId;
+        public PlaceKind ToKind;
+        public int ToId;
+        public bool IsShipment;
+    }
+
+    public sealed class CarrierLegStarted : SimEvent
+    {
+        public int CarrierId;
+        public PlaceKind FromKind;
+        public int FromId;
+        public PlaceKind ToKind;
+        public int ToId;
+        public int LegTicks;
+    }
+
+    public sealed class WarePickedUp : SimEvent { public int JobId; public int CarrierId; public Ware Ware; public int Count; }
+
+    public sealed class WareDelivered : SimEvent
+    {
+        public int JobId;
+        public int CarrierId;
+        public Ware Ware;
+        public int Count;
+        public PlaceKind ToKind;
+        public int ToId;
+    }
 
     public sealed class JobStalled : SimEvent { public int JobId; public string Reason; }
 
-    public sealed class JobResumed : SimEvent { public int JobId; }
+    public sealed class WarriorTrained : SimEvent { public int WarriorId; public int Lodge; public int Faction; }
 
-    /// <summary>A job stalled on its route before pickup was dropped; its wares are free again and demand re-creates it.</summary>
-    public sealed class JobReleased : SimEvent { public int JobId; public string Reason; }
+    public sealed class WarriorFed : SimEvent { public int WarriorId; public Ware Ware; }
 
-    /// <summary>A harvester finished one batch unit: Amount units of Ware (Woodcutter 2, others 1) appeared in its store.</summary>
-    public sealed class HarvestCycle : SimEvent { public int BuildingId; public int Hex; public Ware Ware; public int Amount = 1; }
-
-    /// <summary>A recipe finished: Amount units of Output appeared in the building's store.</summary>
-    public sealed class ProductionCycle : SimEvent { public int BuildingId; public Ware Output; public int Amount; }
-
-    /// <summary>A recipe cycle began: the building used up one cycle of its inputs (see its BuildingDef.Inputs).</summary>
-    public sealed class ProductionStarted : SimEvent { public int BuildingId; }
-
-    /// <summary>A harvester with an upkeep (the Mine) used up Amount of Ware, paying for the next Cycles harvest cycles.</summary>
-    public sealed class UpkeepPaid : SimEvent { public int BuildingId; public Ware Ware; public int Amount; public int Cycles; }
-
-    /// <summary>A power plant burned fuel (it now supplies power for FuelTicks).</summary>
-    public sealed class FuelBurned : SimEvent { public int BuildingId; public Ware Ware; public int Amount; }
-
-    public sealed class RoundStarted : SimEvent { public int Round; public int[] Numbers; }
-
-    public sealed class BatchAuthorised : SimEvent { public int Hex; public Ware Ware; public int Amount; }
-
-    public sealed class CommissionCompleted : SimEvent { }
+    public sealed class WarriorHungry : SimEvent { public int WarriorId; }
 }

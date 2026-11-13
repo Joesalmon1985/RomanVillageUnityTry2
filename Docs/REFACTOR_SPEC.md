@@ -778,7 +778,20 @@ Proposal target points and press areas: Building: plot centre, radius 5. Road: h
 
 ### A.5 API change log
 
-(Empty. S appends here: date, old name, new name, why.)
+(S appends here: date, old name, new name, why.)
+
+**13 Nov 2026, S-0 (surface landed; pinned by `ApiSurfaceTests`).** No name of A.1-A.4 was renamed or removed. Additions and clarifications:
+
+1. `BuildingState.Cancelled = 5`, `SettlementState.Cancelled = 2`, `RoadState.Cancelled = 3` (new members, appended). Why: `CancelSite` must keep ids stable (list index = id) and free the plot, corner or edge; the enums had no state for a cancelled site. A cancelled road no longer appears in `RoadOnEdge`; `EconomyApi.SettlementAt` and `RoadOn` ignore cancelled sites; `EconomyApi.Settlements` lists every id, so callers check `State`.
+2. `SiteKind.City`: the site id is the settlement id (`SitePlaced`, `SiteCompleted`, `SiteCancelled`, `CancelSite`, `WaitingSentence`).
+3. `EconomyHooks` signatures: `IsCornerBlocked`, `IsEdgeBlocked`, `IsSettlementHalted` are `List<Func<WorldState, int, bool>>`; `OnRolled` is `List<Action<WorldState, EventBuffer, int d1, int d2>>`; `OnSiteCompleted` is `List<Action<WorldState, EventBuffer, SiteKind, int id>>`. Get them with `EconomyApi.Hooks(WorldSim)` (as before the refactor).
+4. `Proposal.Key` is a get-only property marked `[JsonIgnore]` (not saved); `Proposal.MakeKey(...)` builds the same text. Ints throughout, e.g. the opening on the default board is `"0|5|631|-1|-1|0|-1"`. Fields that do not apply are -1 (`DemonSiteKind` then holds `Corner` = 0).
+5. `BuildingDefs.PrimitiveFor` / `ImprovedFor` return `(BuildingType)(-1)` for Meadow; `BuildingDefs.Get` returns null for an id out of range (no exceptions).
+6. `GameOutcome` is from the player's side (Victory = your people won), also in `GameEnded`.
+7. `WareLedger.StockAdded/StockLost/StockTaken` are indexed by ware id with length `Wares.Count` (only raw wares are ever non-zero); `RecipeIn/RecipeOut` are `int[16][10]`. Starting hex stock (`StartMature`) counts as `StockAdded`.
+8. `PlaceRoad` with a hex edge id out of range is refused with `not_connected` (5.2 has no "unknown edge" code).
+9. `PlayerState.Name` is "Your people" / "the Ash Clan".
+10. Helpers added (public, free to use): `SystemOrder.Dice/Growth/Collect/Brain/Strength` (100/150/200/1150/1200; the older slot names stay); `TerrainInfo.Count`, `DisplayName(Terrain)`, `IsMined(Terrain)`; `PlotLayout.PlotCount`, `IsValidPlot`, `Yaw(dx, dz)`, `SideSlotSpoke`, `CitySlotSpoke`, `SideOffset`; `BuildingDefs.IsValid`, `BuildingDef.IsCollector`; `EconomyTuning.GrowFor(Terrain)`; `EconomyApi.CornerTerrains(s, corner)`; `EconomyRefusals.Sentence/Reject`, `FactionRefusals.Sentence/Reject`, `DemonRefusals.Sentence/Reject`; `DemonApi.Effect(kind)`; `FactionApi.PlotPressRadius/CornerPressRadius/RoadStripHalfWidth/RoadPressRadius`; `BoardGenerator.NumberPool`, `MountainNumbers`, `StartForestNumber/StartHillsNumber/StartFieldsNumber`.
 
 ---
 

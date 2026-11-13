@@ -1,50 +1,48 @@
 namespace World.Sim
 {
     /// <summary>
-    /// Carried goods (ECONOMY_DESIGN section 3). The first five are the raw resources, one per resource
-    /// terrain; the rest are made from them. Coin is NOT a ware: it is <see cref="PlayerState.Coin"/>.
+    /// Carried goods (REFACTOR_SPEC 3.1). Ids 0-4 are the raw goods, one per resource terrain (collected from hex
+    /// stock); 5-9 are worked goods made in workshops. Id 10 is reserved for Ore (a later age). Coin is NOT a
+    /// ware: it is <see cref="PlayerState.Coin"/> (unused).
     /// </summary>
     public enum Ware
     {
-        // Raw (harvested from authorised batches).
-        Logs = 0,
+        // Raw (collected from hex stock).
+        Wood = 0,
         Clay = 1,
-        Wheat = 2,
+        Grain = 2,
         Sheep = 3,
-        Ore = 4,
-        // Processed.
+        Stone = 4,
+        // Worked.
         Planks = 5,
-        Coal = 6,
-        Bricks = 7,
-        Flour = 8,
-        Bread = 9,
-        Meat = 10,
-        Rations = 11,
-        Iron = 12,
-        Weapons = 13,
+        Bricks = 6,
+        Bread = 7,
+        Meat = 8,
+        CutStone = 9,
+        // 10 = Ore, reserved for a later age.
     }
 
     public static class Wares
     {
-        public const int Count = 14;
+        public const int Count = 10;
 
         /// <summary>Number of raw wares (ids 0..RawCount-1).</summary>
         public const int RawCount = 5;
 
         public static readonly Ware[] All =
         {
-            Ware.Logs, Ware.Clay, Ware.Wheat, Ware.Sheep, Ware.Ore,
-            Ware.Planks, Ware.Coal, Ware.Bricks, Ware.Flour, Ware.Bread, Ware.Meat, Ware.Rations, Ware.Iron, Ware.Weapons,
+            Ware.Wood, Ware.Clay, Ware.Grain, Ware.Sheep, Ware.Stone,
+            Ware.Planks, Ware.Bricks, Ware.Bread, Ware.Meat, Ware.CutStone,
         };
 
-        public static readonly Ware[] Raw = { Ware.Logs, Ware.Clay, Ware.Wheat, Ware.Sheep, Ware.Ore };
+        public static readonly Ware[] Raw = { Ware.Wood, Ware.Clay, Ware.Grain, Ware.Sheep, Ware.Stone };
 
-        public static bool IsRaw(Ware w) => (int)w < RawCount;
+        public static bool IsRaw(Ware w) => (int)w >= 0 && (int)w < RawCount;
 
-        /// <summary>Lower-case name used inside sentences ("logs", "bricks").</summary>
-        public static string DisplayName(Ware w) => w.ToString().ToLowerInvariant();
+        /// <summary>Lower-case name used inside sentences ("wood", "cut stone").</summary>
+        public static string DisplayName(Ware w) => w == Ware.CutStone ? "cut stone" : w.ToString().ToLowerInvariant();
 
-        /// <summary>Capitalised name for labels and headings ("Logs", "Bricks").</summary>
-        public static string Title(Ware w) => w.ToString();
+        /// <summary>Capitalised name for labels and headings ("Wood", "Cut stone").</summary>
+        public static string Title(Ware w) => w == Ware.CutStone ? "Cut stone" : w.ToString();
     }
 }

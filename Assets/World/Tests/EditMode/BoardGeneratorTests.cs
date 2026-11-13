@@ -32,16 +32,24 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void HomeCity_CornerNearCentre_TouchingForestHillsFields([ValueSource(nameof(Seeds))] ulong seed)
+        public void StartCorners_70And97_ForestHillsFields_FixedNumbers([ValueSource(nameof(Seeds))] ulong seed)
         {
             var b = BoardGenerator.CreateMvpBoard(seed);
             var t = b.Topology;
-            Assert.IsTrue(t.IsCorner(b.HomeCityVertex));
-            var hexes = t.VertexHexes(b.HomeCityVertex);
-            Assert.AreEqual(3, hexes.Count, "interior corner");
-            CollectionAssert.AreEquivalent(new[] { Terrain.Forest, Terrain.Hills, Terrain.Fields }, hexes.Select(h => b.HexTerrain[h]).ToArray());
-            Assert.AreEqual(3, hexes.Select(h => b.HexNumber[h]).Distinct().Count(), "home hexes have distinct numbers");
-            double r = System.Math.Sqrt(t.VertexX(b.HomeCityVertex) * t.VertexX(b.HomeCityVertex) + t.VertexZ(b.HomeCityVertex) * t.VertexZ(b.HomeCityVertex));
+            CollectionAssert.AreEqual(new[] { 70, 97 }, b.StartCorners);
+            foreach (int c in b.StartCorners)
+            {
+                var hexes = t.VertexHexes(c);
+                Assert.AreEqual(3, hexes.Count, "interior corner");
+                CollectionAssert.AreEquivalent(new[] { Terrain.Forest, Terrain.Hills, Terrain.Fields }, hexes.Select(h => b.HexTerrain[h]).ToArray());
+                foreach (int h in hexes)
+                {
+                    int expected = b.HexTerrain[h] == Terrain.Forest ? 6 : b.HexTerrain[h] == Terrain.Hills ? 8 : 5;
+                    Assert.AreEqual(expected, b.HexNumber[h], "start hex " + h + " " + b.HexTerrain[h]);
+                }
+            }
+            int home = b.StartCorners[0];
+            double r = System.Math.Sqrt(t.VertexX(home) * t.VertexX(home) + t.VertexZ(home) * t.VertexZ(home));
             Assert.LessOrEqual(r, BoardTopology.HexEdgeLength + 1e-9, "home corner is a corner of the centre hex");
         }
 
@@ -49,8 +57,8 @@ namespace World.Sim.Tests
         public void WithinTwoHexEdgesOfHome_MoreForestHillsFieldsAndPasture()
         {
             var b = BoardGenerator.CreateMvpBoard(7);
-            var home = b.Topology.VertexHexes(b.HomeCityVertex);
-            var near = HexesWithin(b, b.HomeCityVertex, 2).Where(h => !home.Contains(h)).Select(h => b.HexTerrain[h]).ToList();
+            var home = b.Topology.VertexHexes(b.StartCorners[0]);
+            var near = HexesWithin(b, b.StartCorners[0], 2).Where(h => !home.Contains(h)).Select(h => b.HexTerrain[h]).ToList();
             foreach (var terr in new[] { Terrain.Forest, Terrain.Hills, Terrain.Fields, Terrain.Pasture })
                 CollectionAssert.Contains(near, terr, terr + " within two hex edges of home");
         }
@@ -79,63 +87,62 @@ namespace World.Sim.Tests
             Assert.GreaterOrEqual(seen.Count, 4, "mountain range");
             // No flag of the home territory (4 segments) touches a Mountain.
             for (int v = 0; v < t.VertexCount; v++)
-                if (t.Distance(b.HomeCityVertex, v) <= 4)
+                if (t.Distance(b.StartCorners[0], v) <= 4)
                     Assert.IsFalse(Terrains(b, v).Contains(Terrain.Mountain), "home territory flag " + v + " touches a mountain");
             // At least two good city corners 2-3 hex edges from home touch the range.
             var sites = t.Corners.Where(v =>
             {
-                int d = t.CornerDistance(b.HomeCityVertex, v);
+                int d = t.CornerDistance(b.StartCorners[0], v);
                 return d >= 2 && d <= 3 && t.VertexHexes(v).Count == 3 && Terrains(b, v).Contains(Terrain.Mountain)
                     && Terrains(b, v).Where(x => x != Terrain.Meadow).Distinct().Count() >= 2;
             }).ToList();
             Assert.GreaterOrEqual(sites.Count, 2, "mountain city corners 2-3 hex edges from home");
-            Assert.IsTrue(sites.Any(v => b.SuggestedCitySites.Contains(v)), "one of them is suggested");
+            Assert.IsTrue(sites.Any(v => b.SuggestedSettlementCorners.Contains(v)), "one of them is suggested");
         }
 
         [Test]
-        public void RivalOutpost_FourToFiveHexEdgesAway_WithItsOwnForestHillsFields()
+        public void RivalStart_FourToFiveHexEdgesAway_WithItsOwnForestHillsFields()
         {
             var b = BoardGenerator.CreateMvpBoard(5);
             var t = b.Topology;
-            int d = t.CornerDistance(b.HomeCityVertex, b.RivalOutpostVertex);
+            int d = t.CornerDistance(b.StartCorners[0], b.StartCorners[1]);
             Assert.That(d >= 4 && d <= 5, "distance " + d);
-            CollectionAssert.AreEquivalent(new[] { Terrain.Forest, Terrain.Hills, Terrain.Fields }, Terrains(b, b.RivalOutpostVertex).ToArray());
-            Assert.IsEmpty(t.VertexHexes(b.RivalOutpostVertex).Intersect(t.VertexHexes(b.HomeCityVertex)), "its own hexes");
+            CollectionAssert.AreEquivalent(new[] { Terrain.Forest, Terrain.Hills, Terrain.Fields }, Terrains(b, b.StartCorners[1]).ToArray());
+            Assert.IsEmpty(t.VertexHexes(b.StartCorners[1]).Intersect(t.VertexHexes(b.StartCorners[0])), "its own hexes");
         }
 
         [Test]
-        public void SuggestedCitySites_EightOrMore_LegalSeparatedMixed()
+        public void SuggestedSettlementCorners_EightOrMore_LegalSeparatedMixed()
         {
             var b = BoardGenerator.CreateMvpBoard(9);
             var t = b.Topology;
-            var s = b.SuggestedCitySites;
+            var s = b.SuggestedSettlementCorners;
             Assert.GreaterOrEqual(s.Length, 8);
             Assert.AreEqual(s.Length, s.Distinct().Count());
             foreach (int v in s)
             {
                 Assert.IsTrue(t.IsCorner(v));
                 Assert.AreEqual(3, t.VertexHexes(v).Count, "interior");
-                Assert.GreaterOrEqual(t.CornerDistance(v, b.HomeCityVertex), 2, "not next to home");
-                Assert.GreaterOrEqual(t.CornerDistance(v, b.RivalOutpostVertex), BoardGenerator.SuggestedSiteSpacing);
+                Assert.GreaterOrEqual(t.CornerDistance(v, b.StartCorners[0]), 2, "not next to home");
+                Assert.GreaterOrEqual(t.CornerDistance(v, b.StartCorners[1]), BoardGenerator.SuggestedSiteSpacing);
                 Assert.GreaterOrEqual(Terrains(b, v).Where(x => x != Terrain.Meadow).Distinct().Count(), 2, "mixed economy at " + v);
                 foreach (int w in s) if (w != v) Assert.GreaterOrEqual(t.CornerDistance(v, w), BoardGenerator.SuggestedSiteSpacing);
             }
             for (int i = 1; i < s.Length; i++)
-                Assert.LessOrEqual(t.CornerDistance(b.HomeCityVertex, s[i - 1]), t.CornerDistance(b.HomeCityVertex, s[i]), "nearest first");
-            Assert.IsTrue(s.Any(v => t.CornerDistance(b.HomeCityVertex, v) <= 3), "a second city site close to home");
+                Assert.LessOrEqual(t.CornerDistance(b.StartCorners[0], s[i - 1]), t.CornerDistance(b.StartCorners[0], s[i]), "nearest first");
+            Assert.IsTrue(s.Any(v => t.CornerDistance(b.StartCorners[0], v) <= 3), "a second city site close to home");
         }
 
         [Test]
-        public void WarehouseFlag_BesideTheSquare()
+        public void ReservedPlot_IsTheDanceCircle_HomeFieldsSectorSlot2([ValueSource(nameof(Seeds))] ulong seed)
         {
-            var b = BoardGenerator.CreateMvpBoard(5);
+            var b = BoardGenerator.CreateMvpBoard(seed);
             var t = b.Topology;
-            Assert.AreEqual(b.HomeCityVertex, b.StorehouseVertex);
-            Assert.AreEqual(b.HomeCityVertex, b.MarketVertex);
-            Assert.IsFalse(t.IsCorner(b.WarehouseVertex), "an intermediate flag");
-            int d = t.Distance(b.HomeCityVertex, b.WarehouseVertex);
-            Assert.That(d >= 2 && d <= 3, "2-3 segments from home, was " + d);
-            Assert.IsFalse(Terrains(b, b.WarehouseVertex).Contains(Terrain.Forest), "off the demonstration road's forest edge");
+            CollectionAssert.AreEqual(new[] { 635 }, b.ReservedPlots);
+            int p = b.ReservedPlots[0];
+            Assert.AreEqual(b.StartCorners[0], PlotLayout.CornerOf(p));
+            Assert.AreEqual(PlotLayout.CitySlot, PlotLayout.SlotOf(p));
+            Assert.AreEqual(Terrain.Fields, b.HexTerrain[PlotLayout.PlotHex(t, p)]);
         }
 
         [Test]
@@ -150,37 +157,54 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void Numbers_OneToFour_EvenlyPerTerrain([ValueSource(nameof(Seeds))] ulong seed)
+        public void Numbers_TwoToTwelve_DealtFromThePools([ValueSource(nameof(Seeds))] ulong seed)
         {
             var b = BoardGenerator.CreateMvpBoard(seed);
-            foreach (var terr in new[] { Terrain.Forest, Terrain.Hills, Terrain.Fields, Terrain.Mountain, Terrain.Pasture })
-            {
-                var nums = Enumerable.Range(0, 61).Where(h => b.HexTerrain[h] == terr).Select(h => b.HexNumber[h]).ToList();
-                Assert.GreaterOrEqual(nums.Count, 4, terr.ToString());
-                var counts = Enumerable.Range(1, 4).Select(n => nums.Count(x => x == n)).ToList();
-                Assert.LessOrEqual(counts.Max() - counts.Min(), 1, terr + " numbers spread evenly");
-            }
+            var t = b.Topology;
+            var startHexes = new HashSet<int>(b.StartCorners.SelectMany(c => t.VertexHexes(c)));
+            var mountains = new List<int>();
+            var others = new List<int>();
             for (int h = 0; h < 61; h++)
             {
-                if (b.HexTerrain[h] == Terrain.Meadow) Assert.AreEqual(0, b.HexNumber[h]);
-                else Assert.That(b.HexNumber[h] >= 1 && b.HexNumber[h] <= 4);
+                if (b.HexTerrain[h] == Terrain.Meadow) { Assert.AreEqual(0, b.HexNumber[h]); continue; }
+                Assert.That(b.HexNumber[h] >= 2 && b.HexNumber[h] <= 12 && b.HexNumber[h] != 7, "hex " + h + " has " + b.HexNumber[h]);
+                if (startHexes.Contains(h)) continue;
+                if (b.HexTerrain[h] == Terrain.Mountain) mountains.Add(b.HexNumber[h]);
+                else others.Add(b.HexNumber[h]);
             }
+            Assert.AreEqual(6, startHexes.Count);
+            CollectionAssert.AreEquivalent(new[] { 5, 6, 9, 10 }, mountains);
+            Assert.AreEqual(28, others.Count);
+            CollectionAssert.AreEquivalent(BoardGenerator.NumberPool, others);
+        }
+
+        [Test]
+        public void Numbers_DependOnTheSeed()
+        {
+            var seen = new HashSet<string>();
+            foreach (var seed in Seeds) seen.Add(string.Join(",", BoardGenerator.CreateMvpBoard(seed).HexNumber));
+            Assert.Greater(seen.Count, 1);
         }
 
         [Test]
         public void EveryResourceTerrain_YieldsItsRawWare_AndBack()
         {
-            Assert.AreEqual(Ware.Logs, TerrainInfo.RawWare(Terrain.Forest));
+            Assert.AreEqual(Ware.Wood, TerrainInfo.RawWare(Terrain.Forest));
             Assert.AreEqual(Ware.Clay, TerrainInfo.RawWare(Terrain.Hills));
-            Assert.AreEqual(Ware.Wheat, TerrainInfo.RawWare(Terrain.Fields));
+            Assert.AreEqual(Ware.Grain, TerrainInfo.RawWare(Terrain.Fields));
             Assert.AreEqual(Ware.Sheep, TerrainInfo.RawWare(Terrain.Pasture));
-            Assert.AreEqual(Ware.Ore, TerrainInfo.RawWare(Terrain.Mountain));
+            Assert.AreEqual(Ware.Stone, TerrainInfo.RawWare(Terrain.Mountain));
             Assert.IsNull(TerrainInfo.RawWare(Terrain.Meadow));
             Assert.IsTrue(TerrainInfo.IsResource(Terrain.Pasture));
             foreach (var w in Wares.Raw) Assert.AreEqual(w, TerrainInfo.RawWare(TerrainInfo.TerrainOf(w)));
             Assert.AreEqual(Terrain.Meadow, TerrainInfo.TerrainOf(Ware.Planks));
             Assert.AreEqual(Wares.RawCount, Wares.Raw.Length);
             Assert.AreEqual(Wares.Count, Wares.All.Length);
+            Assert.AreEqual(10, Wares.Count);
+            Assert.AreEqual(5, Wares.RawCount);
+            Assert.AreEqual("Cut stone", Wares.Title(Ware.CutStone));
+            Assert.AreEqual("cut stone", Wares.DisplayName(Ware.CutStone));
+            Assert.AreEqual(9, (int)Ware.CutStone);
         }
 
         [Test]
@@ -190,10 +214,11 @@ namespace World.Sim.Tests
             var c = BoardGenerator.CreateMvpBoard(77);
             CollectionAssert.AreEqual(a.HexNumber, c.HexNumber);
             CollectionAssert.AreEqual(a.HexTerrain, BoardGenerator.CreateMvpBoard(78).HexTerrain);
-            Assert.AreEqual(a.HomeCityVertex, BoardGenerator.CreateMvpBoard(78).HomeCityVertex);
-            CollectionAssert.AreEqual(a.SuggestedCitySites, BoardGenerator.CreateMvpBoard(78).SuggestedCitySites);
+            CollectionAssert.AreEqual(a.StartCorners, BoardGenerator.CreateMvpBoard(78).StartCorners);
+            CollectionAssert.AreEqual(a.SuggestedSettlementCorners, BoardGenerator.CreateMvpBoard(78).SuggestedSettlementCorners);
             // Pinned layout ids (the Unity layer and docs refer to them).
-            Assert.AreEqual(70, a.HomeCityVertex);
+            Assert.AreEqual(70, a.StartCorners[0]);
+            Assert.AreEqual(97, a.StartCorners[1]);
         }
     }
 }

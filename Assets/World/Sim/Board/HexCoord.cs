@@ -52,33 +52,42 @@ namespace World.Sim
 
     public static class TerrainInfo
     {
-        /// <summary>Raw ware a terrain yields (Forest Logs, Hills Clay, Fields Wheat, Pasture Sheep, Mountain Ore), or null for Meadow.</summary>
+        /// <summary>Number of terrains (length of per-terrain tables such as EconomyTuning.GrowTicks).</summary>
+        public const int Count = 6;
+
+        /// <summary>Raw ware a terrain yields (Forest Wood, Hills Clay, Fields Grain, Pasture Sheep, Mountain Stone), or null for Meadow.</summary>
         public static Ware? RawWare(Terrain t)
         {
             switch (t)
             {
-                case Terrain.Forest: return Ware.Logs;
+                case Terrain.Forest: return Ware.Wood;
                 case Terrain.Hills: return Ware.Clay;
-                case Terrain.Fields: return Ware.Wheat;
+                case Terrain.Fields: return Ware.Grain;
                 case Terrain.Pasture: return Ware.Sheep;
-                case Terrain.Mountain: return Ware.Ore;
+                case Terrain.Mountain: return Ware.Stone;
                 default: return null;
             }
         }
 
-        /// <summary>The terrain that yields a raw ware (inverse of RawWare), or Meadow for processed wares.</summary>
+        /// <summary>The terrain that yields a raw ware (inverse of RawWare), or Meadow for worked wares.</summary>
         public static Terrain TerrainOf(Ware w)
         {
             switch (w)
             {
-                case Ware.Logs: return Terrain.Forest;
+                case Ware.Wood: return Terrain.Forest;
                 case Ware.Clay: return Terrain.Hills;
-                case Ware.Wheat: return Terrain.Fields;
+                case Ware.Grain: return Terrain.Fields;
                 case Ware.Sheep: return Terrain.Pasture;
-                case Ware.Ore: return Terrain.Mountain;
+                case Ware.Stone: return Terrain.Mountain;
                 default: return Terrain.Meadow;
             }
         }
+
+        /// <summary>Lower-case terrain name for sentences ("forest", "hills").</summary>
+        public static string DisplayName(Terrain t) => t.ToString().ToLowerInvariant();
+
+        /// <summary>True for mined terrains (Hills, Mountain): young stock is not drawn.</summary>
+        public static bool IsMined(Terrain t) => t == Terrain.Hills || t == Terrain.Mountain;
 
         /// <summary>True for terrains that receive production numbers (every terrain except Meadow, Pasture included).</summary>
         public static bool IsResource(Terrain t) => t != Terrain.Meadow;

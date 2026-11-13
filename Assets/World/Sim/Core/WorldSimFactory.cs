@@ -2,7 +2,7 @@ namespace World.Sim
 {
     /// <summary>
     /// Builds a new game. Order is fixed: core state and board, then every module's InitState,
-    /// then every module's Register. Modules edit only their own XModule.cs, never this file.
+    /// then every module's Register, in the order Economy, Factions, Demons (REFACTOR_SPEC A.4).
     /// </summary>
     public static class WorldSimFactory
     {
@@ -22,20 +22,16 @@ namespace World.Sim
                 s.Players.Add(new PlayerState
                 {
                     Id = id,
-                    Name = id == PlayerIds.Human ? "Player" : "Rival",
+                    Name = id == PlayerIds.Human ? "Your people" : "the Ash Clan",
                     Coin = StartingCoin,
                 });
             }
 
             Economy.EconomyModule.InitState(s);
-            Strategy.StrategyModule.InitState(s);
-            Military.MilitaryModule.InitState(s);
+            Factions.FactionsModule.InitState(s);
+            Demons.DemonsModule.InitState(s);
 
-            var sim = new WorldSim(s);
-            Economy.EconomyModule.Register(sim);
-            Strategy.StrategyModule.Register(sim);
-            Military.MilitaryModule.Register(sim);
-            return sim;
+            return Save.SaveCodec.CreateSim(s);
         }
     }
 }

@@ -59,7 +59,9 @@ namespace World.Sim
                 case NoPower:
                     return a0 != null ? Cap($"{a0} has no power.") : "There is not enough power.";
                 case NoBatch:
-                    return a0 != null ? Cap($"{a0} has no authorised batch this round.") : "No batch is authorised this round.";
+                    // "No mature stock": a0 = subject, a1 = terrain (lower case).
+                    if (a1 != null) return Cap($"{a0} is waiting for {a1} stock to grow.");
+                    return a0 != null ? Cap($"{a0} is waiting for stock to grow.") : "Waiting for stock to grow.";
                 case InvalidSite:
                     return a0 != null ? Cap($"{a0} cannot be built there.") : "That site is not valid.";
                 case NoTurnAction:

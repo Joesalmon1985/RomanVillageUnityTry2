@@ -4,9 +4,8 @@ using System.Collections.Generic;
 namespace World.Sim
 {
     /// <summary>
-    /// The fixed MVP map (radius 4, 61 hexes, 60 m hex edges). Terrain layout is fixed; production numbers
-    /// are dealt with the seed, evenly per terrain (within one terrain each number 1..4 appears equally
-    /// often, +-1), and the three home hexes always get three different numbers.
+    /// The fixed island (radius 4, 61 hexes, 60 m hex edges). Terrain layout and both start corners are fixed;
+    /// production numbers 2..12 are dealt with the seed (REFACTOR_SPEC 2.A.1).
     ///
     /// Layout (q,r), +Z north; rows listed north to south, q ascending (M Meadow, F Forest, H Hills,
     /// Fi Fields, P Pasture, Mt Mountain; * = home hex):
@@ -19,10 +18,9 @@ namespace World.Sim
     ///   r=-2  q-2..4 : M  H  P  Fi F  Fi M
     ///   r=-3  q-1..4 : M  F  H  M  P  M
     ///   r=-4  q 0..4 : M  M  P  M  M
-    /// Home city: the corner shared by (0,0) Fields, (1,-1) Forest and (1,0) Hills (just south-east of the
-    /// centre). The Mountain range (0,2) (1,2) (1,1) (2,1) lies north-east, out of the home territory but
-    /// touching city corners 2-3 hex edges from home. The rival outpost is the Forest/Hills/Fields corner
-    /// 4-5 hex edges from home (north-west). The outer ring is mostly Meadow.
+    /// Player start (corner 70): the corner shared by (0,0) Fields, (1,-1) Forest and (1,0) Hills. The Mountain
+    /// range lies 2-3 hex edges away. The rival start (corner 97) is the Forest/Hills/Fields corner 4-5 hex
+    /// edges from home. The outer ring is mostly Meadow.
     /// </summary>
     public static class BoardGenerator
     {
@@ -50,8 +48,20 @@ namespace World.Sim
         /// <summary>Terrains that get production numbers, in dealing order.</summary>
         private static readonly Terrain[] NumberedTerrains = { F, H, Fi, Mt, P };
 
-        /// <summary>Minimum distance in hex edges between two suggested city sites.</summary>
+        /// <summary>Minimum distance in hex edges between two suggested settlement corners.</summary>
         public const int SuggestedSiteSpacing = 3;
+
+        /// <summary>Fixed numbers of each starting camp's hexes by terrain (2.A.1 step 1).</summary>
+        public const int StartForestNumber = 6, StartHillsNumber = 8, StartFieldsNumber = 5;
+
+        /// <summary>Numbers of the four Mountain hexes, in a seeded order (2.A.1 step 2).</summary>
+        public static readonly int[] MountainNumbers = { 5, 6, 9, 10 };
+
+        /// <summary>Pool shuffled over the other 28 resource hexes (2.A.1 step 3).</summary>
+        public static readonly int[] NumberPool =
+        {
+            2, 2, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 6, 6, 6, 8, 8, 8, 9, 9, 9, 10, 10, 10, 10, 11, 11, 12,
+        };
 
         public static Board CreateMvpBoard(ulong seed)
         {
@@ -71,54 +81,61 @@ namespace World.Sim
 
             var homeIds = new int[HomeHexes.Length];
             for (int i = 0; i < HomeHexes.Length; i++) homeIds[i] = topo.HexIndex(HomeHexes[i]);
-            DealNumbers(b, topo, homeIds, new Rng(seed).Fork("board.numbers"));
 
-            // Home city corner: the one shared by all three home hexes.
+            // Start corners: the player's is shared by the three home hexes; the rival's is the Forest/Hills/Fields
+            // corner 4-5 hex edges away. Both depend on the fixed terrain only.
             int home = SharedCorner(topo, homeIds);
-            b.HomeCityVertex = home;
-            b.StorehouseVertex = home;
-            b.MarketVertex = home;
-            b.WarehouseVertex = WarehouseFlag(b, topo, home);
-            b.RivalOutpostVertex = RivalCorner(b, topo, home);
-            b.SuggestedCitySites = SuggestSites(b, topo, home, b.RivalOutpostVertex);
+            int rival = RivalCorner(b, topo, home);
+            b.StartCorners = new[] { home, rival };
+            DealNumbers(b, topo, b.StartCorners, new Rng(seed).Fork("board.numbers"));
+            b.SuggestedSettlementCorners = SuggestSites(b, topo, home, rival);
+
+            // The dance circle: slot 2 of the home camp's Fields sector.
+            int fieldsSector = -1;
+            for (int sec = 0; sec < 3; sec++)
+                if (PlotLayout.SectorHex(topo, home, sec) >= 0 && b.HexTerrain[PlotLayout.SectorHex(topo, home, sec)] == Terrain.Fields) fieldsSector = sec;
+            b.ReservedPlots = fieldsSector >= 0 ? new[] { PlotLayout.PlotId(home, fieldsSector, PlotLayout.CitySlot) } : new int[0];
             return b;
         }
 
-        private static void DealNumbers(Board b, BoardTopology topo, int[] homeIds, Rng rng)
+        /// <summary>
+        /// 2.A.1: starting camps' hexes get Forest 6, Hills 8, Fields 5; Mountains a seeded order of {5, 6, 9, 10};
+        /// the other resource hexes a seeded shuffle of <see cref="NumberPool"/> (cycled if the layout ever has more).
+        /// </summary>
+        private static void DealNumbers(Board b, BoardTopology topo, int[] startCorners, Rng rng)
         {
-            var distinct = new List<int> { 1, 2, 3, 4 };
-            rng.Shuffle(distinct);
-            for (int i = 0; i < homeIds.Length; i++) b.HexNumber[homeIds[i]] = distinct[i];
-
-            foreach (var t in NumberedTerrains)
+            var fixedHex = new bool[topo.HexCount];
+            foreach (int c in startCorners)
             {
-                var hexes = new List<int>();
-                int homeNumber = 0;
-                for (int h = 0; h < topo.HexCount; h++)
+                if (c < 0) continue;
+                foreach (int h in topo.VertexHexes(c))
                 {
-                    if (b.HexTerrain[h] != t) continue;
-                    if (Array.IndexOf(homeIds, h) >= 0) homeNumber = b.HexNumber[h];
-                    else hexes.Add(h);
+                    int n = b.HexTerrain[h] == F ? StartForestNumber : b.HexTerrain[h] == H ? StartHillsNumber
+                        : b.HexTerrain[h] == Fi ? StartFieldsNumber : 0;
+                    if (n == 0) continue;
+                    b.HexNumber[h] = n;
+                    fixedHex[h] = true;
                 }
-                int n = hexes.Count + (homeNumber > 0 ? 1 : 0);
-                if (n == 0) continue;
-                var counts = new int[5];
-                for (int k = 1; k <= 4; k++) counts[k] = n / 4;
-                var extras = new List<int> { 1, 2, 3, 4 };
-                rng.Shuffle(extras);
-                if (homeNumber > 0 && n / 4 == 0)
-                {
-                    extras.Remove(homeNumber);
-                    extras.Insert(0, homeNumber);
-                }
-                for (int k = 0; k < n % 4; k++) counts[extras[k]]++;
-                var pool = new List<int>();
-                for (int k = 1; k <= 4; k++)
-                    for (int c = 0; c < counts[k]; c++) pool.Add(k);
-                if (homeNumber > 0) pool.Remove(homeNumber);
-                rng.Shuffle(pool);
-                for (int i = 0; i < hexes.Count; i++) b.HexNumber[hexes[i]] = pool[i];
             }
+
+            var mountains = new List<int>();
+            var others = new List<int>();
+            for (int h = 0; h < topo.HexCount; h++)
+            {
+                if (fixedHex[h] || !TerrainInfo.IsResource(b.HexTerrain[h])) continue;
+                if (b.HexTerrain[h] == Mt) mountains.Add(h);
+                else others.Add(h);
+            }
+
+            var mNums = new List<int>(MountainNumbers);
+            rng.Shuffle(mNums);
+            for (int i = 0; i < mountains.Count; i++) b.HexNumber[mountains[i]] = mNums[i % mNums.Count];
+
+            var pool = new List<int>();
+            while (pool.Count < others.Count) pool.AddRange(NumberPool);
+            if (pool.Count > others.Count && others.Count >= NumberPool.Length) pool.RemoveRange(others.Count, pool.Count - others.Count);
+            rng.Shuffle(pool);
+            for (int i = 0; i < others.Count; i++) b.HexNumber[others[i]] = pool[i];
         }
 
         private static int SharedCorner(BoardTopology topo, int[] hexes)
@@ -144,23 +161,7 @@ namespace World.Sim
         }
 
         /// <summary>
-        /// The intermediate flag two segments from home along the home hex edge that does not touch the
-        /// home Forest (the Fields/Hills edge), so the demonstration road along the forest stays clear.
-        /// </summary>
-        private static int WarehouseFlag(Board b, BoardTopology topo, int home)
-        {
-            foreach (int e in topo.CornerHexEdges(home))
-            {
-                var flags = topo.HexEdgeFlags(e);
-                if (Touches(b, topo, flags[1], Terrain.Forest)) continue;
-                return flags[0] == home ? flags[2] : flags[1];
-            }
-            var first = topo.HexEdgeFlags(topo.CornerHexEdges(home)[0]);
-            return first[0] == home ? first[2] : first[1];
-        }
-
-        /// <summary>
-        /// Rival outpost: a corner 4-5 hex edges from home whose three hexes are exactly Forest, Hills and
+        /// Rival start: a corner 4-5 hex edges from home whose three hexes are exactly Forest, Hills and
         /// Fields (farthest first, then lowest id). Fallback: the farthest corner not touching a Mountain.
         /// </summary>
         private static int RivalCorner(Board b, BoardTopology topo, int home)
@@ -185,7 +186,7 @@ namespace World.Sim
             return best;
         }
 
-        /// <summary>City value of a corner: 10 per distinct non-Meadow terrain, +1 per non-Meadow hex, +5 with a Mountain.</summary>
+        /// <summary>Settlement value of a corner: 10 per distinct non-Meadow terrain, +1 per non-Meadow hex, +5 with a Mountain.</summary>
         public static int SiteScore(Board b, BoardTopology topo, int corner)
         {
             var kinds = new List<Terrain>();

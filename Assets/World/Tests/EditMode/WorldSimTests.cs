@@ -158,7 +158,8 @@ namespace World.Sim.Tests
             Assert.AreEqual(sim.State.Seed, copy.Seed);
             Assert.AreEqual(sim.State.Rng.State, copy.Rng.State);
             CollectionAssert.AreEqual(sim.State.Board.HexNumber, copy.Board.HexNumber);
-            Assert.AreEqual(sim.State.Board.HomeCityVertex, copy.Board.HomeCityVertex);
+            CollectionAssert.AreEqual(sim.State.Board.StartCorners, copy.Board.StartCorners);
+            CollectionAssert.AreEqual(sim.State.Board.ReservedPlots, copy.Board.ReservedPlots);
             Assert.AreEqual(630, copy.Board.Topology.EdgeCount);
             Assert.AreEqual(json, JsonConvert.SerializeObject(copy));
         }
@@ -174,6 +175,7 @@ namespace World.Sim.Tests
                 StringAssert.EndsWith(".", Reasons.Sentence(code, "Sawmill", "timber"));
             }
             Assert.AreEqual("Sawmill is waiting for timber.", Reasons.Sentence(Reasons.WaitingWare, "Sawmill", "timber"));
+            Assert.AreEqual("Log pile is waiting for forest stock to grow.", Reasons.Sentence(Reasons.NoBatch, "Log pile", "forest"));
             Assert.IsFalse(Reasons.IsKnown("nope"));
         }
     }
