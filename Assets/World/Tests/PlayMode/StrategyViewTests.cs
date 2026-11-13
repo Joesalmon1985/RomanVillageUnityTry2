@@ -76,9 +76,13 @@ namespace World.Game.Tests
             int handBefore = S.Strategy.Sides[PlayerIds.Human].Hand.Count;
             var r = StrategyUi.Pick(hand[0].CardId);
             Assert.IsTrue(r.Ok, r.Message);
-            Step(1);
+            // The game's own clock (held only by the draft) must apply the queued pick: no manual step here. Before the
+            // packaging run fixed GameClock, the pick stayed queued and the draft never ended for a human player.
+            _boot.Clock.Resume(TestPause);
+            for (int i = 0; i < 10 && StrategyApi.DraftPending(S); i++) yield return null;
+            _boot.Clock.Pause(TestPause);
             yield return null;
-            Assert.IsFalse(StrategyApi.DraftPending(S));
+            Assert.IsFalse(StrategyApi.DraftPending(S), "the pick is applied by the running game");
             Assert.AreEqual(handBefore + 1, S.Strategy.Sides[PlayerIds.Human].Hand.Count, "the card is in the hand");
             Assert.IsFalse(_boot.Clock.IsPausedFor(PauseReasons.Draft), "the clock runs again");
             Assert.IsFalse(StrategyWindow.IsOpen, "the modal closes");

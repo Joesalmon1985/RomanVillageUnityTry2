@@ -49,7 +49,15 @@ namespace World.Game
         {
             Instance = this;
             if (NextSeed.HasValue) { Seed = NextSeed.Value; NextSeed = null; }
-            Sim = WorldSimFactory.CreateNew(unchecked((ulong)Seed));
+            // Sanctioned load path: a save picked up from SaveSystem.Load becomes this scene's sim; every view below
+            // is built from it exactly as from a new game.
+            var loaded = SaveSystem.TakePending();
+            if (loaded != null)
+            {
+                Sim = World.Sim.Save.SaveCodec.CreateSim(loaded.State);
+                Seed = unchecked((long)loaded.State.Seed);
+            }
+            else Sim = WorldSimFactory.CreateNew(unchecked((ulong)Seed));
 
             Clock = gameObject.AddComponent<GameClock>();
             Clock.Bind(Sim);
@@ -60,7 +68,13 @@ namespace World.Game
             BuildVillage();
             EconomyInstaller.Install(this); // road economy: views, God View tools, quartermaster (Docs/ECONOMY_UI.md)
             StrategyInstaller.Install(this); // draft, cities, demons, hero, military, end screen (Docs/STRATEGY_UI.md)
+            Saves = gameObject.AddComponent<SaveSystem>(); // F5 / F9, one slot; applies the loaded save's game-layer data in Start
+            Saves.Bind(this, loaded);
+            TravelTool.Register(); // God View "Go here" (fast travel)
         }
+
+        /// <summary>The save slot (F5 save, F9 load).</summary>
+        public SaveSystem Saves { get; private set; }
 
         // ---- Milestone 1: walkable village ----
 

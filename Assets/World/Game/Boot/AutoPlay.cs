@@ -98,6 +98,13 @@ namespace World.Game
         {
             // "-novsync": uncapped frame rate for performance measurements (MeasureFps).
             if (Array.IndexOf(Environment.GetCommandLineArgs(), "-novsync") >= 0) { QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1; }
+            if (ContinueAfterLoad != null)
+            {
+                // A script that loaded a save (the scene reloaded under it) goes on here.
+                var next = ContinueAfterLoad; ContinueAfterLoad = null;
+                Run(next);
+                return;
+            }
             string name = CommandLineScript();
             if (name == null || s_commandLineRan) return;
             s_commandLineRan = true; // a new game reloads the scene; the command-line script runs once
@@ -110,6 +117,15 @@ namespace World.Game
         }
 
         private static bool s_commandLineRan;
+
+        /// <summary>
+        /// A script to run in the next scene (set just before loading a save or starting a new game: the reload ends
+        /// the running script, so its second half continues here).
+        /// </summary>
+        public static AutoPlayScript ContinueAfterLoad;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() { ContinueAfterLoad = null; }
 
         public static string CommandLineScript()
         {

@@ -44,6 +44,14 @@ namespace World.Game
             if (boot.Sim.State.Economy.Commission.Complete) CompletionSeen = true;
         }
 
+        /// <summary>Load path: Bram already acknowledged the commission in the saved game.</summary>
+        public void RestoreAcknowledged()
+        {
+            QuartermasterAcknowledged = true;
+            CompletionSeen = true;
+            RefreshObjective(true);
+        }
+
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
