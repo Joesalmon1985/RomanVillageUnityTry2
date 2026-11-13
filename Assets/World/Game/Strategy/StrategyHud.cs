@@ -226,7 +226,8 @@ namespace World.Game
             EconomyHud.Toast(text, bad);
         }
 
-        private float _lastOutpostToast;
+        private float _lastOutpostToast, _lastQueueToast = -100f;
+        private string _lastQueueReason;
 
         private void OnTicked(IReadOnlyList<SimEvent> events)
         {
@@ -257,9 +258,16 @@ namespace World.Game
                     case CardBuilt cb: Count(e); if (cb.PlayerId == PlayerIds.Rival) { var cv = StrategyApi.DescribeCard(s, cb.CardId); Say("The rival built " + cv.Name + " at its outpost: " + cv.EffectText, true); } break;
                     case CityFounded cf: Count(e); break;
                     case WonderStageCompleted wc: Count(e); big = "Wonder stage " + wc.Stage + " complete: +" + wc.Vp + " points."; break;
-                    case RivalScored rs: Count(e); Say("The rival's plan scores " + rs.Vp + " points (" + rs.Total + " in all).", true); break;
+                    case RivalScored rs: Count(e); Say("The rival's plan scores " + rs.Vp + (rs.Vp == 1 ? " point" : " points") + " (" + rs.Total + " in all).", true); break;
                     case UnitTrained ut: Count(e); Say("A soldier is trained (" + MilitaryApi.Squads(s, PlayerIds.Human).Count + " squad" + (MilitaryApi.Squads(s, PlayerIds.Human).Count == 1 ? "" : "s") + " ready). Army tool: give orders.", false); break;
-                    case QueueStateChanged q: Count(e); if (!string.IsNullOrEmpty(q.Reason)) Say(MilitaryApi.DescribeBarracks(s, q.BarracksId).Status, true); break;
+                    case QueueStateChanged q:
+                        Count(e);
+                        if (!string.IsNullOrEmpty(q.Reason) && (q.Reason != _lastQueueReason || Time.unscaledTime - _lastQueueToast > 30f))
+                        {
+                            _lastQueueReason = q.Reason; _lastQueueToast = Time.unscaledTime;
+                            Say(MilitaryApi.DescribeBarracks(s, q.BarracksId).Status, q.Reason == Reasons.NoPower);
+                        }
+                        break;
                     case SquadEngaged se: Count(e); Say("Squads fight at " + StrategyUi.SiteName(s, se.Vertex) + ".", false); break;
                     case UnitDied ud: Count(e); Say((IsMine(s, ud.SquadId) ? "One of your soldiers" : "A rival soldier") + " fell at " + StrategyUi.SiteName(s, ud.Vertex) + ".", IsMine(s, ud.SquadId)); break;
                     case SquadDestroyed sd: Count(e); Say(sd.Owner == PlayerIds.Human ? "Your squad was destroyed." : "A rival squad was destroyed.", sd.Owner == PlayerIds.Human); break;
@@ -304,7 +312,7 @@ namespace World.Game
                 _hint.normal.textColor = new Color(1f, 0.86f, 0.5f);
                 _big = new GUIStyle(UiStyle.Title) { fontSize = UiStyle.Px(64), alignment = TextAnchor.MiddleCenter };
             }
-            if (EndScreenOpen) { DrawEndScreen(); return; }
+            if (EndScreenOpen) { GUI.depth = -9; DrawEndScreen(); return; }
             DrawStrip();
         }
 
@@ -317,10 +325,12 @@ namespace World.Game
             float boxes = _limit * (UiStyle.Px(15) + UiStyle.Px(3)) + UiStyle.Px(10);
             float fixedW = W(_points) + W("Breach") + boxes + W(_breaches + "/" + _limit) + W(_coin) + W(_power) + gap * 6 + 2 * pad;
             float maxW = Screen.width - UiStyle.Px(40);
+            var ip = InspectPanel.ScreenRect;
+            if (ip.width > 0) maxW = Mathf.Min(maxW, 2f * (ip.x - Screen.width / 2f) - UiStyle.Px(12)); // stay clear of the inspect panel
             string round = _round, infection = _infection;
             if (fixedW + W(round) + W(infection) + gap > maxW) infection = null;
             if (fixedW + W(round) > maxW) round = _roundShort;
-            float w = Mathf.Clamp(fixedW + W(round) + (infection != null ? W(infection) + gap : 0), UiStyle.Px(god ? 940 : 900), maxW);
+            float w = Mathf.Min(Mathf.Max(fixedW + W(round) + (infection != null ? W(infection) + gap : 0), Mathf.Min(UiStyle.Px(god ? 940 : 900), maxW)), Mathf.Max(maxW, fixedW));
             float rowH = UiStyle.Px(34);
             var r = new Rect((Screen.width - w) / 2, UiStyle.Px(66), w, rowH);
             GodToolbar.AddUiRect(r);

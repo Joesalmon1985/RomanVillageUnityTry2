@@ -33,9 +33,9 @@ Board metres = Unity metres (X east, Z north), ground flat at `BoardSpace.Ground
 | `doorman` | Juno | on the path 5 m in front of the warehouse door | Head inside (sets objective), Leave |
 | `host` | DJ Sol | behind the decks, `Warehouse.DecksPosition`; Stage = dance floor facing decks | `rhythm_party`, Leave |
 | `quartermaster` | Quartermaster Bram | in front of the storehouse | Leave (wire building/roads) |
-| `market_keeper` | Hesta | behind the market counter | Leave (wire trade) |
-| `captain` | Captain Orla | south-east edge of the square | Leave (wire units) |
-| `scribe` | Scribe Pell | south-west edge of the square | Leave (wire cards/wonder) |
+| `market_keeper` | Hesta | behind the market counter | Open the market, Leave |
+| `captain` | Captain Orla | south-east edge of the square | Barracks and squads (Army panel), Leave |
+| `scribe` | Scribe Pell | south-west edge of the square | Pick a card (draft) / Show my cards, The wonder, Leave |
 
 ## Encounters (`Encounters/EncounterHost.cs`)
 - `IEncounter { Title; Begin(EncounterContext); Tick(unscaledDt); DrawGui(); IsFinished; End(); }`. Read your own keys in Tick; draw with UiStyle in DrawGui.
@@ -61,3 +61,7 @@ One tile per hex (outer ring through its 18 flags, MeshCollider), props combined
 
 ## Road economy views and God View tools
 See `Docs/ECONOMY_UI.md`: `EconomyViews` (buildings, roads, flags, carriers, batches, rebuilt from state), `GodToolbar.Register` / `GodTool` / `GodToolbar.StatusItems` (extension points), `GodCommands.Submit` (every command with the sim's sentence), `EconomyHud.Toast/Banner`, `EconomyFirstPerson` (Bram, bell, objective), AutoPlay `commission`.
+
+## Strategy and military views, panels and HUD
+See `Docs/STRATEGY_UI.md`: `StrategyInstaller` (one line in `WorldBootstrap.Awake`), `StrategyViews` (cities, demons, hero, squads, robbed hexes, power signs, wonder stages, outpost; rebuilt from state), `StrategyHud` (strip with points and breach track, What now line, event toasts, draft pause, end screen), `StrategyWindow` / `StrategyPanels` (draft, cards, market, wonder, army, cities, hero), God tools Market, Cards, City, Hero, Army, Wonder (`StrategyGodTools`), `StrategyUi` (every strategy command and site names), NPC panels (Hesta, Captain Orla, Scribe Pell), AutoPlay `full_game` (`FullGameDriver`). `WorldBootstrap.NewGame(seed)` reloads the scene with a fresh seed (`WorldBootstrap.NextSeed`); the command-line AutoPlay script runs only once per process.
+

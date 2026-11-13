@@ -403,6 +403,7 @@ namespace World.Game
             if (sp.z <= 0 || sp.x < -100 || sp.x > Screen.width + 100 || sp.y < -50 || sp.y > Screen.height + 50) return;
             var sz = _tag.CalcSize(new GUIContent(text));
             var r = new Rect(sp.x - sz.x / 2 - UiStyle.Px(8), Screen.height - sp.y - sz.y, sz.x + UiStyle.Px(16), sz.y + UiStyle.Px(2));
+            if (r.y < StrategyHud.StripBottom) return; // keep the strip and objective clear
             for (int g = 0; g < 6; g++)
             {
                 bool hit = false;
@@ -525,7 +526,7 @@ namespace World.Game
                 // Uneasy breathing and twitching; in first person they turn to watch the player.
                 float tw = Mathf.PerlinNoise(t * 3f, i * 1.7f) > 0.82f ? Mathf.Sin(t * 60f) * 6f : 0f;
                 f.Body.localRotation = Quaternion.Euler(8f + Mathf.Sin(t * 1.3f + i) * 5f, tw, Mathf.Sin(t * 0.9f + i) * 3f);
-                f.Body.localScale = new Vector3(1f, 1f + Mathf.Sin(t * 2.1f + i) * 0.04f, 1f) * (god ? Mathf.Lerp(1f, 1.8f, (zoom - 1f) / 4f) : 1f);
+                f.Body.localScale = new Vector3(1f, 1f + Mathf.Sin(t * 2.1f + i) * 0.04f, 1f) * (god ? Mathf.Lerp(1.6f, 3.4f, (zoom - 1f) / 4f) : 1f);
                 if (!god && cam != null)
                 {
                     var d = cam.transform.position - f.Root.transform.position; d.y = 0;
@@ -535,7 +536,7 @@ namespace World.Game
                 bool on = Mathf.PerlinNoise(t * 2f, i) > 0.12f;
                 foreach (var e in f.Eyes) if (e.enabled != on) e.enabled = on;
             }
-            if (_disc != null) _disc.transform.localScale = Vector3.one * (god ? zoom * (1f + 0.12f * Mathf.Sin(Time.time * 4f)) : 1f);
+            if (_disc != null) _disc.transform.localScale = Vector3.one * (god ? Mathf.Pow(zoom, 0.8f) * (1f + 0.12f * Mathf.Sin(Time.time * 4f)) : 0.8f);
         }
 
         public string Title => Count + (Count == 1 ? " demon" : " demons");
@@ -662,7 +663,7 @@ namespace World.Game
             var col = go.AddComponent<BoxCollider>();
             col.center = new Vector3(0, 1f, 0); col.size = new Vector3(4f, 2f, 4f); col.isTrigger = true;
             var mb = new MeshBuilder();
-            TerrainBuilder.Disc(mb, new Vector3(0, 0.24f, 0), 2.6f, 16, q.Owner == PlayerIds.Human ? StrategyModels.PlayerBlue : StrategyModels.RivalRed);
+            TerrainBuilder.Disc(mb, new Vector3(0, 0.24f, 0), 1.9f, 16, q.Owner == PlayerIds.Human ? StrategyModels.PlayerBlue : StrategyModels.RivalRed);
             v._disc = mb.ToObject("SquadDisc", go.transform, MaterialFactory.SharedUnlit(Color.white));
             return v;
         }
@@ -697,9 +698,12 @@ namespace World.Game
             {
                 pos = BoardSpace.Vertex(At);
                 // Spread several squads at one flag; the garrison stands round the outpost.
-                if (Kind == SquadKind.Garrison) pos += new Vector3(0, 0, -11f);
+                // At the outpost a fight meets in front of the gate: guards a step out, attackers facing them.
+                if (Kind == SquadKind.Garrison) pos += new Vector3(0, 0, Engaged ? -10f : -11.5f);
+                else if (At == s.Board.RivalOutpostVertex) pos += new Vector3(0, 0, Engaged ? -13.5f : -16f);
                 else pos += Quaternion.Euler(0, Slot * 72f, 0) * new Vector3(3.2f, 0, 0) * (Engaged ? 0.6f : 1f);
-                var face = s.Board.RivalOutpostVertex >= 0 && Owner == PlayerIds.Human ? BoardSpace.Vertex(s.Board.RivalOutpostVertex) - pos : BoardSpace.Vertex(s.Board.HomeCityVertex) - pos;
+                var face = Owner == PlayerIds.Human ? BoardSpace.Vertex(s.Board.RivalOutpostVertex) - pos
+                         : Engaged && Kind == SquadKind.Garrison ? new Vector3(0, 0, -1f) : BoardSpace.Vertex(s.Board.HomeCityVertex) - pos;
                 face.y = 0;
                 if (face.sqrMagnitude > 1f) dir = face.normalized;
             }
@@ -729,7 +733,7 @@ namespace World.Game
                 }
                 else { f.Spear.localPosition = new Vector3(0.36f, 1.15f, 0f); f.Body.localRotation = Quaternion.identity; f.Body.localPosition = Vector3.zero; }
             }
-            if (_disc != null) _disc.transform.localScale = Vector3.one * (god ? zoom : 1f) * (_flash > 0 ? 1.5f : 1f);
+            if (_disc != null) _disc.transform.localScale = Vector3.one * (god ? Mathf.Pow(zoom, 0.7f) : 1f) * (_flash > 0 ? 1.4f : 1f);
             _flash -= Time.deltaTime;
         }
 
@@ -779,8 +783,9 @@ namespace World.Game
         public void Animate(float zoom)
         {
             if (_bv == null) return;
-            float h = _bv.ModelHeight + 3.2f + (zoom - 1f) * 2.5f;
-            transform.position = _bv.transform.position + Vector3.up * h + _bv.transform.right * 2.2f;
+            // Beside the building, level with its roof (the name tag sits above it).
+            float h = _bv.ModelHeight * 0.75f + 1.5f + (zoom - 1f) * 1.5f;
+            transform.position = _bv.transform.position + Vector3.up * h + _bv.transform.right * (4.5f + (zoom - 1f) * 1.5f);
             var cam = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.ActiveCamera : null;
             if (cam != null) transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position);
             float blink = State == 0 && Mathf.Repeat(Time.time, 0.8f) < 0.3f ? 0.6f : 1f;

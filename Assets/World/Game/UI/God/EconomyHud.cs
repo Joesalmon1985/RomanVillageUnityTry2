@@ -103,6 +103,7 @@ namespace World.Game
         {
             if (_boot == null || Hud.MenuOpen) return;
             if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return;
+            if (StrategyHud.Instance != null && StrategyHud.Instance.EndScreenOpen) return; // the end screen has the floor
             GUI.depth = -5;
             float now = Time.unscaledTime;
             _toasts.RemoveAll(t => t.Until < now);
@@ -111,9 +112,15 @@ namespace World.Game
             {
                 var st = new GUIStyle(BannerBig ? UiStyle.Title : UiStyle.Label) { alignment = TextAnchor.MiddleCenter, wordWrap = true, fontStyle = FontStyle.Bold };
                 if (BannerBig) st.fontSize = UiStyle.Px(30); else st.normal.textColor = UiStyle.AccentColor;
-                float w = UiStyle.Px(BannerBig ? 1150 : 1000);
+                // Centred in the space between the God View tool panel (left) and the inspect panel (right).
+                float left = 0f, right = Screen.width;
+                var lp = GodToolbar.ActivePanelRect;
+                if (_boot.Views.CurrentView == ViewMode.God && lp.width > 0) left = lp.xMax + UiStyle.Px(12);
+                var ip = InspectPanel.ScreenRect;
+                if (ip.width > 0) right = ip.x - UiStyle.Px(12);
+                float w = Mathf.Min(UiStyle.Px(BannerBig ? 1150 : 1000), Mathf.Max(UiStyle.Px(420), right - left));
                 float h = st.CalcHeight(new GUIContent(BannerText), w - UiStyle.Px(40)) + UiStyle.Px(BannerBig ? 36 : 20);
-                var r = new Rect((Screen.width - w) / 2, StrategyHud.StripBottom + UiStyle.Px(BannerBig ? 46 : 8), w, h); // below the strategy strip
+                var r = new Rect(Mathf.Clamp((left + right - w) / 2, 0, Screen.width - w), StrategyHud.StripBottom + UiStyle.Px(BannerBig ? 46 : 8), w, h); // below the strategy strip
                 UiStyle.DrawSolidPanel(r);
                 GUI.DrawTexture(new Rect(r.x, r.y, r.width, UiStyle.Px(4)), UiStyle.SolidTexture(BannerBig ? new Color(0.35f, 0.92f, 0.35f) : UiStyle.AccentColor));
                 GUI.Label(new Rect(r.x + UiStyle.Px(20), r.y, w - UiStyle.Px(40), h), BannerText, st);

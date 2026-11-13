@@ -168,6 +168,10 @@ namespace World.Game
         /// <summary>Top of the toolbar in GUI coordinates.</summary>
         public static float BarTop => Screen.height - UiStyle.Px(50) - BarHeight;
         /// <summary>Top and bottom of the left panel column (GUI coordinates).</summary>
+        /// <summary>The active tool's left panel (GUI coordinates) while it is drawn; empty otherwise.</summary>
+        public static Rect ActivePanelRect => _panelFrame >= Time.frameCount - 1 ? PanelRect : Rect.zero;
+        private static Rect PanelRect;
+        private static int _panelFrame = -10;
         public static float PanelTop => UiStyle.Px(150); // below the strategy strip
         public static float PanelBottom => BarTop - UiStyle.Px(12);
 
@@ -186,6 +190,7 @@ namespace World.Game
                 float h = Active.PanelHeight(w);
                 if (h < 0) h = bottom - top; else h = Mathf.Min(h, bottom - top);
                 var area = new Rect(UiStyle.Px(20), top, w, h);
+                PanelRect = area; _panelFrame = Time.frameCount;
                 AddUiRect(area);
                 UiStyle.DrawPanel(area);
                 Active.Panel(area);

@@ -56,13 +56,27 @@ public static class StrategyCaptures
     public static string UntilWonder(int stages) => Until(() => S.Strategy.Wonder.StagesDone >= stages, 40000);
     public static string UntilDemons() => Until(() => StrategyApi.Demons(S).Count >= 3, 30000);
     public static string UntilBarracks() => Until(() => StrategyUi.FirstBarracks(S, true) >= 0 && S.Military.Queues.Any(q => q.Orders.Count > 0), 40000);
-    public static string UntilAttack() => Until(() => MilitaryApi.Squads(S, 0).Any(x => x.Engaged || (x.Order == OrderKind.Attack && x.At == S.Board.RivalOutpostVertex)), 60000);
+    public static string UntilAttack() => Until(() => MilitaryApi.Squads(S, 0).Any(x => x.Order == OrderKind.Attack && x.Target == S.Board.RivalOutpostVertex
+        && S.Board.Topology.Distance(x.At, S.Board.RivalOutpostVertex) <= 1), 60000);
+    public static string FocusSquad(float size = 35f)
+    {
+        var q = MilitaryApi.Squads(S, 0).FirstOrDefault();
+        return q.Units == 0 ? "no squad" : GodAtVertex(q.At, size);
+    }
+    public static string UntilTraining() => Until(() => S.Military.Queues.Any(q => q.Orders.Count > 0 && q.Orders[0].Supplied && q.Orders[0].Progress > 30), 40000);
     public static string UntilBreaches(int n) => Until(() => S.Strategy.Breaches >= n, 60000);
     /// <summary>A careless player (never moves the hero) until the breach track reaches n: demons pile up, cities get robbed.</summary>
     public static string CarelessUntilBreaches(int n)
     {
         _d = new FullGameDriver(B.Sim, false, true) { IgnoreDemons = true };
         return Until(() => S.Strategy.Breaches >= n, 60000);
+    }
+
+    /// <summary>Note: every script run compiles a fresh assembly, so the driver (a static) is new each call.</summary>
+    public static string CarelessTicks(int n)
+    {
+        _d = new FullGameDriver(B.Sim, false, true) { IgnoreDemons = true };
+        return Until(() => false, n);
     }
 
     public static string CarelessUntilRobbed()

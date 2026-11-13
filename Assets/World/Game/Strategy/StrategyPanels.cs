@@ -177,8 +177,9 @@ namespace World.Game
             WarePicker(f, s, ref _get, "get");
             int have = EconomyApi.StorehouseCount(s, _give), haveGet = EconomyApi.StorehouseCount(s, _get);
             bool can = _give != _get && have >= rate;
-            f.Text("You have " + have + " " + EconomyApi.WareName(_give) + " and " + haveGet + " " + EconomyApi.WareName(_get) + ". After the trade: "
-                + (have - rate) + " " + EconomyApi.WareName(_give) + ", " + (haveGet + 1) + " " + EconomyApi.WareName(_get) + ".", true);
+            f.Text("You have " + have + " " + EconomyApi.WareName(_give) + " and " + haveGet + " " + EconomyApi.WareName(_get) + ". "
+                + (can ? "After the trade: " + (have - rate) + " " + EconomyApi.WareName(_give) + ", " + (haveGet + 1) + " " + EconomyApi.WareName(_get) + "."
+                       : _give == _get ? "Pick two different goods." : "<color=#FFB080>You need " + rate + " " + EconomyApi.WareName(_give) + " to trade.</color>"), true);
             if (f.Button("Trade " + rate + " " + EconomyApi.WareName(_give) + " for 1 " + EconomyApi.WareName(_get), can,
                     _give == _get ? "Pick two different goods." : have < rate ? "You need " + rate + " " + EconomyApi.WareName(_give) + "." : null))
                 StrategyUi.Trade(_give, _get, 1);

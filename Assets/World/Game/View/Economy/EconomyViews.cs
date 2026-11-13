@@ -372,6 +372,7 @@ namespace World.Game
             if (!string.IsNullOrEmpty(status)) { ss = _status.CalcSize(new GUIContent(status)); w = Mathf.Max(w + UiStyle.Px(20), ss.x); h += ss.y; }
             float dot = UiStyle.Px(12), pad = UiStyle.Px(7);
             w += dot + pad * 3;
+            if (p.y - h - pad < StrategyHud.StripBottom) return; // keep the strategy strip and objective clear
             var r = Place(new Rect(p.x - w / 2, p.y - h - pad, w, h + pad));
             GUI.DrawTexture(r, UiStyle.SolidTexture(new Color(0.06f, 0.05f, 0.04f, 0.78f)));
             GUI.DrawTexture(new Rect(r.x + pad, r.y + (ns.y - dot) / 2 + pad / 2, dot, dot), UiStyle.SolidTexture(badge));
