@@ -124,9 +124,10 @@ namespace World.Game
         {
             long tick = _boot.Sim.State.Tick;
             if (tick != _lastTick) { _lastTick = tick; _lastTickTime = Time.time; }
-            // Smooth between ticks while the clock runs; hold exactly where it is while paused.
+            // Smooth between ticks while the clock runs. While it is paused the hour is exactly the tick's (a pure
+            // function of the saved game time; dropping the fraction moves the sun by under 0.05 degrees).
             if (_boot.Clock != null && !_boot.Clock.IsPaused) _frac = Mathf.Clamp01((Time.time - _lastTickTime) * WorldSim.TicksPerSecond);
-            else _lastTickTime = Time.time - _frac / WorldSim.TicksPerSecond;
+            else { _frac = 0f; _lastTickTime = Time.time; }
             double h = (HourAtTick(tick + _frac) + DevOffsetHours) % 24.0;
             return h < 0 ? h + 24.0 : h;
         }
