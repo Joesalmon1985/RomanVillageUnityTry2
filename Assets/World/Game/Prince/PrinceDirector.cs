@@ -44,7 +44,7 @@ namespace World.Game
         public static float WarningRepitch = 15f;
         public static float ResignedSeconds = 90f, ResignedUnderWarning = 30f;
         public static float LaterSeconds = 60f;
-        public static float LagDistance = 18f, ResumeDistance = 12f, FetchDistance = 50f;
+        public static float LagDistance = 22f, ResumeDistance = 12f, FetchDistance = 50f;
         public static float CallEvery = 8f, NudgeEvery = 12f;
         public static int UnansweredBeforeResigned = 3;
         /// <summary>The first scene starts once the clock has run this many ticks (the prince walks up).</summary>
@@ -541,6 +541,9 @@ namespace World.Game
             if (dWho < 0.3f && !who.IsWalking) { ArriveAtSpot(); return; }
             if (_p.GoAhead) { if (!who.IsWalking) who.WalkTo(_p.Stand); return; }
             float d = BoardSpace.Flat(who.transform.position - PlayerPos);
+            // A player who heads for the spot on their own (nearer to it than he is) is not lagging.
+            float dTarget = BoardSpace.Flat(_p.Target - PlayerPos);
+            if (dTarget < BoardSpace.Flat(_p.Target - who.transform.position) + 5f) d = Mathf.Min(d, dTarget);
             if (!_p.Waiting && d > LagDistance)
             {
                 _p.Waiting = true;
@@ -739,13 +742,20 @@ namespace World.Game
             }
             if (FirstSceneStep == SceneFirstLoad)
             {
+                // Carriers can be slow to reach the hut's first load: after 30 s the pitch loop runs again meanwhile
+                // (the invitation to follow the load then comes when the load is picked up and nobody is pitching).
+                if (_loadCarrier < 0 && _ask == 0 && Now - _stepSince > 30f)
+                {
+                    UpdateLoop();
+                    if (_p != null) return;
+                }
                 StayNearSite();
                 if (_loadCarrier >= 0)
                 {
                     var t = CarrierTransform(_loadCarrier);
                     if (t != null) Prince.PointAt(t.position + Vector3.up);
                 }
-                if (_loadCarrier < 0 && Now - _stepSince > 30f + 60f * _busySaid && _busySaid < 2)
+                if (_loadCarrier < 0 && _p == null && Now - _stepSince > 25f + 60f * _busySaid && _busySaid < 2)
                 { _busySaid++; Say(Prince, VoiceOf(Prince).Pick("first.busy")); }
                 if (_ask != 0 && !SpeechBubbles.IsOpen(_ask)) _ask = 0;
                 if (_ask != 0 && Now - _askedAt > 25f) { SpeechBubbles.Close(_ask); _ask = 0; FinishFirstScene(); return; }
@@ -940,7 +950,12 @@ namespace World.Game
                         }
                         break;
                     case WarePickedUp wp:
-                        if (FirstSceneStep == SceneFirstLoad && _loadCarrier < 0 && _hutBuilding >= 0 && FromHut(wp.JobId)) FirstLoad(wp.CarrierId);
+                        if (FirstSceneStep == SceneFirstLoad && _loadCarrier < 0 && _hutBuilding >= 0 && FromHut(wp.JobId)
+                            && (_p == null || CurrentPhase == Phase.Approach))
+                        {
+                            if (_p != null) EndPitch(Now + 5f); // the walk-up is dropped for the load; it comes back after
+                            FirstLoad(wp.CarrierId);
+                        }
                         break;
                     case OverrunWarningStarted ws:
                     {

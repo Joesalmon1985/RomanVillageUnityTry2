@@ -165,7 +165,7 @@ namespace World.Game
              .Wait(0.3f).Capture("n_whats_it_for")
              .Step(a => TapReply(a, () => ask, PrinceLines.ReplyLead))
              .Step(a => Do(() => Expect(a, ReferenceEquals(W.Following, D.Prince), "the player is not following the prince")))
-             .Step(a => WaitFor(a, () => D.CurrentPhase == PrinceDirector.Phase.Leading && OnScreen(D.Prince.transform.position + Vector3.up) && BoardSpace.Flat(D.Prince.transform.position - W.Position) > 6f, 10f, "not leading in view"))
+             .Step(a => WaitFor(a, () => D.CurrentPhase == PrinceDirector.Phase.Leading && Visible(D.Prince.transform) && BoardSpace.Flat(D.Prince.transform.position - W.Position) > 6f, 10f, "not leading in view"))
              .Wait(0.3f).Capture("n_leading")
              .Step(a => WaitFor(a, () => D.CurrentPhase == PrinceDirector.Phase.AtSpot, 40f, "the prince did not reach the plot"))
              .Step(a => WaitFor(a, () => !W.IsGliding && !W.IsAutoWalking || SpellCaster.InRange(D.PitchedProposal), 15f, "the player did not catch up"))
@@ -190,11 +190,12 @@ namespace World.Game
              .Wait(0.5f).Capture("n_builder")
              .Step(a => WaitFor(a, () => D.FirstSceneStep >= PrinceDirector.SceneFirstLoad, 120f, "the hut was not finished"))
              .Wait(0.5f).Capture("n_hut_done")
-             .Step(a => WaitFor(a, () => D.AskHandle != 0 && ReplyIndex(D.AskHandle, PrinceLines.Follow) >= 0, 230f, "the prince did not point out the first load"))
+             .Step(a => WaitForLoad(a))
              .Wait(0.3f).Capture("n_first_load")
              .Step(a => TapReply(a, () => D.AskHandle, PrinceLines.Follow))
              .Step(a => Do(() => Expect(a, W.Following != null && !(W.Following is Npc), "the player is not following a carrier")))
-             .Wait(1f).Capture("n_following_load")
+             .Step(a => WaitFor(a, () => W.Following != null && Visible(W.Following.FollowTransform), 12f, "the followed carrier is not in view"))
+             .Capture("n_following_load")
              .Step(a => WaitFor(a, () => D.FirstSceneStep == PrinceDirector.SceneDone, 60f, "the load did not reach the storehouse"))
              .Step(a => Do(() =>
              {
@@ -208,6 +209,31 @@ namespace World.Game
              .Log("[AutoPlay] first_scene OK")
              .Quit(0);
             return s;
+        }
+
+        /// <summary>Waits for the prince to point out the first load; pitches that come meanwhile are answered "Later".</summary>
+        private static IEnumerator WaitForLoad(AutoPlay a)
+        {
+            float end = Now + 240f;
+            while (Now < end)
+            {
+                int h = D.AskHandle;
+                if (h != 0 && ReplyIndex(h, PrinceLines.Follow) >= 0) yield break;
+                if (h != 0 && SpeechBubbles.IsShowing(h) && ReplyIndex(h, PrinceLines.Later) >= 0) SpeechBubbles.Choose(h, ReplyIndex(h, PrinceLines.Later));
+                yield return null;
+            }
+            a.Fail("the prince did not point out the first load");
+        }
+
+        /// <summary>On screen and not hidden behind something else (a ray from the eye reaches it first).</summary>
+        private static bool Visible(Transform t)
+        {
+            var p = t.position + Vector3.up * 1.2f;
+            if (!OnScreen(p)) return false;
+            var cam = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.ActiveCamera : Camera.main;
+            var from = cam.transform.position;
+            if (!Physics.Raycast(from, p - from, out var hit, (p - from).magnitude + 1f, ~(1 << 2), QueryTriggerInteraction.Collide)) return true;
+            return hit.transform.IsChildOf(t) || t.IsChildOf(hit.transform);
         }
 
         private static bool OnScreen(Vector3 p)
