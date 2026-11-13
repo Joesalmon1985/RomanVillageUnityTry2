@@ -81,7 +81,9 @@ namespace World.Game.Tests
             var res = r.LastResult;
             Assert.AreEqual(0, res.Great + res.Ok + res.Miss + res.HoldPartial, "all perfect");
             Assert.AreEqual(4, res.PassedBlocks);
-            Assert.AreEqual(n - res.HoldComplete, res.Perfect, "every cue judged perfect (holds also complete)");
+            Assert.AreEqual(n, res.Perfect, "every cue (tap or hold head) judged perfect");
+            int holds = 0; foreach (var c in r.Session.AllCues) if (c.IsHold) holds++;
+            Assert.AreEqual(holds, res.HoldComplete, "every hold held to its end");
         }
 
         [Test]
