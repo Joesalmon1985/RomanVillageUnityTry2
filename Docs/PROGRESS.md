@@ -288,3 +288,38 @@ Ran:
 - The proof: all criteria pass (prompt 10/10 overrun wins, median 12.1 min; ignored prince overrun 10/10, median 14.7 min; zero drift in 10 random-cast games; longest missed import 0 ticks; longest job wait under 2 minutes; the rival never more than 46 s without a proposal; no ware over 15% lost to the cap; every placeable type built in at least one prompt game).
 
 Not run: Unity (no EditMode or PlayMode run in the editor for this package); nothing was played by hand. The modelled human is crude (straight-line walking, fixed talk). Warriors are trained in none of the 10 prompt games before they end, so the lodge, meals and hunger are proven by unit tests and the paired run, not by play.
+
+## Prehistoric refactor, package S: second tuning pass (13 Nov 2026, branch `refactor/sim`)
+
+Asked for: a real person casting about 45-60 s after each pitch must win; the middle and late game (warriors, cities, every worked good, demons) must happen in those wins; the first pass's hidden-information rule replaced with something visible. Numbers and brain/rival logic only; the surface grew (spec A.5 items 21-24), `ApiSurfaceTests` unchanged.
+
+Changed (spec value -> game value; all in the `Tuned()` factories):
+- Rival pace: 45 s from when a proposal became top -> 100 s from its last spell (`RivalPacePerCast`; the top must have settled 15 s), 60 s sooner per point of strength it leads by, never under 10 s. Replaces the first pass's +30 to strength builds while the other people's strength had been static for 5 minutes (hidden information).
+- No overrun warning in the first 8 minutes (`WarningGraceTicks` 4800): stops games ending before the workshops appear.
+- A camp held by demons adds no strength until banished (spec: it counts).
+- Demons: grace 5 min, a draw on every 2nd seven (first pass: 3rd), and a draw picks a people first (equal chances), then one of its sites (spec: one site among all, so the bigger people got most demons).
+- Lodge also without a city once a Bakery and a Smokehouse are active (spec: city only); lodge score 60 -> 90.
+- Workshops +30 once a people has 2 camps; improved collectors +15 once it has 4 (without it the Farm was never built).
+- A banish on a road edge ranks like a camp's while it holds something up (a carrier or a road or camp site waiting).
+- Pitches within 60 m of the last cast get +8 (walkable clusters).
+
+Tuning log (11 seeds per row; W/Wt = wins by overrun / at the time limit; L = overrun losses; probe runs, last line from the proof):
+
+| Step | Change | Prompt | 45 s | 60 s | 90 s | Ignored prince |
+|---|---|---|---|---|---|---|
+| 0 | first-pass values | W11, median 13.1 | W0, Wt3, Lt6 | W0, Lt8, L1 | Lt6, L5 | L11, median 14.7 |
+| 1 | no press bonus, rival delay ramp 90 -> 40 s over 15 min | W11, median 8.6 | W1, Wt6 | W1, Wt3 | Lt8, L2 | L2 (Lt9) |
+| 2 | + workshops +30 from 2 camps, lodge without a city, lodge 70-90 | W11, median 10.3 | W7, Wt3, L1; city, warriors and all goods in 9-10 wins | W1, Lt7 | Lt7, L2 | L1 |
+| 3 | + demon-held camps count 0, draws on every 2nd seven | W11 | W5-8 | W1-3, L0-3 | L0-4 | L6-9 |
+| 4 | + the rival paced per spell (its 45-90 s delays were reset by every reorder of its queue) and bolder when ahead | W11 | W4-7 | W1-2, Wt4-5, L0-1 | L1 | L8 |
+| 5 | + demons pick a people first | W11, median 10.9 | W9, Wt2 | W1, Wt7, L1 | L2-4 | L10-11 |
+| 6 | + no warning before 8 min | W11, min 9.5 | W9, Wt2, median 15.8 | W1, Wt7, L1 | L4 | L11 |
+| 7 | + blocking road banishes rank high (a 60 s game had sat 10 minutes behind one) | W11 | 9+ wins | 7+ wins, L0 | - | L9 |
+| 8 | rival 100 s base, 60 s per point of lead, 10 s floor | W11, median 10.6 | W11, median 15.9 | W3, Wt6, L0 | D7, L4 | L11, median 14.7 |
+| 9 | + improved collectors +15 from 4 camps | proof: W11, median 10.6, min 9.5 | proof: W11, median 15.9 | proof: W3, Wt6, D1, Lt1, L0 | proof: D7, L4 | proof: L11, 11.3-19.5, median 14.7 |
+
+Ran:
+- `dotnet test DotNet`: 201 passed, 0 failed (new `TuningRulesTests`: each added rule on and off).
+- The proof (`Docs/ECONOMY_PROOF.md`): all criteria pass, including the new ones: 45 s player wins 11 of 11 (median 15.9 min); 60 s player wins 9 of 11 (3 by overrun, 6 at the time limit) and is never overrun; 90 s player: 7 draws, 4 overrun losses; ignored prince overrun 11 of 11 (median 14.7 min, earliest 11.3); prompt games 9.5-13.6 min. In the 45 s player's 11 wins: fed warriors in 10, a city in 9, all five worked goods made and used in 9, warriors made the margin in 5; 2.8 banishes per game; never banishing (paired run) turned a 15.9-minute win into a 12.1-minute defeat. Mean walk between casts 60-90 m (5-7 s at 12.5 m/s); 17-24 casts per game.
+
+Not run: Unity; nothing played by hand. Still weak: the 90 s player loses 4 of 11 by overrun (an idle player and a 90 s player differ by about one point of strength, and the rule that overruns every idle player also overruns some slow ones); prompt games end at 9.5-13.6 minutes, mostly right after the 8-minute warning grace, often before the first warrior; the rival is weak against an active player (final strength 1-2 against the 45 s player), partly because its camps are often demon-held.

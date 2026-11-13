@@ -62,6 +62,7 @@ namespace World.Sim.Factions
             var tu = f.Tuning;
 
             var cands = Candidates(s, faction);
+            ClusterBonus(s, faction, cands);
             var declined = new HashSet<string>();
             foreach (var d in f.Declined) if (d.Faction == faction && d.UntilTick > s.Tick) declined.Add(d.Key);
             var best = new Dictionary<string, Candidate>();
@@ -150,7 +151,7 @@ namespace World.Sim.Factions
                 {
                     if (site.Faction != faction) continue;
                     int n = site.Count;
-                    list.Add(Make(ProposalKind.Banish, -1, -1, -1, -1, -1, site.Kind, site.Id, (site.Kind == DemonSiteKind.Corner ? f.Tuning.BanishCornerScore : f.Tuning.BanishEdgeScore) + 10 * n,
+                    list.Add(Make(ProposalKind.Banish, -1, -1, -1, -1, -1, site.Kind, site.Id, (site.Kind == DemonSiteKind.Corner || EdgeHolds(s, faction, site.Id) ? f.Tuning.BanishCornerScore : f.Tuning.BanishEdgeScore) + 10 * n,
                         n + (n == 1 ? " demon sits on " : " demons sit on ") + DemonApi.SiteName(s, site.Kind, site.Id) + ": " + site.Effect + ".",
                         Speakers.Prince));
                 }
@@ -185,6 +186,9 @@ namespace World.Sim.Factions
 
             // Improved collectors (+10 for the scarcest raw ware of the next expansion).
             int scarce = ScarcestRaw(s, faction, collects);
+            int campsNow = 0;
+            foreach (var cst in e.Settlements) if (cst.Faction == faction && cst.State == SettlementState.Active) campsNow++;
+            int collectorStage = campsNow >= f.Tuning.CollectorStageCamps ? f.Tuning.CollectorStageBonus : 0;
             foreach (var st in e.Settlements)
             {
                 if (st.Faction != faction || st.State != SettlementState.Active) continue;
@@ -208,19 +212,32 @@ namespace World.Sim.Factions
                     string speaker = type == BuildingType.WoodcutterHut && f.OpeningDone[faction] ? Speakers.Sawyer : Speakers.Prince;
                     var rawWare = TerrainInfo.RawWare(terr).Value;
                     list.Add(Make(ProposalKind.Building, (int)type, st.Id, plot, -1, -1, DemonSiteKind.Corner, -1,
-                        40 + 2 * EconomyApi.Pips(number) + ((int)rawWare == scarce ? 10 : 0),
+                        40 + 2 * EconomyApi.Pips(number) + ((int)rawWare == scarce ? 10 : 0) + collectorStage,
                         def.Name + " doubles the " + Wares.DisplayName(TerrainInfo.RawWare(terr).Value) + " we take from "
                         + TerrainInfo.DisplayName(terr) + " " + number + ".", speaker));
                 }
             }
 
             // Workshops.
-            AddWorkshop(s, faction, list, BuildingType.Sawmill, Ware.Wood, collects[(int)Terrain.Forest], 45);
-            AddWorkshop(s, faction, list, BuildingType.Kiln, Ware.Clay, collects[(int)Terrain.Hills], 44);
-            AddWorkshop(s, faction, list, BuildingType.Stonecutter, Ware.Stone, collects[(int)Terrain.Mountain], 42);
-            AddWorkshop(s, faction, list, BuildingType.Bakery, Ware.Grain, collects[(int)Terrain.Fields], 41);
-            AddWorkshop(s, faction, list, BuildingType.Smokehouse, Ware.Sheep, collects[(int)Terrain.Pasture], 40);
-            AddWorkshop(s, faction, list, BuildingType.WarriorLodge, Ware.Bread, hasCity, f.Tuning.LodgeScore + press + (defending ? 50 : 0), defending);
+            // Development stage: once the people has WorkshopStageCamps finished camps, workshops get WorkshopStageBonus.
+            int camps = 0;
+            bool bakery = false, smokehouse = false;
+            foreach (var st in e.Settlements) if (st.Faction == faction && st.State == SettlementState.Active) camps++;
+            foreach (var b in e.Buildings)
+            {
+                if (b.Faction != faction || b.State != BuildingState.Active) continue;
+                if (b.Type == BuildingType.Bakery) bakery = true;
+                if (b.Type == BuildingType.Smokehouse) smokehouse = true;
+            }
+            int stage = camps >= f.Tuning.WorkshopStageCamps ? f.Tuning.WorkshopStageBonus : 0;
+            AddWorkshop(s, faction, list, BuildingType.Sawmill, Ware.Wood, collects[(int)Terrain.Forest], 45 + stage);
+            AddWorkshop(s, faction, list, BuildingType.Kiln, Ware.Clay, collects[(int)Terrain.Hills], 44 + stage);
+            AddWorkshop(s, faction, list, BuildingType.Stonecutter, Ware.Stone, collects[(int)Terrain.Mountain], 42 + stage);
+            AddWorkshop(s, faction, list, BuildingType.Bakery, Ware.Grain, collects[(int)Terrain.Fields], 41 + stage);
+            AddWorkshop(s, faction, list, BuildingType.Smokehouse, Ware.Sheep, collects[(int)Terrain.Pasture], 40 + stage);
+            // The lodge: once a city exists (spec), or (LodgeWithoutCity) once the people bakes bread and smokes meat.
+            bool lodgeOpen = hasCity || (f.Tuning.LodgeWithoutCity && bakery && smokehouse);
+            AddWorkshop(s, faction, list, BuildingType.WarriorLodge, Ware.Bread, lodgeOpen, f.Tuning.LodgeScore + press + (defending ? 50 : 0), defending);
 
             // City upgrade: the settlement with the most buildings (ties lower corner).
             Settlement cityTarget = null;
@@ -240,6 +257,22 @@ namespace World.Sim.Factions
 
             AddExpansion(s, faction, list, collects, defending, press);
             return list;
+        }
+
+        /// <summary>
+        /// True when demons on this road edge are holding something of the people up: a carrier waiting on it, or a road
+        /// or camp site of the people whose goods cannot get through. Then its banish ranks like a camp's.
+        /// </summary>
+        private static bool EdgeHolds(WorldState s, int faction, int hexEdge)
+        {
+            var e = s.Economy;
+            foreach (var c in e.Carriers)
+                if (c.Faction == faction && c.State != CarrierState.Idle && Logistics.CurrentEdge(s, c) == hexEdge) return true;
+            foreach (var r in e.Roads)
+                if (r.Faction == faction && r.State == RoadState.Site && r.Reason == Reasons.DemonOnRoute) return true;
+            foreach (var st in e.Settlements)
+                if (st.Faction == faction && st.State == SettlementState.Site && st.Reason == Reasons.DemonOnRoute) return true;
+            return false;
         }
 
         /// <summary>The other people as the brain names it in reasons.</summary>
@@ -550,6 +583,33 @@ namespace World.Sim.Factions
             return true;
         }
 
+        /// <summary>Walkable pitches: candidates near the people's last cast target get ClusterBonus.</summary>
+        private static void ClusterBonus(WorldState s, int faction, List<Candidate> cands)
+        {
+            var f = s.Factions;
+            var me = f.Factions.Count > faction ? f.Factions[faction] : null;
+            if (me == null || !me.HasLastCast || f.Tuning.ClusterBonus == 0) return;
+            double r2 = (double)f.Tuning.ClusterMetres * f.Tuning.ClusterMetres;
+            var t = s.Board.Topology;
+            for (int i = 0; i < cands.Count; i++)
+            {
+                var c = cands[i];
+                double x, z;
+                if (c.Kind == ProposalKind.Building) { x = PlotLayout.PlotX(t, c.Plot); z = PlotLayout.PlotZ(t, c.Plot); }
+                else if (c.Kind == ProposalKind.Road) { x = t.HexEdgeMidX(c.HexEdge); z = t.HexEdgeMidZ(c.HexEdge); }
+                else if (c.Kind == ProposalKind.Banish)
+                {
+                    if (c.DemonSiteKind == DemonSiteKind.Corner) { x = t.VertexX(c.DemonSiteId); z = t.VertexZ(c.DemonSiteId); }
+                    else { x = t.HexEdgeMidX(c.DemonSiteId); z = t.HexEdgeMidZ(c.DemonSiteId); }
+                }
+                else { x = t.VertexX(c.Corner); z = t.VertexZ(c.Corner); }
+                double dx = x - me.LastCastX, dz = z - me.LastCastZ;
+                if (dx * dx + dz * dz > r2) continue;
+                c.Score += f.Tuning.ClusterBonus;
+                cands[i] = c;
+            }
+        }
+
         private static Candidate Make(ProposalKind kind, int type, int settlement, int plot, int hexEdge, int corner,
             DemonSiteKind siteKind, int siteId, int score, string reason, string speaker) => new Candidate
             {
@@ -579,7 +639,13 @@ namespace World.Sim.Factions
             {
                 if (!fa.Auto) continue;
                 var top = FactionLogic.Top(f, fa.Id);
-                if (top == null || top.TopSinceTick < 0 || s.Tick - top.TopSinceTick < f.Tuning.RivalCastDelayTicks) continue;
+                if (top == null || top.TopSinceTick < 0) continue;
+                int delay = FactionLogic.RivalDelay(s);
+                bool ready = f.Tuning.RivalPacePerCast
+                    // Paced per cast: the delay counts from its last cast; the top only has to have settled briefly.
+                    ? s.Tick - Math.Max(fa.LastCastTick, 0) >= delay && s.Tick - top.TopSinceTick >= f.Tuning.RivalSettleTicks
+                    : s.Tick - top.TopSinceTick >= delay;
+                if (!ready) continue;
                 if (FactionLogic.CheckAction(s, top).Ok) FactionLogic.Cast(s, top, ev);
                 else FactionLogic.Remove(s, top, "expired", ev);
             }

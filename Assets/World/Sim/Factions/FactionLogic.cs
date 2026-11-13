@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using World.Sim.Demons;
 using World.Sim.Economy;
@@ -7,6 +8,27 @@ namespace World.Sim.Factions
     /// <summary>Spells, declines, strength, the overrun warning and the endings (REFACTOR_SPEC 2.C).</summary>
     internal static class FactionLogic
     {
+        /// <summary>The rival's cast delay now: flat, or ramping from RivalCastDelayTicks to RivalCastDelayEndTicks.</summary>
+        public static int RivalDelay(WorldState s)
+        {
+            var tu = s.Factions.Tuning;
+            int d = tu.RivalCastDelayTicks;
+            if (tu.RivalCastDelayEndTicks >= 0 && tu.RivalRampTicks > 0)
+            {
+                long t = Math.Min(s.Tick, tu.RivalRampTicks);
+                d = (int)(tu.RivalCastDelayTicks + (tu.RivalCastDelayEndTicks - tu.RivalCastDelayTicks) * t / tu.RivalRampTicks);
+            }
+            // Bolder when ahead: each point of strength the rival leads by takes RivalBoldTicksPerLead off its delay.
+            var f = s.Factions;
+            if (tu.RivalBoldTicksPerLead > 0 && f.Factions.Count == PlayerIds.Count)
+            {
+                int lead = f.Factions[PlayerIds.Rival].Strength - f.Factions[PlayerIds.Human].Strength;
+                int over = lead - tu.RivalBoldFromLead + 1;
+                if (over > 0) d = Math.Max(tu.RivalMinDelayTicks, d - tu.RivalBoldTicksPerLead * over);
+            }
+            return d;
+        }
+
         public static Proposal Find(WorldState s, int proposalId)
         {
             if (s?.Factions == null) return null;
@@ -61,6 +83,14 @@ namespace World.Sim.Factions
             }
             if (p.Key == Brain.OpeningKey(s, p.Faction)) f.OpeningDone[p.Faction] = true;
             f.Casts[p.Faction]++;
+            var fa = f.Factions.Count > p.Faction ? f.Factions[p.Faction] : null;
+            if (fa != null) fa.LastCastTick = s.Tick;
+            if (fa != null && FactionApi.ProposalTarget(s, p.Id, out double cx, out double cz, out _))
+            {
+                fa.HasLastCast = true;
+                fa.LastCastX = (int)Math.Round(cx);
+                fa.LastCastZ = (int)Math.Round(cz);
+            }
             ev?.Add(new SpellCast
             {
                 ProposalId = p.Id, Faction = p.Faction, Kind = p.Kind, BuildingType = p.BuildingType, Plot = p.Plot,
@@ -109,12 +139,13 @@ namespace World.Sim.Factions
         public static void ComputeStrength(WorldState s, Faction fa)
         {
             var tu = s.Factions.Tuning;
-            fa.Settlements = fa.Cities = fa.FedWarriors = fa.HungryWarriors = 0;
+            fa.Settlements = fa.Cities = fa.FedWarriors = fa.HungryWarriors = fa.HeldCamps = 0;
             if (s.Economy != null)
             {
                 foreach (var st in s.Economy.Settlements)
                 {
                     if (st.Faction != fa.Id || st.State != SettlementState.Active) continue;
+                    if (!tu.DemonHeldCampsCount && EconomyLogic.CornerDemons(s, st.Corner) > 0) { fa.HeldCamps++; continue; }
                     if (st.IsCity) fa.Cities++;
                     else fa.Settlements++;
                 }
@@ -171,7 +202,8 @@ namespace World.Sim.Factions
             }
             if (!w.Active)
             {
-                int attacker = ps >= rs + tu.OverrunMargin ? PlayerIds.Human : rs >= ps + tu.OverrunMargin ? PlayerIds.Rival : -1;
+                int attacker = s.Tick < tu.WarningGraceTicks ? -1
+                    : ps >= rs + tu.OverrunMargin ? PlayerIds.Human : rs >= ps + tu.OverrunMargin ? PlayerIds.Rival : -1;
                 if (attacker >= 0)
                 {
                     w.Active = true;

@@ -24,12 +24,17 @@ namespace World.Sim.Demons
         public int PerSeven = 1;
         /// <summary>Only every Nth seven after the grace period draws demons (1 = every seven, the spec start value).</summary>
         public int SevensPerDraw = 1;
+        /// <summary>When true a draw first picks a people (each with the same chance), then one of its sites (spec: one site among all).</summary>
+        public bool DrawPerPeople = false;
     }
 
     public static class DemonTunings
     {
-        /// <summary>The values a new game uses (spec start values + S tuning): grace 5 minutes, a draw on every third seven.</summary>
-        public static DemonTuning Tuned() => new DemonTuning { GraceTicks = 3000, SevensPerDraw = 3 };
+        /// <summary>
+        /// The values a new game uses (spec start values + S tuning): grace 5 minutes, a draw on every second seven, and each
+        /// draw first picks a people (equal chances), then one of its sites.
+        /// </summary>
+        public static DemonTuning Tuned() => new DemonTuning { GraceTicks = 3000, SevensPerDraw = 2, DrawPerPeople = true };
     }
 
     /// <summary>All demon state (WorldState.Demons).</summary>
@@ -222,6 +227,15 @@ namespace World.Sim.Demons
             if (d.Tuning.SevensPerDraw > 1 && (d.Sevens - 1) % d.Tuning.SevensPerDraw != 0) return;
             var sites = Sites(s);
             if (sites.Count == 0) return;
+            if (d.Tuning.DrawPerPeople)
+            {
+                // Each people is equally likely to be troubled, whatever its size; then one of its sites.
+                var peoples = new List<int>();
+                foreach (var x in sites) { int f = SiteFaction(s, x.kind, x.id); if (f >= 0 && !peoples.Contains(f)) peoples.Add(f); }
+                peoples.Sort();
+                int who = peoples[d.Rng.NextInt(peoples.Count)];
+                sites = sites.FindAll(x => SiteFaction(s, x.kind, x.id) == who);
+            }
             var site = sites[d.Rng.NextInt(sites.Count)];
             var outbroken = new HashSet<(DemonSiteKind, int)>();
             for (int i = 0; i < d.Tuning.PerSeven; i++) AddDemon(s, site.kind, site.id, ev, outbroken);

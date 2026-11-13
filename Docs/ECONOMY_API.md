@@ -21,13 +21,20 @@ Systems per tick, after the queued commands: Dice 100, Growth 150, Collect 200, 
 | `EconomyTuning.StartStock` (Sheep) | 2 | 4 |
 | `EconomyTuning.HexCap` | 12 | 16 |
 | `EconomyTuning.JobAgeTicks` (new) | - | 300 |
-| `FactionTuning.RivalCastDelayTicks` | 450 | 400 |
-| `FactionTuning.CityScore` / `LodgeScore` (new) | 55 / 38 | 90 / 60 |
-| `FactionTuning.BanishEdgeScore` (new) | 100 | 40 |
+| `FactionTuning.RivalCastDelayTicks` | 450 | 1000 (100 s, now counted from the rival's last cast) |
+| `FactionTuning.RivalPacePerCast` / `RivalSettleTicks` (new) | false / - | true / 150 |
+| `FactionTuning.RivalBoldTicksPerLead` / `RivalMinDelayTicks` (new) | 0 / 0 | 600 / 100 |
+| `FactionTuning.WarningGraceTicks` (new) | 0 | 4800 (no warning in the first 8 minutes) |
+| `FactionTuning.DemonHeldCampsCount` (new) | true | false (a demon-held camp adds no strength) |
+| `FactionTuning.CityScore` / `LodgeScore` (new) | 55 / 38 | 90 / 90 |
+| `FactionTuning.LodgeWithoutCity` (new) | false | true |
+| `FactionTuning.WorkshopStageBonus` / `CollectorStageBonus` (new) | 0 / 0 | 30 from 2 camps / 15 from 4 camps |
+| `FactionTuning.BanishEdgeScore` (new) | 100 | 40 (100 when the edge holds something up) |
 | `FactionTuning.WorkshopSurplusPerUnit` / `Cap` (new) | 0 / - | 1 / 15 |
-| `FactionTuning.PressAdvantageBonus` / `PressIdleTicks` (new) | 0 / 0 | 30 / 3000 |
+| `FactionTuning.ClusterBonus` / `ClusterMetres` (new) | 0 / 60 | 8 / 60 |
+| `FactionTuning.PressAdvantageBonus` (new, first pass only) | 0 | 0 (removed) |
 | `DemonTuning.GraceTicks` | 1800 | 3000 |
-| `DemonTuning.SevensPerDraw` (new) | 1 | 3 |
+| `DemonTuning.SevensPerDraw` / `DrawPerPeople` (new) | 1 / false | 2 / true |
 
 Tuning is saved with the state (`WorldState.Economy.Tuning` etc.), so a test or a dev tool may change it per game.
 
@@ -81,19 +88,19 @@ Collectors (ascending building id, so the lower id wins a tie) take 1 mature uni
 
 ## Warriors, strength and endings
 
-A Warrior lodge (only once the people has a city) trains a warrior per cycle from 1 Bread + 1 Meat on hand, up to 3 per lodge. Each warrior eats 1 Bread (else Meat) every `MealTicks` straight from its camp's storehouse; a miss makes it hungry (counts 0, retries every `MealRetryTicks`). Strength = camps 1, cities 2, fed warriors 1, recomputed every tick (`StrengthChanged`, `Faction.StrengthChangedTick`). Overrun warning, cancel, overrun and the time limit as spec 2.C.3. `GameOutcome` is from the player's side. After the end no planning happens and every command is refused with `game_over`; the dice and the economy keep running.
+A Warrior lodge (spec: once the people has a city; tuned: also once it has an active Bakery and Smokehouse) trains a warrior per cycle from 1 Bread + 1 Meat on hand, up to 3 per lodge. Each warrior eats 1 Bread (else Meat) every `MealTicks` straight from its camp's storehouse; a miss makes it hungry (counts 0, retries every `MealRetryTicks`). Strength = camps 1, cities 2, fed warriors 1, recomputed every tick (`StrengthChanged`, `Faction.StrengthChangedTick`); with `DemonHeldCampsCount` false (the game) a camp or city with demons on its corner adds nothing (`Faction.HeldCamps`). Overrun warning, cancel, overrun and the time limit as spec 2.C.3, but no warning starts before `WarningGraceTicks`. `GameOutcome` is from the player's side. After the end no planning happens and every command is refused with `game_over`; the dice and the economy keep running.
 
 `FactionApi`: `Proposals`, `Top`, `GetProposal`, `ProposalTitle`, `ProposalTarget` (point and press radius: plot 5, corner 6, road midpoint 30 with a 6 m strip), `ProposalAt` (tests the strip for roads and road banishes), `CastRangeMetres`, `Strength`, `Warning` (with a sentence and `TicksLeft`), `Outcome` (with a sentence), `Headline`.
 
 ## The prince's brain
 
-Every `PlanIntervalTicks` (player at ticks where `Tick % 20 == 0`, from tick 0; rival at `% 20 == 10`) the brain builds candidates that are legal and affordable now (covered by the unreserved stock of the camps connected to the target's camp), drops declined keys, sorts by score then `Key`, keeps 3, keeps the ids of unchanged keys, and fires `ProposalAdded`, `ProposalRemoved("expired")`, `ProposalsReordered` (a new top gets `TopSinceTick` = now). It plans nothing but banishes while the people has `MaxOpenSites` unfinished sites. The rival casts its top proposal `RivalCastDelayTicks` after it became top (an illegal top is removed as expired); it never declines.
+Every `PlanIntervalTicks` (player at ticks where `Tick % 20 == 0`, from tick 0; rival at `% 20 == 10`) the brain builds candidates that are legal and affordable now (covered by the unreserved stock of the camps connected to the target's camp), drops declined keys, sorts by score then `Key`, keeps 3, keeps the ids of unchanged keys, and fires `ProposalAdded`, `ProposalRemoved("expired")`, `ProposalsReordered` (a new top gets `TopSinceTick` = now). It plans nothing but banishes while the people has `MaxOpenSites` unfinished sites. The rival casts its top proposal (an illegal top is removed as expired); it never declines. Spec rule: once the proposal has been top for `RivalCastDelayTicks`. Game rule (`RivalPacePerCast`): once `FactionApi.RivalCastDelay(s)` has passed since its last cast and the top has been top for `RivalSettleTicks`; the delay is `RivalCastDelayTicks`, less `RivalBoldTicksPerLead` per point of strength the rival leads by, never under `RivalMinDelayTicks` (optionally ramping over time with `RivalCastDelayEndTicks` / `RivalRampTicks`, unused).
 
-Candidates and scores (spec 6.2 with the tuning above): opening (Woodcutter's hut on Forest slot 1 of the start camp, 95, until cast); banish 100 + 10 per demon on a camp, 40 + 10 per demon on a road edge; improved collectors 40 + 2 x pips (+10 for the scarcest raw ware of the next road and camp, or of the inputs of the people's workshops); next road towards the expansion target 50 + value / 2 (merchant); a camp at the target when a road reaches it 60 + value / 2; workshops 45 / 44 / 42 / 41 / 40 (Sawmill, Kiln, Stonecutter, Bakery, Smokehouse) once the people collects their first input, + 1 per unit of that input above 4 (up to 15), one of each type per people; city 90 (the camp with the most buildings); lodge 60 once a city exists (a second only when the first holds 3 warriors). Under a warning, the defender's camp, city and lodge candidates get +50 and a "gathering" sentence. While a people leads and the other people's strength has not changed for 5 minutes, its roads, camps, city and lodge get +30. Expansion target: the best free legal camp corner within 3 hex edges of the network over free edges, value = pips + 6 per raw ware not yet collected + 3 per distinct terrain - 4 per edge still needed, ties lower corner. Speakers: sawyer for the Woodcutter's hut after the opening and for the Sawmill, merchant for roads, prince for the rest.
+Candidates and scores (spec 6.2 with the tuning above): opening (Woodcutter's hut on Forest slot 1 of the start camp, 95, until cast); banish 100 + 10 per demon on a camp, 40 + 10 per demon on a road edge (100 + 10 when a carrier waits on it or a road or camp site of the people is held up by demons); improved collectors 40 + 2 x pips (+10 for the scarcest raw ware of the next road and camp, or of the inputs of the people's workshops; +15 once the people has 4 camps); next road towards the expansion target 50 + value / 2 (merchant); a camp at the target when a road reaches it 60 + value / 2; workshops 45 / 44 / 42 / 41 / 40 (Sawmill, Kiln, Stonecutter, Bakery, Smokehouse) once the people collects their first input, + 30 once it has 2 camps, + 1 per unit of that input above 4 (up to 15), one of each type per people; city 90 (the camp with the most buildings); lodge 90 once a city exists or a Bakery and a Smokehouse are active (a second only when the first holds 3 warriors). Every candidate within 60 m of the people's last cast target gets +8 (walkable pitches; `Faction.LastCastX/Z`). Under a warning, the defender's camp, city and lodge candidates get +50 and a "gathering" sentence. Expansion target: the best free legal camp corner within 3 hex edges of the network over free edges, value = pips + 6 per raw ware not yet collected + 3 per distinct terrain - 4 per edge still needed, ties lower corner. Speakers: sawyer for the Woodcutter's hut after the opening and for the Sawmill, merchant for roads, prince for the rest.
 
 ## Demons
 
-Sites: finished camp corners and built road edges of both peoples. After `GraceTicks`, every `SevensPerDraw`-th seven draws one site uniformly (corners ascending, then edges) with the demons' own `Rng` and adds `PerSeven` demons; a site at `Cap` outbreaks instead (each site at most once per draw, chains allowed) to its built road edges (corner) or its camp ends and the built roads sharing an end (edge). `DemonApi.DemonSites` (with position, people and effect clause), `DemonsAt`, `SiteName`.
+Sites: finished camp corners and built road edges of both peoples. After `GraceTicks`, every `SevensPerDraw`-th seven draws one site (spec: uniformly among all sites, corners ascending, then edges; with `DrawPerPeople`, the game: first a people with equal chances, then one of its sites uniformly) with the demons' own `Rng` and adds `PerSeven` demons; a site at `Cap` outbreaks instead (each site at most once per draw, chains allowed) to its built road edges (corner) or its camp ends and the built roads sharing an end (edge). `DemonApi.DemonSites` (with position, people and effect clause), `DemonsAt`, `SiteName`.
 
 ## Hooks (`EconomyApi.Hooks(sim)`)
 

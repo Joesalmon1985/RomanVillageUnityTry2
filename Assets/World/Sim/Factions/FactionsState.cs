@@ -45,6 +45,38 @@ namespace World.Sim.Factions
         public int DeclineCooldownTicks = 600;
         public int MaxOpenSites = 3;
         public int RivalCastDelayTicks = 450;
+        /// <summary>
+        /// Growing pressure (added by S): when at least 0, the rival's cast delay moves in a straight line from
+        /// RivalCastDelayTicks at tick 0 to this value at RivalRampTicks, then stays there. -1 = a flat delay (spec).
+        /// </summary>
+        public int RivalCastDelayEndTicks = -1;
+        public int RivalRampTicks = 0;
+        /// <summary>The rival's delay shrinks by this much per point of strength it leads by (0 = off), never below RivalMinDelayTicks.</summary>
+        public int RivalBoldTicksPerLead = 0;
+        public int RivalMinDelayTicks = 0;
+        /// <summary>The lead from which the rival grows bolder (1: any lead).</summary>
+        public int RivalBoldFromLead = 1;
+        /// <summary>
+        /// When true the rival's delay counts from its last cast (a pace per spell) and its top proposal only has to
+        /// have been top for RivalSettleTicks; when false (spec 6.4) the top proposal must have been top for the whole delay.
+        /// </summary>
+        public bool RivalPacePerCast = false;
+        /// <summary>No overrun warning starts before this tick (a peaceful opening; 0 = the spec).</summary>
+        public int WarningGraceTicks = 0;
+        public int RivalSettleTicks = 150;
+        /// <summary>Added to a candidate whose target lies within ClusterMetres of the people's last cast (walkable pitches).</summary>
+        public int ClusterBonus = 0;
+        /// <summary>Workshops get WorkshopStageBonus once the people has WorkshopStageCamps finished camps (0 = off, the spec).</summary>
+        public int WorkshopStageBonus = 0;
+        public int WorkshopStageCamps = 2;
+        /// <summary>Improved collectors get this once the people has CollectorStageCamps finished camps (0 = off, the spec).</summary>
+        public int CollectorStageBonus = 0;
+        public int CollectorStageCamps = 3;
+        /// <summary>The brain may propose a warrior lodge without a city once the people has a Bakery and a Smokehouse (spec: city only).</summary>
+        public bool LodgeWithoutCity = false;
+        /// <summary>When false, a camp or city with demons on its corner adds nothing to strength until banished (spec: it counts).</summary>
+        public bool DemonHeldCampsCount = true;
+        public int ClusterMetres = 60;
         public int ExpansionReachEdges = 3;
         /// <summary>The game layer allows a cast only within this distance of the target point.</summary>
         public double CastRangeMetres = 15;
@@ -75,14 +107,21 @@ namespace World.Sim.Factions
     {
         /// <summary>
         /// The values a new game uses: the spec's starting values (FactionTuning's initialisers) with S's tuning (PROGRESS.md
-        /// tuning log): rival cast delay 40 s, city 90, lodge 60, banish on a road edge 40 + 10 per demon, workshop surplus
-        /// bonus 1 per unit above 4 (up to 15), and +30 to strength builds while ahead of a people whose strength has
-        /// not changed for 5 minutes.
+        /// tuning log, second pass): the rival casts at most every 100 s, 60 s sooner per point of strength it leads by
+        /// (never under 10 s); no overrun warning in the first 8 minutes; a camp held by demons adds no strength; workshops
+        /// +30 once a people has two camps, improved collectors +15 once it has four; the lodge also opens with a Bakery and a Smokehouse; city and lodge 90; banish on a
+        /// road edge 40 + 10 per demon; workshop surplus bonus 1 per unit above 4 (up to 15); +8 for pitches within 60 m of
+        /// the last cast.
         /// </summary>
         public static FactionTuning Tuned() => new FactionTuning
         {
-            RivalCastDelayTicks = 400, CityScore = 90, LodgeScore = 60, BanishEdgeScore = 40,
-            WorkshopSurplusPerUnit = 1, WorkshopSurplusCap = 15, PressAdvantageBonus = 30, PressIdleTicks = 3000,
+            RivalCastDelayTicks = 1000, RivalPacePerCast = true, RivalSettleTicks = 150,
+            RivalBoldTicksPerLead = 600, RivalBoldFromLead = 1, RivalMinDelayTicks = 100,
+            CollectorStageBonus = 15, CollectorStageCamps = 4,
+            WarningGraceTicks = 4800, DemonHeldCampsCount = false,
+            CityScore = 90, LodgeScore = 90, LodgeWithoutCity = true, WorkshopStageBonus = 30, WorkshopStageCamps = 2,
+            BanishEdgeScore = 40, WorkshopSurplusPerUnit = 1, WorkshopSurplusCap = 15,
+            ClusterBonus = 8, ClusterMetres = 60,
         };
     }
 
@@ -123,6 +162,14 @@ namespace World.Sim.Factions
         public long NextPlanTick;
         /// <summary>Tick the strength last changed (0 at the start).</summary>
         public long StrengthChangedTick;
+        /// <summary>Target point (whole metres) of the people's last spell; HasLastCast false before the first.</summary>
+        /// <summary>Finished camps not counted because demons hold them (when DemonHeldCampsCount is false).</summary>
+        public int HeldCamps;
+        /// <summary>Tick of the people's last spell, -1 before the first.</summary>
+        public long LastCastTick = -1;
+        public bool HasLastCast;
+        public int LastCastX;
+        public int LastCastZ;
     }
 
     /// <summary>An open proposal of a faction's brain: what, where, why, and who pitches it.</summary>
