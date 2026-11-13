@@ -38,6 +38,53 @@ namespace World.Game
             BuildSun();
             BuildGround();
             BuildCamera();
+            BuildVillage();
+        }
+
+        // ---- Milestone 1: walkable village ----
+
+        public VillageLayout Layout { get; private set; }
+        public FirstPersonAvatar Avatar { get; private set; }
+        public GodCamera GodCam { get; private set; }
+        public ViewSwitcher Views { get; private set; }
+        public Picker Picker { get; private set; }
+        public WarehouseSet Warehouse { get; private set; }
+        public Hud Hud { get; private set; }
+        public AutoPlay AutoPlay { get; private set; }
+        public EncounterHost Encounters { get; private set; }
+        /// <summary>Parent for characters created by ActorFactory.</summary>
+        public Transform ActorsRoot { get; private set; }
+
+        private void BuildVillage()
+        {
+            var board = Sim.State.Board;
+            Layout = new VillageLayout(board);
+            TerrainBuilder.BuildSky(transform, Sun, MainCamera);
+            Ground.transform.position = new Vector3(0, -0.06f, 0);
+            Ground.GetComponent<Renderer>().sharedMaterial = MaterialFactory.Create(new Color(0.34f, 0.47f, 0.25f), "Ground");
+            TerrainBuilder.Build(transform, board, Layout, out var overlay);
+            VillageBuilder.Build(transform, board, Layout);
+            Warehouse = WarehouseSet.Build(transform, Layout);
+            ActorsRoot = new GameObject("Actors").transform;
+            ActorsRoot.SetParent(transform, false);
+
+            Avatar = FirstPersonAvatar.Create(transform, MainCamera, Layout.Spawn + Vector3.up * 0.05f, Layout.SpawnYaw);
+            Avatar.BoundsCentre = Vector3.zero;
+            Avatar.BoundsRadius = BoardSpace.BoardRadius + 4f;
+            GodCam = GodCamera.Create(transform);
+            GodCam.ClampRadius = BoardSpace.BoardRadius;
+            Views = gameObject.AddComponent<ViewSwitcher>();
+            Views.Bind(Avatar, GodCam);
+            Views.AddGodViewOnly(overlay);
+            Picker = gameObject.AddComponent<Picker>();
+            Picker.Bind(Views);
+            gameObject.AddComponent<InspectPanel>();
+            gameObject.AddComponent<DialoguePanel>();
+            Hud = gameObject.AddComponent<Hud>();
+            Encounters = EncounterHost.CreateInstance(gameObject);
+            AutoPlay = gameObject.AddComponent<AutoPlay>();
+            VillageNpcs.Spawn(this);
+            ShowDebugOverlay = false;
         }
 
         private void OnDestroy()

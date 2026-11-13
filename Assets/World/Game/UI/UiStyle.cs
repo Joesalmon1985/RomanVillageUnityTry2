@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 namespace World.Game
@@ -40,6 +40,12 @@ namespace World.Game
             t.Apply();
             Textures[key] = t;
             return t;
+        }
+
+        /// <summary>Draws a nearly opaque panel (for menus and dialogue over busy scenes).</summary>
+        public static void DrawSolidPanel(Rect r)
+        {
+            GUI.DrawTexture(r, SolidTexture(new Color(PanelColor.r, PanelColor.g, PanelColor.b, 1f)));
         }
 
         /// <summary>Draws a filled background panel.</summary>

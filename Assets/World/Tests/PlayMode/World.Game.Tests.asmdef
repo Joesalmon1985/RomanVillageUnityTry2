@@ -4,6 +4,7 @@
     "references": [
         "World.Sim",
         "World.Game",
+        "Bedsit.Core",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

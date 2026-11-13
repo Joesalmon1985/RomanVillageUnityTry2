@@ -1,4 +1,4 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
@@ -15,7 +15,10 @@ public static class MakeWorldScene
     {
         AssetDatabase.Refresh();
         string mats = MakeMaterial("Assets/World/Game/Shaders/WorldLit.shader", "Assets/World/Game/Resources/World/WorldLit.mat")
-            + " " + MakeMaterial("Assets/World/Game/Shaders/WorldLitVertexColor.shader", "Assets/World/Game/Resources/World/WorldLitVertexColor.mat");
+            + " " + MakeMaterial("Assets/World/Game/Shaders/WorldLitVertexColor.shader", "Assets/World/Game/Resources/World/WorldLitVertexColor.mat")
+            + " " + MakeMaterial("Assets/World/Game/Shaders/WorldUnlit.shader", "Assets/World/Game/Resources/World/WorldUnlit.mat")
+            + " " + MakeMaterial("Assets/World/Game/Shaders/WorldGlow.shader", "Assets/World/Game/Resources/World/WorldGlow.mat")
+            + " " + MakeMaterial("Assets/World/Game/Shaders/WorldText.shader", "Assets/World/Game/Resources/World/WorldText.mat");
 
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         new GameObject("WorldBootstrap").AddComponent<World.Game.WorldBootstrap>();
