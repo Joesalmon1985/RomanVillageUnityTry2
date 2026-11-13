@@ -120,6 +120,7 @@ namespace World.Game
             if (_post != null) Object.Destroy(_post);
             if (Builder != null) Object.Destroy(Builder.gameObject);
             _piles = _post = null; Builder = null; _sig = null; ProgressShown = -1f;
+            DeliveredShown = 0; MissingShown = 0;
         }
 
         /// <summary>A wire box (missing goods).</summary>
