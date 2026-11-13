@@ -13,8 +13,8 @@ public static class BuildWindows
         PlayerSettings.runInBackground = true;
         var opts = new BuildPlayerOptions
         {
-            scenes = new[] { "Assets/Scenes/ClipViewer.unity" },
-            locationPathName = "Builds/Windows/RomanVillageViewer.exe",
+            scenes = new[] { "Assets/Scenes/World.unity" },
+            locationPathName = "Builds/Windows/WorldMVP.exe",
             target = BuildTarget.StandaloneWindows64,
             options = BuildOptions.None,
         };

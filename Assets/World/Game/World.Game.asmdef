@@ -1,0 +1,17 @@
+{
+    "name": "World.Game",
+    "rootNamespace": "World.Game",
+    "references": [
+        "World.Sim",
+        "Bedsit.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

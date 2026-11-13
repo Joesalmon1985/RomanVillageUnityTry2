@@ -35,3 +35,9 @@ __pycache__/
 # Screenshots/captures of the game contain EA assets: keep local
 /Evidence/screenshots/
 /Evidence/raw/
+
+# Fast out-of-Unity test harness (DotNet/): keep projects and solution, ignore build output
+!/DotNet/**/*.csproj
+!/DotNet/*.sln
+DotNet/**/bin/
+DotNet/**/obj/

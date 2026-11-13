@@ -2,7 +2,7 @@
 
 Unity 6000.3.28f1 project. The goal is one single-player 3D village that joins four games (RhythmWarfare, DuelMasterBattle, logistics-rts-sim, Gods-and-Wizards): walk around in first person, switch to a top-down God View, duel Mira, play a rhythm set in the warehouse, and run one connected economy.
 
-**Status: planning complete, build not started.** Start with `Docs/HANDOFF.md`, then `Docs/PRD.md`, `Docs/BUILD_PLAN.md`, `Docs/TEST_PLAN.md` and `Docs/SOURCES.md`.
+**Status: build in progress (started 13 Nov 2026), see `Docs/PROGRESS.md`.** Start with `Docs/HANDOFF.md`, then `Docs/PRD.md`, `Docs/BUILD_PLAN.md`, `Docs/TEST_PLAN.md` and `Docs/SOURCES.md`.
 
 The rest of this file describes the Sims 2 animation probe this project was seeded from. It remains as the optional, local-only character layer.
 

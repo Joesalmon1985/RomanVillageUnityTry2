@@ -4,11 +4,12 @@ Written 12 Nov 2026 at the end of the planning session. The next session builds 
 
 ## State
 
-- **Done:** planning only. `PRD.md`, `BUILD_PLAN.md`, `TEST_PLAN.md` and `SOURCES.md` are agreed with the owner as the starting point.
-- **Not done:** all game code. There is no `Assets/World/`, no startup scene, no tests. Milestone 0 in `BUILD_PLAN.md` is the first task.
+- **Status: build in progress (started 13 Nov 2026), see `Docs/PROGRESS.md`; contracts for parallel agents in `Docs/CONTRACTS.md`.**
+- **Done (planning):** `PRD.md`, `BUILD_PLAN.md`, `TEST_PLAN.md` and `SOURCES.md` are agreed with the owner as the starting point.
+- **Done (build):** Milestone 0 skeleton (assemblies, sim core and board, startup scene, test harnesses). Everything after that: see `PROGRESS.md`.
 - **Verified:** the project opens in Unity 6000.3.28f1 and compiles with 0 errors and 0 tests. The Windows standalone build module is installed.
 - **Inherited and kept:** the Sims 2 animation probe from RomanVillageUnity (`Assets/RomanVillage/Probe`, `Assets/Bedsit`, `Assets/ThirdParty/OpenTS2`, `Tools/sims2`, `Docs/M0_ANIMATION_FINDINGS.md`). It is the optional character layer; do not build on it until milestones 1 to 3 pass.
-- **Owner's instruction:** do not start the build or revise the plan until the owner says so.
+- **Owner's instruction:** the owner approved starting the build on 13 Nov 2026; do not revise the plan without the owner.
 
 ## Read in this order
 

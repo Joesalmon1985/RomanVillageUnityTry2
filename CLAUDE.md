@@ -2,7 +2,7 @@
 
 One Unity game that joins four of the owner's games: a first-person village with a Tab God View, a Ward duel with Mira, a 174 BPM rhythm party in the warehouse, and one connected road, hex, draft and military economy.
 
-**Status (12 Nov 2026): planning is complete; no game code exists yet. Do not start building or change the plan until the owner says to.**
+**Status: build in progress (started 13 Nov 2026), see `Docs/PROGRESS.md`. Shared sim contracts for parallel work: `Docs/CONTRACTS.md`. Do not change the plan without the owner.**
 
 Before doing anything, read `Docs/HANDOFF.md`. It gives the state, reading order, machine paths, Unity commands, source file map and rules.
 
