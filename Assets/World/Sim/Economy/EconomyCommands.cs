@@ -174,6 +174,10 @@ namespace World.Sim.Economy
             if (!p.Ok) return p;
             if (s.Economy.RoundStartPending)
                 return CommandResult.Reject(EconomyRefusals.RoundStarting, "The new round is still starting.");
+            long left = EconomyLogic.BellTicksLeft(s);
+            if (left > 0)
+                return CommandResult.Reject(EconomyRefusals.RoundTooSoon,
+                    "The harvest season is still on: the bell can ring in " + ((left + 9) / 10) + " s.");
             foreach (var g in _hooks.EndRoundGuards)
             {
                 var r = g(s);

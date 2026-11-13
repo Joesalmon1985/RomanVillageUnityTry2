@@ -20,7 +20,7 @@ All of `Assets/World/Sim` is one assembly, `World.Sim` (noEngineReferences, Newt
 ## Core types (`World.Sim`)
 
 - `Rng` (SplitMix64): `ulong State` (public field, the whole state); `NextULong()`, `NextInt(n)` [0,n), `NextRange(min, maxExcl)`, `Chance(num, den)`, `Shuffle(IList<T>)`, `Fork(label)` (derived stream; does not advance the parent), `Clone()`.
-- `Ware` enum (unified economy, 13 Nov 2026): raw Logs 0, Clay 1, Wheat 2, Sheep 3, Ore 4; processed Planks 5, Coal 6, Bricks 7, Flour 8, Bread 9, Meat 10, Rations 11, Iron 12, Weapons 13. `Wares.All`, `Wares.Raw`, `Wares.Count` (14), `Wares.RawCount` (5), `Wares.IsRaw`, `Wares.DisplayName` (lower case), `Wares.Title`. Coin is `PlayerState.Coin` (int), never a ware. Save version 2 (older saves are refused).
+- `Ware` enum (unified economy, 13 Nov 2026): raw Logs 0, Clay 1, Wheat 2, Sheep 3, Ore 4; processed Planks 5, Coal 6, Bricks 7, Flour 8, Bread 9, Meat 10, Rations 11, Iron 12, Weapons 13. `Wares.All`, `Wares.Raw`, `Wares.Count` (14), `Wares.RawCount` (5), `Wares.IsRaw`, `Wares.DisplayName` (lower case), `Wares.Title`. Coin is `PlayerState.Coin` (int), never a ware. Save version 3 (older saves are refused).
 - `WorldState` (sealed **partial**): `ulong Seed`, `long Tick`, `Rng Rng`, `Board Board`, `List<PlayerState> Players` (index = id), `Player(id)`.
 - `PlayerState` (sealed **partial**): `int Id`, `string Name`, `int Coin`. `PlayerIds.Human = 0`, `PlayerIds.Rival = 1`.
 - `Command` (abstract): `int PlayerId`. Your commands subclass it with plain public fields.

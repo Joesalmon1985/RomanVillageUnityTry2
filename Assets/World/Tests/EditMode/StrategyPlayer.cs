@@ -26,6 +26,8 @@ namespace World.Sim.Tests
         public bool IgnoreDemons;
         /// <summary>No military at all (for the paired comparison run).</summary>
         public bool NoArmy;
+        /// <summary>Drafts the first card offered (the paired draft run: what passing the rival good cards costs).</summary>
+        public bool NaiveDraft;
         private readonly Queue<Command> _queue = new Queue<Command>();
         private long _roundStartTick;
         private int _lastRound;
@@ -34,7 +36,7 @@ namespace World.Sim.Tests
         public readonly SortedDictionary<string, long> Milestones = new SortedDictionary<string, long>(StringComparer.Ordinal);
 
         public int MinRoundTicks = 150;
-        public int MaxRoundTicks = 1000;
+        public int MaxRoundTicks = 900;
 
         public StrategyPlayer(WorldSim sim, bool passive = false, bool completionist = false)
         {
@@ -74,7 +76,7 @@ namespace World.Sim.Tests
             }
             if (Passive)
             {
-                if (s.Tick - _roundStartTick >= MinRoundTicks && !s.Economy.RoundStartPending) Submit(new EndRound());
+                if (s.Tick - _roundStartTick >= MinRoundTicks && !s.Economy.RoundStartPending && EconomyApi.BellTicksLeft(s) == 0) Submit(new EndRound());
                 return;
             }
             while (_queue.Count > 0)
@@ -95,19 +97,45 @@ namespace World.Sim.Tests
 
         // ---------------- Draft and cards ----------------
 
-        private static readonly Dictionary<string, int> Preference = new Dictionary<string, int>
+        /// <summary>
+        /// What a card is worth to this player (rules of thumb): points and shields most, then the economy cards that
+        /// pay back over the rounds left (yield and workshop cards early, commerce, lore against the demons).
+        /// </summary>
+        private int Worth(WorldState s, CardDef d)
         {
-            { "great_hall", 100 }, { "monument", 95 }, { "census_hall", 90 }, { "shrine", 85 },
-            { "armoury", 80 }, { "drill_yard", 75 }, { "palisade", 70 },
-            { "lumber_camp", 60 }, { "clay_diggers", 58 }, { "granary", 50 }, { "charcoal_guild", 48 },
-            { "ward_stones", 45 }, { "beacon_tower", 44 }, { "toll_gate", 40 }, { "ranger_post", 30 },
-            { "road_guild", 25 }, { "master_smiths", 22 }, { "merchant_guild", 20 },
-        };
+            int cities = StrategyApi.PlayerCities(s).Count;
+            int v = 0;
+            if (d.Vp > 0 || d.VpPerCity > 0) v = Math.Max(v, 40 + 14 * (d.Vp + d.VpPerCity * Math.Max(3, cities)));
+            if (d.Shields > 0 && !NoArmy) v = Math.Max(v, 42 + 16 * d.Shields);
+            // Economy cards pay back over the rounds still to come: worth most in Age I, little in Age III.
+            int age = Math.Max(1, s.Strategy.Age);
+            switch (d.Family)
+            {
+                case CardFamily.RawAndCrafted: v = Math.Max(v, age == 1 ? 62 : age == 2 ? 50 : 20); break;
+                case CardFamily.Commerce: v = Math.Max(v, (d.CoinPerRound > 0 ? 60 : d.RoadSegments > 0 ? 52 : 34) - 8 * (age - 1)); break;
+                case CardFamily.Lore: v = Math.Max(v, IgnoreDemons ? 5 : 52 - 4 * (age - 1)); break;
+            }
+            return v;
+        }
 
-        private static int Pref(WorldState s, int cardId) => Preference.TryGetValue(StrategyApi.CardDefOf(s, cardId).Id, out int p) ? p : 0;
+        private int Pref(WorldState s, int cardId) => Worth(s, StrategyApi.CardDefOf(s, cardId));
 
-        private static int ChooseDraft(WorldState s) =>
-            s.Strategy.Sides[0].DraftHand.OrderByDescending(id => Pref(s, id)).ThenBy(id => id).First();
+        /// <summary>
+        /// Draft: the card worth most to you, plus a share of what it would be worth to the rival when the hand is passed
+        /// on (the rival builds the point and shield cards it drafts, so passing a Monument or a Stockade costs you).
+        /// </summary>
+        private int ChooseDraft(WorldState s)
+        {
+            if (NaiveDraft) return s.Strategy.Sides[0].DraftHand[0];
+            bool passedOn = s.Strategy.DraftStep < s.Strategy.Tuning.DraftPicks;
+            int Score(int id)
+            {
+                var d = StrategyApi.CardDefOf(s, id);
+                int deny = passedOn && (d.Vp > 0 || d.VpPerCity > 0 || d.Shields > 0) ? 8 * (d.Vp + d.VpPerCity + d.Shields) : 0;
+                return Worth(s, d) + deny;
+            }
+            return s.Strategy.Sides[0].DraftHand.OrderByDescending(Score).ThenBy(id => id).First();
+        }
 
         // ---------------- Hero ----------------
 
@@ -136,7 +164,7 @@ namespace World.Sim.Tests
                 if (!Relevant(s, kv.Key) && !danger) continue;
                 if (!HeroRoute(topo, hero, kv.Key, out int first, out int moves)) continue;
                 int score = moves + 1 + (kv.Value >= cap ? -12 : danger ? -6 : 0)
-                            + (critical.Contains(kv.Key) ? 0 : cities.Contains(kv.Key) ? 2 : 6);
+                            + (cities.Contains(kv.Key) ? -3 : critical.Contains(kv.Key) ? 0 : 6); // a demon on a city is the robber (stops up to 3 hexes): first
                 if (score < bestScore)
                 {
                     bestMove = first;
@@ -237,7 +265,8 @@ namespace World.Sim.Tests
                 g.Add(new Goal
                 {
                     Name = "units",
-                    Done = () => UnitsTrainedOrQueued(S) >= S.Military.Tuning.MaxSquadSize,
+                    // A full squad, and more while the rival's shields (its guards and cards) match yours.
+                    Done = () => UnitsTrainedOrQueued(S) >= UnitTarget(S),
                     Cost = () => !Active(BuildingType.Barracks) ? null : new int[Wares.Count],
                     Act = () => Submit(new QueueUnit { BarracksId = EconomyApi.FindBuilding(S, BuildingType.Barracks, true), Count = 1 }),
                 });
@@ -251,8 +280,8 @@ namespace World.Sim.Tests
             g.Add(Building("wonder_site", BuildingType.WonderSite, null));
             g.Add(Stage(1));
             g.Add(new Goal { Name = "cover", Done = () => CoverTarget(S, out _, out _) < 0, Cost = () => CoverCost(S), Act = () => Cover(S) });
-            g.Add(CityGoal("city3", 3));
             g.Add(Stage(2));
+            g.Add(CityGoal("city3", 3));
             if (Completionist) g.Add(Building("market", BuildingType.Market, null));
             _goals = g;
             return g;
@@ -312,12 +341,16 @@ namespace World.Sim.Tests
             return v => topo.VertexHexes(v).Any(h => hexes.Contains(h));
         }
 
+        /// <summary>
+        /// Order a wonder stage. Stage 1 waits until its planks and bricks are in the storehouse; later stages are ordered
+        /// as soon as the stage before is done (their iron is made to order and goes straight to the site).
+        /// </summary>
         private Goal Stage(int stage) => new Goal
         {
             Name = "wonder" + stage + "_ordered",
             Done = () => S.Strategy.Wonder.StagesDone >= stage || S.Strategy.Wonder.InProgressStage == stage,
             Cost = () => !Active(BuildingType.WonderSite) || S.Strategy.Wonder.StagesDone != stage - 1 || S.Strategy.Wonder.InProgressStage != 0
-                ? null : S.Strategy.Tuning.WonderStages[stage - 1],
+                ? null : stage == 1 ? S.Strategy.Tuning.WonderStages[stage - 1] : new int[Wares.Count],
             Act = () => Submit(new BuildWonderStage()),
         };
 
@@ -368,6 +401,7 @@ namespace World.Sim.Tests
             if (!s.Strategy.Started) return false;
 
             if (AttackIfReady(s)) return true;
+            if (!IgnoreDemons && DriveOffRaid(s)) return true;
 
             // Deliveries for the wonder and the iron chain go first: coal is shared by the brick kiln, the power
             // plant and the smelter, and the brick kiln (nearest to the charcoal kiln) would otherwise take it all.
@@ -430,7 +464,7 @@ namespace World.Sim.Tests
             foreach (var cv in StrategyApi.Hand(s).OrderByDescending(c => Pref(s, c.CardId)))
             {
                 var d = StrategyApi.CardDefOf(s, cv.CardId);
-                if (d.Vp <= 0 && d.VpPerCity <= 0 && (d.Shields <= 0 || NoArmy)) continue;
+                if (!Useful(s, d)) continue;
                 if (d.CoinCost > s.Player(0).Coin) continue;
                 bool fits = true;
                 for (int w = 0; w < Wares.Count; w++) if (d.Cost[w] > Have((Ware)w)) fits = false;
@@ -457,17 +491,7 @@ namespace World.Sim.Tests
         }
 
         /// <summary>Points and shields always; yield and workshop cards in Ages I-II; lore cards; the rest is sold for coin.</summary>
-        private bool Useful(WorldState s, CardDef d)
-        {
-            if (d.Vp > 0 || d.VpPerCity > 0 || d.Shields > 0) return !NoArmy || d.Shields == 0 || d.Vp > 0;
-            switch (d.Family)
-            {
-                case CardFamily.RawAndCrafted: return s.Strategy.Age <= 2;
-                case CardFamily.Lore: return !IgnoreDemons;
-                case CardFamily.Commerce: return d.TradeRateBonus > 0 || d.CoinPerRound > 0;
-                default: return false;
-            }
-        }
+        private bool Useful(WorldState s, CardDef d) => Worth(s, d) >= 30;
 
         private bool DiscardJunk(WorldState s)
         {
@@ -605,7 +629,7 @@ namespace World.Sim.Tests
             return best;
         }
 
-        /// <summary>A forest or hills hex at a newer city without a harvester; returns the hex or -1.</summary>
+        /// <summary>A resource hex at a newer city without its harvester; returns the hex or -1.</summary>
         private static int CoverTarget(WorldState s, out BuildingType type, out Func<int, bool> filter)
         {
             var topo = s.Board.Topology;
@@ -619,6 +643,8 @@ namespace World.Sim.Tests
                     if (terr == Terrain.Forest) t = BuildingType.Woodcutter;
                     else if (terr == Terrain.Hills) t = BuildingType.ClayPit;
                     else if (terr == Terrain.Fields) t = BuildingType.Farm;
+                    else if (terr == Terrain.Pasture) t = BuildingType.Sheepfold;
+                    else if (terr == Terrain.Mountain) t = BuildingType.Mine;
                     else continue;
                     int hex = h;
                     bool covered = s.Economy.Buildings.Any(b => b.Type == t && b.State != BuildingState.Removed && topo.VertexHexes(b.Vertex).Contains(hex));
@@ -647,11 +673,35 @@ namespace World.Sim.Tests
 
         // ---------------- Military ----------------
 
+        private static int UnitTarget(WorldState s)
+        {
+            var sh = MilitaryApi.ShieldSummary(s);
+            int need = sh.RivalShields + 1 - sh.PlayerCardShields;
+            return Math.Min(s.Military.Tuning.MaxQueue, Math.Max(s.Military.Tuning.MaxSquadSize, need));
+        }
+
         private static int UnitsTrainedOrQueued(WorldState s)
         {
             int n = MilitaryApi.Squads(s, PlayerIds.Human).Sum(x => x.Units);
             foreach (var q in s.Military.Queues) n += q.Orders.Count;
             return n;
+        }
+
+        /// <summary>A raid holding one of your road flags cuts a supply route: send an idle squad of 2 or more to drive it off.</summary>
+        private bool DriveOffRaid(WorldState s)
+        {
+            var raided = MilitaryApi.RaidedFlags(s);
+            var squads = MilitaryApi.Squads(s, PlayerIds.Human);
+            // A squad that drove a raid off stands down where it is (ready for the next one).
+            foreach (var x in squads)
+                if (x.Order == OrderKind.Defend && !x.Moving && x.At == x.Target && !raided.Contains(x.Target) && !x.Engaged)
+                    return Submit(new CancelOrder { SquadId = x.Id });
+            if (raided.Count == 0) return false;
+            if (squads.Any(x => x.Order != OrderKind.None && raided.Contains(x.Target))) return false;
+            var idle = squads.Where(x => x.Order == OrderKind.None && x.Units >= 2).ToList();
+            if (idle.Count == 0) return false;
+            Mark("drive_off_raid");
+            return Submit(new OrderSquad { SquadId = idle[0].Id, Order = OrderKind.Defend, Target = raided[0] });
         }
 
         private bool AttackIfReady(WorldState s)
@@ -682,20 +732,18 @@ namespace World.Sim.Tests
 
         private bool ShouldEndRound(WorldState s)
         {
-            if (s.Economy.RoundStartPending) return false;
+            if (s.Economy.RoundStartPending || EconomyApi.BellTicksLeft(s) > 0) return false;
             long age = s.Tick - _roundStartTick;
             if (age < MinRoundTicks) return false;
             if (age >= MaxRoundTicks) return true;
             // Logs bind the whole economy: once every forest batch at your cities is felled, a new draw is worth more
             // than waiting (the work in progress carries on into the next round).
             if (s.Strategy.Started && ForestDrained(s)) return true;
-            // End the round once this round's draw is used up and nothing is moving any more: sites still waiting
-            // for wares that do not exist would only wait (the next draw brings more).
-            if (s.Economy.Buildings.Any(b => b.State == BuildingState.Constructing && !b.Blocked)) return false;
-            if (s.Military.Queues.Any(q => q.Orders.Count > 0 && q.Orders[0].Supplied && q.Reason == null)) return false;
+            // End the round once this round's draw is harvested (work, carrying and building carry on into the next
+            // round). Before the age-end comparison, wait for a soldier in training and for an attack under way.
+            bool lastOfAge = s.Strategy.Started && s.Strategy.RoundInAge >= s.Strategy.Tuning.RoundsPerAge;
+            if (lastOfAge && s.Military.Queues.Any(q => q.Orders.Count > 0 && q.Orders[0].Supplied && q.Reason == null)) return false;
             if (MilitaryApi.Squads(s, 0).Any(x => x.Order == OrderKind.Attack) && !s.Military.Outpost.Destroyed) return false;
-            int store = s.Economy.StorehouseId;
-            if (s.Economy.Jobs.Any(j => j.DestId != store && j.Reason == null)) return false;
             var topo = s.Board.Topology;
             foreach (var b in s.Economy.Buildings)
             {
@@ -709,9 +757,7 @@ namespace World.Sim.Tests
                     foreach (int h in topo.VertexHexes(b.Vertex))
                         if (s.Board.HexTerrain[h] == def.Terrain && s.Economy.HexBatchRemaining[h] > 0 && !stalled && !s.Economy.HexStopped[h]) return false;
                 }
-                if (def.Kind == BuildingKind.Producer && b.WorkProgress > 0) return false;
             }
-            if (s.Economy.Carriers.Any(c => c.HasLoad)) return false;
             return true;
         }
     }

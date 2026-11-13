@@ -528,10 +528,19 @@ namespace World.Sim.Economy
             return nums;
         }
 
+        /// <summary>Ticks until the bell may ring (0 = now): Tuning.MinRoundTicks after the round started.</summary>
+        internal static long BellTicksLeft(WorldState s)
+        {
+            var e = s.Economy;
+            if (e.RoundStartPending) return 0;
+            return System.Math.Max(0L, e.RoundStartedTick + e.Tuning.MinRoundTicks - s.Tick);
+        }
+
         internal static void StartRound(WorldState s, EconomyHooks hooks, EventBuffer ev)
         {
             var e = s.Economy;
             e.RoundStartPending = false;
+            e.RoundStartedTick = s.Tick;
             var nums = DrawNumbers(s);
             e.LastDraw = nums;
             ev?.Add(new RoundStarted { Round = e.Round, Numbers = (int[])nums.Clone() });
@@ -541,7 +550,7 @@ namespace World.Sim.Economy
                 if (hooks != null && hooks.HexStopped(s, h)) continue; // the robber: a demon on every city of this hex
                 var raw = TerrainInfo.RawWare(s.Board.HexTerrain[h]);
                 if (raw == null) continue;
-                int amount = e.Tuning.BatchSize;
+                int amount = e.Tuning.BatchSizeFor(s.Board.HexTerrain[h]);
                 if (hooks != null) foreach (var m in hooks.BatchModifiers) amount = m(s, h, raw.Value, amount);
                 AuthoriseBatch(s, h, amount, ev);
             }
@@ -650,6 +659,13 @@ namespace World.Sim.Economy
                     ware = w;
                     return;
                 }
+                if (def.Kind == BuildingKind.Producer && def.Outputs[w] > 0 && s.Economy.Tuning.AtTarget(s.Economy, w))
+                {
+                    // Economy target reached: the storehouse holds enough of this output.
+                    reason = Reasons.OutputFull;
+                    ware = w;
+                    return;
+                }
             }
             if (def.Kind == BuildingKind.Harvester)
             {
@@ -747,5 +763,7 @@ namespace World.Sim.Economy
         public const string NotASite = "not_a_site";
         public const string NotToggleable = "not_toggleable";
         public const string RoundStarting = "round_starting";
+        /// <summary>EndRound before the round's harvest season (Tuning.MinRoundTicks) is over.</summary>
+        public const string RoundTooSoon = "round_too_soon";
     }
 }

@@ -31,8 +31,9 @@ namespace World.Sim.Military
 
         // ---- Rival ----
         public int OutpostHp = 60;
-        public int GarrisonBase = 1;
-        public int GarrisonPerAge = 1;
+        /// <summary>Guards at the outpost (tuned from 1 + 1 per age to a flat 2: the rival's extra shields now come from the cards it drafts and builds).</summary>
+        public int GarrisonBase = 2;
+        public int GarrisonPerAge = 0;
         public int GuardHp = 8;
         public int GuardDamage = 2;
         /// <summary>Raids start in this age.</summary>

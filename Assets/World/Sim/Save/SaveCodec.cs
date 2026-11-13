@@ -34,11 +34,15 @@ namespace World.Sim.Save
     /// </summary>
     public static class SaveCodec
     {
-        /// <summary>2 = unified economy (14 wares, 20 building types, outbreaks, military comparison). Version 1 saves are refused.</summary>
-        public const int CurrentVersion = 2;
+        /// <summary>
+        /// 3 = economy rebalance (harvest season: EconomyState.RoundStartedTick; one draft pick per round:
+        /// StrategyState.DraftNextStep; 24 cards; economy targets and per-terrain batch sizes in the tuning).
+        /// 2 = unified economy (14 wares, 20 building types, outbreaks, military comparison). Older saves are refused.
+        /// </summary>
+        public const int CurrentVersion = 3;
 
         /// <summary>Oldest save version this build reads.</summary>
-        public const int OldestVersion = 2;
+        public const int OldestVersion = 3;
 
         private static JsonSerializerSettings Settings() => new JsonSerializerSettings
         {

@@ -16,13 +16,30 @@ namespace World.Sim.Economy
         /// <summary>Carriers that join at the storehouse whenever a building is finished (the village grows with its economy).</summary>
         public int CarriersPerBuilding = 2;
         /// <summary>Raw units per authorised batch before modifiers and the forester rule.</summary>
-        public int BatchSize = 12;
+        public int BatchSize = 10;
+        /// <summary>
+        /// Per terrain (index = (int)Terrain): batch size for that terrain's hexes instead of <see cref="BatchSize"/>;
+        /// 0 = use BatchSize. Tuned so each raw ware arrives at about the rate the village uses it.
+        /// </summary>
+        public int[] TerrainBatchSize = { 0, 12, 10, 8, 5, 8 };
+
+        /// <summary>Batch size for a hex of this terrain before modifiers (TerrainBatchSize, else BatchSize).</summary>
+        public int BatchSizeFor(Terrain t)
+        {
+            int i = (int)t;
+            return TerrainBatchSize != null && i < TerrainBatchSize.Length && TerrainBatchSize[i] > 0 ? TerrainBatchSize[i] : BatchSize;
+        }
         /// <summary>Unharvested batch units carry over between rounds up to this cap per hex.</summary>
         public int BatchCap = 24;
         /// <summary>Distinct production numbers drawn per round (from 1..4).</summary>
         public int NumbersDrawn = 3;
+        /// <summary>
+        /// The harvest season: the bell (EndRound) can ring only this many ticks after the round started (refused
+        /// with round_too_soon before). Every round therefore brings a real harvest; ending rounds early gains nothing.
+        /// </summary>
+        public int MinRoundTicks = 600;
         /// <summary>Prologue starter sequence (home forest every round, hills and fields in turn) lasts until the commission, at most this many rounds.</summary>
-        public int StarterRounds = 8;
+        public int StarterRounds = 6;
         /// <summary>Territory = flags within this many segments (walking the fine graph, roads not needed) of one of the player's city corners. 4 = 80 m.</summary>
         public int TerritorySegments = 4;
         /// <summary>Recipe buildings keep this many cycles of input on hand or on the way.</summary>
@@ -39,7 +56,7 @@ namespace World.Sim.Economy
         /// <summary>Power plant keeps this many coal on hand or on the way.</summary>
         public int FuelBuffer = 2;
         /// <summary>Ticks of one harvest cycle (one raw unit).</summary>
-        public int HarvestTicks = 80;
+        public int HarvestTicks = 50;
         /// <summary>Cost taken from the storehouse for every <see cref="RoadSegmentsPerCost"/> road segments placed (design: 1 Planks + 1 Bricks).</summary>
         public int[] RoadCost = EconomyTuning.W(Ware.Planks, 1, Ware.Bricks, 1);
         /// <summary>
@@ -58,9 +75,26 @@ namespace World.Sim.Economy
         /// after changing them call <see cref="ApplySizeCosts"/>.
         /// </summary>
         public int[][] SizeCost = BuildingDefs.DefaultSizeCosts();
+        /// <summary>
+        /// Economy targets (Widelands): a workshop does not start a new cycle while the storehouse already holds this many
+        /// (unreserved) of its output; it reports output_full naming the ware. 0 = no target. Per ware (index = (int)Ware).
+        /// Raw harvesters have no target (their batch would be lost to the cap). Keeps logs, clay and food from being
+        /// turned into goods nobody needs, so the wares that really run short are the ones buildings wait for.
+        /// </summary>
+        public int[] StockTarget = EconomyTuning.W(Ware.Planks, 24, Ware.Coal, 8, Ware.Bricks, 24, Ware.Flour, 4, Ware.Bread, 4,
+            Ware.Meat, 4, Ware.Rations, 12, Ware.Iron, 4, Ware.Weapons, 4);
+
+        /// <summary>True when the storehouse holds at least the economy target of this ware (unreserved).</summary>
+        internal bool AtTarget(EconomyState e, int ware)
+        {
+            if (StockTarget == null || ware >= StockTarget.Length || StockTarget[ware] <= 0) return false;
+            var store = e.StorehouseId >= 0 && e.StorehouseId < e.Buildings.Count ? e.Buildings[e.StorehouseId] : null;
+            return store != null && store.Stock[ware] - store.Reserved[ware] >= StockTarget[ware];
+        }
+
         /// <summary>Commission: planks and bricks in the storehouse (with the six commission buildings active and connected).</summary>
-        public int CommissionPlanks = 10;
-        public int CommissionBricks = 10;
+        public int CommissionPlanks = 18;
+        public int CommissionBricks = 18;
         /// <summary>Building table, index = (int)BuildingType. Array (not list) so JSON replaces it.</summary>
         public BuildingDef[] Buildings = BuildingDefs.CreateDefault();
 
@@ -147,12 +181,12 @@ namespace World.Sim.Economy
             t[4] = Harvester(BuildingType.ClayPit, "Clay pit", Terrain.Hills, "Digs the hills' batch into clay.");
             t[5] = Harvester(BuildingType.Farm, "Farm", Terrain.Fields, "Reaps the fields' batch into wheat.");
             t[6] = Recipe(BuildingType.Mill, "Mill", BuildingSize.Medium, 30, "Grinds wheat into flour.", Ware.Flour, 1, Ware.Wheat, 1);
-            t[7] = Recipe(BuildingType.Bakery, "Bakery", BuildingSize.Medium, 40, "Bakes flour into bread.", Ware.Bread, 2, Ware.Flour, 1);
+            t[7] = Recipe(BuildingType.Bakery, "Bakery", BuildingSize.Medium, 40, "Bakes flour into bread.", Ware.Bread, 1, Ware.Flour, 1);
             t[8] = Harvester(BuildingType.Mine, "Mine", Terrain.Mountain, "Digs the mountain's batch into ore; the miners eat rations.");
             t[8].Size = BuildingSize.Medium;
             t[8].Inputs = EconomyTuning.W(Ware.Rations, 1);
-            t[8].CyclesPerInput = 2;
-            t[9] = Recipe(BuildingType.Smelter, "Smelter", BuildingSize.Large, 50, "Smelts ore with coal into iron; needs power.", Ware.Iron, 1, Ware.Ore, 1, Ware.Coal, 1);
+            t[8].CyclesPerInput = 3; // tuned from 2: 1 rations feeds the miners for 3 ore
+            t[9] = Recipe(BuildingType.Smelter, "Smelter", BuildingSize.Large, 50, "Smelts ore with coal into iron; needs power.", Ware.Iron, 1, Ware.Ore, 2, Ware.Coal, 1);
             t[9].NeedsPower = true;
             t[10] = Def(BuildingType.PowerPlant, "Power plant", BuildingKind.PowerPlant, BuildingSize.Large, "Burns coal to power the smelter and the barracks.");
             t[10].Inputs = EconomyTuning.W(Ware.Coal, 1);
@@ -162,10 +196,10 @@ namespace World.Sim.Economy
             t[12] = Def(BuildingType.Market, "Market", BuildingKind.Plain, BuildingSize.Large, "Improves the market rate by 1.");
             t[13] = Def(BuildingType.WonderSite, "Wonder site", BuildingKind.Plain, BuildingSize.Huge, "Receives the goods for each wonder stage.");
             t[14] = Harvester(BuildingType.Sheepfold, "Sheepfold", Terrain.Pasture, "Herds the pasture's batch into sheep.");
-            t[15] = Recipe(BuildingType.Butcher, "Butcher", BuildingSize.Medium, 40, "Turns sheep into meat.", Ware.Meat, 2, Ware.Sheep, 1);
+            t[15] = Recipe(BuildingType.Butcher, "Butcher", BuildingSize.Medium, 40, "Turns sheep into meat.", Ware.Meat, 1, Ware.Sheep, 1);
             t[16] = Recipe(BuildingType.Tavern, "Tavern", BuildingSize.Medium, 40, "Packs bread and meat into rations.", Ware.Rations, 2, Ware.Bread, 1, Ware.Meat, 1);
-            t[17] = Recipe(BuildingType.CharcoalKiln, "Charcoal kiln", BuildingSize.Medium, 40, "Burns logs into coal.", Ware.Coal, 1, Ware.Logs, 2);
-            t[18] = Recipe(BuildingType.BrickKiln, "Brick kiln", BuildingSize.Medium, 40, "Fires clay with coal into bricks.", Ware.Bricks, 2, Ware.Clay, 1, Ware.Coal, 1);
+            t[17] = Recipe(BuildingType.CharcoalKiln, "Charcoal kiln", BuildingSize.Medium, 40, "Burns logs into coal.", Ware.Coal, 1, Ware.Logs, 1);
+            t[18] = Recipe(BuildingType.BrickKiln, "Brick kiln", BuildingSize.Medium, 40, "Fires clay with coal into bricks.", Ware.Bricks, 2, Ware.Clay, 2, Ware.Coal, 1);
             t[19] = Recipe(BuildingType.Smithy, "Smithy", BuildingSize.Large, 50, "Forges iron and planks into weapons.", Ware.Weapons, 1, Ware.Iron, 1, Ware.Planks, 1);
             for (int i = 1; i < Count; i++) t[i].Cost = (int[])size[(int)t[i].Size].Clone();
             return t;

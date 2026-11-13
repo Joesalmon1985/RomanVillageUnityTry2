@@ -306,7 +306,7 @@ namespace World.Sim.Tests
             {
                 var c = new Tracer(g);
                 var ore = ev.OfType<HarvestCycle>().FirstOrDefault(h => h.BuildingId == upkeep.BuildingId && h.Tick > upkeep.Tick);
-                c.Rows.Add(new[] { upkeep.Tick + " (" + Min(upkeep.Tick) + ")", "Final use", "the " + c.B(upkeep.BuildingId) + " eats 1 rations, paying for its next 2 ore" + (ore != null ? " (the first of them dug at tick " + ore.Tick + ")" : "") });
+                c.Rows.Add(new[] { upkeep.Tick + " (" + Min(upkeep.Tick) + ")", "Final use", "the " + c.B(upkeep.BuildingId) + " eats 1 rations, paying for its next " + new EconomyTuning().Def(BuildingType.Mine).CyclesPerInput + " ore" + (ore != null ? " (the first of them dug at tick " + ore.Tick + ")" : "") });
                 if (c.Trace(Ware.Rations, upkeep.BuildingId, upkeep.Tick, wheatFollow) && c.Rows.Any(r => r[1] == "Harvest")) { tr = c; break; }
             }
             Assert.IsNotNull(tr, "wheat chain traced");
@@ -360,7 +360,7 @@ namespace World.Sim.Tests
         private static void CrossLinks(StringBuilder md)
         {
             md.Append("## C. Cross-system links\n\n");
-            md.Append("Each link is shown by two runs from the same starting state that differ in one thing only (default seed, Age I started at once, fast carriers).\n\n");
+            md.Append("Each link is shown by two runs from the same starting state that differ in one thing only (default seed, Age I started at once, fast carriers, the bell free to ring; the last two rows are paired scripted games).\n\n");
             md.Append("| Link | Run without | Run with | Result |\n|---|---|---|---|\n");
 
             // 1. Raw-family card: Lumber Camp makes the next forest batch larger.
@@ -456,7 +456,7 @@ namespace World.Sim.Tests
                 s.Economy.Tuning.Def(BuildingType.PowerPlant).FuelTicks = 60;
                 K.Step(sim);
                 K.FinishDraft(sim);
-                K.Give(s, Ware.Planks, 30, Ware.Bricks, 30, Ware.Ore, 6, Ware.Coal, 8, Ware.Weapons, 1);
+                K.Give(s, Ware.Planks, 30, Ware.Bricks, 30, Ware.Ore, 12, Ware.Coal, 8, Ware.Weapons, 1);
                 int plant = K.Build(sim, BuildingType.PowerPlant);
                 int smelter = K.Build(sim, BuildingType.Smelter);
                 int barracks = K.Build(sim, BuildingType.Barracks);
@@ -516,7 +516,7 @@ namespace World.Sim.Tests
                 Assert.AreEqual(Reasons.InputMissing, rWithout);
                 Assert.Greater(with, 0);
                 md.Append("| Food -> mining | no rations: ").Append(without).Append(" ore in 80 s, the mine reports ").Append(rWithout).Append(" (rations) | 4 rations delivered: ").Append(with)
-                  .Append(" ore in 80 s from the same batch | the mine needs 1 rations for every 2 ore |\n");
+                  .Append(" ore in 80 s from the same batch | the mine needs 1 rations for every ").Append(new EconomyTuning().Def(BuildingType.Mine).CyclesPerInput).Append(" ore |\n");
             }
 
             // 6. The military comparison flips when a squad is trained in time (paired scripted games).
@@ -530,7 +530,106 @@ namespace World.Sim.Tests
                   .Append(" -> ").Append(n0.Result).Append(" (").Append(n0.PlayerVp).Append(" points) | same seed, squad trained (first soldier at tick ").Append(army.Milestone("first_soldier")).Append("): shields ")
                   .Append(flip.PlayerShields).Append(" against ").Append(flip.RivalShields).Append(" -> Win (+").Append(flip.PlayerVp).Append(" points) | the comparison flips |\n");
             }
-            md.Append("\nAll six links are checked by the test (direction and size of the effect).\n\n");
+            // 7. Commerce card: Road Guild makes one road payment cover 3 more segments.
+            {
+                int Paid(bool guild, out int segments)
+                {
+                    var sim = K.NewSim();
+                    var s = sim.State;
+                    K.Step(sim);
+                    K.FinishDraft(sim);
+                    if (guild)
+                    {
+                        K.ForceIntoHand(s, "road_guild");
+                        K.Give(s, Ware.Rations, 1, Ware.Bricks, 1);
+                        K.Do(sim, new BuildCard { CardId = K.CardOf(s, "road_guild"), CityVertex = s.Board.HomeCityVertex });
+                    }
+                    int before = s.Economy.Ledger.Roads.Sum(), roads = s.Economy.Roads.Count(r => r);
+                    K.RoadToSecondCitySite(sim);
+                    segments = s.Economy.Roads.Count(r => r) - roads;
+                    return s.Economy.Ledger.Roads.Sum() - before;
+                }
+                int without = Paid(false, out int seg), with = Paid(true, out int seg2);
+                Assert.AreEqual(seg, seg2);
+                Assert.Less(with, without, "Road Guild saves road wares");
+                md.Append("| Commerce card -> road cost | the same ").Append(seg).Append(" road segments out to a city site cost ").Append(without).Append(" wares (planks and bricks) | with Road Guild built: ")
+                  .Append(with).Append(" wares | one road payment covers ").Append(new EconomyTuning().RoadSegmentsPerCost + 3).Append(" segments instead of ").Append(new EconomyTuning().RoadSegmentsPerCost).Append(" |\n");
+            }
+
+            // 8. Military cards: the age-end comparison flips.
+            {
+                MilitaryComparison AgeOne(bool cards)
+                {
+                    var sim = K.NewSim();
+                    var s = sim.State;
+                    s.Strategy.Tuning.BreachLimit = 99;
+                    K.Step(sim);
+                    K.FinishDraft(sim);
+                    if (cards)
+                    {
+                        // Cards from later ages (not in any hand yet), so the draft runs exactly as in the run without.
+                        K.Give(s, Ware.Rations, 3, Ware.Iron, 2, Ware.Bricks, 2);
+                        foreach (var id in new[] { "armoury", "siege_works", "drill_yard" })
+                        {
+                            K.ForceIntoHand(s, id);
+                            K.Do(sim, new BuildCard { CardId = K.CardOf(s, id), CityVertex = s.Board.HomeCityVertex });
+                        }
+                    }
+                    for (int r = 0; r < s.Strategy.Tuning.RoundsPerAge; r++) K.EndRound(sim);
+                    return s.Strategy.Comparisons.Single(c => c.Age == 1);
+                }
+                var none = AgeOne(false);
+                var with = AgeOne(true);
+                Assert.AreEqual(none.RivalShields, with.RivalShields, "the rival's side is the same");
+                Assert.AreNotEqual(ComparisonResult.Win, none.Result);
+                Assert.AreEqual(ComparisonResult.Win, with.Result, "military cards win the comparison");
+                md.Append("| Military cards -> military comparison | no soldiers, no military card: end of Age I shields ").Append(none.PlayerShields).Append(" against the rival's ").Append(none.RivalShields)
+                  .Append(" -> ").Append(none.Result).Append(" (").Append(none.PlayerVp).Append(" points) | Armoury, Siege Works and Drill Yard built: shields ").Append(with.PlayerShields).Append(" against ")
+                  .Append(with.RivalShields).Append(" -> Win (+").Append(with.PlayerVp).Append(" points) | card shields count like soldiers |\n");
+            }
+
+            // 9. Lore card: Ward Stones stop an outbreak (and its breach).
+            {
+                int Breaches(bool ward, out int demons)
+                {
+                    var sim = K.NewSim();
+                    var s = sim.State;
+                    K.Step(sim);
+                    K.FinishDraft(sim);
+                    if (ward)
+                    {
+                        K.ForceIntoHand(s, "ward_stones");
+                        K.Give(s, Ware.Bricks, 2, Ware.Rations, 1);
+                        K.Do(sim, new BuildCard { CardId = K.CardOf(s, "ward_stones"), CityVertex = s.Board.HomeCityVertex });
+                    }
+                    int v = K.DemoCorner(s);
+                    s.Strategy.InfectionDeck.Clear();
+                    for (int i = 0; i < 4; i++) s.Strategy.InfectionDeck.Add(v);
+                    s.Strategy.Tuning.InfectionBase = 4;
+                    K.EndRound(sim);
+                    demons = s.Strategy.Demons[v];
+                    return s.Strategy.Breaches;
+                }
+                int without = Breaches(false, out int dWithout), with = Breaches(true, out int dWith);
+                Assert.Greater(without, with);
+                Assert.AreEqual(0, with);
+                md.Append("| Lore card -> outbreaks | four infection cards on one corner: the fourth demon outbreaks, breach track ").Append(without).Append(" (").Append(dWithout)
+                  .Append(" demons left there) | with Ward Stones built: the site holds ").Append(dWith).Append(" demons, breach track ").Append(with).Append(" | a site holds one more demon before it outbreaks |\n");
+            }
+
+            // 10. The draft and the rival: what you pass it, it builds (paired scripted games).
+            {
+                var careful = GameRuns.Get(EconomyTestKit.DefaultSeed, "competent");
+                var naive = GameRuns.Get(EconomyTestKit.DefaultSeed, "firstpick");
+                Assert.Greater(careful.RivalCards.Count, 0, "the rival builds cards");
+                Assert.IsTrue(careful.Rival.Cards != naive.Rival.Cards || careful.RivalCardShields != naive.RivalCardShields, "the rival's points or shields depend on the draft");
+                md.Append("| Draft -> the rival's points and shields | scripted player drafting the first card offered: the rival builds ").Append(string.Join(", ", naive.RivalCards.Select(id => CardTable.Get(id).Name)))
+                  .Append(" (cards ").Append(naive.Rival.Cards).Append(" points, ").Append(naive.RivalCardShields).Append(" shields) | same seed, the competent drafter (takes what it needs and what the rival wants): the rival builds ")
+                  .Append(string.Join(", ", careful.RivalCards.Select(id => CardTable.Get(id).Name))).Append(" (").Append(careful.Rival.Cards).Append(" points, ").Append(careful.RivalCardShields)
+                  .Append(" shields) | the rival builds the point and shield cards it is passed; final score ").Append(naive.PlayerVp).Append("-").Append(naive.RivalVp).Append(" against ")
+                  .Append(careful.PlayerVp).Append("-").Append(careful.RivalVp).Append(" |\n");
+            }
+            md.Append("\nAll ten links are checked by the test (direction and size of the effect).\n\n");
         }
 
         // =====================================================================================================
@@ -657,82 +756,128 @@ namespace World.Sim.Tests
 
         private static void Balance(StringBuilder md, List<string> weak)
         {
+            var et = new EconomyTuning();
+            var stt = new StrategyTuning();
             md.Append("## F. Balance\n\n");
-            md.Append("Competent scripted player, default seed and ten others. Times in minutes (\"-\" = never). Bottleneck = the ware buildings waited for longest ")
-              .Append("(building-ticks of \"waiting for\" and \"needs\" naming it). Carriers busy = share of carrier time spent on a delivery.\n\n");
-            md.Append("| Seed | Commission | Second city | First soldier | Wonder 1 | Wonder 2 | Result | Bottleneck | Carriers busy |\n|---|---|---|---|---|---|---|---|---|\n");
+            md.Append("Competent scripted player, default seed and ten others. Times in minutes (\"-\" = never). Ages: minutes from the first round of the age to the first round of the next ")
+              .Append("(or the end of the game). Round: the mean length of the rounds of the ages in seconds (the bell can ring ").Append(et.MinRoundTicks / 10).Append(" s after a round starts). ")
+              .Append("Cards: built by you (distinct families) and their points; rival: cards it built, their points and shields. ")
+              .Append("Bottleneck = the ware buildings waited for longest (building-ticks of \"waiting for\" and \"needs\" naming it). Carriers busy = share of carrier time spent on a delivery.\n\n");
+            md.Append("| Seed | Commission | Age I | Age II | Age III | Round | Second city | First soldier | Wonder 1 | Wonder 2 | Cards | Rival cards | Result | Bottleneck | Carriers busy |\n")
+              .Append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n");
             var comp = GameRuns.Seeds.Select(seed => GameRuns.Get(seed, "competent")).ToList();
             foreach (var g in comp)
-                md.Append("| ").Append(g.Seed).Append(" | ").Append(Ms(g.Milestone("commission"))).Append(" | ").Append(Ms(g.Milestone("city2"))).Append(" | ")
-                  .Append(Ms(g.Milestone("first_soldier"))).Append(" | ").Append(Ms(g.Milestone("wonder1"))).Append(" | ").Append(Ms(g.Milestone("wonder2"))).Append(" | ")
+            {
+                var rounds = g.AgeRoundTicks();
+                md.Append("| ").Append(g.Seed).Append(" | ").Append(Ms(g.Milestone("commission"))).Append(" | ").Append(Ms(g.AgeTicks(1))).Append(" | ").Append(Ms(g.AgeTicks(2))).Append(" | ")
+                  .Append(Ms(g.AgeTicks(3))).Append(" | ").Append(rounds.Count == 0 ? "-" : (rounds.Average() / 10).ToString("0", Inv)).Append(" | ")
+                  .Append(Ms(g.Milestone("city2"))).Append(" | ").Append(Ms(g.Milestone("first_soldier"))).Append(" | ").Append(Ms(g.Milestone("wonder1"))).Append(" | ").Append(Ms(g.Milestone("wonder2"))).Append(" | ")
+                  .Append(g.PlayerCards.Count).Append(" (").Append(g.Families).Append(" families), ").Append(g.Player.Cards).Append(" pts | ")
+                  .Append(g.RivalCards.Count).Append(", ").Append(g.Rival.Cards).Append(" pts, ").Append(g.RivalCardShields).Append(" shields | ")
                   .Append(g.Outcome == GameOutcome.Victory ? "won " : "lost ").Append(g.PlayerVp).Append("-").Append(g.RivalVp).Append(" at ").Append(Ms(g.Ticks))
                   .Append(" | ").Append(W(g.Bottleneck)).Append(" | ").Append(g.CarrierUsePercent).Append("% of ").Append(g.Carriers).Append(" |\n");
+            }
 
             var byWare = new long[Wares.Count];
             foreach (var g in comp) for (int w = 0; w < Wares.Count; w++) byWare[w] += g.StallTicksByWare[w];
             var order = Enumerable.Range(0, Wares.Count).OrderByDescending(w => byWare[w]).ThenBy(w => w).ToList();
-            var mostOften = comp.GroupBy(g => g.Bottleneck).OrderByDescending(x => x.Count()).ThenBy(x => (int)x.Key).First();
-            md.Append("\nBinding bottleneck most often: **").Append(W(mostOften.Key)).Append("** (").Append(mostOften.Count()).Append(" of ").Append(comp.Count).Append(" games). ")
+            var binding = comp.GroupBy(g => g.Bottleneck).OrderByDescending(x => x.Count()).ThenBy(x => (int)x.Key).ToList();
+            var mostOften = binding.First();
+            md.Append("\nBinding bottleneck by game: ").Append(string.Join(", ", binding.Select(x => W(x.Key) + " " + x.Count()))).Append(" (of ").Append(comp.Count).Append("). ")
               .Append("Over all eleven games the wares waited for longest were: ")
               .Append(string.Join(", ", order.Take(5).Select(w => W((Ware)w) + " " + (byWare[w] / 600) + " building-minutes"))).Append(".\n\n");
+            Assert.LessOrEqual(mostOften.Count(), 6, "no single ware is the binding bottleneck in more than 6 of 11 games");
+            Assert.GreaterOrEqual(binding.Count, 3, "at least three different wares bind somewhere");
             var lost = comp.Select(g => g.Ledger).ToList();
             md.Append("Raw supply in these games (units authorised by draws / lost to the carry-over cap): ")
-              .Append(string.Join("; ", Wares.Raw.Select(w => W(w) + " " + lost.Sum(x => x.BatchAuthorised[(int)w]) + " / " + lost.Sum(x => x.BatchLost[(int)w])))).Append(".\n\n");
+              .Append(string.Join("; ", Wares.Raw.Select(w => W(w) + " " + lost.Sum(x => x.BatchAuthorised[(int)w]) + " / " + lost.Sum(x => x.BatchLost[(int)w])
+                  + " (" + (100.0 * lost.Sum(x => x.BatchLost[(int)w]) / Math.Max(1, lost.Sum(x => x.BatchAuthorised[(int)w]))).ToString("0.0", Inv) + "%, worst game "
+                  + lost.Max(x => 100 * x.BatchLost[(int)w] / Math.Max(1, x.BatchAuthorised[(int)w])) + "%)"))).Append(".\n\n");
+            foreach (var w in Wares.Raw)
+                Assert.Less(100.0 * lost.Sum(x => x.BatchLost[(int)w]) / Math.Max(1, lost.Sum(x => x.BatchAuthorised[(int)w])), 10.0, W(w) + ": under 10% of the authorised batch is lost to the cap");
+
+            // Rounds and ages.
+            var allRounds = comp.SelectMany(g => g.AgeRoundTicks()).ToList();
+            var ageLens = Enumerable.Range(1, 3).Select(a => comp.Select(g => g.AgeTicks(a)).Where(x => x >= 0).ToList()).ToList();
+            md.Append("Rounds of the ages last ").Append((allRounds.Min() / 10).ToString(Inv)).Append("-").Append((allRounds.Max() / 10).ToString(Inv)).Append(" s (mean ")
+              .Append((allRounds.Average() / 10).ToString("0", Inv)).Append(" s); a whole age lasts ")
+              .Append(string.Join(", ", Enumerable.Range(0, 3).Where(i => ageLens[i].Count > 0).Select(i => "Age " + StrategyApi.Roman(i + 1) + " " + Ms(ageLens[i].Min()) + "-" + Ms(ageLens[i].Max()) + " min")))
+              .Append(" (an age that ends the game is cut short). Every round brings a draft pick and a harvest season of at least ").Append(et.MinRoundTicks / 10).Append(" s.\n\n");
+            Assert.IsTrue(allRounds.All(r => r >= et.MinRoundTicks), "every round of the ages lasts at least the harvest season");
 
             // Verdicts.
             md.Append("**Verdicts on the design goals**\n\n| Goal | Measured | Verdict |\n|---|---|---|\n");
+            var wins = comp.Where(g => g.Outcome == GameOutcome.Victory).ToList();
             var allFive = comp.Where(g => Wares.Raw.All(w => g.Ledger.Harvested[(int)w] > 0 && g.Ledger.Consumed[(int)w] > 0)).ToList();
             var missing = comp.Except(allFive).ToList();
-            Assert.GreaterOrEqual(allFive.Count, comp.Count - 2, "every raw ware is harvested and used in (almost) every competent game");
+            Assert.IsTrue(wins.All(g => allFive.Contains(g)), "all five raw wares are harvested and consumed in every competent win");
             md.Append("| Every one of the five resources is needed | in ").Append(allFive.Count).Append(" of ").Append(comp.Count).Append(" competent games all five raw wares were harvested and used; logs feed planks and coal, clay feeds bricks, ")
-              .Append("wheat and sheep feed rations (cities, cards, miners, soldiers), ore feeds iron (weapons, wonder stage 2)")
-              .Append(missing.Count == 0 ? "" : "; " + string.Join("; ", missing.Select(g => "seed " + g.Seed + " won without using " + string.Join(" or ", Wares.Raw.Where(w => g.Ledger.Consumed[(int)w] == 0).Select(W)))))
+              .Append("wheat and sheep feed rations (cities, cards, miners, soldiers, wonder), ore feeds iron (weapons, wonder stage 2, Age III cards); the binding ware differs by game (")
+              .Append(string.Join(", ", binding.Select(x => W(x.Key) + " " + x.Count()))).Append(")")
+              .Append(missing.Count == 0 ? "" : "; " + string.Join("; ", missing.Select(g => "seed " + g.Seed + " did not use " + string.Join(" or ", Wares.Raw.Where(w => g.Ledger.Consumed[(int)w] == 0).Select(W)))))
               .Append(" | ").Append(missing.Count == 0 ? "yes" : "mostly").Append(" |\n");
-            foreach (var g in missing)
-                weak.Add("Every resource needed: on seed " + g.Seed + " the competent player reached " + g.PlayerVp + " points without using any "
-                         + string.Join(" or ", Wares.Raw.Where(w => g.Ledger.Consumed[(int)w] == 0).Select(W)) + " (it was harvested, " + string.Join(", ", Wares.Raw.Where(w => g.Ledger.Consumed[(int)w] == 0).Select(w => g.Ledger.Harvested[(int)w] + " " + W(w)))
-                         + ", but the win came from cities, the first wonder stage, cards and the comparisons before the iron chain ran). Points can be reached without the full chain when the player is quick.");
+
             var fullGames = GameRuns.Seeds.Select(seed => GameRuns.Get(seed, "full")).ToList();
             int inRange = fullGames.Count(g => g.Ticks >= 6000 && g.Ticks <= 9000);
             int compRange = comp.Count(g => g.Ticks >= 6000 && g.Ticks <= 9000);
-            md.Append("| A full game lasts 10-15 minutes | full player: ").Append(inRange).Append(" of ").Append(fullGames.Count).Append(" games end between 10 and 15 minutes (range ")
+            Assert.GreaterOrEqual(compRange, 9, "at least 9 of 11 competent games end between 10 and 15 minutes");
+            Assert.GreaterOrEqual(inRange, 9, "at least 9 of 11 full games end between 10 and 15 minutes");
+            Assert.IsTrue(comp.Concat(fullGames).All(g => g.Ledger.Produced[(int)Ware.Iron] > 0 && g.Ledger.Produced[(int)Ware.Weapons] > 0 && g.UnitsTrained > 0),
+                "the iron and weapons chain runs (and trains soldiers) in every competent and full game");
+            md.Append("| A full game lasts 10-15 minutes | target ").Append(stt.VictoryPoints).Append(" points; full player: ").Append(inRange).Append(" of ").Append(fullGames.Count).Append(" games end between 10 and 15 minutes (range ")
               .Append(Ms(fullGames.Min(g => g.Ticks))).Append("-").Append(Ms(fullGames.Max(g => g.Ticks))).Append("); competent: ").Append(compRange).Append(" of ").Append(comp.Count)
-              .Append(" (").Append(Ms(comp.Min(g => g.Ticks))).Append("-").Append(Ms(comp.Max(g => g.Ticks))).Append("). Games that run all three ages (careless, passive aside) last up to ")
-              .Append(Ms(GameRuns.Seeds.Select(seed => GameRuns.Get(seed, "careless")).Max(g => g.Ticks))).Append(" | ")
-              .Append(inRange * 2 >= fullGames.Count ? "mostly: a strong player often reaches 12 points before 10 minutes" : "no: too short").Append(" |\n");
-            if (inRange < fullGames.Count) weak.Add("Game length: " + (fullGames.Count - inRange) + " of " + fullGames.Count + " full-player games end outside 10-15 minutes (shortest " + Ms(fullGames.Min(g => g.Ticks)) + " min): a strong player reaches 12 points early. Raise the target to 13-14 if the owner wants every game to last 10 minutes or more.");
+              .Append(" (").Append(Ms(comp.Min(g => g.Ticks))).Append("-").Append(Ms(comp.Max(g => g.Ticks))).Append("); iron, weapons and soldiers in all ").Append(comp.Count + fullGames.Count).Append(" | ")
+              .Append(inRange == fullGames.Count && compRange == comp.Count ? "yes" : "mostly").Append(" |\n");
+            if (inRange < fullGames.Count || compRange < comp.Count)
+                weak.Add("Game length: " + (comp.Count - compRange) + " competent and " + (fullGames.Count - inRange) + " full games end outside 10-15 minutes ("
+                         + string.Join(", ", comp.Concat(fullGames).Where(g => g.Ticks < 6000 || g.Ticks > 9000).Select(g => g.Mode + " seed " + g.Seed + " at " + Ms(g.Ticks))) + ").");
+
+            int fam3 = comp.Count(g => g.Families >= 3), civic = comp.Count(g => g.PlayerCards.Any(id => CardTable.Get(id).Family == CardFamily.Civic) && g.Player.Cards > 0);
+            int stage2 = comp.Count(g => g.Milestone("wonder2") >= 0);
+            int rivalBuilt = comp.Count(g => g.RivalCards.Count > 0);
+            Assert.GreaterOrEqual(fam3, 6, "the competent player builds cards from at least three families in most games");
+            Assert.GreaterOrEqual(civic, 6, "civic cards score points in most competent games");
+            Assert.GreaterOrEqual(stage2, 6, "wonder stage 2 is completed in a majority of competent games");
+            Assert.AreEqual(comp.Count, rivalBuilt, "the rival builds cards in every game");
+            md.Append("| The draft and the wonder matter (7 Wonders) | competent: cards from 3 or more families in ").Append(fam3).Append(" of ").Append(comp.Count).Append(" games (")
+              .Append(comp.Min(g => g.PlayerCards.Count)).Append("-").Append(comp.Max(g => g.PlayerCards.Count)).Append(" cards built); civic cards scored in ").Append(civic).Append(" (")
+              .Append(comp.Min(g => g.Player.Cards)).Append("-").Append(comp.Max(g => g.Player.Cards)).Append(" card points); wonder stage 2 in ").Append(stage2).Append("; the rival built cards in ")
+              .Append(rivalBuilt).Append(" (").Append(comp.Min(g => g.Rival.Cards)).Append("-").Append(comp.Max(g => g.Rival.Cards)).Append(" points, ")
+              .Append(comp.Min(g => g.RivalCardShields)).Append("-").Append(comp.Max(g => g.RivalCardShields)).Append(" shields from cards) | yes |\n");
+
             var careless = GameRuns.Seeds.Select(seed => GameRuns.Get(seed, "careless")).ToList();
             int cLoss = careless.Count(g => g.Outcome != GameOutcome.Victory), cBreach = careless.Count(g => g.Reason == OutcomeReasons.Breach);
+            Assert.GreaterOrEqual(cLoss, 9, "careless play loses at least 9 of 11");
+            Assert.Greater(cBreach * 2, cLoss, "careless play loses mostly by breach");
             md.Append("| Careless play loses to breaches | careless player (never moves the hero): loses ").Append(cLoss).Append(" of ").Append(careless.Count).Append(", ").Append(cBreach)
               .Append(" of them at the breach limit; the competent player suffered ").Append(comp.Sum(g => g.Breaches)).Append(" breaches in ").Append(comp.Count).Append(" games | ")
               .Append(cLoss == careless.Count && cBreach * 2 > careless.Count ? "yes" : cBreach * 2 > careless.Count ? "mostly" : "partly").Append(" |\n");
             var cWins = careless.Where(g => g.Outcome == GameOutcome.Victory).ToList();
-            if (cWins.Count > 0) weak.Add("Careless play: " + cWins.Count + " of " + careless.Count + " careless games still win (seed" + (cWins.Count == 1 ? " " : "s ") + string.Join(", ", cWins.Select(g => g.Seed))
-                + "): the demons there caused " + string.Join(" and ", cWins.Select(g => g.Breaches.ToString(Inv))) + " outbreak" + (cWins.Sum(g => g.Breaches) == 1 ? "" : "s") + " before the player reached 12 points at "
-                + string.Join(" and ", cWins.Select(g => Ms(g.Ticks))) + " minutes. Ignoring the demons is usually, not always, fatal.");
-            if (cBreach < cLoss) weak.Add("Careless play: " + (cLoss - cBreach) + " careless losses come from being outscored (demons crippled the economy) rather than from the breach limit.");
+            if (cWins.Count > 0) weak.Add("Careless play: " + cWins.Count + " of " + careless.Count + " careless games still win (seed" + (cWins.Count == 1 ? " " : "s ") + string.Join(", ", cWins.Select(g => g.Seed)) + ").");
+            if (cBreach < cLoss) weak.Add("Careless play: " + (cLoss - cBreach) + " of " + cLoss + " careless losses come from being outscored (demons crippled the economy and the rival's cards and comparisons ran away) rather than from the breach limit.");
             var passive = GameRuns.Seeds.Select(seed => GameRuns.Get(seed, "passive")).ToList();
             int pLoss = passive.Count(g => g.Outcome != GameOutcome.Victory);
             Assert.AreEqual(passive.Count, pLoss, "passive play loses");
             md.Append("| Passive play loses | passive player loses ").Append(pLoss).Append(" of ").Append(passive.Count).Append(" (").Append(passive.Count(g => g.Reason == OutcomeReasons.Breach)).Append(" by breach, at ")
               .Append(Ms(passive.Min(g => g.Ticks))).Append("-").Append(Ms(passive.Max(g => g.Ticks))).Append(" min) | yes |\n\n");
-            if (passive.All(g => g.Reason == OutcomeReasons.Breach)) weak.Add("Passive play always ends by breach within " + Ms(passive.Max(g => g.Ticks)) + " minutes, never by the rival's points: with no hero moves the demons win before the rival's plan does.");
-            int compWins = comp.Count(g => g.Outcome == GameOutcome.Victory);
+            if (passive.All(g => g.Reason == OutcomeReasons.Breach)) weak.Add("Passive play always ends by breach (" + Ms(passive.Min(g => g.Ticks)) + "-" + Ms(passive.Max(g => g.Ticks)) + " minutes), never by the rival's points: with no hero moves the demons win before the rival's plan and cards do.");
+            int compWins = wins.Count;
             md.Append("The competent player won ").Append(compWins).Append(" of ").Append(comp.Count).Append(" games; the full player ").Append(fullGames.Count(g => g.Outcome == GameOutcome.Victory))
               .Append(" of ").Append(fullGames.Count).Append(" (").Append(fullGames.Count(g => g.OutpostDestroyed)).Append(" destroyed the outpost).\n\n");
-            Assert.GreaterOrEqual(compWins, 9);
+            Assert.GreaterOrEqual(compWins, 10, "the competent player wins at least 10 of 11");
+
             var commission = comp.Select(g => g.Milestone("commission")).ToList();
             string range = commission.Min() == commission.Max() ? Ms(commission.Min()) : Ms(commission.Min()) + "-" + Ms(commission.Max());
-            if (commission.Max() < 2400)
-                weak.Add("Commission time: the quartermaster's commission completes at " + range + " minutes for the scripted player (the target was 4-5). The batch and carrier numbers needed for a lively 10-15 minute game make the six-building chain quick; only a prologue-specific rule (smaller prologue batches or a larger commission) would slow it.");
+            Assert.IsTrue(commission.All(c => c >= 1800 && c <= 3000), "the opening commission takes 3-5 minutes for the scripted player");
+            md.Append("The quartermaster's commission (").Append(et.CommissionPlanks).Append(" planks and ").Append(et.CommissionBricks).Append(" bricks in the storehouse with the six commission buildings working) completes at ")
+              .Append(range).Append(" minutes.\n\n");
             if (commission.Distinct().Count() == 1)
-                weak.Add("The prologue is the same on every seed: its draws are the fixed starter sequence (home forest every round, hills and fields in turn), so the commission and the second city come at the same minute in every game (" + range + " and " + Ms(comp[0].Milestone("city2")) + "). Seeds only differ from Age I on.");
-            int stage2 = comp.Count(g => g.Milestone("wonder2") >= 0);
+                weak.Add("The prologue is the same on every seed: its draws are the fixed starter sequence (home forest every round, hills and fields in turn), so the commission comes at the same minute in every game (" + range + "). Seeds only differ from Age I on. A random starter (forest plus hills or fields at random) was tried: it varied the commission from 2.9 to 7.9 minutes, outside the 3-5 minute target, and left fields batches unworked in the prologue.");
             if (stage2 < comp.Count)
-                weak.Add("Wonder stage 2 (2 iron + 2 rations, 3 points) was finished in " + stage2 + " of " + comp.Count + " competent games: the player reaches 12 points first. Iron goes to weapons first because the age-end comparisons pay more (+3, +5).");
+                weak.Add("Wonder stage 2 was finished in " + stage2 + " of " + comp.Count + " competent games.");
             int noSoldier = comp.Count(g => g.Milestone("first_soldier") < 0);
             if (noSoldier > 0)
-                weak.Add("Soldiers: in " + noSoldier + " of " + comp.Count + " competent games no soldier was trained before the win (the iron chain was still starting); those games were won on cities, the wonder and cards.");
+                weak.Add("Soldiers: in " + noSoldier + " of " + comp.Count + " competent games no soldier was trained.");
         }
 
         // =====================================================================================================
@@ -742,16 +887,19 @@ namespace World.Sim.Tests
         private static void Weaknesses(StringBuilder md, List<string> weak)
         {
             var comp = GameRuns.Seeds.Select(seed => GameRuns.Get(seed, "competent")).ToList();
-            var full = GameRuns.Seeds.Select(seed => GameRuns.Get(seed, "full")).ToList();
             var t = new EconomyTuning();
-            weak.Add("Logs bind the whole economy: planks, coal (2 logs each) and therefore bricks, iron and power all come from one forest hex at the start. "
-                     + "It needed a woodcutter yield of 2 logs per batch unit, batches of " + t.BatchSize + " and draws of " + t.NumbersDrawn + " numbers out of 4 to make a full game possible; "
-                     + "other raw wares are in surplus (see the raw supply line in F: most of the clay, wheat, sheep and ore authorised is lost to the carry-over cap).");
+            var st = new StrategyTuning();
+            var raw = comp.SelectMany(g => Wares.Raw.Select(w => (w, used: g.Ledger.Consumed[(int)w], made: g.Ledger.Harvested[(int)w]))).GroupBy(x => x.w)
+                .Select(x => W(x.Key) + " " + (100 * x.Sum(y => y.used) / Math.Max(1, x.Sum(y => y.made))) + "%").ToList();
+            weak.Add("Surplus raw wares: little is lost to the cap, but not everything harvested is used: share of the harvest consumed over the competent games: " + string.Join(", ", raw)
+                     + ". The rest waits in the storehouse (economy targets stop the workshops once the storehouse holds enough of their output). Every resource matters, but they are not equally scarce.");
             weak.Add("Carriers: the economy needs many carriers (" + t.Carriers + " at the start, " + t.CarriersPerBuilding + " more per finished building, 2 more per city; "
                      + comp.Min(g => g.Carriers) + "-" + comp.Max(g => g.Carriers) + " at the end of the competent games, busy " + comp.Min(g => g.CarrierUsePercent) + "-" + comp.Max(g => g.CarrierUsePercent)
-                     + "% of the time). There is one storehouse, so goods for distant cities walk long routes; the Unity layer will have to show many walking figures.");
-            weak.Add("The rival is simple: its points are a fixed plan (+2 at the end of each age, stopped if its outpost falls) plus the mirrored military tokens; its shields are its garrison (1, 2, 3 guards by age). "
-                     + "It drafts cards (preferring shields, then points) but builds none by default (tuning RivalMaxBuilt = 0), so its cards only deny them to you. Raiders block a road flag but do not count as shields.");
+                     + "% of the time). One carrier per finished building was tried: 33 carriers were busy 87-92% of the time, logs were lost to the cap (11.5%) and games ran 14-16 minutes, so it stays at 2. "
+                     + "There is one storehouse, so goods for distant cities walk long routes; the Unity layer will have to show many walking figures.");
+            weak.Add("The rival is still simple: no economy, a plan of +" + st.RivalPlanVp + " point at the end of each age (stopped if its outpost falls), a flat garrison of " + new World.Sim.Military.MilitaryTuning().GarrisonBase
+                     + " guards, and it builds (free) the point and shield cards it drafts, at most " + st.RivalBuildsPerAge + " per age of which " + st.RivalShieldCardsPerAge
+                     + " a shield card. Its draft is greedy (the card worth most to it now), not a search. Raiders block a road flag but do not count as shields.");
             {
                 // Stress: every corner of the board full of demons, breach limit off, one infection card drawn.
                 var sim = K.NewSim();
@@ -770,10 +918,13 @@ namespace World.Sim.Tests
                 Assert.AreEqual(chain, evs.OfType<OutbreakOccurred>().Select(o => o.Vertex).Distinct().Count(), "no site outbreaks twice in one draw");
                 weak.Add("Outbreaks have no size limit except the breach track: one draw chains from site to site as long as neighbours are full. Stress check: with all " + fullCorners
                          + " corners of the board full and the limit switched off, one card set off " + chain + " outbreaks in a single draw (each site once). In real games the limit of "
-                         + new StrategyTuning().BreachLimit + " ends the game long before; the long random-command runs of section D, with demons swept every 20 s, ended at breach track " + string.Join(", ", RandomBreaches) + ".");
+                         + st.BreachLimit + " ends the game long before; the long random-command runs of section D, with demons swept every 20 s, ended at breach track " + string.Join(", ", RandomBreaches) + ".");
             }
-            weak.Add("The scripted players are rules of thumb, not a search: e.g. they switch the brick kiln off when 12 bricks are stockpiled so coal reaches the smelter, end a round when the forest batch is felled, "
-                     + "and place workshops next to their supplier. A human may do better or worse; the balance numbers describe these players.");
+            weak.Add("The scripted players are rules of thumb, not a search: e.g. they switch the brick kiln off when 12 bricks are stockpiled so coal reaches the smelter, ring the bell as soon as the "
+                     + "round's harvest is in, send the home squad against a raid, train soldiers until their shields beat the rival's, and draft by a fixed table of card values plus a share of what a card is "
+                     + "worth to the rival. A human may do better or worse; the balance numbers describe these players.");
+            weak.Add("The hero matters a lot: with " + st.HeroMovesPerRound + " moves a round (raised from 4) the competent player keeps up with " + st.InfectionBase + "-" + (st.InfectionBase + 2 * st.InfectionPerAge)
+                     + " infection cards a round; with 4 moves a demon left on a far city stopped its hexes for whole rounds (the robber) and starved the iron chain in some games.");
             weak.Add("Fair-share deliveries were needed: with nearest-first deliveries the sawmill took every log and the charcoal kiln starved (commission never completed at slower harvest speeds). "
                      + "Deliveries now go to the consumer with the least on hand.");
             md.Append("## G. Known weaknesses\n\n");

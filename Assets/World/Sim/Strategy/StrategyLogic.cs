@@ -205,6 +205,11 @@ namespace World.Sim.Strategy
             st.RoundInAge = rr % Math.Max(1, t.RoundsPerAge) + 1;
             var fx = Effects(s, PlayerIds.Human);
             st.HeroMovesLeft = HeroMovesPerRound(s);
+            if (rr == 0 && t.CommissionCoin > 0)
+            {
+                s.Player(PlayerIds.Human).Coin += t.CommissionCoin;
+                st.Ledger.CoinFromCommission += t.CommissionCoin;
+            }
             if (fx.CoinPerRound > 0)
             {
                 s.Player(PlayerIds.Human).Coin += fx.CoinPerRound;
@@ -222,6 +227,13 @@ namespace World.Sim.Strategy
                 if (age >= 2 && t.Epidemics) Epidemic(s, ev);
                 if (st.GameOver) return;
                 Deal(s, age, ev);
+            }
+            else if (st.DraftNextStep > 0 && st.DraftAge == age && Side(s, PlayerIds.Human).DraftHand.Count > 0)
+            {
+                // One pick per round: the hand passed at the last pick is picked from now.
+                st.DraftStep = st.DraftNextStep;
+                st.DraftNextStep = 0;
+                ev?.Add(new DraftResumed { Age = age, Step = st.DraftStep, PlayerCards = Side(s, PlayerIds.Human).DraftHand.ToArray() });
             }
             ev?.Add(new StrategyRoundStarted { Age = st.Age, RoundInAge = st.RoundInAge, HeroMoves = st.HeroMovesLeft });
         }
@@ -459,8 +471,12 @@ namespace World.Sim.Strategy
             int n = st.Tuning.DraftHandSize;
             var human = Side(s, PlayerIds.Human);
             var rival = Side(s, PlayerIds.Rival);
+            // Cards still in hand from a draft that did not finish (fewer rounds than picks) are discarded.
+            human.Discarded.AddRange(human.DraftHand);
+            rival.Discarded.AddRange(rival.DraftHand);
             human.DraftHand.Clear();
             rival.DraftHand.Clear();
+            st.DraftNextStep = 0;
             for (int i = 0; i < n && i < deck.Count; i++) human.DraftHand.Add(deck[i]);
             for (int i = n; i < 2 * n && i < deck.Count; i++) rival.DraftHand.Add(deck[i]);
             st.DraftAge = age;
@@ -468,10 +484,10 @@ namespace World.Sim.Strategy
             ev?.Add(new DraftDealt { Age = age, PlayerCards = human.DraftHand.ToArray() });
         }
 
-        /// <summary>Rival's deterministic draft preference: shields, then points (denying you), then economy; table order breaks ties.</summary>
+        /// <summary>Rival's deterministic draft preference: shields and points (it builds those), then economy (denying you); table order breaks ties.</summary>
         internal static int RivalCardScore(CardDef d)
         {
-            int score = d.Shields * 200 + d.Vp * 60 + d.VpPerCity * 40 + d.DamageBonus * 20 + d.CoinPerRound * 15 + d.TradeRateBonus * 10;
+            int score = d.Shields * 110 + d.Vp * 100 + d.VpPerCity * 40 + d.DamageBonus * 20 + d.CoinPerRound * 15 + d.TradeRateBonus * 10;
             score += (d.ForestBatch + d.HillsBatch + d.FieldsBatch + d.PastureBatch + d.MountainBatch + d.AllBatch + d.ExtraOutput) * 3;
             score *= 100;
             score -= Array.IndexOf(CardTable.All, d);
@@ -484,7 +500,9 @@ namespace World.Sim.Strategy
             int best = -1, bestScore = int.MinValue;
             foreach (int id in hand)
             {
-                int sc = RivalCardScore(Def(s, id));
+                var d = Def(s, id);
+                // A card it can still build is worth its full score; one it cannot (cap reached) only denies you.
+                int sc = RivalWouldBuild(s, d) ? RivalCardScore(d) : RivalCardScore(d) / 10;
                 if (sc > bestScore || (sc == bestScore && id < best))
                 {
                     best = id;
@@ -517,8 +535,14 @@ namespace World.Sim.Strategy
                 var tmp = human.DraftHand;
                 human.DraftHand = rival.DraftHand;
                 rival.DraftHand = tmp;
-                st.DraftStep = step + 1;
                 ev?.Add(new DraftPassed { PlayerCards = human.DraftHand.ToArray() });
+                if (st.Tuning.DraftPickPerRound)
+                {
+                    // The next pick waits for the next round start of this age.
+                    st.DraftStep = 0;
+                    st.DraftNextStep = step + 1;
+                }
+                else st.DraftStep = step + 1;
                 return;
             }
             var discarded = new List<int>();
@@ -529,21 +553,36 @@ namespace World.Sim.Strategy
             human.DraftHand.Clear();
             rival.DraftHand.Clear();
             st.DraftStep = 0;
+            st.DraftNextStep = 0;
             ev?.Add(new DraftFinished { Age = st.DraftAge, DiscardedCards = discarded.ToArray() });
         }
 
+        /// <summary>True when the rival would build this card now (a shield or point card within its per-age and total limits).</summary>
+        internal static bool RivalWouldBuild(WorldState s, CardDef d)
+        {
+            var rival = Side(s, PlayerIds.Rival);
+            var t = s.Strategy.Tuning;
+            bool useful = d.Shields > 0 || d.Vp > 0 || d.VpPerCity > 0; // the rival has no economy: it builds shields and points
+            int builtThisAge = 0, shieldsThisAge = 0;
+            foreach (var b in rival.Built)
+            {
+                if (s.Strategy.Cards[b.CardId].Age != d.Age) continue;
+                builtThisAge++;
+                if (Def(s, b.CardId).Shields > 0) shieldsThisAge++;
+            }
+            if (d.Shields > 0 && shieldsThisAge >= t.RivalShieldCardsPerAge) useful = d.Vp > 0 || d.VpPerCity > 0;
+            return useful && builtThisAge < t.RivalBuildsPerAge && rival.Built.Count < t.RivalMaxBuilt && !MilitaryApi.IsOutpostDestroyed(s);
+        }
+
         /// <summary>
-        /// The rival builds a military (shields) card at its outpost, free, at most one per age and RivalMaxBuilt in
-        /// all (its first such pick of the age); it keeps the rest (they only deny you).
+        /// The rival builds the shield and point cards it drafts at its outpost, free, at most RivalBuildsPerAge per age
+        /// (of them at most RivalShieldCardsPerAge shield cards) and RivalMaxBuilt in all; it keeps the rest (they only deny you).
         /// </summary>
         internal static void RivalTakeCard(WorldState s, int cardId, EventBuffer ev)
         {
             var rival = Side(s, PlayerIds.Rival);
             var d = Def(s, cardId);
-            bool useful = d.Shields > 0; // the rival's points come from its plan; it builds shields
-            bool builtThisAge = false;
-            foreach (var b in rival.Built) if (s.Strategy.Cards[b.CardId].Age == d.Age) builtThisAge = true;
-            if (useful && !builtThisAge && rival.Built.Count < s.Strategy.Tuning.RivalMaxBuilt && !MilitaryApi.IsOutpostDestroyed(s))
+            if (RivalWouldBuild(s, d))
             {
                 rival.Built.Add(new BuiltCard { CardId = cardId, CityVertex = s.Board.RivalOutpostVertex, Tick = s.Tick });
                 ev?.Add(new CardBuilt { PlayerId = PlayerIds.Rival, CardId = cardId, DefId = d.Id, CityVertex = s.Board.RivalOutpostVertex });

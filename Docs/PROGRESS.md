@@ -168,3 +168,40 @@ Ran:
 - Captures looked at (git-ignored `Evidence/screenshots/econ_*.png`): loaded carrier from first person and God View, build menu with hover, build refusal sentence, road tool, stalled site inspect panel, problems, wares, Bram's dialogue, home territory late in the commission (wide and close), late game (wide, close, smelter inspect, first person tavern), all 20 models (God View and first person). Fixed from them: buildings overlapping cottages, labels over the toolbar, Bram hemmed in by idle carriers, carriers on one road overlapping, batch tags over hex labels, a sinking ladder, "used by -buildings".
 
 Not run / caveats: `-autoplay commission` was not run in a packaged player (the Windows player was not rebuilt, as instructed); nobody played it by hand. No draft panel exists, so once Age I starts End Round stays refused with `draft_pending` for a human player (the late-game driver picks cards by command). Demons, cities, hero and squads have no views yet, so "demon on its flag" badges show without a visible demon. The commission building list is internal in the sim (`EconomyLogic.CommissionTypes`); the Game layer mirrors it. Captures are 1280x720 (the capture tool's size); fps was measured at 1920x1080.
+
+## Economy rebalance: the four games connected for real (13 Nov 2026, feat/sim-integration)
+
+The owner's review of the proof found 7 Wonders, the ages and Catan's "every resource matters" connected only nominally. Fixed by rule changes and tuning; the public surface is unchanged (nothing renamed or removed), additive API listed below. Save version 2 -> 3.
+
+Why cards scored 0: the score line was right. On the default seed (the one the proof printed) the competent player built Drill Yard, Lumber Camp and Ward Stones, no civic card: it had drafted the Shrine but never had the 1 coin it costs (coin started at 0), and Great Hall came in Age III after the game ended. Over the 11 seeds it drafted 4-6 cards (2 per age, games ended in Age II-III) and built 1-3, because the goals reserved every ration and brick; Monument was the only civic card built (8 of 11). The rival built nothing (`RivalMaxBuilt` = 0). Why ages were not felt: rounds cost nothing to end and unharvested batches carry over, so the scripted player rang the bell 15 s into a round whenever the forest had no batch; an age was mostly its last round.
+
+Rule changes (code): harvest season (`EndRound` refused with `round_too_soon` until `MinRoundTicks` = 60 s after the round started); one draft pick per round (4 cards each at the age start, 3 picks, hands passed between rounds; `DraftPickPerRound`, `DraftNextStep`, `DraftResumed`); the rival builds the point and shield cards it drafts (2 per age, 1 of them shields; values a card it cannot build only as denial); 4 coin when Age I begins; economy targets (`StockTarget`: a workshop pauses while the storehouse holds enough of its output, reason `output_full`); per-terrain batch sizes (`TerrainBatchSize`); 6 new cards (24); varied prologue was tried and dropped (see weaknesses).
+
+Tuning log (each step re-ran the 44 scripted games with the `BalanceProbe` explicit test):
+1. Harvest season 60 s, per-round draft, rival builds, commission coin, 6 cards: rounds 60-100 s; rival 3-9 card points; competent wins fell to 6-8 of 11 (rival military cards too strong).
+2. Recipes: charcoal 1 log (from 2), bricks 2 clay (from 1), bread and meat 1 per input (from 2), smelter 2 ore (from 1); harvest 60 ticks; batch 10, age bonus +1: waste fell to 0-6% except ore; logs still bound 10 of 11.
+3. Per-terrain batches, rival plan +1, scripted card values by age and build-from-store, wonder stage 2 ordered without stockpiled iron: cards from 3+ families 9 of 11, wonder stage 2 9 of 11.
+4. Economy targets: binding ware spread to logs 3, iron 2, rations 2, ore 2, clay 1, weapons 1 (logs had looked binding because surplus planks and coal were made from every log).
+5. Rival limited to 1 shield card per age, Stockade and Siege Works 1 shield, flat garrison 2: losses from the Age III comparison stopped.
+6. Hero 6 moves (from 4) and the scripted hero clears demons on cities first, the squad drives off raids, more soldiers while the rival's shields match: competent 10-11 of 11.
+7. Prologue: random starter tried (commission 2.9-7.9 min), back to the fixed starter; commission 18 + 18 (from 10 + 10): 3.2 min. Cover goals for pasture and mountain hexes, mine 1 rations per 3 ore: ore waste 14% -> 0%.
+8. Forest 12, mountain 5, target 18 (from 12), harvest 50 ticks: 10 of 11 competent and 10 of 11 full games in 10-15 min.
+9. One carrier per building tried: 33 carriers 87-92% busy, games 14-16 min, logs waste 11.5%: reverted to 2.
+
+Before -> after (11 seeds, `Docs/ECONOMY_PROOF.md`):
+| Item | Before | After |
+|---|---|---|
+| 1. 7 Wonders | player card points 0 on the shown seed (0-4 over seeds), 1-3 cards built, 1-2 families; wonder stage 2 in 0 of 11; rival builds 0 | 6-7 cards, 3-4 families in 11 of 11, civic points 2-6 in 11 of 11; wonder stage 2 in 11 of 11; rival builds 5-6 cards (6-7 points, 2-4 shields); paired runs: commerce (Road Guild 4 -> 2 road wares), military (Age I Loss -> Win), lore (Ward Stones breach 1 -> 0), draft (first-card drafter: rival 9 points 2 shields; competent drafter: 7 points 3 shields) |
+| 2. Ages | Age I rounds at 3.3, 3.6, 3.8 min; rounds 15-100 s | rounds 60-90 s (mean 68); Age I 3.0-3.9, Age II 3.0-4.1, Age III up to 3.9 min; a pick and a harvest every round |
+| 3. Catan | logs bind 9 of 11; 13-29% of clay, wheat, sheep, ore lost to the cap; a win without ore; 2 wins without soldiers | binding: rations 5, planks 4, logs 1, ore 1; lost to the cap 0.0-0.3% per raw ware (worst game 3%); all five raw wares harvested and used in 11 of 11; soldiers in all 22 competent and full games |
+| 4. Length | 5 of 11 under 10 min (8.1-13.3), target 12 | target 18; competent 10 of 11 (10.3-15.6), full 10 of 11 (10.2-15.3) in 10-15 min; iron and weapons in all |
+| 5. Commission | 1.8 min | 3.2 min (same on every seed) |
+| 6. Keep | competent 11/11, careless loses 10/11 (8 breach), passive 11/11, conservation 0, carriers 48-50 | competent 11/11 (full 11/11), careless loses 11/11 (8 breach), passive 11/11 (breach, 10-12 min), conservation 0, carriers 54 (unchanged rule) |
+
+Additive API: `EconomyApi.BellTicksLeft`, `EconomyApi.RoundElapsedTicks`, `EconomyRefusals.RoundTooSoon` (`round_too_soon`), `EconomyState.RoundStartedTick`, `EconomyTuning.MinRoundTicks`, `TerrainBatchSize`, `BatchSizeFor(terrain)`, `StockTarget`; `StrategyState.DraftNextStep`, `DraftResumed` event, `StrategyTuning.DraftPickPerRound`, `CommissionCoin`, `RivalBuildsPerAge`, `RivalShieldCardsPerAge`, `StrategyLedger.CoinFromCommission`; cards `village_green`, `watch_post`, `aqueduct`, `stockade`, `forum`, `siege_works`. Behaviour the Unity layer must follow: `DraftPending` becomes true at every round start of an age; the bell is refused for 60 s after each round start; the rival emits `CardBuilt` with `PlayerId` 1.
+
+Ran:
+- `dotnet test DotNet`: 207 passed, 0 failed (203 before; no test removed; adapted: batch sizes, recipes, draft and save tests, coin, hero moves, target; new: harvest season, per-round draft, rival build limits, per-round draft save round trip; explicit `BalanceProbe` not part of the run).
+- `Docs/ECONOMY_PROOF.md` regenerated; new checks in the proof for every goal above (families, civic points, rival cards, wonder stage 2, the draft changing the rival, card links, bottleneck spread, cap losses, round length, game length, iron chain, commission window, competent >= 10, careless >= 9 mostly breach).
+
+Not run: nothing in Unity. Still weak (proof section G): the prologue is identical on every seed; one competent and one full game run 15.3-15.6 min; carriers 54; surplus clay, logs and sheep wait in the storehouse (economy targets stop the workshops, so nothing is wasted, but they are not scarce); the rival has no economy; the scripted players are rules of thumb.

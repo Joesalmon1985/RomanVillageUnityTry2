@@ -10,12 +10,16 @@ namespace World.Sim.Tests
     /// <summary>Helpers for strategy and military tests: setup, draft, rounds, invariants.</summary>
     internal static class StrategyTestKit
     {
-        /// <summary>New game; ageAtOnce starts Age I with round 1 (no prologue); fast carriers by default.</summary>
-        public static WorldSim NewSim(ulong seed = EconomyTestKit.DefaultSeed, bool ageAtOnce = true, int ticksPerEdge = 5)
+        /// <summary>
+        /// New game; ageAtOnce starts Age I with round 1 (no prologue); fast carriers by default; the bell may ring at
+        /// once (no harvest season, Economy MinRoundTicks 0) unless minRoundTicks is given.
+        /// </summary>
+        public static WorldSim NewSim(ulong seed = EconomyTestKit.DefaultSeed, bool ageAtOnce = true, int ticksPerEdge = 5, int minRoundTicks = 0)
         {
             var sim = WorldSimFactory.CreateNew(seed);
             sim.State.Strategy.Tuning.StartAfterCommission = !ageAtOnce;
             sim.State.Economy.Tuning.TicksPerEdge = ticksPerEdge;
+            sim.State.Economy.Tuning.MinRoundTicks = minRoundTicks;
             return sim;
         }
 

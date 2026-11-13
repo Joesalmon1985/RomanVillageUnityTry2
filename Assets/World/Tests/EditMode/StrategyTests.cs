@@ -138,6 +138,7 @@ namespace World.Sim.Tests
             var sim = K.NewSim();
             var s = sim.State;
             K.Step(sim);
+            s.Player(0).Coin = 0; // without the commission coin of Age I, to count the coin exactly
             Assert.AreEqual(4, StrategyApi.TradeRate(s));
             int p = EconomyApi.StorehouseCount(s, Ware.Planks), st = EconomyApi.StorehouseCount(s, Ware.Bricks);
             K.Do(sim, new Trade { Give = Ware.Planks, Get = Ware.Bricks, Count = 2 });
@@ -188,6 +189,14 @@ namespace World.Sim.Tests
             // No hero play here: keep the demons from ending the game before the third draft (tested separately).
             a.State.Strategy.Tuning.BreachLimit = 99;
             b.State.Strategy.Tuning.BreachLimit = 99;
+            // The draft with every pick at the age start (DraftPickPerRound off, the original three cards and two picks);
+            // the tuned one-pick-per-round draft is Draft_OnePickPerRound_FourEach_PassedBetweenRounds.
+            foreach (var x in new[] { a, b })
+            {
+                x.State.Strategy.Tuning.DraftPickPerRound = false;
+                x.State.Strategy.Tuning.DraftHandSize = 3;
+                x.State.Strategy.Tuning.DraftPicks = 2;
+            }
             K.Step(a);
             K.Step(b);
             var rivalPicksA = new List<int>();
@@ -249,7 +258,65 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void Draft_RivalPrefersShieldCards_AndBuildsThemOnlyWhenTuned()
+        public void Draft_OnePickPerRound_FourEach_PassedBetweenRounds()
+        {
+            var a = K.NewSim();
+            var b = K.NewSim();
+            var s = a.State;
+            foreach (var x in new[] { a, b }) x.State.Strategy.Tuning.BreachLimit = 99;
+            Assert.IsTrue(s.Strategy.Tuning.DraftPickPerRound);
+            K.Step(a);
+            K.Step(b);
+            var everDealt = new HashSet<int>();
+            var rivalA = new List<int>();
+            var rivalB = new List<int>();
+            for (int age = 1; age <= 3 && !s.Strategy.GameOver; age++)
+            {
+                Assert.AreEqual(age, s.Strategy.Age);
+                Assert.AreEqual(4, s.Strategy.Sides[0].DraftHand.Count, "four cards each");
+                Assert.AreEqual(4, s.Strategy.Sides[1].DraftHand.Count);
+                foreach (int id in s.Strategy.Sides[0].DraftHand.Concat(s.Strategy.Sides[1].DraftHand)) Assert.IsTrue(everDealt.Add(id), "card dealt twice");
+                for (int pick = 1; pick <= 3 && !s.Strategy.GameOver; pick++)
+                {
+                    Assert.AreEqual(pick, s.Strategy.RoundInAge, "one pick in each round of the age");
+                    Assert.IsTrue(StrategyApi.DraftPending(s));
+                    Assert.AreEqual(pick, s.Strategy.DraftStep);
+                    Assert.AreEqual(5 - pick, s.Strategy.Sides[0].DraftHand.Count);
+                    Assert.AreEqual(StrategyRefusals.DraftPending, a.Submit(new EndRound()).Reason, "the bell waits for the pick");
+                    var other = s.Strategy.Sides[1].DraftHand.ToList();
+                    var evs = K.Do(a, new DraftPick { CardId = s.Strategy.Sides[0].DraftHand[0] });
+                    var evb = K.Do(b, new DraftPick { CardId = b.State.Strategy.Sides[0].DraftHand[0] });
+                    rivalA.AddRange(evs.OfType<DraftPicked>().Where(p => p.PlayerId == PlayerIds.Rival).Select(p => p.CardId));
+                    rivalB.AddRange(evb.OfType<DraftPicked>().Where(p => p.PlayerId == PlayerIds.Rival).Select(p => p.CardId));
+                    Assert.IsFalse(StrategyApi.DraftPending(s), "no second pick in the same round");
+                    if (pick < 3)
+                    {
+                        Assert.AreEqual(1, evs.OfType<DraftPassed>().Count());
+                        Assert.AreEqual(pick + 1, s.Strategy.DraftNextStep);
+                        CollectionAssert.IsSubsetOf(s.Strategy.Sides[0].DraftHand, other, "you hold the hand the rival passed, for the next round");
+                        var next = K.Do(a, new EndRound());
+                        K.Do(b, new EndRound());
+                        var resumed = next.OfType<DraftResumed>().Single();
+                        Assert.AreEqual(pick + 1, resumed.Step);
+                        Assert.AreEqual(age, resumed.Age);
+                    }
+                    else
+                    {
+                        Assert.AreEqual(2, evs.OfType<DraftFinished>().Single().DiscardedCards.Length, "the last card in each hand is discarded");
+                        Assert.AreEqual(0, s.Strategy.DraftNextStep);
+                        K.Do(a, new EndRound());
+                        K.Do(b, new EndRound());
+                    }
+                    Assert.IsNull(K.CheckInvariants(s));
+                }
+            }
+            Assert.AreEqual(9, s.Strategy.Sides[0].Hand.Count + s.Strategy.Sides[0].Built.Count, "three picks per age");
+            Assert.AreEqual(9, rivalA.Count);
+            CollectionAssert.AreEqual(rivalB, rivalA, "rival picks are deterministic for a seed");
+        }
+
+        [Test]
+        public void Draft_RivalBuildsPointAndShieldCards_OnlyWhenTuned()
         {
             foreach (int maxBuilt in new[] { 0, 3 })
             {
@@ -273,13 +340,50 @@ namespace World.Sim.Tests
                     hr[hr.IndexOf(other)] = c;
                 }
                 int shields = MilitaryApi.Shields(s, PlayerIds.Rival);
+                int points = StrategyApi.Score(s, PlayerIds.Rival).Cards;
                 var evs = K.Do(sim, new DraftPick { CardId = hp[0] });
-                Assert.AreEqual(drill, evs.OfType<DraftPicked>().Single(p => p.PlayerId == 1).CardId, "shields first");
-                bool built = s.Strategy.Sides[1].Built.Any(x => x.CardId == drill);
+                // The rival takes the card worth most to it: the Monument (2 points) before the Drill Yard (1 shield).
+                Assert.AreEqual(mon, evs.OfType<DraftPicked>().Single(p => p.PlayerId == 1).CardId, "points and shields first, the larger first");
+                bool built = s.Strategy.Sides[1].Built.Any(x => x.CardId == mon);
                 Assert.AreEqual(maxBuilt > 0, built, "built only when RivalMaxBuilt allows");
-                Assert.AreEqual(shields + (built ? 1 : 0), MilitaryApi.Shields(s, PlayerIds.Rival));
-                Assert.AreEqual(0, StrategyApi.Score(s, PlayerIds.Rival).Cards, "the rival's points come from its plan, not cards");
+                Assert.AreEqual(points + (built ? 2 : 0), StrategyApi.Score(s, PlayerIds.Rival).Cards, "a built civic card scores for the rival");
+                Assert.AreEqual(shields, MilitaryApi.Shields(s, PlayerIds.Rival));
+                // Next round it picks again, from the hand you passed it; the Drill Yard stayed in its own hand, now yours,
+                // so it can only take it if you pass it back: here you keep it, and its shields stay away from the rival.
+                K.EndRound(sim);
+                Assert.IsTrue(StrategyApi.DraftPending(s));
+                if (s.Strategy.Sides[0].DraftHand.Contains(drill)) K.Do(sim, new DraftPick { CardId = drill });
+                else K.FinishDraft(sim);
+                Assert.IsFalse(s.Strategy.Sides[1].Built.Any(x => x.CardId == drill), "a card you take is denied to the rival");
+                Assert.AreEqual(shields, MilitaryApi.Shields(s, PlayerIds.Rival));
             }
+        }
+
+        [Test]
+        public void Rival_BuildsAtMostOneShieldCardAndTwoCardsPerAge()
+        {
+            var sim = K.NewSim();
+            var s = sim.State;
+            s.Strategy.Tuning.BreachLimit = 99;
+            K.Step(sim);
+            var rival = s.Strategy.Sides[1];
+            var human = s.Strategy.Sides[0];
+            // The rival's age I hand: two shield cards and two point cards.
+            var want = new[] { "palisade", "watch_post", "shrine", "village_green" }.Select(id => K.CardOf(s, id)).ToList();
+            foreach (int id in want)
+            {
+                if (rival.DraftHand.Contains(id)) continue;
+                int other = rival.DraftHand.First(x => !want.Contains(x));
+                if (human.DraftHand.Contains(id)) human.DraftHand[human.DraftHand.IndexOf(id)] = other;
+                rival.DraftHand[rival.DraftHand.IndexOf(other)] = id;
+            }
+            for (int r = 0; r < s.Strategy.Tuning.RoundsPerAge && !s.Strategy.GameOver; r++) K.EndRound(sim);
+            var picked = rival.Built.Select(b => b.CardId).Concat(rival.Hand).Where(id => s.Strategy.Cards[id].Age == 1).ToList();
+            var built = rival.Built.Where(b => s.Strategy.Cards[b.CardId].Age == 1).Select(b => StrategyApi.CardDefOf(s, b.CardId)).ToList();
+            Assert.AreEqual(3, picked.Count, "three picks in the age");
+            Assert.AreEqual(s.Strategy.Tuning.RivalBuildsPerAge, built.Count, "two of them built");
+            Assert.AreEqual(1, built.Count(d => d.Shields > 0), "at most one shield card per age");
+            Assert.AreEqual(1, built.Count(d => d.Vp > 0));
         }
 
         [Test]
@@ -289,6 +393,7 @@ namespace World.Sim.Tests
             var s = sim.State;
             K.Step(sim);
             K.FinishDraft(sim);
+            s.Player(0).Coin = 0; // spend the commission coin first: coin costs are checked
             int home = s.Board.HomeCityVertex;
             foreach (var id in new[] { "lumber_camp", "clay_diggers", "granary", "ranger_post" }) K.ForceIntoHand(s, id);
             Assert.AreEqual(StrategyRefusals.NoCity, sim.Check(new BuildCard { CardId = K.CardOf(s, "lumber_camp"), CityVertex = s.Economy.DemoVertexA }).Reason);
@@ -496,12 +601,13 @@ namespace World.Sim.Tests
             Assert.AreEqual(StrategyRefusals.NotAdjacent, sim.Check(new MoveHero { Vertex = s.Economy.DemoVertexA }).Reason, "not to an intermediate flag");
             int twoAway = topo.Corners.First(v => topo.CornerDistance(home, v) == 2);
             Assert.AreEqual(StrategyRefusals.NotAdjacent, sim.Check(new MoveHero { Vertex = twoAway }).Reason, "one hex edge per move");
-            for (int i = 0; i < 4; i++) K.Do(sim, new MoveHero { Vertex = i % 2 == 0 ? n : home });
+            int perRound = s.Strategy.Tuning.HeroMovesPerRound;
+            for (int i = 0; i < perRound; i++) K.Do(sim, new MoveHero { Vertex = i % 2 == 0 ? n : home });
             var r = sim.Check(new MoveHero { Vertex = n });
             Assert.AreEqual(Reasons.NoTurnAction, r.Reason);
             Assert.AreEqual(Reasons.Sentence(Reasons.NoTurnAction), r.Message);
             K.EndRound(sim);
-            Assert.AreEqual(4, s.Strategy.HeroMovesLeft, "moves refresh each round");
+            Assert.AreEqual(perRound, s.Strategy.HeroMovesLeft, "moves refresh each round");
         }
 
         [Test]
@@ -572,6 +678,7 @@ namespace World.Sim.Tests
             var sim = K.NewSim();
             var s = sim.State;
             var topo = s.Board.Topology;
+            s.Strategy.Tuning.VictoryPoints = 12; // the scoring sources and the tick-boundary check (the tuned target is played by the scripted games)
             K.Step(sim);
             K.FinishDraft(sim);
             K.Give(s, Ware.Planks, 60, Ware.Bricks, 40, Ware.Rations, 10, Ware.Iron, 4);

@@ -57,6 +57,9 @@ namespace World.Sim.Strategy
     /// <summary>The remaining draft hands were swapped.</summary>
     public sealed class DraftPassed : SimEvent { public int[] PlayerCards; }
 
+    /// <summary>One pick per round: the next pick of the age's draft is pending (at a round start), from the hand passed to you.</summary>
+    public sealed class DraftResumed : SimEvent { public int Age; public int Step; public int[] PlayerCards; }
+
     public sealed class DraftFinished : SimEvent { public int Age; public int[] DiscardedCards; }
 
     public sealed class CardBuilt : SimEvent { public int PlayerId; public int CardId; public string DefId; public int CityVertex; }

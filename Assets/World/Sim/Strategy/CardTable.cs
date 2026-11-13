@@ -115,7 +115,7 @@ namespace World.Sim.Strategy
     }
 
     /// <summary>
-    /// The card table: 18 original cards, 6 per age (each age deals 3 to each side), every family in every age.
+    /// The card table: 24 original cards, 8 per age (each age deals 4 to each side), every family in every age.
     /// Costs follow design section 4: Age I Rations or coin, Age II Rations + Bricks, Age III Rations + Iron.
     /// </summary>
     public static class CardTable
@@ -187,6 +187,10 @@ namespace World.Sim.Strategy
             c.Shields = 1; t.Add(c);
             c = C("ranger_post", "Ranger Post", 1, Lore, W(), 2, "The hero gets 1 more move each round.");
             c.HeroMoves = 1; t.Add(c);
+            c = C("village_green", "Village Green", 1, Civ, W(Ware.Rations, 1), 0, "Worth 1 victory point.");
+            c.Vp = 1; t.Add(c);
+            c = C("watch_post", "Watch Post", 1, Mil, W(Ware.Rations, 1), 0, "1 shield in every military comparison.");
+            c.Shields = 1; t.Add(c);
             // ---- Age II: Rations + Bricks ----
             c = C("granary", "Granary", 2, Raw, W(Ware.Rations, 1, Ware.Bricks, 2), 0, "Fields and pasture batches at your cities are 2 larger.");
             c.FieldsBatch = 2; c.PastureBatch = 2; t.Add(c);
@@ -200,6 +204,10 @@ namespace World.Sim.Strategy
             c.Shields = 1; c.TrainingPercent = -40; t.Add(c);
             c = C("ward_stones", "Ward Stones", 2, Lore, W(Ware.Rations, 1, Ware.Bricks, 2), 0, "A site holds 4 demons before it outbreaks.");
             c.DemonCapBonus = 1; t.Add(c);
+            c = C("aqueduct", "Aqueduct", 2, Civ, W(Ware.Rations, 1, Ware.Bricks, 2), 0, "Worth 2 victory points.");
+            c.Vp = 2; t.Add(c);
+            c = C("stockade", "Stockade", 2, Mil, W(Ware.Rations, 1, Ware.Bricks, 2), 0, "1 shield in every military comparison.");
+            c.Shields = 1; t.Add(c);
             // ---- Age III: Rations + Iron ----
             c = C("master_smiths", "Master Smiths", 3, Raw, W(Ware.Rations, 1, Ware.Iron, 1), 0, "Your smithies make 1 more weapons each cycle.");
             c.Workshop = BuildingType.Smithy; c.ExtraOutput = 1; t.Add(c);
@@ -213,6 +221,10 @@ namespace World.Sim.Strategy
             c.Shields = 2; c.DamageBonus = 1; t.Add(c);
             c = C("beacon_tower", "Beacon Tower", 3, Lore, W(Ware.Rations, 1, Ware.Iron, 1), 0, "One fewer infection card is drawn each round (at least 1).");
             c.InfectionMinus = 1; t.Add(c);
+            c = C("forum", "Forum", 3, Civ, W(Ware.Rations, 1, Ware.Iron, 2), 0, "Worth 4 victory points.");
+            c.Vp = 4; t.Add(c);
+            c = C("siege_works", "Siege Works", 3, Mil, W(Ware.Rations, 1, Ware.Iron, 1), 0, "1 shield; your soldiers deal 1 more damage.");
+            c.Shields = 1; c.DamageBonus = 1; t.Add(c);
             return t.ToArray();
         }
     }
