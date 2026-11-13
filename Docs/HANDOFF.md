@@ -1,15 +1,31 @@
 # Handoff: start here
 
-Written 12 Nov 2026 at the end of the planning session. The next session builds the game ("the day run"). Nothing in this file needs the previous conversation.
+Written 12 Nov 2026 at the end of the planning session; updated 13 Nov 2026 after the packaging session. Nothing in this file needs a previous conversation.
 
 ## State
 
-- **Status: build in progress (started 13 Nov 2026), see `Docs/PROGRESS.md`; contracts for parallel agents in `Docs/CONTRACTS.md`.**
-- **Done (planning):** `PRD.md`, `BUILD_PLAN.md`, `TEST_PLAN.md` and `SOURCES.md` are agreed with the owner as the starting point.
-- **Done (build):** Milestone 0 skeleton (assemblies, sim core and board, startup scene, test harnesses). Everything after that: see `PROGRESS.md`.
-- **Verified:** the project opens in Unity 6000.3.28f1 and compiles with 0 errors and 0 tests. The Windows standalone build module is installed.
-- **Inherited and kept:** the Sims 2 animation probe from RomanVillageUnity (`Assets/RomanVillage/Probe`, `Assets/Bedsit`, `Assets/ThirdParty/OpenTS2`, `Tools/sims2`, `Docs/M0_ANIMATION_FINDINGS.md`). It is the optional character layer; do not build on it until milestones 1 to 3 pass.
-- **Owner's instruction:** the owner approved starting the build on 13 Nov 2026; do not revise the plan without the owner.
+- **Status: MVP built (13 Nov 2026).** The whole game plays in the editor and in the Windows exe, from the first step to an ending: first-person village with Tab God View, Ward duel with Mira, rhythm party in the warehouse, road economy with Bram's commission, then rounds, the draft, cities, demons and the hero, soldiers and the rival outpost. One save slot (F5 / F9 and the Esc menu), an in-game guide (Esc), fast travel in God View (Go here, L). What ran and what did not: `Docs/PROGRESS.md` (latest entry: packaging session).
+- **How to play:** `Docs/PLAY_GUIDE.md`. Owner playtest script: `Docs/TEST_PLAN.md` Part B.
+- **Not done:** nobody has played it by hand or listened to the audio; characters are placeholders; the Sims 2 character layer (`Assets/RomanVillage/Probe`, `Assets/Bedsit`, `Assets/ThirdParty/OpenTS2`, `Docs/M0_ANIMATION_FINDINGS.md`) is still optional and unused by the game.
+- **Next:** the owner's playtest (Part B) and fixes from its feedback. Do not revise the plan without the owner.
+
+## Build and run
+
+```bash
+unity command script run --file AgentScripts/BuildWindows.cs --entry BuildWindows.Run --timeout 900
+```
+
+Builds `Assets/Scenes/World.unity` to `Builds/Windows/WorldMVP.exe` (release, no development watermark, fullscreen window at the native resolution, Mono, managed stripping off). `Builds/` is git-ignored. The script parks the probe's `Resources` folder (Sims animation names) outside the build and moves it back afterwards; if the editor dies mid-build, move `Assets/RomanVillage/Probe/ProbeListNotInBuild` back to `Resources`.
+
+Packaged smoke runs (each logs `[AutoPlay] <name> OK` and exits 0, or `FAILED` and exits 1; `-novsync` uncaps the frame rate; `-logFile <path>` keeps one log per run; `-screen-fullscreen 0 -screen-width 1280 -screen-height 720` gives a window):
+
+```bash
+Builds/Windows/WorldMVP.exe -autoplay boot_tour -novsync -logFile Builds/logs/boot_tour.log
+```
+
+Unity remembers the last window size and mode per user (registry `HKCU\Software\Joe Salmon\WorldMVP`, `Screenmanager *` values): after windowed smoke runs, delete that key (`reg delete "HKCU\Software\Joe Salmon\WorldMVP" /f`) so the owner's double-click opens full screen at the native resolution again, and delete the `worldmvp_*save.json` files you created.
+
+Scripts: `boot_tour`, `first_five` (duel and party), `commission`, `full_game` (to an ending, about 13 game minutes), `save_load` (save with a carrier in flight, refused corrupt and old files, load, exactly-once delivery), `capture_tour` (screenshots beside the exe in `Evidence/screenshots`). AutoPlay saves use `worldmvp_autoplay_save.json`, never the player's `worldmvp_save.json` (both under `%USERPROFILE%\AppData\LocalLow\Joe Salmon\WorldMVP`, next to `Player.log`).
 
 ## Read in this order
 
@@ -63,7 +79,7 @@ unity command capture game_view --output-path Evidence/<name>.png
 unity command script run --file AgentScripts/<File>.cs --entry <Class>.<Method>
 ```
 
-`AgentScripts/BuildWindows.cs` is the existing Windows build entry; it still points at the ClipViewer scene and must be repointed at the new startup scene in milestone 5.
+`AgentScripts/BuildWindows.cs` builds the game (see Build and run).
 
 ## Where the exact source rules are
 
@@ -96,9 +112,3 @@ Known defects in the sources that must not be copied: Gods-and-Wizards grants en
 - Mechanics from OpenRA, Widelands, Catan and 7 Wonders are inspiration. Use original names, data and balance.
 - Do not modify or switch branches in any source repository.
 - Commit after each gate. Keep `Docs/PROGRESS.md` honest about which tests and playthroughs actually ran.
-
-## First steps for the build session
-
-1. Confirm with the owner that the run should start.
-2. `git pull`, open the project, confirm 0 console errors.
-3. Milestone 0 from `BUILD_PLAN.md` section 4, then proceed gate by gate.

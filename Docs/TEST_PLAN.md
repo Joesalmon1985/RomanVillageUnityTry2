@@ -21,6 +21,8 @@ A gate passes only when its tests pass, the console shows 0 errors, and the capt
 | View toggle | PlayMode | Tab while walking and while a building is inspected: avatar position and facing are identical before and after to 1 mm and 0.1 degree; same sim instance; inspected object stays selected |
 | Captures | Capture | Spawn view with both hosts and lit warehouse door; God View of the whole settlement |
 
+**Coverage as of 13 Nov 2026.** Board topology: EditMode `BoardTopologyTests`. Scene boots: PlayMode `WorldBootTests`, `VillageTests.Scene_Boots_WithVillage` (seven NPCs now). Walk to hosts: `VillageTests.Walk_FromSpawn_ReachesMiraAndDoorHost_GreetingShows`. View toggle: `VillageTests.Tab_WhileWalkingAndInspecting_KeepsAvatarAndSelection`. Captures: taken and looked at in Milestone 1 (`PROGRESS.md`). All run in the editor; the packaged `boot_tour` run covers boot and Tab in the exe.
+
 ### G2 Opening encounters
 
 | Check | Kind | Pass when |
@@ -39,6 +41,8 @@ A gate passes only when its tests pass, the console shows 0 errors, and the capt
 | Tab in encounter | PlayMode | Tab during a duel and during a phrase switches camera; casts used, cues judged and song time are unaffected |
 | Captures | Capture | Duel with both wizards and the feedback table; rhythm lanes mid-phrase; bar lit; balcony lit |
 
+**Coverage as of 13 Nov 2026.** Ward feedback, outcomes, rival, recovery and timeout, Light unlock: EditMode `WardTests`, `WardBalanceTests` (the Light count surviving save and load: `SaveTests` and PlayMode `SaveLoadTests`). Rhythm judgement, holds, blocks, route choice: EditMode `RhythmTests` (route rule changed to R9 as built: success at 3 of 4 blocks, route only if the final block passed; `ENCOUNTERS_UI.md`). DSP sync, complete/lose/replay, Tab in encounter: PlayMode `EncounterTests`. Captures: Milestone 2. Not run: DSP sync on a real, stable audio device by ear (nobody has listened).
+
 ### G3 Road economy
 
 | Check | Kind | Pass when |
@@ -53,6 +57,8 @@ A gate passes only when its tests pass, the console shows 0 errors, and the capt
 | Commission, in scene | PlayMode | The same script through God View commands completes the commission; the quartermaster acknowledges it |
 | Invalid placement | EditMode | Woodcutter away from forest, road not touching the network, building on an occupied flag are each refused with a sentence |
 | Captures | Capture | Carrier mid-road with a visible load, seen from first person and from God View in the same tick; inspect panel on a stalled site |
+
+**Coverage as of 13 Nov 2026.** Conservation, single authorisation, recipe once, construction, stall reasons, invalid placement, headless commission: EditMode `EconomyTests`, `UnifiedEconomyTests`, `EconomySimulationTests` (the commission is now six buildings and 18 planks and 18 bricks, not four buildings and 10 + 10). Interrupted route in scene: PlayMode `EconomyViewTests.RemovingTheRoadUnderAShipment_ShowsNoRoad_RebuildingDeliversOnce`. Commission in scene: `EconomyViewTests.Commission_CompletesInScene_ThroughTheScript` and AutoPlay `commission` (editor and packaged exe). Captures: road economy UI session.
 
 ### G4 Strategy and military
 
@@ -69,6 +75,8 @@ A gate passes only when its tests pass, the console shows 0 errors, and the capt
 | Full playthrough | PlayMode | A scripted 10 to 15 minute economy game runs to an ending with 0 console errors |
 | Captures | Capture | Second city founded; draft hand; squad engaging the outpost; breach counter at 3 |
 
+**Coverage as of 13 Nov 2026.** City placement, trade, draft (now one pick per round, 4 cards at the age start), card effect, demons and breach, power, supplied squad, victory paths: EditMode `StrategyTests`, `MilitaryTests`, `StrategyPlaythroughTests`, `StrategyConservationTests`. In scene: PlayMode `StrategyViewTests` (6); full playthrough: AutoPlay `full_game` (editor and packaged exe). The draft test now lets the game's own clock apply the pick (it had been stepped by hand, which hid a deadlock for human players; fixed in `GameClock`).
+
 ### G5 Save and package
 
 | Check | Kind | Pass when |
@@ -79,53 +87,61 @@ A gate passes only when its tests pass, the console shows 0 errors, and the capt
 | Windows build | Build | Build succeeds; the packaged game starts, the first-five-minutes script completes under the autoplayer flag, log has 0 errors |
 | Guide | Review | `PLAY_GUIDE.md` matches the actual keys and steps |
 
+**Coverage as of 13 Nov 2026.** Round trip: EditMode `SaveTests`. Shipment in flight: EditMode `SaveTests` and `UnifiedEconomyTests`; PlayMode `SaveLoadTests.Save_CarrierMidRoad_LoadsEqual_DeliversOnce_RestoresPlayer` (through the F5/F9 path and a scene reload; the loaded game then matches a headless run tick for tick); packaged: AutoPlay `save_load` in the exe. Player transform: same PlayMode test and `save_load`. Refusals (corrupt, older, missing save; saving during an encounter): `SaveLoadTests`. Windows build and packaged runs: see `PROGRESS.md` (packaging session). Guide: `Docs/PLAY_GUIDE.md` and the pause menu were checked against the key bindings in code by the agent; not reviewed by the owner.
+
 ## Part B: owner playtest
 
-Allow about 40 minutes. Use the packaged build if one exists, otherwise open `Assets/Scenes/World.unity` and press Play. Wear headphones or use speakers for the rhythm part. Note the time on the clock for anything that confuses you; that is the most useful feedback.
+Allow about 45 minutes. Double-click `Builds/Windows/WorldMVP.exe` (it opens full screen; Alt+Enter for a window). If there is no exe, open `Assets/Scenes/World.unity` in Unity and press Play. Wear headphones or use speakers for the rhythm part. Note the time on the clock for anything that confuses you; that is the most useful feedback. The steps and numbers below are the game as built on 13 Nov 2026; targets (points, breaches, commission goods) are read from the game, so if the game shows other numbers, the game wins. `Docs/PLAY_GUIDE.md` has the same controls and a walkthrough.
 
-**Controls.** WASD move, mouse look, Shift run, E interact, Tab switch view, Esc pause and guide, F5 save, F9 load. God View: WASD or middle-drag pan, wheel zoom, left click select. Rhythm pads: D F J K. Route choice: left and right arrows.
+**Controls.** WASD move, mouse look, Shift run, E interact, left click inspect, Tab switch view, Esc pause menu with the guide (Save, Load, New game, Quit), F5 save, F9 load. God View: WASD or middle-drag pan, wheel zoom, H home, M whole island, left click select, right click back to Inspect; tools B Build, R Road (X remove), V Inspect, P Problems, G Wares, T Market, C Cards, F City, J Hero, N Army, O Wonder, L Go here (fast travel), End Round. Duel: 1-4 essences, Backspace, Enter lock / cast (Space casts too), R rematch. Rhythm pads: D F J K; route choice: Left (bar) and Right (balcony) arrows; [ ] timing; R retry; Esc twice leaves during the song.
 
 ### B1 First five minutes (target: under 5 minutes, no reading of the guide)
 
 | Step | Do | Expect | Pass / fail / notes |
 |---|---|---|---|
-| 1 | Press Play and move the mouse and WASD | You are standing in a square and can walk at once | |
-| 2 | Look around without moving | You can see two people nearby and a doorway with coloured light and music | |
-| 3 | Walk to Mira, press E, accept | A duel starts in the square; you set a three-part Ward | |
-| 4 | Cast until the duel ends | After each cast you see three totals; Mira casts on her own; the end shows both Wards | |
-| 5 | Choose rematch once, then leave | You are back where you stood, facing the same way | |
-| 6 | Follow the lights into the warehouse, talk to the host, accept | A count-in, then notes on four lanes in time with drums | |
-| 7 | Play the phrase; in the last block press left or right | Bass joins after a good block; your chosen doorway lights on the last downbeat | |
-| 8 | Walk into the lit area | You can enter it | |
-| 9 | Walk back to the square and find the quartermaster | He asks for planks and stone and points at buildings and a road; a carrier is visibly hauling | |
+| 1 | Start the game and move the mouse and WASD | You are standing in a square and can walk at once | |
+| 2 | Look around without moving | Mira is close on the left; ahead is a doorway with coloured light and music | |
+| 3 | Walk to Mira, press E, pick the duel | A duel starts in the square; you set a three-part Ward (keys 1-4, Enter) | |
+| 4 | Cast until the duel ends | After each cast you see three totals (fractures, echoes, fades); Mira casts on her own; the end shows both Wards | |
+| 5 | Choose rematch once (R), then return (Enter) | You are back where you stood, facing the same way | |
+| 6 | Follow the lights into the warehouse, talk to DJ Sol, accept | A count-in, then notes on four lanes in time with drums | |
+| 7 | Play the phrase; in the last block press Left or Right | Bass joins after a good block; with 3 of 4 blocks passed it is a success, and the doorway you chose opens if you passed the last block | |
+| 8 | Walk into the opened area | You can enter it | |
+| 9 | Walk back to the square and find Quartermaster Bram by the storehouse | He asks for six buildings and planks and bricks and points at the next step; carriers are already hauling planks to a forester site | |
 | 10 | Press Tab, then Tab again | Overhead view of the same village; back to exactly where you were | |
 
 ### B2 Road economy (target: 5 to 8 minutes)
 
 | Step | Do | Expect | Pass / fail / notes |
 |---|---|---|---|
-| 1 | In God View place a woodcutter and forester by the forest, a sawmill, and a quarry by the hills; connect each with roads | Invalid spots are refused with a reason; sites ask for materials | |
-| 2 | Watch one load from forest to sawmill to storehouse; follow it on foot for part of the way | The same carrier and load are visible in both views | |
-| 3 | Remove one road segment a carrier needs | The shipment shows why it is stalled | |
+| 1 | In God View finish the commission's six buildings: forester (already started), woodcutter, sawmill, clay pit, charcoal kiln, brick kiln, each joined to the storehouse by road (Build B, Road R) | Only legal spots glow; a bad spot is refused with a sentence; sites ask for planks and bricks | |
+| 2 | Watch one load go along a road; follow it on foot for part of the way | The same carrier and load are visible in both views | |
+| 3 | Remove one road segment a carrier needs (Road, X) | The shipment shows why it is stalled (no road) | |
 | 4 | Rebuild the segment | The shipment arrives once | |
-| 5 | Reach 10 planks and 10 stone | The quartermaster marks the commission done | |
+| 5 | Reach the commission's planks and bricks (18 and 18 as built; Bram and the top line show the numbers) | Bram marks the commission done; talk to him | |
 
 ### B3 Strategy and military (target: 10 to 15 minutes; expect rough edges)
 
 | Step | Do | Expect | Pass / fail / notes |
 |---|---|---|---|
-| 1 | Ring the bell or press End Round | A production value is drawn; matching hexes show a batch; the rival moves; a demon may appear | |
-| 2 | Draft at the start of an age; build one card, discard one | The built card appears on the city and changes something you can name | |
-| 3 | Try to found a city next to your own, then at a legal site | First is refused with the rule; second succeeds and scores | |
-| 4 | Trade at the market | Stock changes by the stated rate | |
-| 5 | Move the hero onto a demon | The demon clears; any blocked delivery resumes | |
-| 6 | Build ore pit, refinery, power plant, barracks; queue infantry | A missing supply or low power is named; training starts when supplies arrive | |
-| 7 | Order the squad to attack the outpost | It walks there and the fight resolves in view | |
-| 8 | Play to an ending | Win at 8 points, lose at 4 breaches, or a points comparison after Age III | |
+| 1 | Ring the bell in the square (E) or press End Round | Refused with a countdown until the 60 s harvest season is over; then numbers are drawn, matching hexes show a batch, the rival moves, demons may appear | |
+| 2 | At each round of an age, take one card from the draft (it opens by itself in God View; on foot talk to Scribe Pell or press Tab); build one card at a city (Cards), discard one for coin | One pick per round; the built card changes something you can name (the card text says what) | |
+| 3 | Try to found a city next to your own, then at a legal (glowing) corner (City F) | First is refused with the rule; second succeeds and scores | |
+| 4 | Trade at the market (Market T, or talk to Hesta) | Stock changes by the stated rate | |
+| 5 | Move the hero onto a demon (Hero J) | The demon clears; any blocked delivery resumes | |
+| 6 | Build a mine, smelter, power plant and barracks; queue soldiers (Army N) | A missing supply or low power is named; training starts when supplies arrive | |
+| 7 | Order the squad to attack the rival outpost | It walks there and the fight resolves in view | |
+| 8 | Play to an ending | Win at the points target (18 as built), lose at the breach limit (5 as built), or a points comparison after the last age; the end screen says why | |
 
 ### B4 Save
 
-Save with a carrier mid-road, quit, reopen, load. The carrier should finish its delivery once and you should be standing where you saved.
+| Step | Do | Expect | Pass / fail / notes |
+|---|---|---|---|
+| 1 | Wait until a carrier is walking a road with a load; walk somewhere else; press F5 | "Game saved" at the top | |
+| 2 | Walk away, press F9 | "Game loaded"; you are standing where you saved, facing the same way, in the same view; the carrier finishes its delivery once | |
+| 3 | Press F5 during the duel or the party | Refused with a sentence | |
+| 4 | Quit (Esc, Quit twice), start the game again, press F9 | The saved game comes back | |
+| 5 | Esc during the rhythm song | It does not pause (the music can't); a second Esc leaves the party | |
 
 ### What to send back
 
