@@ -23,6 +23,35 @@ namespace World.Game
             }
         }
 
+        // ---- corners, hex edges and plots (the prehistoric board, REFACTOR_SPEC 4.1, 4.2) ----
+
+        /// <summary>World position of a hex corner (same as <see cref="Vertex(BoardTopology, int)"/> for ids below CornerCount).</summary>
+        public static Vector3 Corner(BoardTopology t, int corner) => Vertex(t, corner);
+
+        /// <summary>Centre of a plot on the ground (<see cref="PlotLayout"/>).</summary>
+        public static Vector3 Plot(BoardTopology t, int plot) =>
+            new Vector3((float)PlotLayout.PlotX(t, plot), GroundY, (float)PlotLayout.PlotZ(t, plot));
+
+        /// <summary>Facing of a plot's building in degrees (0 = north, clockwise).</summary>
+        public static float PlotYaw(BoardTopology t, int plot) => (float)PlotLayout.PlotYaw(t, plot);
+
+        /// <summary>Local path of a plot from its storehouse (the corner) to the plot centre, on the ground.</summary>
+        public static Vector3[] PlotPath(BoardTopology t, int plot)
+        {
+            var pts = PlotLayout.PathPoints(t, plot);
+            var list = new Vector3[pts.Length / 2];
+            for (int i = 0; i < list.Length; i++) list[i] = new Vector3((float)pts[2 * i], GroundY, (float)pts[2 * i + 1]);
+            return list;
+        }
+
+        /// <summary>Unit direction from a corner along a hex edge to its other corner.</summary>
+        public static Vector3 HexEdgeDir(BoardTopology t, int hexEdge)
+        {
+            HexEdgeEnds(t, hexEdge, out var a, out var b);
+            var d = b - a; d.y = 0;
+            return d.normalized;
+        }
+
         /// <summary>Hex edge length = hex circumradius (60 m).</summary>
         public static float HexSize => (float)BoardTopology.HexEdgeLength;
         /// <summary>Road segment length = flag spacing (20 m).</summary>
