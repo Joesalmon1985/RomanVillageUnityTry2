@@ -28,7 +28,8 @@ namespace World.Game
         public WorldBootstrap World;
         public WorldSim Sim;
         public GameClock Clock;
-        public FirstPersonAvatar Avatar;
+        /// <summary>The player's viewpoint (package P's walker). Encounters place it only through <see cref="PlaceAvatar"/>.</summary>
+        public PlayerWalker Avatar;
         public ViewSwitcher Views;
         public Camera FirstPersonCamera;
         public Camera GodCamera;
@@ -54,7 +55,7 @@ namespace World.Game
         /// </summary>
         public void PlaceAvatar(Vector3 position, float yaw, float pitch)
         {
-            if (Avatar != null) Avatar.Teleport(position, yaw, pitch);
+            if (Avatar != null) Avatar.PlaceExact(position, yaw, pitch);
         }
 
         public static EncounterContext Create(Npc npc = null)
@@ -80,10 +81,11 @@ namespace World.Game
     }
 
     /// <summary>
-    /// Runs one encounter at a time. Start pauses the clock (PauseReasons.Encounter), records the avatar
-    /// transform, locks avatar movement and hides HUD prompts; each frame it calls Tick and DrawGui; on
-    /// finish or Abort it calls End, restores the avatar exactly, unlocks and resumes the clock.
-    /// Tab still switches the camera during an encounter. Not a MonoBehaviour (a driver component pumps it).
+    /// Runs one encounter at a time. Start pauses the clock (PauseReasons.Encounter), stops any auto-walk, records the
+    /// player's pose and locks the walker; each frame it calls Tick and DrawGui; on finish or Abort it calls End, puts
+    /// the walker back (on its lattice cell and heading with <see cref="PlayerWalker.RestoreCell"/>, or at the exact
+    /// pose if it stood off the lattice), unlocks and resumes the clock. F1 still switches to the God View during an
+    /// encounter. Not a MonoBehaviour (a driver component pumps it).
     /// </summary>
     public sealed class EncounterHost
     {
@@ -98,7 +100,7 @@ namespace World.Game
         /// <summary>Raised after End and restore. bool = aborted.</summary>
         public event Action<IEncounter, bool> Ended;
 
-        private Vector3 _savedPos; private float _savedYaw, _savedPitch;
+        private Vector3 _savedPos; private float _savedYaw, _savedPitch; private bool _savedOffLattice;
 
         internal static EncounterHost CreateInstance(GameObject host)
         {
@@ -116,14 +118,14 @@ namespace World.Game
             var av = ctx.Avatar;
             if (av != null)
             {
-                _savedPos = av.Position; _savedYaw = av.Yaw; _savedPitch = av.Pitch;
-                av.AddMoveLock(AvatarLock);
+                av.StopAuto();
+                _savedPos = av.Position; _savedYaw = av.Yaw; _savedPitch = av.Pitch; _savedOffLattice = av.IsOffLattice;
+                av.AddLock(AvatarLock);
             }
             if (ctx.Clock != null) ctx.Clock.Pause(PauseReasons.Encounter);
             Current = encounter;
             Context = ctx;
             encounter.Begin(ctx);
-            if (av != null && !ctx.AllowMouseLook) av.AddLookLock(AvatarLock);
             Started?.Invoke(encounter);
             return true;
         }
@@ -157,7 +159,8 @@ namespace World.Game
             var av = ctx.Avatar;
             if (av != null)
             {
-                av.Teleport(_savedPos, _savedYaw, _savedPitch);
+                if (_savedOffLattice) av.Teleport(_savedPos, _savedYaw, _savedPitch);
+                else av.RestoreCell();
                 av.RemoveLock(AvatarLock);
             }
             if (ctx.Clock != null) ctx.Clock.Resume(PauseReasons.Encounter);

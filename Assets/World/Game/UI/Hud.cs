@@ -1,13 +1,19 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
+using World.Sim;
+using World.Sim.Economy;
+using World.Sim.Factions;
 
 namespace World.Game
 {
     /// <summary>
-    /// Heads-up display: crosshair, interaction prompt, view name, clock state, objective line, a notice line (save,
-    /// load and pause messages; shown above everything) and the Esc pause menu with the controls and a short
-    /// "how to play" guide, Save / Load / New game / Quit (pauses the clock with PauseReasons.Menu). IMGUI via UiStyle.
+    /// The HUD strip (H toggles it, off at the start; REFACTOR_SPEC 2.D "Screen"): game time and the last roll, your
+    /// strength against the Ash Clan's, the overrun warning countdown when one runs, the stock of your nearest camp and
+    /// your people's proposal queue (read only), all read from the sim helpers. Without it the screen shows only the
+    /// world and speech bubbles. Also the notice line (save, load and pause messages; shown above everything) and the
+    /// Esc pause menu with the guide pages, Save / Load / New game / Quit (pauses the clock with PauseReasons.Menu).
     /// During the rhythm phrase Esc does not pause (the music runs on the audio clock): it asks for a second Esc,
-    /// which leaves the party.
+    /// which leaves the party. Owner: package P.
     /// </summary>
     public sealed class Hud : MonoBehaviour
     {
@@ -24,11 +30,9 @@ namespace World.Game
         /// <summary>The current notice (save, load, pause messages) and whether it is a refusal.</summary>
         public static string NoticeText { get; private set; }
 
-        /// <summary>
-        /// REFACTOR_SPEC appendix B: the HUD strip is shown (H toggles it, off at the start). F-0 stub: P implements the
-        /// strip and the H key; nothing reads this yet.
-        /// </summary>
+        /// <summary>REFACTOR_SPEC appendix B: the HUD strip is shown (H toggles it, off at the start).</summary>
         public static bool Visible { get; set; }
+        public const KeyCode ToggleKey = KeyCode.H;
         public static bool NoticeIsError { get; private set; }
         private static float _noticeUntil;
 
@@ -95,8 +99,11 @@ namespace World.Game
 
         private void Update()
         {
+            bool god = _boot != null && _boot.Views != null && _boot.Views.CurrentView == ViewMode.God;
+            if (Input.GetKeyDown(ToggleKey) && !_menu && !god && !MapScreen.IsOpen) Visible = !Visible;
             if (!Input.GetKeyDown(KeyCode.Escape)) return;
             if (_menu) CloseMenu();
+            else if (MapScreen.IsOpen) MapScreen.Close();
             else if (DialoguePanel.IsOpen) DialoguePanel.Close();
             else OpenMenu();
         }
@@ -104,61 +111,107 @@ namespace World.Game
         private void OnGUI()
         {
             if (_boot == null || _boot.Views == null) return;
-            var views = _boot.Views;
-            bool fp = views.CurrentView == ViewMode.FirstPerson;
+            bool fp = _boot.Views.CurrentView == ViewMode.FirstPerson;
             bool encounter = EncounterHost.Instance != null && EncounterHost.Instance.IsRunning;
-
-            // Top-left: view and clock.
-            float x = UiStyle.Px(24), y = UiStyle.Px(18);
-            string view = fp ? "First person" : "God View";
-            UiStyle.ShadowLabel(new Rect(x, y, UiStyle.Px(700), UiStyle.Px(36)), "<b>" + view + "</b>   <size=" + UiStyle.Px(20) + ">Tab to switch</size>", UiStyle.Label);
-            var clock = _boot.Clock;
-            string state = clock.IsPaused ? "paused (" + string.Join(", ", clock.PauseReasonSet) + ")" : "running";
-            UiStyle.ShadowLabel(new Rect(x, y + UiStyle.Px(36), UiStyle.Px(700), UiStyle.Px(30)), "Village clock " + state + "   tick " + _boot.Sim.State.Tick, UiStyle.Small);
-
-            // Objective.
-            if (!string.IsNullOrEmpty(Objective) && !encounter)
-            {
-                var s = new GUIStyle(UiStyle.Label) { alignment = TextAnchor.MiddleCenter };
-                float w = UiStyle.Px(1000);
-                var r = new Rect((Screen.width - w) / 2, UiStyle.Px(16), w, UiStyle.Px(46));
-                UiStyle.DrawPanel(r);
-                GUI.Label(r, Objective, s);
-            }
-
-            // Crosshair and prompt.
-            if (fp && !_menu && !DialoguePanel.IsOpen && !encounter)
-            {
-                float cx = Screen.width / 2f, cy = Screen.height / 2f, len = UiStyle.Px(10), th = Mathf.Max(2, UiStyle.Px(3));
-                var tex = UiStyle.SolidTexture(new Color(1, 1, 1, 0.85f));
-                var sh = UiStyle.SolidTexture(new Color(0, 0, 0, 0.6f));
-                GUI.DrawTexture(new Rect(cx - len - 1, cy - th / 2 - 1, 2 * len + 2, th + 2), sh);
-                GUI.DrawTexture(new Rect(cx - th / 2 - 1, cy - len - 1, th + 2, 2 * len + 2), sh);
-                GUI.DrawTexture(new Rect(cx - len, cy - th / 2, 2 * len, th), tex);
-                GUI.DrawTexture(new Rect(cx - th / 2, cy - len, th, 2 * len), tex);
-
-                var picker = Picker.Instance;
-                if (picker != null && picker.Target != null)
-                {
-                    var ps = new GUIStyle(UiStyle.Label) { alignment = TextAnchor.MiddleCenter };
-                    string text = "<color=#F2B84D><b>[E]</b></color>  " + picker.Target.Prompt;
-                    float w = UiStyle.Px(700);
-                    var r = new Rect(cx - w / 2, cy + UiStyle.Px(40), w, UiStyle.Px(46));
-                    UiStyle.DrawPanel(new Rect(cx - ps.CalcSize(new GUIContent(text)).x / 2 - UiStyle.Px(18), r.y, ps.CalcSize(new GUIContent(text)).x + UiStyle.Px(36), r.height));
-                    GUI.Label(r, text, ps);
-                }
-            }
-
-            // Bottom-left hint.
-            if (!_menu && !DialoguePanel.IsOpen && !encounter)
-            {
-                string hint = fp ? "WASD move   Shift run   Mouse look   E use   Click inspect   F5 save   F9 load   Esc menu and guide"
-                                 : "WASD / middle-drag pan   Wheel zoom   Click select   Tab back   Esc menu and guide";
-                UiStyle.ShadowLabel(new Rect(x, Screen.height - UiStyle.Px(46), UiStyle.Px(1400), UiStyle.Px(32)), hint, UiStyle.Small);
-            }
-
+            if (Visible && fp && !_menu && !encounter && !MapScreen.IsOpen) DrawStrip(_boot.Sim.State);
             if (_menu) DrawMenu();
             DrawNotice();
+        }
+
+        // ---------------- HUD strip (H) ----------------
+
+        /// <summary>Lines of the HUD strip, as drawn (tests, captures). Read from the sim helpers only.</summary>
+        public static List<string> StripLines(WorldState s)
+        {
+            var lines = new List<string>();
+            long secs = s.Tick / WorldSim.TicksPerSecond;
+            var roll = EconomyApi.LastRoll(s);
+            string rolled = s.Economy.Dice.RollCount > 0
+                ? "last roll <b>" + roll.Sum + "</b> (" + roll.D1 + "+" + roll.D2 + ")" : "no roll yet";
+            lines.Add("<b>" + (secs / 60) + ":" + (secs % 60).ToString("00") + "</b>   " + rolled + ", next in " + (EconomyApi.TicksToNextRoll(s) + WorldSim.TicksPerSecond - 1) / WorldSim.TicksPerSecond + " s");
+            var me = FactionApi.Strength(s, PlayerIds.Human);
+            var them = FactionApi.Strength(s, PlayerIds.Rival);
+            lines.Add("Strength: your people <b>" + me.Total + "</b>, the Ash Clan <b>" + them.Total + "</b>");
+            var o = FactionApi.Outcome(s);
+            if (o.GameOver) lines.Add("<color=#F2B84D><b>" + o.Sentence + "</b></color>");
+            else
+            {
+                var w = FactionApi.Warning(s);
+                if (w.Active) lines.Add("<color=#FF8A70><b>" + w.Sentence + "</b></color>");
+            }
+            return lines;
+        }
+
+        /// <summary>Your camp nearest to the player (settlement id), or -1.</summary>
+        public static int NearestCamp(WorldState s, Vector3 from)
+        {
+            int best = -1; float bestD = float.MaxValue;
+            var t = s.Board.Topology;
+            foreach (var st in EconomyApi.Settlements(s))
+            {
+                if (st.Faction != PlayerIds.Human || st.State != SettlementState.Active) continue;
+                float d = BoardSpace.Flat(BoardSpace.Vertex(t, st.Corner) - from);
+                if (d < bestD) { bestD = d; best = st.Id; }
+            }
+            return best;
+        }
+
+        private GUIStyle _stripStyle, _stripTitle;
+        private int _stripFor = -1;
+
+        private void DrawStrip(WorldState s)
+        {
+            if (_stripFor != Screen.height || _stripStyle == null)
+            {
+                _stripFor = Screen.height;
+                _stripStyle = new GUIStyle(UiStyle.Small) { fontSize = UiStyle.Px(20), wordWrap = false, richText = true };
+                _stripTitle = new GUIStyle(_stripStyle) { fontStyle = FontStyle.Bold };
+                _stripTitle.normal.textColor = UiStyle.AccentColor;
+            }
+            float x = UiStyle.Px(20), y = UiStyle.Px(16), w = UiStyle.Px(560), lh = UiStyle.Px(27);
+            var lines = StripLines(s);
+            var walker = PlayerWalker.Instance;
+            int camp = walker != null ? NearestCamp(s, walker.Position) : -1;
+            var props = FactionApi.Proposals(s, PlayerIds.Human);
+            int stockRows = camp >= 0 ? 2 : 0;
+            float h = UiStyle.Px(16) + lh * (lines.Count + 1 + stockRows + 1 + Mathf.Max(1, props.Count));
+            var panel = new Rect(x, y, w, h);
+            UiStyle.DrawPanel(panel);
+            float cx = x + UiStyle.Px(14), cy = y + UiStyle.Px(8), cw = w - UiStyle.Px(28);
+            foreach (var l in lines) { GUI.Label(new Rect(cx, cy, cw, lh), l, _stripStyle); cy += lh; }
+            cy += lh * 0.25f;
+            if (camp >= 0)
+            {
+                GUI.Label(new Rect(cx, cy, cw, lh), "Stock at " + EconomyApi.SettlementName(s, camp), _stripTitle); cy += lh;
+                float sx = cx, sq = UiStyle.Px(14);
+                foreach (var ware in Wares.All)
+                {
+                    int n = EconomyApi.StockOf(s, camp, ware);
+                    if (n <= 0 && !Wares.IsRaw(ware)) continue;
+                    string txt = EconomyApi.WareTitle(ware) + " <b>" + n + "</b>";
+                    var sz = _stripStyle.CalcSize(new GUIContent(txt));
+                    if (sx + sq + sz.x > cx + cw) break;
+                    GUI.DrawTexture(new Rect(sx, cy + (lh - sq) / 2, sq, sq), UiStyle.SolidTexture(ColorUtility.TryParseHtmlString(EconomyApi.WareColour(ware), out var wc) ? wc : Color.gray));
+                    GUI.Label(new Rect(sx + sq + UiStyle.Px(4), cy, sz.x, lh), txt, _stripStyle);
+                    sx += sq + sz.x + UiStyle.Px(14);
+                }
+                cy += lh;
+            }
+            GUI.Label(new Rect(cx, cy, cw, lh), "Your people's proposals", _stripTitle); cy += lh;
+            if (props.Count == 0) GUI.Label(new Rect(cx, cy, cw, lh), "<i>none open</i>", _stripStyle);
+            for (int i = 0; i < props.Count; i++)
+            {
+                float d = SpellCaster.DistanceTo(props[i].Id);
+                string dist = float.IsInfinity(d) ? "" : "  <color=#BBB0A0>" + Mathf.RoundToInt(d) + " m</color>";
+                GUI.Label(new Rect(cx, cy, cw, lh), (i + 1) + ". " + FactionApi.ProposalTitle(s, props[i].Id) + "  <color=#BBB0A0>(" + props[i].Speaker + ")</color>" + dist, _stripStyle);
+                cy += lh;
+            }
+            if (!string.IsNullOrEmpty(Objective) && Objective != DefaultObjective)
+            {
+                var r = new Rect(x, panel.yMax + UiStyle.Px(8), w, lh + UiStyle.Px(10));
+                UiStyle.DrawPanel(r);
+                GUI.Label(new Rect(cx, r.y + UiStyle.Px(5), cw, lh), Objective, _stripStyle);
+            }
         }
 
         private void DrawNotice()

@@ -10,7 +10,7 @@ namespace World.Game
         public string Label;
         public Action OnChoose;
         public string EncounterId;
-        /// <summary>Close the panel before running the callback (default true).</summary>
+        /// <summary>Close the dialogue before running the callback (default true).</summary>
         public bool CloseOnChoose = true;
 
         public bool IsAvailable => EncounterId == null || EncounterDirectory.IsRegistered(EncounterId);
@@ -22,14 +22,17 @@ namespace World.Game
     }
 
     /// <summary>
-    /// IMGUI dialogue box at the bottom of the screen: speaker, a few lines and up to three options
-    /// (keys 1/2/3 or click). Esc (handled by the Hud) or a Leave option closes it. It frees the cursor
-    /// and holds the avatar still while open; it does not pause the village clock.
+    /// An NPC's lines and up to three options, shown as a speech bubble above the NPC with the options as tappable
+    /// replies (package P: the old bottom panel became <see cref="SpeechBubbles"/>; this class keeps the old surface so
+    /// <c>Npc.Interact</c>, encounters and scripts keep working). Keys 1-3 or a tap on a reply choose; Esc or walking
+    /// more than <see cref="WalkAwayDistance"/> m away closes it. A walking villager also offers "Follow" when there is
+    /// room. It never holds the player or pauses the clock.
     /// </summary>
     public sealed class DialoguePanel : MonoBehaviour
     {
-        public const string AvatarLock = "Dialogue";
         public const int MaxOptions = 3;
+        public const float WalkAwayDistance = 30f;
+        public const string FollowLabel = "Follow";
         public static DialoguePanel Instance { get; private set; }
         public static bool IsOpen => Instance != null && Instance._open;
 
@@ -37,15 +40,21 @@ namespace World.Game
         public Npc SpeakerNpc { get; private set; }
         public IReadOnlyList<string> CurrentLines => _lines;
         public IReadOnlyList<DialogueOption> CurrentOptions => _options;
+        /// <summary>The speech bubble showing the dialogue (0 when closed).</summary>
+        public static int Handle => Instance != null && Instance._open ? Instance._handle : 0;
 
         public static event Action<DialoguePanel> Opened, Closed;
 
         private bool _open;
+        private int _handle;
         private readonly List<string> _lines = new List<string>();
         private readonly List<DialogueOption> _options = new List<DialogueOption>();
 
         private void Awake() { Instance = this; }
         private void OnDestroy() { if (Instance == this) Instance = null; }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics() { Opened = null; Closed = null; }
 
         public static void Open(Npc npc)
         {
@@ -57,16 +66,30 @@ namespace World.Game
         {
             var p = Instance;
             if (p == null) return;
+            if (p._open) Close();
             p.Speaker = speaker; p.SpeakerNpc = npc;
             p._lines.Clear(); if (lines != null) p._lines.AddRange(lines);
             p._options.Clear();
             if (options != null) for (int i = 0; i < options.Count && i < MaxOptions; i++) p._options.Add(options[i]);
+            if (npc != null && npc.IsWalking && p._options.Count < MaxOptions)
+                p._options.Add(DialogueOption.Do(FollowLabel, () => { if (PlayerWalker.Instance != null) PlayerWalker.Instance.Follow(npc); }));
             if (p._options.Count == 0) p._options.Add(DialogueOption.Leave());
             p._open = true;
-            var av = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.Avatar : null;
-            if (av != null) av.AddLock(AvatarLock);
+            var replies = new List<string>();
+            foreach (var o in p._options) replies.Add(o.ShownLabel);
+            string text = string.Join("\n", p._lines);
+            p._handle = SpeechBubbles.Ask(npc, text, replies, i => p.OnBubbleReply(i), 0f);
+            SpeechBubbles.Expand(p._handle); // the player asked for it: show the replies at once
             if (npc != null && npc.Actor != null) npc.Actor.PlayOneShot(ActorKeys.Greet);
             Opened?.Invoke(p);
+        }
+
+        private void OnBubbleReply(int index)
+        {
+            if (!_open) return;
+            _handle = 0; // the bubble closed itself
+            if (index < 0) { Close(); return; }
+            if (!Choose(index)) Close();
         }
 
         public static void Close()
@@ -74,8 +97,8 @@ namespace World.Game
             var p = Instance;
             if (p == null || !p._open) return;
             p._open = false;
-            var av = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.Avatar : null;
-            if (av != null) av.RemoveLock(AvatarLock);
+            if (p._handle != 0) SpeechBubbles.Close(p._handle);
+            p._handle = 0;
             Closed?.Invoke(p);
         }
 
@@ -96,45 +119,9 @@ namespace World.Game
         private void Update()
         {
             if (!_open) return;
-            for (int i = 0; i < _options.Count; i++)
-                if (Input.GetKeyDown(KeyCode.Alpha1 + i) || Input.GetKeyDown(KeyCode.Keypad1 + i)) { Choose(i); return; }
-        }
-
-        private void OnGUI()
-        {
-            if (!_open) return;
-            GUI.depth = -10;
-            float w = UiStyle.Px(1100);
-            float pad = UiStyle.Px(22);
-            var label = UiStyle.Label;
-            float textH = 0;
-            foreach (var l in _lines) textH += label.CalcHeight(new GUIContent(l), w - 2 * pad) + UiStyle.Px(6);
-            float btnH = UiStyle.Px(54);
-            float h = pad + UiStyle.Px(50) + textH + UiStyle.Px(12) + _options.Count * (btnH + UiStyle.Px(8)) + UiStyle.Px(40) + pad;
-            var r = new Rect((Screen.width - w) / 2, Screen.height - h - UiStyle.Px(40), w, h);
-            UiStyle.DrawSolidPanel(r);
-            float y = r.y + pad;
-            GUI.Label(new Rect(r.x + pad, y, w - 2 * pad, UiStyle.Px(48)), Speaker, UiStyle.Title);
-            y += UiStyle.Px(50);
-            foreach (var l in _lines)
-            {
-                float lh = label.CalcHeight(new GUIContent(l), w - 2 * pad);
-                GUI.Label(new Rect(r.x + pad, y, w - 2 * pad, lh), l, label);
-                y += lh + UiStyle.Px(6);
-            }
-            y += UiStyle.Px(12);
-            var btn = new GUIStyle(UiStyle.Button) { alignment = TextAnchor.MiddleLeft };
-            for (int i = 0; i < _options.Count; i++)
-            {
-                var o = _options[i];
-                bool was = GUI.enabled;
-                GUI.enabled = o.IsAvailable;
-                if (GUI.Button(new Rect(r.x + pad, y, w - 2 * pad, btnH), (i + 1) + "   " + o.ShownLabel, btn)) Choose(i);
-                GUI.enabled = was;
-                y += btnH + UiStyle.Px(8);
-            }
-            var hint = new GUIStyle(UiStyle.Small); hint.normal.textColor = new Color(0.8f, 0.78f, 0.72f);
-            GUI.Label(new Rect(r.x + pad, y + UiStyle.Px(4), w - 2 * pad, UiStyle.Px(32)), "Press 1-" + _options.Count + " or click.  Esc to leave.", hint);
+            if (_handle != 0 && !SpeechBubbles.IsOpen(_handle)) { _handle = 0; Close(); return; }
+            var w = PlayerWalker.Instance;
+            if (SpeakerNpc != null && w != null && BoardSpace.Flat(SpeakerNpc.transform.position - w.Position) > WalkAwayDistance) Close();
         }
     }
 }
