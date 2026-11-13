@@ -547,6 +547,64 @@ namespace World.Game.Tests
             Assert.IsFalse(W.IsLocked, "free to move");
         }
 
+        [UnityTest, Timeout(120000)]
+        public IEnumerator MirasDuel_StartToFinish_WithThePointer()
+        {
+            yield return Load(pause: false);
+            var mira = Npc.Find(NpcIds.Mira);
+            WardDuelEncounter.TuningOverride = new World.Sim.Encounters.Ward.WardTuning
+            {
+                PlayerRecoveryMs = 150, MiraFirstCastMinMs = 6000, MiraFirstCastMaxMs = 6000, MiraThinkMinMs = 6000, MiraThinkMaxMs = 6000,
+            };
+            try
+            {
+                // Walk up to her on the lattice, tap her, tap "Practice duel" in her bubble.
+                bool walked = false;
+                var s = new AutoPlayScript("test_to_mira").WalkToObject(() => mira).Call(() => walked = true);
+                AutoPlay.Instance.Run(s);
+                float until = Time.realtimeSinceStartup + 20f;
+                while (!walked && Time.realtimeSinceStartup < until) yield return null;
+                Assert.IsTrue(walked, "walked up to Mira: " + AutoPlay.Instance.FailMessage);
+                var cell = W.Cell; int heading = W.Heading;
+                var cam = Boot.Views.ActiveCamera;
+                var sp = cam.WorldToScreenPoint(mira.transform.position + Vector3.up * 1.0f);
+                Assert.AreEqual(TapOutcome.Interact, PointerInput.TapAt(sp), "tap on Mira");
+                yield return null; yield return null;
+                var r = SpeechBubbles.ReplyRectOf(DialoguePanel.Handle, 0);
+                Assert.Greater(r.width, 0, "the duel reply is drawn");
+                Assert.AreEqual(TapOutcome.Bubble, PointerInput.TapAt(new Vector2(r.center.x, Screen.height - r.center.y)));
+                var e = WardDuelEncounter.Current;
+                Assert.IsNotNull(e, "the duel started from the bubble");
+                Assert.IsTrue(W.IsOffLattice, "the duel placed the viewpoint");
+                // Play it out (the key path), then return.
+                foreach (var x in new[] { World.Sim.Encounters.Ward.Essence.Flame, World.Sim.Encounters.Ward.Essence.Flame, World.Sim.Encounters.Ward.Essence.Vine }) e.AddEssence(x);
+                Assert.IsTrue(e.LockWard());
+                var solver = new World.Sim.Encounters.Ward.WardRival(new World.Sim.Encounters.Ward.WardTuning { Loci = e.Tuning.Loci }, e.Pool, new Rng(5));
+                int observed = 0;
+                until = Time.realtimeSinceStartup + 60f;
+                while (e.Phase == WardDuelEncounter.Screen.Active && Time.realtimeSinceStartup < until)
+                {
+                    var hist = e.Session.PlayerHistory;
+                    while (observed < hist.Count) { var x = hist[observed++]; solver.Observe(x.Weave, x.Fractures, x.Echoes); }
+                    if (e.Session.MsUntilPlayerMayCast == 0 && e.Session.PlayerCastsLeft > 0)
+                    {
+                        foreach (var w in solver.NextCast()) e.AddEssence((World.Sim.Encounters.Ward.Essence)w);
+                        Assert.IsTrue(e.Cast().Ok);
+                    }
+                    yield return null;
+                }
+                Assert.AreEqual(WardDuelEncounter.Screen.Result, e.Phase, "the duel finished");
+                Assert.IsTrue(e.Return());
+                yield return null; yield return null;
+                Assert.IsFalse(EncounterHost.Instance.IsRunning);
+                AssertAt(W, cell, "back on the lattice cell after the duel");
+                Assert.AreEqual(heading, W.Heading);
+                Assert.IsFalse(W.IsLocked);
+                Assert.AreEqual(1, S.Ward.CompletedDuelsVsMira, "the duel is recorded");
+            }
+            finally { WardDuelEncounter.TuningOverride = null; }
+        }
+
         // ---------------- scripts and rules ----------------
 
         [UnityTest, Timeout(120000)]

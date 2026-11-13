@@ -104,6 +104,7 @@ namespace World.Game
             Register("boot_tour", BootTour);
             Register("capture_tour", CaptureTour);
             Register("walk_tour", WalkTour);
+            Register("player_captures", PlayerCaptures);
         }
 
         private static WorldBootstrap B => WorldBootstrap.Instance;
@@ -208,6 +209,40 @@ namespace World.Game
              .Check(() => !DialoguePanel.IsOpen, "Mira's bubble did not close on the reply")
              .Check(() => EncounterHost.Instance == null || !EncounterHost.Instance.IsRunning, "an encounter started")
              .Log("[AutoPlay] walk_tour OK")
+             .Quit(0);
+            return s;
+        }
+
+        /// <summary>
+        /// "player_captures" (package P): screenshots of the player layer for checking by eye: the bare world with a
+        /// speech bubble, reply choices, an off-screen caller, the map, the HUD strip, a cast with its spell effect and
+        /// the F1 developer tools (Build and Cast). Files go to Evidence/screenshots (p_*.png).
+        /// </summary>
+        public static AutoPlayScript PlayerCaptures()
+        {
+            var s = new AutoPlayScript("player_captures");
+            Npc mira = null;
+            s.Wait(1.5f)
+             .Call(() => mira = Npc.Find(NpcIds.Mira))
+             .Capture("p_bare")
+             .Call(() => SpeechBubbles.Say(mira, "The prince was asking for you. He is coming up from the forest.", 6f)).Wait(0.4f).Capture("p_bubble")
+             .Call(() => { foreach (var h in SpeechBubbles.OpenHandles()) SpeechBubbles.Close(h); })
+             .TapObject(() => mira).Wait(0.4f).Capture("p_replies")
+             .Call(DialoguePanel.Close)
+             .Turn(3)
+             .Call(() => SpeechBubbles.Ask(mira, "Over here! A word before you go?", new[] { "Coming", "Not now" }, i => { }, 8f)).Wait(0.4f).Capture("p_offscreen")
+             .Call(() => { foreach (var h in SpeechBubbles.OpenHandles()) SpeechBubbles.Close(h); })
+             .Turn(-3)
+             .OpenMap().Wait(0.4f).Capture("p_map").CloseMap()
+             .ToggleHud().Wait(0.4f).Capture("p_hud").ToggleHud()
+             .Step(a => a.DoWaitFor(() => FactionApi.Top(B.Sim.State, PlayerIds.Human) != null, 20f, "no proposal"))
+             .CastAtProposal(0).Wait(0.35f).Capture("p_cast").Wait(0.5f).Capture("p_cast_late")
+             .ToggleView().Wait(0.5f)
+             .Call(() => { B.GodCam.SetFocus(W.Position, 70f); GodToolbar.Instance.Activate("build"); }).Wait(0.5f).Capture("p_f1_build")
+             .Call(() => GodToolbar.Instance.Activate("cast")).Wait(0.4f).Capture("p_f1_cast")
+             .Call(() => GodToolbar.Instance.Activate(GodToolbar.SelectId))
+             .ToggleView().Wait(0.3f)
+             .Log("[AutoPlay] player_captures OK")
              .Quit(0);
             return s;
         }
@@ -375,6 +410,16 @@ namespace World.Game
                 }
                 yield return null;
                 while (Walker.IsGliding && Time.time < end) yield return null;
+            }
+        }
+
+        internal IEnumerator DoWaitFor(Func<bool> cond, float timeout, string message)
+        {
+            float end = Time.realtimeSinceStartup + timeout;
+            while (!cond())
+            {
+                if (Time.realtimeSinceStartup > end) { Fail(message); yield break; }
+                yield return null;
             }
         }
 

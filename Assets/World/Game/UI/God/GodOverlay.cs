@@ -134,7 +134,7 @@ namespace World.Game
                         _spots[it.Key] = g;
                     }
                     g.SetActive(true);
-                    g.transform.position = it.Pos + Vector3.up * 0.25f;
+                    g.transform.position = new Vector3(it.Pos.x, PlayerWalker.GroundHeight(it.Pos) + 0.35f, it.Pos.z);
                     g.transform.localScale = new Vector3(it.Size * 2f, 0.05f, it.Size * 2f);
                     g.GetComponent<Renderer>().sharedMaterial = Mat(it.Color);
                     _shown.Add(g);

@@ -482,7 +482,8 @@ namespace World.Game
             // Direction of the speaker relative to the view, projected onto the screen plane.
             var local = cam.transform.InverseTransformPoint(world);
             var dir = new Vector2(local.x, local.y);
-            if (local.z < 0) dir = -dir;
+            // Behind the viewpoint: point to the side to turn to (left or right edge, mid height).
+            if (local.z < 0) dir = new Vector2(local.x >= 0 ? 1f : -1f, 0f);
             if (dir.sqrMagnitude < 1e-4f) dir = new Vector2(local.x >= 0 ? 1 : -1, 0);
             dir.Normalize();
             float w = UiStyle.Px(240), h = UiStyle.Px(52), m = UiStyle.Px(12);

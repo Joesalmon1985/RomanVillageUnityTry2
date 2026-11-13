@@ -334,8 +334,9 @@ namespace World.Game
                     string line = (p.Rank + 1) + ". " + FactionApi.ProposalTitle(s, p.Id) + "  <color=#BBB0A0>#" + p.Id + " " + p.Speaker + " " + p.Score + "</color>";
                     float lh = _small.CalcHeight(new GUIContent(line), w - UiStyle.Px(190));
                     GUI.Label(new Rect(x, y, w - UiStyle.Px(190), lh), line, _small);
-                    if (GUI.Button(new Rect(x + w - UiStyle.Px(180), y, UiStyle.Px(85), UiStyle.Px(34)), "Cast", UiStyle.Button)) Cast(p.Id);
-                    if (f == PlayerIds.Human && GUI.Button(new Rect(x + w - UiStyle.Px(90), y, UiStyle.Px(90), UiStyle.Px(34)), "Decline", UiStyle.Button)) Decline(p.Id);
+                    var bs = new GUIStyle(UiStyle.Button) { fontSize = UiStyle.Px(18), padding = new RectOffset(2, 2, 2, 2) };
+                    if (GUI.Button(new Rect(x + w - UiStyle.Px(180), y, UiStyle.Px(85), UiStyle.Px(34)), "Cast", bs)) Cast(p.Id);
+                    if (f == PlayerIds.Human && GUI.Button(new Rect(x + w - UiStyle.Px(90), y, UiStyle.Px(90), UiStyle.Px(34)), "Decline", bs)) Decline(p.Id);
                     y += Mathf.Max(lh, UiStyle.Px(36)) + UiStyle.Px(4);
                     GUI.Label(new Rect(x + UiStyle.Px(16), y, w - UiStyle.Px(16), UiStyle.Px(44)), "<color=#CFC6B8>" + p.Reason + "</color>", _small);
                     y += _small.CalcHeight(new GUIContent(p.Reason ?? ""), w - UiStyle.Px(16)) + UiStyle.Px(8);
