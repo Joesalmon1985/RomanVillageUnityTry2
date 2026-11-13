@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using Bedsit;
 using UnityEngine;
 using World.Sim.Encounters.Rhythm;
 using SimRoute = World.Sim.Encounters.Rhythm.Route;
@@ -8,10 +7,14 @@ using SimRoute = World.Sim.Encounters.Rhythm.Route;
 namespace World.Game
 {
     /// <summary>
-    /// Rhythm party with DJ Sol ("rhythm_party", PRD 4.3): a 2 s count-in, then one 64-beat phrase at 174 BPM on a
-    /// four-lane highway (pads D F J K). The final block offers the bar or the balcony (Left/Right); at beat 64 a passing
-    /// final block opens the chosen route. Rules live in PhraseSession; audio runs on the DSP clock via StemPlayer.
-    /// Keyboard, the injected-input hook and the built-in autoplayer all go through HandlePress/HandleRelease.
+    /// The dance at the fire with Sol ("rhythm_party", REFACTOR_SPEC 2.E): a 2 s count-in, then one 64-beat phrase at
+    /// 174 BPM played on four drums round the fire (D F J K, or touch strips 1-4). A cue lights its drum from cue time
+    /// minus <see cref="FallSeconds"/> (the lead the lanes used to have) while an ember flies from the fire to that drum,
+    /// landing on the cue time; holds keep the drum lit with a stream of embers; each judgement flashes the drum. The
+    /// final block offers the ending choice, "Fire leap" (Left, <see cref="SimRoute.Bar"/>) or "Spirit call" (Right,
+    /// <see cref="SimRoute.Balcony"/>), cosmetic and not saved. Rules live in PhraseSession (unchanged); audio runs on the
+    /// DSP clock via StemPlayer. Keyboard, touch strips, the injected-input hook and the built-in autoplayer all go
+    /// through HandlePress/HandleRelease. Visuals are drawn by <see cref="DanceCircle"/>. Owner: package D.
     /// </summary>
     public sealed class RhythmPartyEncounter : IEncounter
     {
@@ -22,13 +25,18 @@ namespace World.Game
         public static string StemDirOverride;
         public static RhythmPartyEncounter Current { get; private set; }
 
+        /// <summary>How long before its time a cue appears (drum lights, ember leaves the fire). RHYTHM_API: at most 1.2 s.</summary>
         public const float FallSeconds = 1.1f;
-        public const float ViewYawOffset = 24f;          // RHYTHM_API: must be <= 1.2 s
+        /// <summary>Look down at the drums (FirstPersonAvatar: positive pitch looks down).</summary>
+        public const float ViewPitch = 15f;
         public const string CalibrationPref = "World.Rhythm.CalibrationMs";
+        public const string FireLeapName = "Fire leap", SpiritCallName = "Spirit call";
         public static readonly KeyCode[] PadKeys = { KeyCode.D, KeyCode.F, KeyCode.J, KeyCode.K };
-        public static readonly string[] StageNames = { "Drums", "Bass in", "Drums back", "Bass up" };
+        public static readonly string[] StageNames = { "Drums", "Bass joins", "Drums back", "Bass up" };
 
-        public string Title => "Rhythm party with DJ Sol";
+        public static string ChoiceName(SimRoute r) => r == SimRoute.Bar ? FireLeapName : SpiritCallName;
+
+        public string Title => "Dance at the fire with Sol";
         public bool IsFinished { get; private set; }
         public Screen Phase { get; private set; }
         public RhythmTuning Tuning { get; private set; }
@@ -36,6 +44,7 @@ namespace World.Game
         public PhraseSession Session { get; private set; }
         public StemPlayer Player { get; private set; }
         public StemSet Stems { get; private set; }
+        public DanceCircle Circle { get; private set; }
         public int Attempts { get; private set; }
         /// <summary>Song time sampled this frame (seconds, negative in the count-in).</summary>
         public double SongTime { get; private set; } = double.NaN;
@@ -51,6 +60,10 @@ namespace World.Game
         public int LiveMiss { get; private set; }
         /// <summary>Gain targets as last sent to the stems.</summary>
         public StemGains LastGains { get; private set; }
+        public bool BassJoined { get; private set; }
+
+        /// <summary>When each cue's drum first lit this attempt: cue index -> (pad, song time). For tests and captures.</summary>
+        public readonly Dictionary<int, (int Pad, double SongTime)> LitAt = new Dictionary<int, (int, double)>();
 
         // Built-in autoplayer (AutoPlay script, captures, tests): presses exactly at cue times through the same path as keys.
         public bool AutoPlayEnabled;
@@ -64,21 +77,18 @@ namespace World.Game
         private EncounterContext _ctx;
         private GameObject _root;
         private EncounterSfx _sfx;
-        private bool _prevDoorMusic, _prevPan = true;
-        private Npc _dj;
-        private Vector3 _djScale = Vector3.one;
-        private readonly List<ICharacterActor> _dancers = new List<ICharacterActor>();
-        private readonly List<Light> _beatLights = new List<Light>();
+        private bool _prevPan = true;
+        private Npc _sol;
+        private Vector3 _solScale = Vector3.one;
+        private GameObject _ownCircle;
         private int _beginFrame;
         private bool _menuWasOpen;
-        private readonly float[] _laneFlash = new float[5];
         private readonly bool[] _padDown = new bool[5];
+        private readonly bool[] _touchDown = new bool[5];
         private sealed class Pop { public int Pad; public string Text; public Color Color; public float Born; }
         private readonly List<Pop> _pops = new List<Pop>();
-        private sealed class Spark { public int Pad; public float Born; public Color Color; }
-        private readonly List<Spark> _sparks = new List<Spark>();
         private string _banner; private float _bannerUntil; private Color _bannerColor;
-        private int _lastBeatCheered = int.MinValue;
+        private int _lastBeatCheered = int.MinValue, _lastCountBeat = int.MinValue, _lastBassBeat = int.MinValue;
 
         // ------------------------------------------------------------------ lifecycle
 
@@ -100,65 +110,35 @@ namespace World.Game
             Stems = StemSet.Load(StemDirOverride ?? StemSet.DefaultDir, Chart);
             if (Stems.IsSynth) Debug.Log("[Rhythm] stems missing: playing the synthesised fallback loops");
 
-            _root = new GameObject("RhythmParty");
+            _root = new GameObject("DanceEncounter");
             if (ctx.World != null) _root.transform.SetParent(ctx.World.transform, false);
             Player = StemPlayer.Create(_root.transform, Stems);
             _sfx = EncounterSfx.Create(_root.transform);
 
-            // Stand on the dance floor facing the decks, turned a little so DJ Sol stays visible left of the note highway.
-            ctx.PlaceAvatar(ctx.Stage.Position, ctx.Stage.Yaw + ViewYawOffset, -4f);
-            var w = ctx.Warehouse;
-            if (w != null) { _prevDoorMusic = w.IsDoorMusicOn; if (AudioGuard.CanWriteControls) w.SetDoorMusic(false); }
+            Circle = DanceCircle.Current;
+            if (Circle == null && ctx.Sim != null)
+            {
+                // No camp in this scene (should not happen in the game): stand a circle up for the dance only.
+                Circle = DanceCircle.Build(_root.transform, new CampLayout(ctx.Sim.State.Board));
+                _ownCircle = Circle.gameObject;
+            }
+            Circle.ResetDance();
+            // Stand at the dancer's spot facing the fire, drums 1-4 left to right in front.
+            ctx.PlaceAvatar(Circle.Layout.DancerSpot, Circle.Layout.DancerYaw, ViewPitch);
             if (ctx.World != null && ctx.World.GodCam != null) { _prevPan = ctx.World.GodCam.KeyboardPan; ctx.World.GodCam.KeyboardPan = false; }
-            _dj = ctx.Npc != null ? ctx.Npc : Npc.Find(NpcIds.Host);
-            if (_dj != null) { _djScale = _dj.transform.localScale; _dj.Actor?.FaceTowards(ctx.Stage.Position); }
-            BuildCrowd(ctx);
+            _sol = ctx.Npc != null ? ctx.Npc : Npc.Find(NpcIds.Host);
+            if (_sol != null) { _solScale = _sol.transform.localScale; _sol.Actor?.FaceTowards(Circle.Layout.DancerSpot); }
             StartPhrase();
         }
 
         public void End()
         {
             if (Player != null) Player.StopAll();
-            var w = _ctx != null ? _ctx.Warehouse : null;
-            if (w != null)
-            {
-                foreach (SimRoute r in new[] { SimRoute.Bar, SimRoute.Balcony })
-                    foreach (var l in w.RouteLights(ToGame(r))) if (l != null) l.enabled = w.IsRouteOpen(ToGame(r));
-                if (AudioGuard.CanWriteControls) w.SetDoorMusic(_prevDoorMusic);
-            }
             if (_ctx != null && _ctx.World != null && _ctx.World.GodCam != null) _ctx.World.GodCam.KeyboardPan = _prevPan;
-            if (_dj != null) { _dj.transform.localScale = _djScale; _dj.Actor?.PlayIdle(); }
+            if (_sol != null) { _sol.transform.localScale = _solScale; _sol.Actor?.PlayIdle(); }
+            if (Circle != null && _ownCircle == null) Circle.ResetDance();
             if (_root != null) UnityEngine.Object.Destroy(_root);
             if (Current == this) Current = null;
-        }
-
-        private void BuildCrowd(EncounterContext ctx)
-        {
-            var w = ctx.Warehouse;
-            if (w == null) return;
-            var floor = w.DanceFloorPosition;
-            var fwd = ctx.Stage.Forward;
-            var right = Vector3.Cross(Vector3.up, fwd).normalized;
-            // Fits the 13 m wide hall (dance floor 8 x 10 m) of the resized warehouse.
-            Vector3[] offs = { right * -2.6f + fwd * 3.0f, right * 1.4f + fwd * 4.0f, right * -1.8f - fwd * 2.2f, right * 2.2f - fwd * 1.8f, right * -3.8f + fwd * 0.8f, right * 3.9f - fwd * 0.6f };
-            Color[] cols = { new Color(0.9f, 0.3f, 0.5f), new Color(0.3f, 0.8f, 0.6f), new Color(0.95f, 0.75f, 0.2f), new Color(0.5f, 0.4f, 0.95f), new Color(0.95f, 0.45f, 0.2f), new Color(0.3f, 0.6f, 0.95f) };
-            for (int i = 0; i < offs.Length; i++)
-            {
-                var p = floor + offs[i];
-                var a = ActorFactory.Create("dancer" + i, cols[i], p, BoardSpace.YawOf(w.DecksPosition - p), _root.transform);
-                a.Root.name = "Dancer " + i;
-                _dancers.Add(a);
-            }
-            Color[] lc = { new Color(1f, 0.2f, 0.6f), new Color(0.2f, 0.7f, 1f), new Color(1f, 0.8f, 0.2f) };
-            for (int i = 0; i < 3; i++)
-            {
-                var go = new GameObject("BeatLight" + i);
-                go.transform.SetParent(_root.transform, false);
-                go.transform.position = floor + Vector3.up * 3.2f + right * (i - 1) * 4.5f + fwd * 1.5f;
-                var l = go.AddComponent<Light>();
-                l.type = LightType.Point; l.range = 9f; l.intensity = 0f; l.color = lc[i];
-                _beatLights.Add(l);
-            }
         }
 
         /// <summary>Starts (or restarts) the phrase: new session, stems scheduled after the count-in.</summary>
@@ -169,11 +149,14 @@ namespace World.Game
             Phase = Screen.CountIn;
             LastResult = null;
             LastRouteOpened = RouteOutcome.None;
-            _queue.Clear(); _autoQueued.Clear(); _pops.Clear(); _sparks.Clear();
-            for (int i = 0; i < 5; i++) { _padDown[i] = false; _laneFlash[i] = 0; }
+            BassJoined = false;
+            _queue.Clear(); _autoQueued.Clear(); _pops.Clear(); LitAt.Clear();
+            for (int i = 0; i < 5; i++) { _padDown[i] = false; _touchDown[i] = false; }
             PressesHandled = 0; JudgementsSeen = 0;
             LivePerfect = LiveGreat = LiveOk = LiveMiss = 0;
             _banner = null;
+            _lastCountBeat = _lastBassBeat = _lastBeatCheered = int.MinValue;
+            Circle.ResetDance();
             var g = Session.CurrentGains;
             Player.SetTargets(g.Drums, g.Bass, g.Other);
             Player.SnapToTargets();
@@ -199,14 +182,14 @@ namespace World.Game
             _queue.Insert(i, e);
         }
 
-        /// <summary>The one path for pad presses (keys, injected inputs, autoplayer).</summary>
+        /// <summary>The one path for pad presses (keys, touch strips, injected inputs, autoplayer).</summary>
         public Judgement HandlePress(int pad, double songTime)
         {
             if (Session == null || Session.IsEnded || pad < 1 || pad > 4) return null;
-            _laneFlash[pad] = 1f;
             _padDown[pad] = true;
             PressesHandled++;
             var j = Session.Press(pad, songTime);
+            if (j == null || j.Kind == JudgementKind.Stray) Circle.Flash(pad, new Color(0.9f, 0.85f, 0.75f), 0.15f, false);
             DrainSession();
             return j;
         }
@@ -220,6 +203,7 @@ namespace World.Game
             return j;
         }
 
+        /// <summary>The ending choice: <see cref="SimRoute.Bar"/> = "Fire leap", <see cref="SimRoute.Balcony"/> = "Spirit call". False outside beats 48-60.5.</summary>
         public bool ChooseRoute(SimRoute r)
         {
             if (Session == null || Session.IsEnded) return false;
@@ -286,9 +270,13 @@ namespace World.Game
                     {
                         if (Input.GetKeyDown(PadKeys[p - 1])) { _padDown[p] = true; HandlePress(p, now); }
                         if (Input.GetKeyUp(PadKeys[p - 1])) { _padDown[p] = false; HandleRelease(p, now); }
+                        // Touch strips 1-4 (P's TouchStrips; the same strips are the four moves on foot).
+                        if (TouchStrips.Pressed(p) && !_touchDown[p]) { _touchDown[p] = true; HandlePress(p, now); }
+                        else if (_touchDown[p] && !TouchStrips.Held(p)) { _touchDown[p] = false; HandleRelease(p, now); }
                     }
                     if (Input.GetKeyDown(KeyCode.LeftArrow)) ChooseRoute(SimRoute.Bar);
                     if (Input.GetKeyDown(KeyCode.RightArrow)) ChooseRoute(SimRoute.Balcony);
+                    if (Session.RouteWindow == RouteWindowState.Open && Input.GetMouseButtonDown(0)) ChooseByTap(Input.mousePosition);
                 }
                 if (AutoRoute.HasValue && Session.RouteWindow == RouteWindowState.Open && Session.CurrentRoute != AutoRoute.Value) ChooseRoute(AutoRoute.Value);
                 Session.Advance(now);
@@ -309,7 +297,18 @@ namespace World.Game
                 if (Input.GetKeyDown(KeyCode.LeftBracket)) AdjustCalibration(-10);
                 if (Input.GetKeyDown(KeyCode.RightBracket)) AdjustCalibration(+10);
             }
-            Animate(unscaledDt);
+            Animate();
+        }
+
+        /// <summary>A tap above the touch band during the choice: left of the fire = Fire leap, right = Spirit call.</summary>
+        private void ChooseByTap(Vector2 screen)
+        {
+            if (TouchStrips.StripAt(screen) != 0) return;
+            var cam = Camera.main;
+            if (cam == null) return;
+            var f = cam.WorldToScreenPoint(Circle.FireTop);
+            if (f.z <= 0) return;
+            ChooseRoute(screen.x < f.x ? SimRoute.Bar : SimRoute.Balcony);
         }
 
         private void QueueAutoplay()
@@ -337,17 +336,19 @@ namespace World.Game
                         {
                             BlocksCheered++;
                             _sfx.Play(EncounterSfx.CheerClip, 0.55f);
-                            foreach (var d in _dancers) d.PlayOneShot(ActorKeys.Cheer);
-                            _dj?.Actor?.PlayOneShot(ActorKeys.Clap);
-                            ShowBanner("Block " + (bd.Block + 1) + " passed!", EncounterUi.Good);
+                            Circle.Cheer();
+                            _sol?.Actor?.PlayOneShot(ActorKeys.Clap);
+                            ShowBanner("Block " + (bd.Block + 1) + " kept the beat!", EncounterUi.Good);
                         }
-                        else ShowBanner("Block " + (bd.Block + 1) + " missed - the mix holds", EncounterUi.Bad);
+                        else ShowBanner("Block " + (bd.Block + 1) + " missed - the dance holds back", EncounterUi.Bad);
                         break;
                     case BassRevealed br:
                         Player.ScheduleBassAndOther(br.SongTime);
+                        BassJoined = true;
+                        ShowBanner("Sol's big drum: the bass joins in!", EncounterUi.Gold, 2.2f);
                         break;
                     case RouteWindowOpened _:
-                        ShowBanner("Last block: choose the bar or the balcony!", EncounterUi.Gold, 2.5f);
+                        ShowBanner("Last block: " + FireLeapName + " or " + SpiritCallName + "?", EncounterUi.Gold, 2.5f);
                         break;
                     case PhraseEnded pe: OnEnded(pe.Result); break;
                 }
@@ -357,19 +358,18 @@ namespace World.Game
         private void OnJudgement(Judgement j)
         {
             JudgementsSeen++;
-            string text; Color col; bool hit = true;
+            string text; Color col;
             switch (j.Kind)
             {
-                case JudgementKind.Perfect: text = "Perfect"; col = new Color(1f, 0.85f, 0.3f); LivePerfect++; break;
-                case JudgementKind.Great: text = "Great"; col = new Color(0.45f, 1f, 0.55f); LiveGreat++; break;
-                case JudgementKind.Ok: text = "OK"; col = new Color(0.5f, 0.75f, 1f); LiveOk++; break;
-                case JudgementKind.Miss: text = "Miss"; col = EncounterUi.Bad; hit = false; LiveMiss++; break;
-                case JudgementKind.HoldComplete: text = "Held!"; col = new Color(1f, 0.85f, 0.3f); break;
-                case JudgementKind.HoldPartial: text = "Released"; col = EncounterUi.Dim; hit = false; break;
+                case JudgementKind.Perfect: text = "Perfect"; col = new Color(1f, 0.82f, 0.25f); LivePerfect++; Circle.Flash(j.Pad, col, 1f, true); break;
+                case JudgementKind.Great: text = "Great"; col = new Color(0.45f, 1f, 0.55f); LiveGreat++; Circle.Flash(j.Pad, col, 0.7f, true); break;
+                case JudgementKind.Ok: text = "OK"; col = new Color(0.55f, 0.75f, 1f); LiveOk++; Circle.Flash(j.Pad, col, 0.4f, false); break;
+                case JudgementKind.Miss: text = "Miss"; col = EncounterUi.Bad; LiveMiss++; Circle.Flash(j.Pad, col, 0f, false, true); break;
+                case JudgementKind.HoldComplete: text = "Held!"; col = new Color(1f, 0.82f, 0.25f); Circle.Flash(j.Pad, col, 1f, true); break;
+                case JudgementKind.HoldPartial: text = "Let go"; col = EncounterUi.Dim; Circle.Flash(j.Pad, col, 0f, false, true); break;
                 default: return; // strays cost nothing and show nothing
             }
             _pops.Add(new Pop { Pad = j.Pad, Text = text, Color = col, Born = Time.unscaledTime });
-            if (hit) _sparks.Add(new Spark { Pad = j.Pad, Born = Time.unscaledTime, Color = col });
         }
 
         private void OnEnded(PhraseResult r)
@@ -378,76 +378,99 @@ namespace World.Game
             LastRouteOpened = r.RouteOpened;
             Phase = Screen.Result;
             _queue.Clear();
-            var w = _ctx != null ? _ctx.Warehouse : null;
-            if (w != null && r.RouteOpened != RouteOutcome.None)
+            _endedAt = Time.unscaledTime;
+            if (r.RouteOpened != RouteOutcome.None)
             {
-                var route = r.RouteOpened == RouteOutcome.Bar ? World.Game.Route.Bar : World.Game.Route.Balcony;
-                w.SetRouteOpen(route, true);
+                Circle.PlayEffect(r.RouteOpened == RouteOutcome.Bar ? DanceCircle.Effect.FireLeap : DanceCircle.Effect.SpiritCall);
                 _sfx.Play(EncounterSfx.CheerClip, 0.8f);
-                foreach (var d in _dancers) d.PlayOneShot(ActorKeys.Cheer);
             }
-            _dj?.Actor?.PlayOneShot(r.Success ? ActorKeys.Cheer : ActorKeys.Clap);
+            _sol?.Actor?.PlayOneShot(r.Success ? ActorKeys.Cheer : ActorKeys.Clap);
         }
+
+        /// <summary>Seconds the ending (leap or spirits) plays before the result panel covers the fire.</summary>
+        public const float EndingShowSeconds = 2.6f;
+        private float _endedAt = -100f;
 
         private void ShowBanner(string s, Color c, float seconds = 1.6f) { _banner = s; _bannerColor = c; _bannerUntil = Time.unscaledTime + seconds; }
 
-        private static World.Game.Route ToGame(SimRoute r) => r == SimRoute.Bar ? World.Game.Route.Bar : World.Game.Route.Balcony;
-
-        private void Animate(float dt)
+        public static Color PadColor(int pad, string family)
         {
-            for (int p = 1; p <= 4; p++)
-            {
-                _laneFlash[p] = Mathf.Max(0, _laneFlash[p] - dt * 7f);
-            }
+            if (family == "bass") return pad <= 2 ? new Color(0.75f, 0.45f, 1.0f) : new Color(0.35f, 0.95f, 0.75f);
+            return pad == 1 ? new Color(1.0f, 0.55f, 0.20f) : new Color(0.30f, 0.80f, 1.0f);
+        }
+
+        /// <summary>Per frame: cue glow and embers on the drums, count-in taps, the bass drum, the dancers and the choice marks.</summary>
+        private void Animate()
+        {
             double t = double.IsNaN(SongTime) ? 0 : SongTime;
             double beat = Session.SecondsToBeat(t);
             bool live = Phase != Screen.Result && t >= Session.BeatToSeconds(-4);
             float phase = (float)(beat - Math.Floor(beat));
-            float pulse = live ? Mathf.Pow(1f - phase, 3f) : 0.15f;
-            for (int i = 0; i < _beatLights.Count; i++)
-            {
-                var l = _beatLights[i];
-                l.intensity = live ? 0.6f + 3.2f * pulse : 0.4f;
-                if (live) l.color = Color.HSVToRGB(Mathf.Repeat((float)Math.Floor(beat) * 0.13f + i * 0.33f, 1f), 0.75f, 1f);
-            }
-            // Bob DJ and dancers on the beat (a squash on the downbeat, slight sway).
-            float squash = live ? 1f - 0.05f * pulse : 1f;
-            if (_dj != null) _dj.transform.localScale = new Vector3(_djScale.x * (2f - squash), _djScale.y * squash, _djScale.z * (2f - squash));
-            for (int i = 0; i < _dancers.Count; i++)
-            {
-                var a = _dancers[i].Root;
-                float s = live ? 1f - 0.07f * Mathf.Pow(1f - Mathf.Repeat(phase + i * 0.11f, 1f), 3f) : 1f;
-                a.localScale = new Vector3(2f - s, s, 2f - s);
-                if (live) a.localRotation = Quaternion.Euler(0, a.localRotation.eulerAngles.y + Mathf.Sin((float)beat * Mathf.PI) * 0.4f, 0);
-            }
             int wholeBeat = (int)Math.Floor(beat);
-            if (live && wholeBeat >= 0 && wholeBeat % 8 == 0 && wholeBeat != _lastBeatCheered && _dancers.Count > 0)
+
+            float[] glow = new float[5]; bool[] held = new bool[5]; Color[] col = new Color[5]; float[] ring = { -1, -1, -1, -1, -1 };
+            if (Phase != Screen.Result)
+            {
+                foreach (var c in Session.UpcomingCues())
+                {
+                    if (c.State == CueState.Done) continue; // judged: the flash took over
+                    var pc = PadColor(c.Pad, c.Family);
+                    if (c.State == CueState.Holding)
+                    {
+                        glow[c.Pad] = 1f; held[c.Pad] = true; col[c.Pad] = pc;
+                        for (double tau = Math.Max(t, c.Time); tau <= Math.Min(c.EndTime, t + FallSeconds); tau += 0.06)
+                            Circle.AddEmber(Circle.EmberPath(c.Pad, (float)DanceCircle.Approach(tau, t, FallSeconds)), 0.045f, new Color(pc.r, pc.g, pc.b, 0.8f));
+                        continue;
+                    }
+                    double u = DanceCircle.Approach(c.Time, t, FallSeconds);
+                    if (u < 0) continue;
+                    if (!LitAt.ContainsKey(c.Index)) LitAt[c.Index] = (c.Pad, t);
+                    float uc = Mathf.Clamp01((float)u);
+                    float g = 0.25f + 0.75f * uc * uc;
+                    if (g >= glow[c.Pad]) { glow[c.Pad] = g; col[c.Pad] = pc; ring[c.Pad] = uc; }
+                    // The ember: head plus a short fading trail behind it.
+                    for (int k = 0; k < 4; k++)
+                    {
+                        float uk = uc - k * 0.035f;
+                        if (uk < 0) break;
+                        Circle.AddEmber(Circle.EmberPath(c.Pad, uk), (0.06f + 0.06f * uk) * (1f - k * 0.2f), new Color(pc.r, pc.g, pc.b, 1f - k * 0.25f));
+                    }
+                    if (c.IsHold)
+                        for (double tau = c.Time + 0.06; tau <= Math.Min(c.EndTime, t + FallSeconds); tau += 0.06)
+                            Circle.AddEmber(Circle.EmberPath(c.Pad, (float)DanceCircle.Approach(tau, t, FallSeconds)), 0.045f, new Color(pc.r, pc.g, pc.b, 0.75f));
+                }
+            }
+            for (int p = 1; p <= 4; p++) Circle.SetDrum(p, glow[p], col[p], held[p], ring[p]);
+
+            // Count-in: the four clicks tap every drum; Sol beats time.
+            if (live && t < 0 && wholeBeat >= -4 && wholeBeat != _lastCountBeat)
+            {
+                _lastCountBeat = wholeBeat;
+                Circle.CountPulse();
+                _sol?.Actor?.PlayOneShot(ActorKeys.Clap);
+            }
+            // After the bass joins, Sol's big drum sounds on every beat.
+            if (live && Session.HasBassReveal && beat >= Session.BassRevealBeat && wholeBeat != _lastBassBeat && LastGains.Bass > 0.05)
+            {
+                _lastBassBeat = wholeBeat;
+                Circle.StrikeBigDrum(0.4f + 0.6f * (float)LastGains.Bass);
+            }
+            Circle.SetDance(live, beat, Session.CurrentStage);
+            bool window = Phase != Screen.Result && Session.RouteWindow != RouteWindowState.NotYet;
+            Circle.SetChoice(window, Session.CurrentRoute == SimRoute.Bar, Session.RouteWindow == RouteWindowState.Locked, phase);
+
+            // Sol bobs on the beat; a dancer claps every 8 beats.
+            float pulse = live ? Mathf.Pow(1f - phase, 3f) : 0f;
+            float squash = live ? 1f - 0.05f * pulse : 1f;
+            if (_sol != null) _sol.transform.localScale = new Vector3(_solScale.x * (2f - squash), _solScale.y * squash, _solScale.z * (2f - squash));
+            if (live && wholeBeat >= 0 && wholeBeat % 8 == 0 && wholeBeat != _lastBeatCheered)
             {
                 _lastBeatCheered = wholeBeat;
-                _dancers[(wholeBeat / 8) % _dancers.Count].PlayOneShot(ActorKeys.Clap);
-            }
-            // Doorway preview of the pick during the route window.
-            var w = _ctx != null ? _ctx.Warehouse : null;
-            if (w != null && Phase != Screen.Result)
-            {
-                bool window = Session.RouteWindow != RouteWindowState.NotYet;
-                foreach (SimRoute r in new[] { SimRoute.Bar, SimRoute.Balcony })
-                {
-                    var gr = ToGame(r);
-                    if (w.IsRouteOpen(gr)) continue;
-                    bool on = window && Session.CurrentRoute == r && (Session.RouteWindow == RouteWindowState.Locked || phase < 0.55f);
-                    foreach (var l in w.RouteLights(gr)) if (l != null) l.enabled = on;
-                }
+                Circle.Clap(wholeBeat / 8);
             }
         }
 
         // ------------------------------------------------------------------ GUI
-
-        private static Color PadColor(int pad, string family)
-        {
-            if (family == "bass") return pad <= 2 ? new Color(0.70f, 0.45f, 1.0f) : new Color(0.35f, 0.95f, 0.75f);
-            return pad == 1 ? new Color(1.0f, 0.55f, 0.20f) : new Color(0.30f, 0.80f, 1.0f);
-        }
 
         public void DrawGui()
         {
@@ -457,87 +480,30 @@ namespace World.Game
             double t = double.IsNaN(SongTime) ? 0 : SongTime;
             double beat = Session.SecondsToBeat(t);
 
-            if (Phase == Screen.Result) { DrawResult(); DrawFooter(); return; }
-
-            // Highway.
-            float laneW = px(122), hwW = laneW * 4, top = px(150), hitY = sh - px(230);
-            float hwX = (sw - hwW) / 2f;
-            var hw = new Rect(hwX - px(10), top - px(10), hwW + px(20), hitY - top + px(130));
-            EncounterUi.Fill(hw, new Color(0.03f, 0.02f, 0.06f, 0.78f));
-            float pps = (hitY - top) / FallSeconds;
-            float Y(double time) => hitY - (float)((time - t) * pps);
-
-            for (int p = 1; p <= 4; p++)
+            if (Phase == Screen.Result)
             {
-                var lane = new Rect(hwX + (p - 1) * laneW, top, laneW, hitY - top + px(10));
-                float flash = Mathf.Max(_laneFlash[p], _padDown[p] ? 0.45f : 0f);
-                EncounterUi.Fill(lane, new Color(1, 1, 1, 0.03f + 0.16f * flash));
-                if (p > 1) EncounterUi.Fill(new Rect(lane.x, top, Mathf.Max(1, px(2)), lane.height), new Color(1, 1, 1, 0.12f));
-            }
-            // Beat grid: beat lines, bars brighter, blocks gold.
-            for (int b = (int)Math.Floor(beat) - 1; b <= (int)Math.Ceiling(beat + Session.SecondsToBeat(FallSeconds)) + 1; b++)
-            {
-                if (b < -4 || b > Tuning.PhraseBeats) continue;
-                float y = Y(Session.BeatToSeconds(b));
-                if (y < top || y > hitY) continue;
-                Color c = b % Tuning.BlockBeats == 0 ? new Color(1f, 0.8f, 0.3f, 0.55f) : b % 4 == 0 ? new Color(1, 1, 1, 0.28f) : new Color(1, 1, 1, 0.09f);
-                EncounterUi.Fill(new Rect(hwX, y - px(1), hwW, Mathf.Max(1, px(b % 4 == 0 ? 3 : 2))), c);
-            }
-            // Notes.
-            foreach (var c in Session.AllCues)
-            {
-                if (c.EndTime < t - 0.3 || c.Time > t + FallSeconds + 0.05) continue;
-                bool hitDone = c.State == CueState.Done && c.Credit > 0 && !c.IsHold;
-                if (hitDone) continue;
-                bool missed = c.State == CueState.Done && c.Credit <= 0;
-                var col = PadColor(c.Pad, c.Family);
-                if (missed) col = new Color(0.4f, 0.4f, 0.45f, 0.7f);
-                float lx = hwX + (c.Pad - 1) * laneW;
-                if (c.IsHold)
+                // Let the ending play in the open for a moment before the panel covers the fire.
+                if (LastResult != null && LastResult.RouteOpened != RouteOutcome.None && Time.unscaledTime - _endedAt < EndingShowSeconds)
                 {
-                    double headT = c.State == CueState.Holding ? t : c.Time;
-                    if (c.State == CueState.Done && c.Credit > 0) continue;
-                    float yTail = Mathf.Max(top, Y(c.EndTime)), yHead = Mathf.Min(hitY + px(40), Y(headT));
-                    if (yHead > yTail)
-                    {
-                        var body = new Color(col.r, col.g, col.b, c.State == CueState.Holding ? 0.85f : 0.55f);
-                        EncounterUi.Fill(new Rect(lx + laneW * 0.28f, yTail, laneW * 0.44f, yHead - yTail), body);
-                    }
-                    if (c.State != CueState.Holding) DrawNote(lx, Y(c.Time), laneW, col);
-                    else DrawNote(lx, hitY, laneW, Color.Lerp(col, Color.white, 0.5f));
+                    string title = LastResult.RouteOpened == RouteOutcome.Bar ? FireLeapName + "!" : SpiritCallName + "!";
+                    EncounterUi.Shadow(new Rect(0, px(150), sw, px(90)), title, EncounterUi.Big, LastResult.RouteOpened == RouteOutcome.Bar ? new Color(1f, 0.62f, 0.25f) : new Color(0.6f, 0.78f, 1f), TextAnchor.MiddleCenter);
                 }
-                else DrawNote(lx, Y(c.Time), laneW, col);
+                else DrawResult();
+                DrawFooter();
+                return;
             }
-            // Hit line and pads.
-            EncounterUi.Fill(new Rect(hwX - px(6), hitY - px(3), hwW + px(12), px(6)), new Color(1f, 0.85f, 0.4f, 0.95f));
-            string[] keys = { "D", "F", "J", "K" };
-            for (int p = 1; p <= 4; p++)
-            {
-                var pr = new Rect(hwX + (p - 1) * laneW + px(10), hitY + px(18), laneW - px(20), px(74));
-                bool down = _padDown[p] || _laneFlash[p] > 0.5f;
-                EncounterUi.Fill(pr, down ? new Color(1f, 0.85f, 0.4f, 0.95f) : new Color(0.15f, 0.13f, 0.2f, 0.95f));
-                EncounterUi.Label(pr, keys[p - 1], EncounterUi.Big, down ? Color.black : EncounterUi.Text, TextAnchor.MiddleCenter);
-            }
-            // Sparks and judgement pops.
+            var cam = Camera.main;
+
+            // Judgement words rise from the drum that was struck.
             float now = Time.unscaledTime;
-            for (int i = _sparks.Count - 1; i >= 0; i--)
-            {
-                var s = _sparks[i]; float age = now - s.Born;
-                if (age > 0.3f) { _sparks.RemoveAt(i); continue; }
-                float cx = hwX + (s.Pad - 0.5f) * laneW, u = age / 0.3f;
-                for (int k = 0; k < 8; k++)
-                {
-                    float a = k * Mathf.PI / 4f + 0.3f;
-                    float r = px(18) + u * px(70);
-                    float sz = px(10) * (1f - u) + 1;
-                    EncounterUi.Fill(new Rect(cx + Mathf.Cos(a) * r - sz / 2, hitY + Mathf.Sin(a) * r * 0.6f - sz / 2, sz, sz), new Color(s.Color.r, s.Color.g, s.Color.b, 1f - u));
-                }
-            }
             for (int i = _pops.Count - 1; i >= 0; i--)
             {
                 var pop = _pops[i]; float age = now - pop.Born;
                 if (age > 0.6f) { _pops.RemoveAt(i); continue; }
-                var pr = new Rect(hwX + (pop.Pad - 1) * laneW - px(30), hitY - px(80) - age * px(70), laneW + px(60), px(44));
+                if (cam == null) continue;
+                var sp = cam.WorldToScreenPoint(Circle.DrumTop(pop.Pad) + Vector3.up * 0.9f);
+                if (sp.z <= 0) continue;
+                var pr = new Rect(sp.x - px(110), sh - sp.y - px(30) - age * px(70), px(220), px(44));
                 EncounterUi.Shadow(pr, pop.Text, EncounterUi.Header, new Color(pop.Color.r, pop.Color.g, pop.Color.b, 1f - age / 0.6f), TextAnchor.MiddleCenter);
             }
 
@@ -545,106 +511,62 @@ namespace World.Game
             if (t < 0)
             {
                 string n = beat < -4 ? "Get ready" : Mathf.CeilToInt((float)-beat).ToString();
-                var cr = new Rect(hwX, top + px(120), hwW, px(200));
+                var cr = new Rect(0, px(170), sw, px(170));
                 EncounterUi.Shadow(cr, n, beat < -4 ? EncounterUi.Big : EncounterUi.Huge, EncounterUi.Gold, TextAnchor.MiddleCenter);
-                EncounterUi.Shadow(new Rect(hwX - px(100), top + px(330), hwW + px(200), px(40)), "Hit D F J K as the notes reach the line", EncounterUi.Body, EncounterUi.Text, TextAnchor.MiddleCenter);
+                EncounterUi.Shadow(new Rect(0, px(340), sw, px(44)), "Strike each drum as its ember lands:  D  F  J  K, left to right", EncounterUi.Body, EncounterUi.Text, TextAnchor.MiddleCenter);
             }
 
-            DrawLeftPanel(new Rect(px(24), top, px(380), px(520)));
-            DrawRightPanel(new Rect(sw - px(24) - px(380), top, px(380), px(320)), beat);
+            DrawStrip();
 
-            // Route prompt.
+            // Ending choice.
             if (Session.RouteWindow != RouteWindowState.NotYet)
             {
-                var rr = EncounterUi.Fit(new Rect((sw - px(900)) / 2f, px(52), px(900), px(86)));
-                EncounterUi.Panel(rr, new Color(0.05f, 0.04f, 0.10f, 0.92f));
+                var rr = EncounterUi.Fit(new Rect((sw - px(940)) / 2f, px(150), px(940), px(80)));
+                EncounterUi.Panel(rr, new Color(0.05f, 0.04f, 0.03f, 0.88f));
                 bool locked = Session.RouteWindow == RouteWindowState.Locked;
-                EncounterUi.Label(new Rect(rr.x + px(20), rr.y, px(200), rr.height), locked ? "Locked:" : "Choose:", EncounterUi.Header, EncounterUi.Gold);
-                var barR = new Rect(rr.x + px(220), rr.y + px(10), px(300), rr.height - px(20));
-                var balR = new Rect(rr.x + px(560), rr.y + px(10), px(320), rr.height - px(20));
-                bool bar = Session.CurrentRoute == SimRoute.Bar;
-                EncounterUi.Fill(bar ? barR : balR, new Color(1f, 0.78f, 0.3f, 0.95f));
-                EncounterUi.Label(barR, "<-  Bar", EncounterUi.Header, bar ? Color.black : EncounterUi.Dim, TextAnchor.MiddleCenter);
-                EncounterUi.Label(balR, "Balcony  ->", EncounterUi.Header, !bar ? Color.black : EncounterUi.Dim, TextAnchor.MiddleCenter);
-            }
-            else
-            {
-                var tr = EncounterUi.Fit(new Rect((sw - px(900)) / 2f, px(60), px(900), px(64)));
-                EncounterUi.Shadow(tr, "Rhythm party  -  DJ Sol, 174 BPM", EncounterUi.Header, EncounterUi.Gold, TextAnchor.MiddleCenter);
+                EncounterUi.Label(new Rect(rr.x + px(20), rr.y, px(200), rr.height), locked ? "Chosen:" : "Choose:", EncounterUi.Header, EncounterUi.Gold);
+                var leapR = new Rect(rr.x + px(220), rr.y + px(10), px(330), rr.height - px(20));
+                var spiritR = new Rect(rr.x + px(580), rr.y + px(10), px(340), rr.height - px(20));
+                bool leap = Session.CurrentRoute == SimRoute.Bar;
+                EncounterUi.Fill(leap ? leapR : spiritR, leap ? new Color(1f, 0.6f, 0.2f, 0.95f) : new Color(0.45f, 0.65f, 1f, 0.95f));
+                EncounterUi.Label(leapR, "<-  " + FireLeapName, EncounterUi.Header, leap ? Color.black : EncounterUi.Dim, TextAnchor.MiddleCenter);
+                EncounterUi.Label(spiritR, SpiritCallName + "  ->", EncounterUi.Header, !leap ? Color.black : EncounterUi.Dim, TextAnchor.MiddleCenter);
             }
 
             if (_banner != null && now < _bannerUntil)
             {
-                var br = new Rect(hwX - px(200), top + px(40), hwW + px(400), px(60));
+                var br = new Rect(0, px(240), sw, px(60));
                 EncounterUi.Shadow(br, _banner, EncounterUi.Header, _bannerColor, TextAnchor.MiddleCenter);
             }
             DrawFooter();
         }
 
-        private static void DrawNote(float lx, float y, float laneW, Color col)
+        /// <summary>A slim strip at the top: blocks with PASS/MISS, the mix stage, the beat and the judgement counts.</summary>
+        private void DrawStrip()
         {
             float px(float v) => EncounterUi.Px(v);
-            var r = new Rect(lx + px(8), y - px(15), laneW - px(16), px(30));
-            EncounterUi.Fill(r, col);
-            EncounterUi.Fill(new Rect(r.x, r.y, r.width, px(6)), Color.Lerp(col, Color.white, 0.6f));
-        }
-
-        private void DrawLeftPanel(Rect r)
-        {
-            float px(float v) => EncounterUi.Px(v);
-            if (r.x < px(8)) r.x = px(8);
-            EncounterUi.Panel(r);
-            float x = r.x + px(18), w = r.width - px(36), y = r.y + px(12);
-            EncounterUi.Label(new Rect(x, y, w, px(40)), "Blocks", EncounterUi.Header);
-            y += px(48);
+            float sw = UnityEngine.Screen.width;
+            var r = new Rect(px(16), px(92), sw - px(32), px(48));
+            EncounterUi.Fill(r, new Color(0.05f, 0.04f, 0.03f, 0.55f));
+            float x = r.x + px(12);
+            EncounterUi.Label(new Rect(x, r.y, px(330), r.height), "Dance at the fire  <size=" + (int)px(20) + ">Sol, 174 BPM</size>", EncounterUi.Body, EncounterUi.Gold);
+            x += px(340);
             for (int b = 0; b < Tuning.BlockCount; b++)
             {
-                var row = new Rect(x, y, w, px(52));
                 var res = Session.BlockResultOf(b);
                 bool cur = b == Session.CurrentBlock && SongTime >= 0;
-                EncounterUi.Fill(row, cur ? new Color(1f, 0.8f, 0.3f, 0.22f) : new Color(1, 1, 1, 0.05f));
-                string fam = Session.FamilyOfBlock(b);
-                EncounterUi.Label(new Rect(row.x + px(12), row.y, px(200), row.height), "Block " + (b + 1) + (fam != null ? "  <size=" + (int)px(20) + ">" + (fam == "bass" ? "bass" : "drums") + "</size>" : ""), EncounterUi.Body);
+                var chip = new Rect(x, r.y + px(7), px(120), r.height - px(14));
+                Color bg = res == null ? (cur ? new Color(1f, 0.8f, 0.3f, 0.45f) : new Color(1, 1, 1, 0.08f)) : res.Passed ? new Color(0.2f, 0.6f, 0.3f, 0.9f) : new Color(0.6f, 0.2f, 0.2f, 0.9f);
+                EncounterUi.Fill(chip, bg);
                 string mark = res == null ? (cur ? "playing" : "") : res.Passed ? "PASS" : "MISS";
-                Color mc = res == null ? EncounterUi.Dim : res.Passed ? EncounterUi.Good : EncounterUi.Bad;
-                EncounterUi.Label(new Rect(row.x, row.y, row.width - px(12), row.height), "<b>" + mark + "</b>", EncounterUi.Body, mc, TextAnchor.MiddleRight);
-                y += px(58);
+                EncounterUi.Label(chip, (b + 1) + "  " + mark, EncounterUi.ChipSmall, Color.white, TextAnchor.MiddleCenter);
+                x += px(128);
             }
-            y += px(10);
-            EncounterUi.Label(new Rect(x, y, w, px(40)), "Mix", EncounterUi.Header);
-            y += px(46);
-            int stage = Session.CurrentStage;
-            for (int s = 0; s < StageNames.Length; s++)
-            {
-                var row = new Rect(x, y, w, px(40));
-                bool on = s == stage;
-                if (on) EncounterUi.Fill(row, new Color(0.5f, 0.35f, 1f, 0.35f));
-                EncounterUi.Label(new Rect(row.x + px(12), row.y, row.width, row.height), (on ? "<b>" : "") + StageNames[s] + (on ? "</b>" : ""), EncounterUi.Body, on ? Color.white : EncounterUi.Dim);
-                y += px(44);
-            }
-        }
-
-        private void DrawRightPanel(Rect r, double beat)
-        {
-            float px(float v) => EncounterUi.Px(v);
-            if (r.xMax > UnityEngine.Screen.width - px(8)) r.x = UnityEngine.Screen.width - px(8) - r.width;
-            EncounterUi.Panel(r);
-            float x = r.x + px(18), w = r.width - px(36), y = r.y + px(12);
-            int b = Mathf.Clamp((int)Math.Floor(beat) + 1, 0, Tuning.PhraseBeats);
-            EncounterUi.Label(new Rect(x, y, w, px(40)), "Beat", EncounterUi.Header);
-            EncounterUi.Label(new Rect(x, y, w, px(40)), (beat < 0 ? "-" : b.ToString()) + " / " + Tuning.PhraseBeats, EncounterUi.Header, EncounterUi.Text, TextAnchor.MiddleRight);
-            y += px(52);
-            string[] names = { "Perfect", "Great", "OK", "Miss" };
-            int[] vals = { LivePerfect, LiveGreat, LiveOk, LiveMiss };
-            Color[] cols = { new Color(1f, 0.85f, 0.3f), new Color(0.45f, 1f, 0.55f), new Color(0.5f, 0.75f, 1f), EncounterUi.Bad };
-            for (int i = 0; i < 4; i++)
-            {
-                EncounterUi.Label(new Rect(x, y, w, px(40)), names[i], EncounterUi.Body, cols[i]);
-                EncounterUi.Label(new Rect(x, y, w, px(40)), vals[i].ToString(), EncounterUi.Body, EncounterUi.Text, TextAnchor.MiddleRight);
-                y += px(42);
-            }
-            y += px(8);
-            EncounterUi.Label(new Rect(x, y, w, px(34)), Stems.IsSynth ? "Music: synth fallback" : "Music: Lv1 Warehouse", EncounterUi.Hint);
+            x += px(12);
+            EncounterUi.Label(new Rect(x, r.y, px(220), r.height), "Mix: <b>" + StageNames[Mathf.Clamp(Session.CurrentStage, 0, StageNames.Length - 1)] + "</b>", EncounterUi.Body, EncounterUi.Text);
+            int bt = Mathf.Clamp((int)Math.Floor(Session.SecondsToBeat(double.IsNaN(SongTime) ? 0 : SongTime)) + 1, 0, Tuning.PhraseBeats);
+            string counts = "Beat " + (SongTime < 0 ? "-" : bt.ToString()) + "/" + Tuning.PhraseBeats + "    <color=#FFD040>Perfect " + LivePerfect + "</color>  <color=#70FF8C>Great " + LiveGreat + "</color>  <color=#8CBFFF>OK " + LiveOk + "</color>  <color=#FF6B60>Miss " + LiveMiss + "</color>";
+            EncounterUi.Label(new Rect(r.x, r.y, r.width - px(12), r.height), counts, EncounterUi.Body, EncounterUi.Text, TextAnchor.MiddleRight);
         }
 
         private void DrawResult()
@@ -653,11 +575,11 @@ namespace World.Game
             var r = LastResult;
             if (r == null) return;
             var rect = EncounterUi.Centered(800, 540, 20);
-            EncounterUi.Panel(rect, new Color(0.05f, 0.04f, 0.08f, 0.94f));
+            EncounterUi.Panel(rect, new Color(0.06f, 0.05f, 0.04f, 0.92f));
             float x = rect.x + px(30), w = rect.width - px(60), y = rect.y + px(16);
-            EncounterUi.Label(new Rect(rect.x, y, rect.width, px(72)), r.Success ? "Party success!" : "Not quite a party", EncounterUi.Big, r.Success ? EncounterUi.Good : EncounterUi.Gold, TextAnchor.MiddleCenter);
+            EncounterUi.Label(new Rect(rect.x, y, rect.width, px(72)), r.Success ? "The dance is alive!" : "The dance faltered", EncounterUi.Big, r.Success ? EncounterUi.Good : EncounterUi.Gold, TextAnchor.MiddleCenter);
             y += px(80);
-            EncounterUi.Label(new Rect(rect.x, y, rect.width, px(40)), "Blocks passed: <b>" + r.PassedBlocks + " / " + Tuning.BlockCount + "</b>", EncounterUi.Body, null, TextAnchor.MiddleCenter);
+            EncounterUi.Label(new Rect(rect.x, y, rect.width, px(40)), "Blocks kept: <b>" + r.PassedBlocks + " / " + Tuning.BlockCount + "</b>", EncounterUi.Body, null, TextAnchor.MiddleCenter);
             y += px(50);
             float bw = px(150), gap = px(16), bx = rect.x + (rect.width - (bw * 4 + gap * 3)) / 2f;
             for (int b = 0; b < Tuning.BlockCount; b++)
@@ -673,13 +595,13 @@ namespace World.Game
                 "Perfect " + r.Perfect + "    Great " + r.Great + "    OK " + r.Ok + "    Miss " + r.Miss + "    Holds " + r.HoldComplete + "/" + (r.HoldComplete + r.HoldPartial),
                 EncounterUi.Body, null, TextAnchor.MiddleCenter);
             y += px(60);
-            string route; Color rc;
-            if (r.RouteOpened == RouteOutcome.Bar) { route = "The bar is open - walk in through the left doorway."; rc = EncounterUi.Good; }
-            else if (r.RouteOpened == RouteOutcome.Balcony) { route = "The balcony is open - take the ramp on the right."; rc = EncounterUi.Good; }
-            else { route = "Final block missed: stay on the floor and try again."; rc = EncounterUi.Bad; }
-            EncounterUi.Label(new Rect(rect.x + px(20), y, rect.width - px(40), px(44)), route, EncounterUi.Body, rc, TextAnchor.MiddleCenter);
+            string ending; Color rc;
+            if (r.RouteOpened == RouteOutcome.Bar) { ending = FireLeapName + ": the dancers leapt the fire!"; rc = EncounterUi.Good; }
+            else if (r.RouteOpened == RouteOutcome.Balcony) { ending = SpiritCallName + ": the spirits rose from the fire."; rc = EncounterUi.Good; }
+            else { ending = "The last block slipped: dance again to finish it."; rc = EncounterUi.Bad; }
+            EncounterUi.Label(new Rect(rect.x + px(20), y, rect.width - px(40), px(44)), ending, EncounterUi.Body, rc, TextAnchor.MiddleCenter);
             float by = rect.yMax - px(90), hbw = (w - px(20)) / 2f;
-            if (EncounterUi.KeyButton(new Rect(x, by, hbw, px(66)), "Retry  [R]")) Retry();
+            if (EncounterUi.KeyButton(new Rect(x, by, hbw, px(66)), "Dance again  [R]")) Retry();
             if (EncounterUi.KeyButton(new Rect(x + hbw + px(20), by, hbw, px(66)), "Return  [Enter / Esc]")) Return();
         }
 
@@ -689,7 +611,7 @@ namespace World.Game
             float sw = UnityEngine.Screen.width, sh = UnityEngine.Screen.height;
             var r = new Rect(px(24), sh - px(46), sw - px(48), px(36));
             string cal = (Tuning.CalibrationMs >= 0 ? "+" : "") + Tuning.CalibrationMs.ToString("0") + " ms";
-            EncounterUi.Shadow(r, "Pads D F J K     Route <- ->     Calibration: " + cal + "  ( [ -10 ms   ] +10 ms )     Tab camera     Esc pause", EncounterUi.Hint, EncounterUi.Text, TextAnchor.MiddleLeft);
+            EncounterUi.Shadow(r, "Drums D F J K     Ending <- ->     Calibration: " + cal + "  ( [ -10 ms   ] +10 ms )     Esc pause", EncounterUi.Hint, EncounterUi.Text, TextAnchor.MiddleLeft);
         }
     }
 }

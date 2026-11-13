@@ -77,10 +77,9 @@ namespace World.Game.Tests
             Assert.Less(BoardSpace.Flat(mira.transform.position - camp.Hearth), 30f, "Mira by the home camp");
 
             // The village of the MVP is gone.
-            Assert.IsNull(WarehouseSet.Current, "no warehouse in normal play");
             foreach (var name in new[] { "Warehouse", "Storehouse", "Market", "Bell", "Outpost" })
                 Assert.IsNull(GameObject.Find(name), "no " + name + " object");
-            Assert.AreEqual(1, Npc.All.Count, "only Mira until packages D and N add villagers");
+            Assert.IsNotNull(Npc.Find(NpcIds.Host), "Sol at the dance circle (package D)");
         }
 
         [UnityTest]

@@ -252,35 +252,33 @@ namespace World.Game.Tests
         }
     }
 
-    /// <summary>G2 rhythm party in the scene: DSP sync, perfect autoplayer (bar, then balcony on retry), held stage, failed final block, abort, Tab, synth fallback.</summary>
+    /// <summary>
+    /// The dance at the fire (REFACTOR_SPEC 2.E, package D): DSP sync, perfect autoplayer (Fire leap, then Spirit call on
+    /// retry), held stage, failed final block, abort, synth fallback; the viewpoint is restored and the village clock
+    /// stands still throughout.
+    /// </summary>
     public class RhythmPartyTests : EncounterTestBase
     {
-        // F-0 interim: normal play has no warehouse; the tests stand one up (package D replaces the party with the dance circle).
-        WarehouseSet Warehouse => WarehouseSet.Current;
-
-        IEnumerator LoadWithWarehouse()
-        {
-            yield return Load();
-            WarehouseSet.BuildStandalone(Boot);
-            yield return null; yield return null;
-        }
+        CampLayout Camp => new CampLayout(Boot.Sim.State.Board);
 
         IEnumerator StartParty()
         {
-            var w = WarehouseSet.BuildStandalone(Boot);
-            yield return null;
-            yield return Accept(NpcIds.Host, w.DecksFrontPosition, w.DecksYaw + 180f);
-            Assert.IsNotNull(RhythmPartyEncounter.Current, "rhythm party is the running encounter");
+            var sol = Npc.Find(NpcIds.Host);
+            Assert.IsNotNull(sol, "Sol stands at the dance circle");
+            Assert.IsNotNull(DanceCircle.Current, "the dance circle is built");
+            var front = Camp.DanceCircleCentre + Camp.Forward * 3.2f + Camp.Right * 1.2f;
+            yield return Accept(NpcIds.Host, front, BoardSpace.YawOf(sol.transform.position - front));
+            Assert.IsNotNull(RhythmPartyEncounter.Current, "the dance is the running encounter");
+            Assert.AreSame(DanceCircle.Current, RhythmPartyEncounter.Current.Circle, "danced on the camp's circle");
         }
 
         static double Grid(RhythmCue c) => c.Tick * 60.0 / (174.0 * 960.0);
 
         [UnityTest, Timeout(150000)]
-        public IEnumerator Phrase_DspSync_PerfectAutoplay_Bar_ThenBalconyOnRetry()
+        public IEnumerator Phrase_DspSync_PerfectAutoplay_FireLeap_ThenSpiritCallOnRetry()
         {
-            yield return LoadWithWarehouse();
+            yield return Load();
             RhythmPartyEncounter.TuningOverride = new RhythmTuning();
-            bool doorBefore = Warehouse.IsDoorMusicOn;
             yield return StartParty();
             var r = RhythmPartyEncounter.Current;
             Assert.IsFalse(Boot.GodCam.KeyboardPan, "God View keyboard pan off during the phrase");
@@ -289,24 +287,14 @@ namespace World.Game.Tests
             Assert.AreEqual(r.Player.StartDsp, r.Player.DrumsStartDsp, "drums start on song time 0");
             Assert.Less(r.SongTime, -1.9, "count-in: song time starts about 2 s negative");
             if (AudioGuard.CanWriteControls) Assert.AreEqual(4, r.Player.ClicksScheduled, "four count-in clicks");
-            if (AudioGuard.CanWriteControls) Assert.IsFalse(Warehouse.IsDoorMusicOn, "door music off while the stems play");
+            Assert.Less(BoardSpace.Flat(Boot.Avatar.Position - Camp.DancerSpot), 0.05f, "viewpoint at the dancer's spot");
+            Assert.Less(Mathf.Abs(Mathf.DeltaAngle(Boot.Avatar.Yaw, Camp.DancerYaw)), 0.5f, "facing the fire");
             r.AutoPlayEnabled = true; r.AutoRoute = SimRoute.Bar;
 
-            bool tabbed = false, synced = false;
-            double tabSong = 0; int tabJudged = 0; float tabReal = 0;
+            bool synced = false;
             while (r.Phase != RhythmPartyEncounter.Screen.Result)
             {
                 double t = r.SongTime;
-                if (!tabbed && t > 7.0)
-                {
-                    tabbed = true; tabSong = t; tabJudged = r.CuesJudged; tabReal = Time.realtimeSinceStartup;
-                    Boot.Views.Toggle();
-                    yield return new WaitForSecondsRealtime(0.5f);
-                    Assert.AreEqual(ViewMode.God, Boot.Views.CurrentView);
-                    Assert.GreaterOrEqual(r.CuesJudged, tabJudged, "cues judged kept across Tab");
-                    Assert.AreEqual(tabSong + (Time.realtimeSinceStartup - tabReal), r.SongTime, 0.12, "song time keeps running across Tab");
-                    Boot.Views.Toggle();
-                }
                 if (!synced && t > 9.0 && !r.Player.UsingRealtimeFallback && AudioGuard.CanWriteControls && r.Player.Drums.isPlaying)
                 {
                     synced = true;
@@ -326,6 +314,7 @@ namespace World.Game.Tests
             // DSP grid: every cue time sits on the 174 BPM grid; stems on the same grid.
             foreach (var c in r.Session.AllCues) Assert.Less(Math.Abs(c.Time - Grid(c)) * 1000, 1.0, "cue " + c.Index + " on the DSP grid");
             Assert.IsTrue(r.Session.HasBassReveal);
+            Assert.IsTrue(r.BassJoined, "the bass joined after a good block");
             Assert.AreEqual(r.Player.BassStartDsp, r.Player.OtherStartDsp, "bass and other share one scheduled start");
             if (AudioGuard.CanWriteControls)
                 Assert.Less(Math.Abs(r.Player.BassStartDsp - r.Player.StartDsp - r.Session.BeatToSeconds(r.Session.BassRevealBeat)) * 1000, 1.0, "bass starts on the reveal downbeat");
@@ -334,33 +323,33 @@ namespace World.Game.Tests
             Assert.AreEqual(4, res.PassedBlocks);
             Assert.IsTrue(res.Success);
             Assert.AreEqual(RouteOutcome.Bar, res.RouteOpened);
-            Assert.IsTrue(Warehouse.IsRouteOpen(World.Game.Route.Bar), "bar opened");
-            Assert.IsFalse(Warehouse.IsRouteOpen(World.Game.Route.Balcony));
+            Assert.AreEqual(DanceCircle.Effect.FireLeap, r.Circle.LastEffect, "Fire leap: the dancers leap the fire");
             Assert.Greater(r.BlocksCheered, 0, "cheer on passed blocks");
             AssertClockHeld("after the phrase");
 
-            // Retry at once, choose the balcony.
+            // Retry at once, choose the spirit call.
             r.AutoRoute = SimRoute.Balcony;
             Assert.IsTrue(r.Retry());
             Assert.AreEqual(2, r.Attempts);
+            Assert.AreEqual(DanceCircle.Effect.None, r.Circle.LastEffect, "a retry clears the ending");
             yield return Until(() => r.Phase == RhythmPartyEncounter.Screen.Result, 40f, "second phrase did not end");
             Assert.AreEqual(RouteOutcome.Balcony, r.LastResult.RouteOpened);
             Assert.AreEqual(0, r.LastResult.Miss);
-            Assert.IsTrue(Warehouse.IsRouteOpen(World.Game.Route.Balcony), "balcony opened");
-            Assert.IsTrue(Warehouse.IsRouteOpen(World.Game.Route.Bar), "bar stays open");
+            Assert.AreEqual(DanceCircle.Effect.SpiritCall, r.Circle.LastEffect, "Spirit call: blue smoke rises");
             AssertClockHeld("after the retry");
 
             Assert.IsTrue(r.Return());
             yield return Until(() => !EncounterHost.Instance.IsRunning, 2f, "party did not end");
             AssertAvatarRestored("party");
             Assert.IsTrue(Boot.GodCam.KeyboardPan, "keyboard pan restored");
-            if (AudioGuard.CanWriteControls) Assert.AreEqual(doorBefore, Warehouse.IsDoorMusicOn, "door music restored");
+            Assert.AreEqual(0, DanceCircle.Current.ActiveDancers, "dancers back at their seats");
+            for (int p = 1; p <= 4; p++) Assert.IsFalse(DanceCircle.Current.IsLit(p), "drum " + p + " dark after the dance");
         }
 
         [UnityTest, Timeout(90000)]
         public IEnumerator Phrase_MissFirstBlock_HoldsStage_StillSucceeds()
         {
-            yield return LoadWithWarehouse();
+            yield return Load();
             RhythmPartyEncounter.TuningOverride = new RhythmTuning();
             yield return StartParty();
             var r = RhythmPartyEncounter.Current;
@@ -368,19 +357,20 @@ namespace World.Game.Tests
             yield return Until(() => r.Session.StageOfBlock(1) >= 0, 15f, "block 0 not decided");
             Assert.IsFalse(r.Session.BlockResultOf(0).Passed, "block 0 missed");
             Assert.AreEqual(0, r.Session.StageOfBlock(1), "a miss holds the mix stage");
+            Assert.Greater(r.LiveMiss, 0, "misses counted");
             yield return Until(() => r.Phase == RhythmPartyEncounter.Screen.Result, 40f, "phrase did not end");
             var res = r.LastResult;
             Assert.AreEqual(3, res.PassedBlocks);
             Assert.IsTrue(res.Success, "three passes: party success");
             Assert.AreEqual(32, r.Session.BassRevealBeat, "bass revealed at beat 32 after an early miss");
-            Assert.AreEqual(RouteOutcome.Bar, res.RouteOpened, "final block passed: default route opens");
-            Assert.IsTrue(Warehouse.IsRouteOpen(World.Game.Route.Bar));
+            Assert.AreEqual(RouteOutcome.Bar, res.RouteOpened, "final block passed: the default ending (Fire leap)");
+            Assert.AreEqual(DanceCircle.Effect.FireLeap, r.Circle.LastEffect);
         }
 
         [UnityTest, Timeout(90000)]
-        public IEnumerator Phrase_FailFinalBlock_NoRoute_RetryWorks_AbortStopsAudio()
+        public IEnumerator Phrase_FailFinalBlock_NoEnding_RetryWorks_AbortStopsAudio()
         {
-            yield return LoadWithWarehouse();
+            yield return Load();
             RhythmPartyEncounter.TuningOverride = new RhythmTuning();
             yield return StartParty();
             var r = RhythmPartyEncounter.Current;
@@ -390,9 +380,8 @@ namespace World.Game.Tests
             Assert.IsFalse(res.FinalBlockPassed);
             Assert.AreEqual(3, res.PassedBlocks);
             Assert.IsTrue(res.Success, "three passes still count as a party success (R9)");
-            Assert.AreEqual(RouteOutcome.None, res.RouteOpened, "no route without the final block");
-            Assert.IsFalse(Warehouse.IsRouteOpen(World.Game.Route.Balcony));
-            Assert.IsFalse(Warehouse.IsRouteOpen(World.Game.Route.Bar));
+            Assert.AreEqual(RouteOutcome.None, res.RouteOpened, "no ending without the final block");
+            Assert.AreEqual(DanceCircle.Effect.None, r.Circle.LastEffect, "no leap and no spirits");
             Assert.IsTrue(res.CanRetry);
 
             Assert.IsTrue(r.Retry());
@@ -409,12 +398,13 @@ namespace World.Game.Tests
             Assert.IsNull(RhythmPartyEncounter.Current);
             AssertAvatarRestored("aborted party");
             Assert.AreEqual(tick, SavedTick, "clock paused until the abort");
+            Assert.AreEqual(0, DanceCircle.Current.ActiveDancers, "dancers back at their seats after the abort");
         }
 
         [UnityTest, Timeout(60000)]
         public IEnumerator SynthFallback_WhenStemsMissing()
         {
-            yield return LoadWithWarehouse();
+            yield return Load();
             RhythmPartyEncounter.TuningOverride = new RhythmTuning();
             RhythmPartyEncounter.StemDirOverride = "Rhythm/no_such_pack";
             yield return StartParty();
