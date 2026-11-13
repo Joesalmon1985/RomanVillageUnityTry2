@@ -253,6 +253,7 @@ namespace World.Sim.Tests
             g.Add(new Goal { Name = "cover", Done = () => CoverTarget(S, out _, out _) < 0, Cost = () => CoverCost(S), Act = () => Cover(S) });
             g.Add(CityGoal("city3", 3));
             g.Add(Stage(2));
+            if (Completionist) g.Add(Building("market", BuildingType.Market, null));
             _goals = g;
             return g;
         }

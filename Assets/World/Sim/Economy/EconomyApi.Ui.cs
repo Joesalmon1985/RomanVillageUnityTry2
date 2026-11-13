@@ -104,7 +104,7 @@ namespace World.Sim.Economy
             switch (d.Kind)
             {
                 case BuildingKind.Producer: v.MakesText = "Makes: " + EconomyLogic.CostText(d.Outputs) + " per cycle."; break;
-                case BuildingKind.Harvester: v.MakesText = "Makes: " + Wares.DisplayName(TerrainInfo.RawWare(d.Terrain).Value) + " from the " + TerrainWord(d.Terrain) + "'s batch."; break;
+                case BuildingKind.Harvester: v.MakesText = "Makes: " + Wares.DisplayName(TerrainInfo.RawWare(d.Terrain).Value) + " from the batch drawn for a " + TerrainWord(d.Terrain) + " hex next to it."; break;
                 case BuildingKind.PowerPlant: v.MakesText = "Makes: power for the smelter and the barracks."; break;
                 case BuildingKind.Forester: v.MakesText = "Makes: forest batches full size."; break;
                 default:
@@ -156,6 +156,9 @@ namespace World.Sim.Economy
                 if (EconomyLogic.CheckPlacement(s, PlayerIds.Human, t, v).Ok) l.Add(v);
             return l;
         }
+
+        /// <summary>"2 planks and 1 bricks" for a ware array (index = (int)Ware); "nothing" when empty.</summary>
+        public static string CostText(int[] wares) => EconomyLogic.CostText(wares);
 
         /// <summary>Building types whose recipe or harvest makes this ware.</summary>
         public static List<BuildingType> ProducersOf(WorldState s, Ware w)

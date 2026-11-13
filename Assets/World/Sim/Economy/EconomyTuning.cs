@@ -52,7 +52,7 @@ namespace World.Sim.Economy
         /// Bricks to place the six commission buildings and their roads before any brick is made, a little Coal so the
         /// brick kiln can start before the charcoal kiln, and Rations for the first city.
         /// </summary>
-        public int[] StarterStock = EconomyTuning.W(Ware.Planks, 16, Ware.Bricks, 6, Ware.Coal, 2, Ware.Rations, 6);
+        public int[] StarterStock = EconomyTuning.W(Ware.Planks, 16, Ware.Bricks, 6, Ware.Coal, 2, Ware.Rations, 4);
         /// <summary>
         /// Construction cost per size class (index = (int)BuildingSize). The building table copies these at creation;
         /// after changing them call <see cref="ApplySizeCosts"/>.
