@@ -30,7 +30,7 @@ namespace World.Game
 
         public string Prompt => "Ring the town bell";
         public string Title => "Town bell";
-        public IEnumerable<string> Lines { get { yield return "Rings out across the village."; yield return "Will end the round once rounds exist."; } }
+        public IEnumerable<string> Lines { get { yield return "Rings out across the village."; yield return "Ring it (E) to end the round: new numbers are drawn and batches authorised, as with End Round in God View."; } }
 
         public void Interact()
         {

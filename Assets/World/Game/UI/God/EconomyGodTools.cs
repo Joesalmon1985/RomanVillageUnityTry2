@@ -14,6 +14,9 @@ namespace World.Game
 
         public static void RegisterDefaults()
         {
+            GodToolbar.Register(new BuildTool());
+            GodToolbar.Register(new RoadTool());
+            GodToolbar.Register(new WaresTool());
             GodToolbar.Register(new GodTool
             {
                 Id = GodToolbar.SelectId, Label = "Inspect", Hotkey = KeyCode.V, Order = 40,
@@ -34,5 +37,17 @@ namespace World.Game
         }
 
         public static ProblemsTool Problems => GodToolbar.Find(ProblemsTool.ToolId) as ProblemsTool;
+        public static BuildTool Build => GodToolbar.Find(BuildTool.ToolId) as BuildTool;
+        public static RoadTool Road => GodToolbar.Find(RoadTool.ToolId) as RoadTool;
+
+        /// <summary>Switches to God View with the Build tool open (optionally preselecting a type) framing the village.</summary>
+        public static void OpenBuildPlans(BuildingType? type = null)
+        {
+            var boot = WorldBootstrap.Instance;
+            if (boot == null || GodToolbar.Instance == null) return;
+            boot.Views.SetView(ViewMode.God);
+            var t = GodToolbar.Instance.Activate(BuildTool.ToolId) as BuildTool;
+            if (t != null && type.HasValue) t.SelectType(type.Value);
+        }
     }
 }

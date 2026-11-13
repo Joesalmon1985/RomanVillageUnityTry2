@@ -61,16 +61,10 @@ namespace World.Game
         }
 
         /// <summary>
-        /// The quartermaster's commission (Docs/ECONOMY_API.md, Rules: Commission), read from the sim each time the
-        /// dialogue opens. Names and amounts come from the economy UI helpers and tuning; the list of six building types
-        /// mirrors the documented rule (the sim keeps its own list internal).
+        /// Bram's fallback lines, used until the economy presentation (EconomyFirstPerson) replaces his DialogueBuilder
+        /// with the full commission dialogue (progress, next step with a beacon, acknowledgement). Names and amounts come
+        /// from the economy UI helpers and tuning; the six types are EconomyLook.CommissionTypes.
         /// </summary>
-        private static readonly BuildingType[] CommissionTypes =
-        {
-            BuildingType.Forester, BuildingType.Woodcutter, BuildingType.Sawmill,
-            BuildingType.ClayPit, BuildingType.CharcoalKiln, BuildingType.BrickKiln,
-        };
-
         private static void QuartermasterLines(WorldBootstrap boot, Npc npc)
         {
             npc.Lines.Clear();
@@ -82,7 +76,7 @@ namespace World.Game
             }
 
             var names = new List<string>();
-            foreach (var t in CommissionTypes) names.Add(EconomyApi.DescribeType(s, t).Name);
+            foreach (var t in EconomyLook.CommissionTypes) names.Add(EconomyApi.DescribeType(s, t).Name);
             var stock = new int[Wares.Count];
             stock[(int)Ware.Planks] = s.Economy.Tuning.CommissionPlanks;
             stock[(int)Ware.Bricks] = s.Economy.Tuning.CommissionBricks;
