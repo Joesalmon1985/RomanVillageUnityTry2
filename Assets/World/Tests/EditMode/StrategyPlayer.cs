@@ -18,6 +18,8 @@ namespace World.Sim.Tests
         public readonly bool Passive;
         /// <summary>Completionist: also builds the army and attacks, and lets each round's deliveries finish (longer game).</summary>
         public readonly bool Completionist;
+        /// <summary>Careless: never moves the hero (demons pile up).</summary>
+        public bool IgnoreDemons;
         private readonly Queue<Command> _queue = new Queue<Command>();
         private long _roundStartTick;
         private int _lastRound;
@@ -33,7 +35,7 @@ namespace World.Sim.Tests
             Sim = sim;
             Passive = passive;
             Completionist = completionist;
-            if (completionist) MaxRoundTicks = 1500;
+            MaxRoundTicks = completionist ? 1200 : 1100;
         }
 
         private WorldState S => Sim.State;
@@ -72,7 +74,7 @@ namespace World.Sim.Tests
                 var c = _queue.Dequeue();
                 if (Submit(c)) return;
             }
-            if (MoveHero(s)) return;
+            if (!IgnoreDemons && MoveHero(s)) return;
             if (Plan(s)) return;
             if (ShouldEndRound(s)) Submit(new EndRound());
         }
@@ -118,10 +120,12 @@ namespace World.Sim.Tests
             int best = -1, bestScore = int.MaxValue;
             foreach (var kv in StrategyApi.Demons(s))
             {
-                if (!Relevant(s, kv.Key)) continue;
+                if (!Relevant(s, kv.Key) && kv.Value < StrategyApi.BreachThreshold(s) - 1) continue;
                 var p = topo.FindPath(hero, kv.Key);
                 if (p == null) continue;
-                int score = p.Length + (critical.Contains(kv.Key) ? 0 : StrategyApi.PlayerCities(s).Contains(kv.Key) ? 3 : 6);
+                // Flags close to breaching come first, then blocked routes, cities, any road flag.
+                int danger = kv.Value >= StrategyApi.BreachThreshold(s) - 1 ? -6 : 0;
+                int score = p.Length + danger + (critical.Contains(kv.Key) ? 0 : StrategyApi.PlayerCities(s).Contains(kv.Key) ? 3 : 6);
                 if (score < bestScore)
                 {
                     best = kv.Key;
@@ -176,6 +180,7 @@ namespace World.Sim.Tests
                 g.Add(CityGoal("city3", 3));
                 g.Add(Building("wonder_site", BuildingType.WonderSite, null));
                 g.Add(Stage(1));
+                g.Add(Stage(2));
                 _goals = g;
                 return g;
             }
@@ -184,7 +189,7 @@ namespace World.Sim.Tests
             g.Add(new Goal
             {
                 Name = "units",
-                Done = () => Milestones.ContainsKey("attack") || UnitsTrainedOrQueued(S) >= 3,
+                Done = () => Milestones.ContainsKey("attack") || UnitsTrainedOrQueued(S) >= 4,
                 Cost = () => !Active(BuildingType.Barracks) ? null : EconomyTuning.W(Ware.Rations, UnitRations(S), Ware.Ingots, S.Military.Tuning.UnitIngots),
                 Act = () => Submit(new QueueUnit { BarracksId = EconomyApi.FindBuilding(S, BuildingType.Barracks, true) }),
             });
@@ -203,7 +208,15 @@ namespace World.Sim.Tests
             Cost = () =>
             {
                 if (S.Strategy.Age < minAge) return null;
-                if (Exists(t)) return new int[Wares.Count]; // a site on its way: wait for it (its wares are already requested)
+                if (Exists(t) && Completionist) return new int[Wares.Count]; // wait for the site (its wares are requested)
+                if (Exists(t))
+                {
+                    // A site on its way: keep its missing wares, carry on with the next goal.
+                    var site = S.Economy.Buildings[EconomyApi.FindBuilding(S, t)];
+                    var def = EconomyApi.Def(S, t);
+                    for (int w = 0; w < Wares.Count; w++) _reserve[w] += Math.Max(0, def.Cost[w] - site.Stock[w] - site.Incoming[w]);
+                    return null;
+                }
                 int v = EconomyTestKit.ChooseVertex(S, t, filter);
                 if (v < 0) return null;
                 var c = (int[])EconomyApi.Def(S, t).Cost.Clone();
@@ -490,7 +503,7 @@ namespace World.Sim.Tests
             if (s.Military.Outpost.Destroyed) return false;
             var squads = MilitaryApi.Squads(s, PlayerIds.Human);
             bool last = StrategyApi.AgeRound(s) >= s.Strategy.Tuning.Ages * s.Strategy.Tuning.RoundsPerAge;
-            int need = last ? 1 : 3;
+            int need = last ? 1 : 4;
             var ready = squads.Where(x => x.Order == OrderKind.None && x.Units >= need).ToList();
             if (ready.Count == 0) return false;
             Mark("attack");
@@ -505,7 +518,7 @@ namespace World.Sim.Tests
             long age = s.Tick - _roundStartTick;
             if (age < MinRoundTicks) return false;
             if (age >= MaxRoundTicks) return true;
-            if (Completionist && s.Strategy.Started)
+            if (s.Strategy.Started)
             {
                 // Let sites, wonder stages, training and marches finish inside the round.
                 if (s.Economy.Buildings.Any(b => b.State == BuildingState.Site || b.State == BuildingState.Constructing)) return false;

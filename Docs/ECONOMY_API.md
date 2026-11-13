@@ -21,6 +21,7 @@ Refusal codes: `invalid_site` (placement) and `EconomyRefusals.*` (`not_connecte
 - Rounds: `AuthoriseBatch(s, hex, amount, ev)` (once per hex per round; forest halved, rounded up, unless an active Forester touches the hex), `BatchRemaining(s, hex)`.
 - Cities: `AddCity(s, player, vertex)` (-1 if the flag is taken), `IsInTerritory(s, player, vertex)` (within `TerritoryRadius` = 3 edges of a city), `IsVertexOccupied`, `CheckPlacement(s, player, type, vertex)`.
 - Buildings: `FindBuilding(s, type, activeOnly)`, `BuildingAt(s, vertex)`, `GetBuilding`, `Def(s, type)`, `IsConnected(s, id)`, `IsFuelled(s, id)`, `HasRoad(s, edge)`.
+- Carriers: `AddCarrier(s)` (idle at the storehouse; Strategy adds 2 per founded city).
 - Wares: `RequestWares(s, id, ware, count)` (carriers bring them to that active building), `Available(s, id, ware)`, `TryConsume(s, id, ware, count)` (unreserved only), `StorehouseCount` (unreserved), `TrySpendFromStorehouse`, `AddToStorehouse`, `WaresInWorld`.
 - Diagnostics: `Describe(s, buildingId)` / `DescribeJob(s, jobId)` -> `EconomyInfo{Title, Status, Reason, StockLines}`; e.g. "Sawmill is waiting for timber.", "No road connects the Storehouse to the Forester site.".
 

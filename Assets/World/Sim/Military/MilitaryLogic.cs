@@ -295,7 +295,8 @@ namespace World.Sim.Military
             }
             else
             {
-                g.Units.AddRange(raid.Units);
+                // Raiders refill the garrison up to its size for the age; the rest disband.
+                foreach (var u in raid.Units) if (g.Units.Count < GarrisonTarget(s)) g.Units.Add(u);
                 raid.Units.Clear();
                 raid.Alive = false;
             }

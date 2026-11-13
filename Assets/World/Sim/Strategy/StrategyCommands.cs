@@ -107,6 +107,7 @@ namespace World.Sim.Strategy
         {
             StrategyLogic.Pay(s, s.Strategy.Tuning.CityCost, s.Strategy.Ledger.Cities);
             int id = EconomyApi.AddCity(s, PlayerIds.Human, c.Vertex);
+            for (int i = 0; i < s.Strategy.Tuning.CarriersPerCity; i++) EconomyApi.AddCarrier(s);
             ev.Add(new CityFounded { PlayerId = PlayerIds.Human, Vertex = c.Vertex, CityId = id });
             return CommandResult.Accept();
         }

@@ -251,6 +251,13 @@ namespace World.Sim.Strategy
         {
             var st = s.Strategy;
             st.LastInfection.Clear();
+            if (st.Tuning.Intensify && st.Age >= 2 && st.InfectionDiscard.Count > 0)
+            {
+                // The drawn flags go back on top (end of the list), shuffled.
+                st.InfectionRng.Shuffle(st.InfectionDiscard);
+                st.InfectionDeck.AddRange(st.InfectionDiscard);
+                st.InfectionDiscard.Clear();
+            }
             for (int i = 0; i < count && !st.GameOver; i++)
             {
                 if (st.InfectionDeck.Count == 0)

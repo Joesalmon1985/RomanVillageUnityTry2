@@ -30,6 +30,8 @@ namespace World.Sim.Strategy
         // ---- Cities ----
         public int[] CityCost = EconomyTuning.W(Ware.Planks, 2, Ware.Stone, 3, Ware.Grain, 1);
         public int MaxCardsPerCity = 3;
+        /// <summary>Carriers that join the village (at the storehouse) when you found a city.</summary>
+        public int CarriersPerCity = 2;
 
         // ---- Market ----
         /// <summary>Wares given for one ware received.</summary>
@@ -50,6 +52,11 @@ namespace World.Sim.Strategy
         /// <summary>A drawn flag already holding this many demons adds a breach instead.</summary>
         public int BreachThreshold = 3;
         public int HeroMovesPerRound = 4;
+        /// <summary>
+        /// Intensify: from Age II, before each infection draw the discard pile is shuffled back on top of the deck,
+        /// so flags that already hold demons are drawn again (an ignored flag breaches).
+        /// </summary>
+        public bool Intensify = true;
 
         // ---- Draft ----
         public int DraftHandSize = 3;

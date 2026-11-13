@@ -39,6 +39,7 @@ namespace World.Sim.Tests
         {
             var sim = K.NewSim();
             var s = sim.State;
+            s.Strategy.Tuning.Intensify = false; // no hero play here: keep demons from breaching (tested separately)
             K.Step(sim);
             var ages = new List<int>();
             for (int r = 0; r < 6; r++)
@@ -531,6 +532,7 @@ namespace World.Sim.Tests
         {
             var sim = K.NewSim();
             var s = sim.State;
+            s.Strategy.Tuning.Intensify = false; // no hero play here: keep demons from breaching (tested separately)
             K.Step(sim);
             GameEnded end = null;
             for (int r = 0; r < 6; r++) end = K.EndRound(sim).OfType<GameEnded>().FirstOrDefault() ?? end;

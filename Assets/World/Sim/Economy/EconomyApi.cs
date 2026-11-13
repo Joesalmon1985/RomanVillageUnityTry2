@@ -138,6 +138,14 @@ namespace World.Sim.Economy
         public static bool TrySpendFromStorehouse(WorldState s, Ware ware, int count) =>
             TryConsume(s, s.Economy.StorehouseId, ware, count);
 
+        /// <summary>Add an idle carrier at the storehouse (strategy: each new city brings carriers). Returns its id.</summary>
+        public static int AddCarrier(WorldState s)
+        {
+            var c = new Carrier { Id = s.Economy.Carriers.Count, State = CarrierState.Idle, AtVertex = EconomyLogic.Storehouse(s).Vertex };
+            s.Economy.Carriers.Add(c);
+            return c.Id;
+        }
+
         /// <summary>Add wares to the storehouse from outside the economy (trade, card rewards).</summary>
         public static void AddToStorehouse(WorldState s, Ware ware, int count)
         {

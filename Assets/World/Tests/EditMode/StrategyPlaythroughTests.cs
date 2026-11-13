@@ -22,6 +22,7 @@ namespace World.Sim.Tests
             public int PlayerVp, RivalVp, Breaches, Cities, CardsBuilt, WonderStages, UnitsTrained, Rounds;
             public bool OutpostDestroyed;
             public string Notes;
+            public int Guards, SquadUnits;
             public SortedDictionary<string, long> Milestones;
             public Dictionary<string, int> EventCounts = new Dictionary<string, int>();
 
@@ -31,11 +32,11 @@ namespace World.Sim.Tests
                 string.Join(", ", Milestones.Select(kv => kv.Key + "@" + kv.Value)) + " || " + Notes;
         }
 
-        internal static GameReport Play(ulong seed, bool passive, bool checkEveryTick = true, bool completionist = false)
+        internal static GameReport Play(ulong seed, bool passive, bool checkEveryTick = true, bool completionist = false, bool careless = false)
         {
             var sim = WorldSimFactory.CreateNew(seed);
             var s = sim.State;
-            var player = new StrategyPlayer(sim, passive, completionist);
+            var player = new StrategyPlayer(sim, passive, completionist) { IgnoreDemons = careless };
             var rep = new GameReport { Seed = seed };
             for (int t = 0; t < TickBudget && !s.Strategy.GameOver; t++)
             {
@@ -67,6 +68,8 @@ namespace World.Sim.Tests
             rep.OutpostDestroyed = s.Military.Outpost.Destroyed;
             rep.Rounds = s.Economy.Round;
             rep.Milestones = player.Milestones;
+            rep.Guards = MilitaryApi.Outpost(s).Guards;
+            rep.SquadUnits = MilitaryApi.Squads(s, 0).Sum(q => q.Units);
             var wi = StrategyApi.Wonder(s);
             rep.Notes = wi.Status + " | " + (wi.BuildingId >= 0 ? EconomyApi.Describe(s, wi.BuildingId).Status + " " + string.Join(";", EconomyApi.Describe(s, wi.BuildingId).StockLines) : "no site");
             return rep;
@@ -88,45 +91,84 @@ namespace World.Sim.Tests
             Assert.GreaterOrEqual(r.EventCounts.TryGetValue("DraftPicked", out int dp) ? dp : 0, 12, "three drafts, two picks each, both sides");
         }
 
+        private static ulong OtherSeed(ulong i) => i * 104729UL + 11UL;
+
+        private const int Minute = 600;
+
         [Test]
-        public void FullPlaythrough_TenOtherSeeds_ReachAnEndingWithInvariants()
+        public void FullPlaythrough_TenOtherSeeds_EndIn10To15Minutes_FullSquadsTakeTheOutpost()
         {
             var lines = new List<string>();
-            for (ulong i = 1; i <= 10; i++)
+            int fullSquads = 0, taken = 0;
+            foreach (var seed in new[] { EconomyTestKit.DefaultSeed }.Concat(Enumerable.Range(1, 10).Select(i => OtherSeed((ulong)i))))
             {
-                var r = Play(i * 104729UL + 11UL, false, completionist: true);
+                var r = Play(seed, false, completionist: true);
                 lines.Add(r.ToString());
                 Assert.AreNotEqual(GameOutcome.None, r.Outcome, r.ToString());
                 Assert.IsTrue(r.Milestones.ContainsKey("city2") && r.Milestones.ContainsKey("barracks"), r.ToString());
+                Assert.That(r.Ticks >= 10 * Minute && r.Ticks <= 15.5 * Minute, "10 to 15 minutes: " + r);
+                if (r.UnitsTrained >= 4)
+                {
+                    fullSquads++;
+                    if (r.OutpostDestroyed) taken++;
+                }
             }
-            foreach (var l in lines) TestContext.WriteLine(l);
-            Console.WriteLine("FULL seeds\n" + string.Join("\n", lines));
+            Console.WriteLine("FULL squads of 4: " + fullSquads + ", outposts destroyed by them: " + taken + "\n" + string.Join("\n", lines));
+            Assert.GreaterOrEqual(fullSquads, 5, "most full games train a squad of 4");
+            Assert.GreaterOrEqual(2 * taken, fullSquads, "a full squad destroys the outpost at least half the time");
         }
 
         [Test]
-        public void Balance_DefaultSeed_CompetentPlayerWinsByPointsInSixToNineMinutes()
+        public void Balance_DefaultSeed_CompetentPlayerReachesEightPointsIn8To13Minutes_WithTheWonder()
         {
             var r = Play(EconomyTestKit.DefaultSeed, false);
-            TestContext.WriteLine(r);
             Console.WriteLine("COMPETENT " + r);
             Assert.AreEqual(GameOutcome.Victory, r.Outcome, r.ToString());
-            Assert.That(r.Reason == OutcomeReasons.Points || r.Reason == OutcomeReasons.AgeEnd, "won on points");
-            Assert.That(r.Ticks >= 6 * 600 && r.Ticks <= 9 * 600, "6 to 9 minutes of sim time: " + r.Ticks);
+            Assert.AreEqual(OutcomeReasons.Points, r.Reason, "8 points before the end of Age III");
+            Assert.GreaterOrEqual(r.PlayerVp, 8);
+            Assert.GreaterOrEqual(r.WonderStages, 1, "wonder stage 1 completes");
+            Assert.That(r.Ticks >= 8 * Minute && r.Ticks <= 13 * Minute, "8 to 13 minutes: " + r.Ticks);
+            Assert.Less(r.Milestones["commission"], 4 * Minute, "commission under 4 minutes");
         }
 
         [Test]
-        public void Balance_TenSeeds_CompetentPlayerMostlyWins()
+        public void Balance_TenSeeds_CompetentPlayerReachesEightPoints()
         {
-            int wins = 0;
+            int wins = 0, wonders = 0;
             var lines = new List<string>();
             for (ulong i = 1; i <= 10; i++)
             {
-                var r = Play(i * 104729UL + 11UL, false, checkEveryTick: false);
+                var r = Play(OtherSeed(i), false, checkEveryTick: false);
                 lines.Add(r.ToString());
-                if (r.Outcome == GameOutcome.Victory) wins++;
+                if (r.Outcome == GameOutcome.Victory && r.Reason == OutcomeReasons.Points && r.Ticks >= 6.5 * Minute && r.Ticks <= 13.5 * Minute) wins++;
+                if (r.WonderStages >= 1) wonders++;
+                Assert.Less(r.Milestones["commission"], 4 * Minute, "commission under 4 minutes: " + r);
             }
-            Console.WriteLine("COMPETENT seeds wins " + wins + "/10\n" + string.Join("\n", lines));
-            Assert.GreaterOrEqual(wins, 6, string.Join("\n", lines));
+            Console.WriteLine("COMPETENT seeds: 8-point wins " + wins + "/10, wonder stage 1 in " + wonders + "/10\n" + string.Join("\n", lines));
+            Assert.GreaterOrEqual(wins, 8, string.Join("\n", lines));
+            Assert.GreaterOrEqual(wonders, 7, "wonder stage 1 completes in a normal competent game");
+        }
+
+        [Test]
+        public void CarelessPlayer_IgnoringDemons_LosesByBreach()
+        {
+            var r = Play(EconomyTestKit.DefaultSeed, false, careless: true);
+            Console.WriteLine("CARELESS " + r);
+            Assert.AreEqual(GameOutcome.Defeat, r.Outcome, r.ToString());
+            Assert.AreEqual(OutcomeReasons.Breach, r.Reason);
+            Assert.AreEqual(4, r.Breaches);
+        }
+
+        [Test, Explicit]
+        public void Measure_AllPlayers()
+        {
+            foreach (var mode in new[] { "competent", "full", "careless", "passive" })
+                for (ulong i = 0; i <= 10; i++)
+                {
+                    ulong seed = i == 0 ? EconomyTestKit.DefaultSeed : i * 104729UL + 11UL;
+                    var r = Play(seed, mode == "passive", false, mode == "full", mode == "careless");
+                    Console.WriteLine($"M {mode} {seed} {r.Outcome} {r.Reason} {r.Ticks / 600.0:0.0}min VP {r.PlayerVp}-{r.RivalVp} br {r.Breaches} cities {r.Cities} wonder {r.WonderStages} cards {r.CardsBuilt} units {r.UnitsTrained} outpost {(r.OutpostDestroyed ? "X" : "-")} commission {(r.Milestones.TryGetValue("commission", out long c) ? c : -1)} attack {(r.Milestones.TryGetValue("attack", out long a) ? a : -1)} guards {r.Guards} squad {r.SquadUnits}");
+                }
         }
 
         [Test]
