@@ -93,6 +93,12 @@ public static class Integ
     }
     public static string ToSawyer() => ToNpc(NpcIds.Sawyer);
     public static string ToMerchant() => ToNpc(NpcIds.Merchant);
+    public static string SaveLoad()
+    {
+        // In the editor the script would use the player's own slot: point it at a temporary file instead.
+        SaveSystem.PathOverride = System.IO.Path.Combine(Application.temporaryCachePath, "worldmvp_integ_save.json");
+        return Run("save_load") + " slot " + SaveSystem.PathOverride;
+    }
     public static string WalkTour() => Run("walk_tour");
     public static string DuelDance() => Run("duel_dance");
     public static string CastAll1() { CastAll.Speed = 1f; return Run("cast_all"); }

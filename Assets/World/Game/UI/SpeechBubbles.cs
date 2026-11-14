@@ -526,7 +526,7 @@ namespace World.Game
             dir.Normalize();
             float w = UiStyle.Px(240), h = UiStyle.Px(52), m = UiStyle.Px(12);
             // Package N: wide enough for longer names ("Wenna the merchant calls you").
-            if (_reply != null) w = Mathf.Max(w, _reply.CalcSize(new GUIContent((b.Name ?? "Someone") + " calls you   >")).x + UiStyle.Px(36));
+            if (_reply != null) w = Mathf.Max(w, _reply.CalcSize(new GUIContent((b.Name ?? "Someone") + " calls you   >")).x + UiStyle.Px(64));
             if (b.Kind == SpeechBubbles.Kind.Say && _inspectText != null)
             {
                 // The line itself, small, up to about four lines.
