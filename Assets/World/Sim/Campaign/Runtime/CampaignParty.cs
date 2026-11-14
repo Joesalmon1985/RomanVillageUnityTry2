@@ -127,7 +127,7 @@ namespace World.Sim.Campaign
             if (purpose != RoutePurpose.Study && purpose != RoutePurpose.ChoiceReturn) p.ChoiceId = "";
             p.Route = route;
             if (moving) return true;
-            if (route.Count == 0) { OnFinalArrival(s, c, ev); return true; }
+            if (route.Count == 0) { OnFinalArrival(s, c, ev, true); return true; }
             SetMode(s, c, PartyMode.Travelling, ev);
             StartNextLeg(s, c, ev);
             return true;
@@ -157,9 +157,11 @@ namespace World.Sim.Campaign
                     }
                     p.Leg.Progress++;
                     if (p.Leg.Progress < p.Leg.Ticks) return;
-                    p.At = p.Leg.To;
+                    var leg = p.Leg;
+                    p.At = leg.To;
                     p.Leg = null;
                     ev?.Add(new PartyArrived { At = p.At });
+                    if (!Visit(s, c, leg, ev)) return;
                     if (p.Route.Count > 0) StartNextLeg(s, c, ev); else OnFinalArrival(s, c, ev);
                     return;
                 case PartyMode.Acting:
@@ -182,8 +184,47 @@ namespace World.Sim.Campaign
             }
         }
 
-        /// <summary>The route's end: what the party does there depends on why it came.</summary>
-        private static void OnFinalArrival(WorldState s, CampaignState c, EventBuffer ev)
+        /// <summary>
+        /// The end of a leg (CAMPAIGN_FORMAT 7): Arrive quest events and the clues of every marker the leg passed over
+        /// inside an interior and of the marker it ended on. False when that stopped the route (an event asked a
+        /// question, ended the run, or moved the party).
+        /// </summary>
+        private static bool Visit(WorldState s, CampaignState c, LegState leg, EventBuffer ev)
+        {
+            var p = c.Party;
+            var d = c.Definition;
+            var places = new List<MarkerRef>();
+            if (leg.To.IsInterior && leg.Cells != null && leg.Cells.Length > 4)
+            {
+                var m = d.Interior(leg.To.Interior);
+                for (int k = 2; k + 2 < leg.Cells.Length; k += 2)
+                {
+                    var md = InteriorMaps.MarkerAt(m, leg.Cells[k], leg.Cells[k + 1]);
+                    if (md != null) places.Add(new MarkerRef(leg.To.Location, leg.To.Interior, md.Id));
+                }
+            }
+            places.Add(leg.To);
+            var at = p.At;
+            foreach (var place in places)
+            {
+                FireEvents(s, c, place, QuestAction.Arrive, ev);
+                GiveCluesAt(c, place, ev);
+                if (c.Phase != CampaignPhase.Running || p.Mode != PartyMode.Travelling || !Same(p.At, at))
+                {
+                    p.Route.Clear();
+                    if (!Same(p.At, at)) p.Purpose = RoutePurpose.None;   // moved by a PlaceParty effect: the errand is off
+                    if (c.Phase == CampaignPhase.Running && p.Mode == PartyMode.Travelling) OnFinalArrival(s, c, ev);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// The route's end: what the party does there depends on why it came. Arrive events and clues fire here only when
+        /// no leg was walked (otherwise they fired at the leg's end).
+        /// </summary>
+        private static void OnFinalArrival(WorldState s, CampaignState c, EventBuffer ev, bool arriveEvents = false)
         {
             var p = c.Party;
             p.Leg = null;
@@ -215,8 +256,12 @@ namespace World.Sim.Campaign
                     return;
                 }
             }
-            FireEvents(s, c, p.At, QuestAction.Arrive, ev);
-            if (c.Phase != CampaignPhase.Running || p.Mode == PartyMode.AskingChoice) return;
+            if (arriveEvents)
+            {
+                FireEvents(s, c, p.At, QuestAction.Arrive, ev);
+                GiveCluesAt(c, p.At, ev);
+                if (c.Phase != CampaignPhase.Running || p.Mode == PartyMode.AskingChoice) return;
+            }
             p.Pending.Clear();
             if (p.Purpose == RoutePurpose.Lead && p.LeadAction != QuestAction.Arrive && p.LeadAction != QuestAction.Restore) p.Pending.Add(p.LeadAction);
             var cd = PedestalCrystal(c, p.At);

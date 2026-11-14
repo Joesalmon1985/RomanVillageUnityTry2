@@ -1,0 +1,14 @@
+{
+  "Locations": [
+    { "Id": "causeway", "Name": "the Low Causeway", "Kind": "Shore", "Anchor": { "Kind": "MeadowHexCentre", "Q": 1, "R": -4 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "pedestal", "Kind": "Pedestal", "Name": "the tide cellar", "Crystal": "water" },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the causeway head", "I": 1, "J": 0 }
+      ] },
+    { "Id": "cistern", "Name": "the Old Cistern", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": 2, "R": -3 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "altar", "Kind": "Altar", "Name": "the cistern altar", "Crystal": "water" },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the cistern wall", "I": -1, "J": 0 }
+      ] }
+  ]
+}

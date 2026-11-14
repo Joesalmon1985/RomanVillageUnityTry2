@@ -18,7 +18,7 @@ namespace World.Sim.Tests
         [Test]
         public void Earth_FirstArrival_TakenCarriedRestored_NoDuel()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             var c = s.Campaign;
             var all = new List<SimEvent>();
@@ -70,7 +70,7 @@ namespace World.Sim.Tests
             // News travels slowly here, so the party finds the empty pedestal itself before any report arrives.
             var d = Patient();
             d.Tuning.ReportDelay = 20000;
-            var sim = CampaignSamples.Started(7, d);
+            var sim = Sample(7, d);
             var s = sim.State;
             var c = s.Campaign;
             var all = new List<SimEvent>();
@@ -142,7 +142,7 @@ namespace World.Sim.Tests
         [Test]
         public void Custody_EveryTransition_OneEventEach_AndGuarded()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             var c = s.Campaign;
 
@@ -182,7 +182,7 @@ namespace World.Sim.Tests
         [Test]
         public void Custody_PartyAtThePedestal_WinsTheTie()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             var c = s.Campaign;
             // The party is taking the Skyshard at its pedestal when the expedition arrives.

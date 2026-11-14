@@ -6,14 +6,15 @@ namespace World.Sim.Campaign
     /// <summary>
     /// Facts, clues, quest events, leads and Mira's queue (5.4). A clue gives its facts when its requirements are known
     /// and its source speaks: an opening clue at once, a companion while that companion lives, a witness, marker or the
-    /// wizard when the party acts at that marker, a scout when she reports from that place, a report when word of that
+    /// wizard when the party visits that marker (or at once when named by a role id), a scout when she reports from that place, a report when word of that
     /// crystal arrives. A lead is open when its facts are known, its goal is not done, it is not declined or spent, its
     /// crystal still needs it and its goal can be reached. Every PlanInterval ticks (and at once after a change) Mira
     /// scores the open leads (Priority, +30 if the rival is reported marching on that crystal, +20 if the party carries
     /// that crystal and the lead is its tower, minus 1 per 20 steps of travel), keeps the best QueueLength, and keeps
     /// queue ids stable while a lead stays in the queue.
     ///
-    /// Where the pack has no lead for something the runtime must always be able to do, it makes one (ids start with
+    /// With CampaignState.MakeOwnLeads (off for story-contract packs, where Mira goes only where a lead sends her), where
+    /// the definition has no lead for something the runtime must always be able to do, it makes one (ids start with
     /// '@', never written into the definition): fetch a crystal the party believes is on its pedestal ("@take:"),
     /// win back a crystal the party knows is on an altar ("@recover:"), take a carried crystal to its tower
     /// ("@restore:"), hear a clue from a source that is not a companion ("@clue:", so every essential clue stays
@@ -55,6 +56,9 @@ namespace World.Sim.Campaign
                 {
                     var k = clue.Source?.Kind;
                     if (k == SourceKind.Opening) any |= GiveClue(c, clue, ev);
+                    // A witness, marker or wizard named by a role id (not a marker) is that person's knowledge: at once.
+                    else if ((k == SourceKind.Witness || k == SourceKind.Marker || k == SourceKind.Wizard)
+                        && !string.IsNullOrEmpty(clue.Source.Ref) && clue.Source.Ref.IndexOf('/') < 0) any |= GiveClue(c, clue, ev);
                     else if (k == SourceKind.Companion && (c.Companion(clue.Source.Ref)?.Alive ?? false)) any |= GiveClue(c, clue, ev);
                 }
                 if (!any) return;
@@ -303,6 +307,8 @@ namespace World.Sim.Campaign
         {
             var d = c.Definition;
             var ids = new List<string>();
+            foreach (var oc in c.OpenChoices) ids.Add("@choice:" + oc.ChoiceId);
+            if (!c.MakeOwnLeads) return ids;
             foreach (var cd in d.Crystals ?? new List<CrystalDef>())
             {
                 if (cd == null) continue;
@@ -324,7 +330,6 @@ namespace World.Sim.Campaign
                 if (!ClueMarker(clue, out var at) || !AllKnown(c, clue.Requires) || AllKnown(c, clue.Gives)) continue;
                 if (!AuthoredGoal(d, g => Same(g, at))) ids.Add("@clue:" + clue.Id);
             }
-            foreach (var oc in c.OpenChoices) ids.Add("@choice:" + oc.ChoiceId);
             return ids;
         }
 
@@ -411,7 +416,7 @@ namespace World.Sim.Campaign
         }
 
         /// <summary>Mira's plan (5.4): auto clues, then the queue of the best QueueLength open leads, ids kept stable.</summary>
-        private static void Plan(WorldState s, CampaignState c, EventBuffer ev)
+        internal static void Plan(WorldState s, CampaignState c, EventBuffer ev)
         {
             c.ReplanNow = false;
             AutoClues(c, ev);

@@ -1,16 +1,14 @@
 using System;
 using System.Collections.Generic;
-using World.Sim.Eras;
 
 namespace World.Sim.Campaign
 {
     /// <summary>
     /// Places, routes and legs (5.5, 5.10). A place is a marker: on the surface its cell is the location's anchor cell
     /// plus the marker's offset; inside an interior it is the marker's own cell, and every interior is its own space
-    /// (keyed by interior id: the location part of an interior ref only names the way in). Spaces are joined by portals:
-    /// every connection (both ways), and every Exit, Stairs or Door marker with a To (one way, towards its To), each open
-    /// when its fact is known. A route is a
-    /// shortest path (Dijkstra over the start, the goal and the portal ends; walking within a space costs lattice steps
+    /// (keyed by interior id: the location part of an interior ref only names the way in). Spaces are joined by links
+    /// (CAMPAIGN_FORMAT 5): a connection's two ends, or a marker and the marker its To names; a link works both ways and
+    /// is open when every OpenWhen of its markers and connections is known. A route is a shortest path (Dijkstra over the start, the goal and the portal ends; walking within a space costs lattice steps
     /// on the surface or the breadth-first path over open cells inside, a portal costs one step). Ties break by node
     /// order, which is fixed by the definition, so routes are deterministic.
     /// </summary>
@@ -24,45 +22,10 @@ namespace World.Sim.Campaign
             return string.Equals(a.Location ?? "", b.Location ?? "", StringComparison.Ordinal) && string.Equals(a.Marker ?? "", b.Marker ?? "", StringComparison.Ordinal);
         }
 
-        /// <summary>The lattice cell of a location's anchor (the board centre when there is no board).</summary>
+        /// <summary>The lattice cell of a location's anchor, as the format package places it (CampaignPlaces; the board centre when there is none).</summary>
         internal static void AnchorCell(WorldState s, CampaignDefinition d, LocationDef loc, out int i, out int j)
         {
-            i = j = 0;
-            var topo = s?.Board?.Topology;
-            if (topo == null || loc == null) return;
-            var a = loc.Anchor ?? new AnchorDef();
-            double x = 0, z = 0;
-            switch (a.Kind)
-            {
-                case AnchorKind.HomeCamp:
-                {
-                    var starts = s.Board.StartCorners;
-                    if (starts != null && starts.Length > PlayerIds.Human && topo.IsCorner(starts[PlayerIds.Human]))
-                    {
-                        x = topo.VertexX(starts[PlayerIds.Human]);
-                        z = topo.VertexZ(starts[PlayerIds.Human]);
-                    }
-                    break;
-                }
-                case AnchorKind.MeadowHexCentre:
-                {
-                    int hex = topo.HexIndex(new HexCoord(a.Q, a.R));
-                    if (hex >= 0) { x = topo.HexX(hex); z = topo.HexZ(hex); }
-                    break;
-                }
-                case AnchorKind.RimCorner:
-                {
-                    int corner = a.Corner;
-                    if (!topo.IsCorner(corner))
-                    {
-                        var t = d?.Towers?.Find(tw => tw.Location == loc.Id);
-                        if (t != null) corner = LandmarkApi.TowerCorners(topo)[(int)t.Element];
-                    }
-                    if (topo.IsCorner(corner)) { x = topo.VertexX(corner); z = topo.VertexZ(corner); }
-                    break;
-                }
-            }
-            Lattice.CellOf(x, z, out i, out j);
+            if (!CampaignPlaces.TryAnchorCell(d, loc, s?.Board, out i, out j)) { i = 0; j = 0; }
         }
 
         /// <summary>A place resolved to its space and cell.</summary>
@@ -109,34 +72,61 @@ namespace World.Sim.Campaign
             return path.Length / 2 - 1;
         }
 
+        /// <summary>The marker a reference names (surface or interior legend), null when none.</summary>
+        internal static MarkerDef MarkerOf(CampaignDefinition d, MarkerRef r)
+        {
+            if (d == null || r.IsEmpty) return null;
+            if (r.IsInterior)
+            {
+                var m = d.Interior(r.Interior);
+                if (m?.Legend == null) return null;
+                foreach (var kv in m.Legend) if (kv.Value != null && kv.Value.Id == r.Marker) return kv.Value;
+                return null;
+            }
+            return d.Location(r.Location)?.Markers?.Find(x => x != null && x.Id == r.Marker);
+        }
+
         /// <summary>
-        /// Every open portal, in definition order: connections (both ways), then Exit, Stairs and Door markers on the
-        /// surface and inside interiors (one way, from the marker to its To: a way out of an interior is always usable, but
-        /// it does not open the way in, which is the other side's own marker or connection).
+        /// Every open link, in definition order (CAMPAIGN_FORMAT 5, "Links"): the two ends of a connection, and every Exit,
+        /// Stairs or Door marker with the marker its To names. A link joins its ends both ways and is open when every
+        /// OpenWhen of its two markers and of every connection joining them is known. Interior references are filed under
+        /// the interior's Location when it declares one.
         /// </summary>
         private static List<(MarkerRef a, MarkerRef b, bool twoWay)> Portals(CampaignState c)
         {
             var d = c.Definition;
-            var list = new List<(MarkerRef, MarkerRef, bool)>();
-            bool Open(string fact) => string.IsNullOrEmpty(fact) || c.Knows(fact);
+            var pairs = new List<(MarkerRef a, MarkerRef b)>();
+            void Add(MarkerRef a, MarkerRef b)
+            {
+                if (a.IsEmpty || b.IsEmpty || Same(a, b)) return;
+                foreach (var (x, y) in pairs) if ((Same(x, a) && Same(y, b)) || (Same(x, b) && Same(y, a))) return;
+                pairs.Add((a, b));
+            }
             bool IsPortal(MarkerKind k) => k == MarkerKind.Exit || k == MarkerKind.Stairs || k == MarkerKind.Door;
             foreach (var con in d.Connections ?? new List<ConnectionDef>())
-                if (con != null && Open(con.OpenWhen) && !con.A.IsEmpty && !con.B.IsEmpty) list.Add((con.A, con.B, true));
+                if (con != null) Add(con.A, con.B);
             foreach (var loc in d.Locations ?? new List<LocationDef>())
                 foreach (var mk in loc.Markers ?? new List<MarkerDef>())
-                    if (mk != null && IsPortal(mk.Kind) && Open(mk.OpenWhen) && MarkerRef.TryParse(mk.To, out var to))
-                        list.Add((MarkerRef.Surface(loc.Id, mk.Id), to, false));
+                    if (mk != null && IsPortal(mk.Kind) && MarkerRef.TryParse(mk.To, out var to)) Add(MarkerRef.Surface(loc.Id, mk.Id), to);
             foreach (var m in d.Interiors ?? new List<InteriorDef>())
             {
                 if (m?.Legend == null) continue;
                 foreach (var kv in m.Legend)
                 {
                     var md = kv.Value;
-                    if (md == null || !IsPortal(md.Kind) || !Open(md.OpenWhen) || !MarkerRef.TryParse(md.To, out var to)) continue;
-                    // The location part names the way in: the surface place it leads to, else the first one that leads here.
-                    string loc = !to.IsInterior ? to.Location : "";
-                    list.Add((new MarkerRef(loc, m.Id, md.Id), to, false));
+                    if (md == null || !IsPortal(md.Kind) || !MarkerRef.TryParse(md.To, out var to)) continue;
+                    string loc = !string.IsNullOrEmpty(m.Location) ? m.Location : !to.IsInterior ? to.Location : "";
+                    Add(new MarkerRef(loc, m.Id, md.Id), to);
                 }
+            }
+            bool Open(string fact) => string.IsNullOrEmpty(fact) || c.Knows(fact);
+            var list = new List<(MarkerRef, MarkerRef, bool)>();
+            foreach (var (a, b) in pairs)
+            {
+                bool open = Open(MarkerOf(d, a)?.OpenWhen) && Open(MarkerOf(d, b)?.OpenWhen);
+                foreach (var con in d.Connections ?? new List<ConnectionDef>())
+                    if (con != null && ((Same(con.A, a) && Same(con.B, b)) || (Same(con.A, b) && Same(con.B, a))) && !Open(con.OpenWhen)) open = false;
+                if (open) list.Add((a, b, true));
             }
             return list;
         }

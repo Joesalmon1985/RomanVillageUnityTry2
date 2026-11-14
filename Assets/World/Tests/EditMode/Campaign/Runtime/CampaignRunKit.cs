@@ -23,6 +23,23 @@ namespace World.Sim.Tests
 
         public static CampaignState C(WorldSim sim) => sim.State.Campaign;
 
+        /// <summary>
+        /// CampaignSamples.Started with the runtime's own leads switched on (the I0 sample has no full story: no lead to the
+        /// quarry pedestal, the keepers' thresholds or the towers), and Mira's queue planned at once.
+        /// </summary>
+        public static WorldSim Sample(ulong seed = 7, CampaignDefinition d = null)
+        {
+            var sim = CampaignSamples.Started(seed, d);
+            OwnLeads(sim.State);
+            return sim;
+        }
+
+        public static void OwnLeads(WorldState s)
+        {
+            s.Campaign.MakeOwnLeads = true;
+            CampaignRuntime.Plan(s, s.Campaign, null);
+        }
+
         /// <summary>No overrun can fire (the 3.9 N-2 test-start fallback), so the expedition clock is time and the test's own charges only.</summary>
         public static void Quiet(WorldSim sim) => sim.State.Factions.Tuning.OverrunMargin = 1000000;
 

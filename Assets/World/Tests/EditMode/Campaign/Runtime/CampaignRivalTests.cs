@@ -30,7 +30,7 @@ namespace World.Sim.Tests
         [Test]
         public void Plan_MarchSeizeCarry_OnTheAuthoredClock_ReportsLater()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             Quiet(sim);   // no overrun charges in the way of the plain clock
             var c = s.Campaign;
@@ -66,7 +66,7 @@ namespace World.Sim.Tests
         [Test]
         public void Charges_WrongAnswer_AndTheRivalSpendsThemAtOnce()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             var c = s.Campaign;
             Follow(sim, "air_watch");
@@ -92,7 +92,7 @@ namespace World.Sim.Tests
         [Test]
         public void AshCampFalls_ExpeditionPauses900()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             var c = s.Campaign;
             sim.Step(100);
@@ -156,7 +156,7 @@ namespace World.Sim.Tests
         [Test]
         public void DevRivalNextStep_FinishesTheCurrentStep()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var c = sim.State.Campaign;
             var ev = Do(sim, new DevRivalNextStep());
             Assert.AreEqual(Custody.AtRivalAltar, Held(sim, Element.Earth));

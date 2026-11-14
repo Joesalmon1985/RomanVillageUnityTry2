@@ -1,0 +1,3 @@
+{ "Why": "A pedestal whose only clue is never obtainable", "Base": "skeleton_v1", "Expect": "unreachable_clue",
+  "Patch": [ { "Op": "replace", "Path": "/Clues/opening/Gives", "Value": [ "fire.heard", "water.known", "air.heard" ] },
+             { "Op": "add", "Path": "/Clues/-", "Value": { "Id": "earth_never", "Source": { "Kind": "Marker", "Ref": "home/sign" }, "Requires": [ "nobody.knows" ], "Gives": [ "earth.known" ] } } ] }

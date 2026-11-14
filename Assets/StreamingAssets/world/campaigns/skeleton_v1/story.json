@@ -1,0 +1,84 @@
+{
+  "Clues": [
+    { "Id": "opening", "Source": { "Kind": "Opening", "Ref": "mira" }, "Gives": [ "earth.known", "fire.heard", "water.known", "air.heard" ], "Essential": true },
+    { "Id": "fire_elder", "Source": { "Kind": "Witness", "Ref": "home/elder" }, "Requires": [ "fire.heard" ], "Gives": [ "fire.known" ], "Essential": true, "Fallback": "fire_sign" },
+    { "Id": "fire_sign", "Source": { "Kind": "Marker", "Ref": "home/sign" }, "Requires": [ "fire.heard" ], "Gives": [ "fire.known" ] },
+    { "Id": "fire_petra", "Source": { "Kind": "Companion", "Ref": "petra" }, "Requires": [ "fire.heard" ], "Gives": [ "fire.known" ], "Fallback": "fire_elder" },
+    { "Id": "water_scout", "Source": { "Kind": "Scout", "Ref": "cistern" }, "Requires": [ "water.stolen_seen" ], "Gives": [ "water.altar_seen" ] },
+    { "Id": "earth_report", "Source": { "Kind": "Report", "Ref": "earth" }, "Gives": [ "earth.theft_reported" ] }
+  ],
+  "Leads": [
+    { "Id": "fire_ask", "Title": "Ask the elder", "Goal": { "At": "home/elder", "Action": "Talk" }, "Requires": [ "fire.heard" ], "DoneWhen": "fire.known", "ReasonLine": "reason_fire_ask", "Priority": 50, "Crystal": "fire" },
+    { "Id": "fire_sign", "Title": "Read the signpost", "Goal": { "At": "home/sign", "Action": "Search" }, "Requires": [ "fire.heard" ], "DoneWhen": "fire.known", "ReasonLine": "reason_fire_sign", "Priority": 30, "Crystal": "fire" },
+    { "Id": "air_cairn", "Title": "The wind cairn", "Goal": { "At": "shoulder/cairn", "Action": "Examine" }, "Requires": [ "air.heard" ], "DoneWhen": "air.known", "ReasonLine": "reason_air_cairn", "Priority": 50, "Crystal": "air" },
+
+    { "Id": "earth_site", "Title": "The upper hollow", "Goal": { "At": "glade/skel_upper/pedestal", "Action": "Take" }, "Requires": [ "earth.known" ], "DoneWhen": "earth.site_seen", "ReasonLine": "reason_site", "Priority": 60, "Crystal": "earth" },
+    { "Id": "fire_site", "Title": "The Cold Kiln", "Goal": { "At": "kiln/pedestal", "Action": "Take" }, "Requires": [ "fire.known" ], "DoneWhen": "fire.site_seen", "ReasonLine": "reason_site", "Priority": 60, "Crystal": "fire" },
+    { "Id": "water_site", "Title": "The Low Causeway", "Goal": { "At": "causeway/pedestal", "Action": "Take" }, "Requires": [ "water.known" ], "DoneWhen": "water.site_seen", "ReasonLine": "reason_site", "Priority": 60, "Crystal": "water" },
+    { "Id": "air_site", "Title": "The Bare Shoulder", "Goal": { "At": "shoulder/pedestal", "Action": "Take" }, "Requires": [ "air.known" ], "DoneWhen": "air.site_seen", "ReasonLine": "reason_site", "Priority": 60, "Crystal": "air" },
+
+    { "Id": "earth_altar", "Title": "The lower hollow", "Goal": { "At": "glade/skel_lower/threshold", "Action": "Arrive" }, "Requires": [ "earth.stolen_seen" ], "DoneWhen": "earth.recovered", "ReasonLine": "reason_altar", "Priority": 70, "Crystal": "earth" },
+    { "Id": "fire_altar", "Title": "The Black Forge", "Goal": { "At": "forge/threshold", "Action": "Arrive" }, "Requires": [ "fire.stolen_seen" ], "DoneWhen": "fire.recovered", "ReasonLine": "reason_altar", "Priority": 70, "Crystal": "fire" },
+    { "Id": "water_altar", "Title": "The Old Cistern", "Goal": { "At": "cistern/threshold", "Action": "Arrive" }, "Requires": [ "water.stolen_seen" ], "DoneWhen": "water.recovered", "ReasonLine": "reason_altar", "Priority": 70, "Crystal": "water" },
+    { "Id": "air_altar", "Title": "The Cliff Stair", "Goal": { "At": "cliff/threshold", "Action": "Arrive" }, "Requires": [ "air.stolen_seen" ], "DoneWhen": "air.recovered", "ReasonLine": "reason_altar", "Priority": 70, "Crystal": "air" },
+
+    { "Id": "earth_tower", "Title": "The Rooted Tower", "Goal": { "At": "tower_earth/door", "Action": "Restore" }, "Requires": [ "tower.earth_known", "earth.in_hand" ], "DoneWhen": "earth.restored", "ReasonLine": "reason_tower_earth", "Priority": 80, "Crystal": "earth" },
+    { "Id": "fire_tower", "Title": "The Beacon Tower", "Goal": { "At": "tower_fire/door", "Action": "Restore" }, "Requires": [ "tower.fire_known", "fire.in_hand" ], "DoneWhen": "fire.restored", "ReasonLine": "reason_tower_fire", "Priority": 80, "Crystal": "fire" },
+    { "Id": "water_tower", "Title": "The Tide Tower", "Goal": { "At": "tower_water/door", "Action": "Restore" }, "Requires": [ "tower.water_known", "water.in_hand" ], "DoneWhen": "water.restored", "ReasonLine": "reason_tower_water", "Priority": 80, "Crystal": "water" },
+    { "Id": "air_tower", "Title": "The Whistling Tower", "Goal": { "At": "tower_air/door", "Action": "Restore" }, "Requires": [ "tower.air_known", "air.in_hand" ], "DoneWhen": "air.restored", "ReasonLine": "reason_tower_air", "Priority": 80, "Crystal": "air" }
+  ],
+  "Choices": [
+    { "Id": "air_wind", "QuestionLine": "air_question", "RevealedBy": "shoulder/carving", "WrongLine": "air_wrong", "Sets": [ "air.known" ],
+      "Answers": [ { "Line": "answer_east", "Correct": false }, { "Line": "answer_west", "Correct": true }, { "Line": "answer_north", "Correct": false } ] }
+  ],
+  "Encounters": [
+    { "Id": "keeper_earth", "Name": "The keeper of the hollow", "Kind": "Lethal", "Profile": "keeper_earth", "OpponentActorId": "keeper_earth", "OpponentName": "the hollow keeper",
+      "Threshold": "glade/skel_lower/threshold", "SafePoint": "glade/skel_upper/safe",
+      "Stage": { "Caster": "glade/skel_lower/caster", "Opponent": "glade/skel_lower/keeper", "Volunteer": "glade/skel_lower/up" },
+      "OnVictory": [ { "Kind": "TakeCrystal", "Crystal": "earth" }, { "Kind": "SetFact", "Ref": "earth.recovered" }, { "Kind": "SetFact", "Ref": "earth.in_hand" }, { "Kind": "SetFact", "Ref": "tower.earth_known" } ] },
+    { "Id": "keeper_fire", "Name": "The keeper of the forge", "Kind": "Lethal", "Profile": "keeper_fire", "OpponentActorId": "keeper_fire", "OpponentName": "the forge keeper",
+      "Threshold": "forge/threshold", "SafePoint": "forge/safe",
+      "Stage": { "Caster": "forge/caster", "Opponent": "forge/keeper", "Volunteer": "forge/safe" },
+      "OnVictory": [ { "Kind": "TakeCrystal", "Crystal": "fire" }, { "Kind": "SetFact", "Ref": "fire.recovered" }, { "Kind": "SetFact", "Ref": "fire.in_hand" }, { "Kind": "SetFact", "Ref": "tower.fire_known" } ] },
+    { "Id": "keeper_water", "Name": "The keeper of the cistern", "Kind": "Lethal", "Profile": "keeper_water", "OpponentActorId": "keeper_water", "OpponentName": "the cistern keeper",
+      "Threshold": "cistern/threshold", "SafePoint": "cistern/safe",
+      "Stage": { "Caster": "cistern/caster", "Opponent": "cistern/keeper", "Volunteer": "cistern/safe" },
+      "OnVictory": [ { "Kind": "TakeCrystal", "Crystal": "water" }, { "Kind": "SetFact", "Ref": "water.recovered" }, { "Kind": "SetFact", "Ref": "water.in_hand" }, { "Kind": "SetFact", "Ref": "tower.water_known" } ] },
+    { "Id": "keeper_air", "Name": "The keeper of the stair", "Kind": "Lethal", "Profile": "keeper_air", "OpponentActorId": "keeper_air", "OpponentName": "the stair keeper",
+      "Threshold": "cliff/threshold", "SafePoint": "cliff/safe",
+      "Stage": { "Caster": "cliff/caster", "Opponent": "cliff/keeper", "Volunteer": "cliff/safe" },
+      "OnVictory": [ { "Kind": "TakeCrystal", "Crystal": "air" }, { "Kind": "SetFact", "Ref": "air.recovered" }, { "Kind": "SetFact", "Ref": "air.in_hand" }, { "Kind": "SetFact", "Ref": "tower.air_known" } ] },
+    { "Id": "finale", "Name": "The last tower", "Kind": "Lethal", "Profile": "finale_unweaver", "OpponentActorId": "rival_leader", "OpponentName": "the Unweaver, in Hesk Varr", "BoundTo": "last_tower" }
+  ],
+  "Events": [
+    { "Id": "air_ask_cairn", "At": "shoulder/cairn", "Action": "Examine", "Requires": [ "air.heard" ], "Effects": [ { "Kind": "OfferChoice", "Ref": "air_wind" } ] },
+
+    { "Id": "earth_take", "At": "glade/skel_upper/pedestal", "Action": "Take", "Guards": [ "custody: earth = AtSite" ], "Sets": [ "earth.site_seen", "earth.in_hand", "tower.earth_known" ], "Effects": [ { "Kind": "TakeCrystal", "Crystal": "earth" } ], "Lines": [ "mira_take" ] },
+    { "Id": "fire_take", "At": "kiln/pedestal", "Action": "Take", "Guards": [ "custody: fire = AtSite" ], "Sets": [ "fire.site_seen", "fire.in_hand", "tower.fire_known" ], "Effects": [ { "Kind": "TakeCrystal", "Crystal": "fire" } ], "Lines": [ "mira_take" ] },
+    { "Id": "water_take", "At": "causeway/pedestal", "Action": "Take", "Guards": [ "custody: water = AtSite" ], "Sets": [ "water.site_seen", "water.in_hand", "tower.water_known" ], "Effects": [ { "Kind": "TakeCrystal", "Crystal": "water" } ], "Lines": [ "mira_take" ] },
+    { "Id": "air_take", "At": "shoulder/pedestal", "Action": "Take", "Guards": [ "custody: air = AtSite" ], "Sets": [ "air.site_seen", "air.in_hand", "tower.air_known" ], "Effects": [ { "Kind": "TakeCrystal", "Crystal": "air" } ], "Lines": [ "mira_take" ] },
+
+    { "Id": "earth_empty", "At": "glade/skel_upper/pedestal", "Action": "Take", "Guards": [ "custody: earth = AtRivalAltar" ], "Sets": [ "earth.site_seen", "earth.stolen_seen" ], "Effects": [ { "Kind": "SetBelief", "Crystal": "earth" } ], "Lines": [ "mira_empty" ] },
+    { "Id": "earth_empty_transit", "At": "glade/skel_upper/pedestal", "Action": "Take", "Guards": [ "custody: earth = RivalTransit" ], "Sets": [ "earth.site_seen", "earth.stolen_seen" ], "Effects": [ { "Kind": "SetBelief", "Crystal": "earth" } ], "Lines": [ "mira_empty" ] },
+    { "Id": "fire_empty", "At": "kiln/pedestal", "Action": "Take", "Guards": [ "custody: fire = AtRivalAltar" ], "Sets": [ "fire.site_seen", "fire.stolen_seen" ], "Effects": [ { "Kind": "SetBelief", "Crystal": "fire" } ], "Lines": [ "mira_empty" ] },
+    { "Id": "fire_empty_transit", "At": "kiln/pedestal", "Action": "Take", "Guards": [ "custody: fire = RivalTransit" ], "Sets": [ "fire.site_seen", "fire.stolen_seen" ], "Effects": [ { "Kind": "SetBelief", "Crystal": "fire" } ], "Lines": [ "mira_empty" ] },
+    { "Id": "water_empty", "At": "causeway/pedestal", "Action": "Take", "Guards": [ "custody: water = AtRivalAltar" ], "Sets": [ "water.site_seen", "water.stolen_seen" ], "Effects": [ { "Kind": "SetBelief", "Crystal": "water" } ], "Lines": [ "mira_empty" ] },
+    { "Id": "water_empty_transit", "At": "causeway/pedestal", "Action": "Take", "Guards": [ "custody: water = RivalTransit" ], "Sets": [ "water.site_seen", "water.stolen_seen" ], "Effects": [ { "Kind": "SetBelief", "Crystal": "water" } ], "Lines": [ "mira_empty" ] },
+    { "Id": "air_empty", "At": "shoulder/pedestal", "Action": "Take", "Guards": [ "custody: air = AtRivalAltar" ], "Sets": [ "air.site_seen", "air.stolen_seen" ], "Effects": [ { "Kind": "SetBelief", "Crystal": "air" } ], "Lines": [ "mira_empty" ] },
+    { "Id": "air_empty_transit", "At": "shoulder/pedestal", "Action": "Take", "Guards": [ "custody: air = RivalTransit" ], "Sets": [ "air.site_seen", "air.stolen_seen" ], "Effects": [ { "Kind": "SetBelief", "Crystal": "air" } ], "Lines": [ "mira_empty" ] },
+
+    { "Id": "earth_restore", "At": "tower_earth/door", "Action": "Restore", "Requires": [ "earth.in_hand" ], "Sets": [ "earth.restored" ], "Lines": [ "mira_restored" ] },
+    { "Id": "fire_restore", "At": "tower_fire/door", "Action": "Restore", "Requires": [ "fire.in_hand" ], "Sets": [ "fire.restored" ], "Lines": [ "mira_restored" ] },
+    { "Id": "water_restore", "At": "tower_water/door", "Action": "Restore", "Requires": [ "water.in_hand" ], "Sets": [ "water.restored" ], "Lines": [ "mira_restored" ] },
+    { "Id": "air_restore", "At": "tower_air/door", "Action": "Restore", "Requires": [ "air.in_hand" ], "Sets": [ "air.restored" ], "Lines": [ "mira_restored" ] }
+  ],
+  "Endings": [
+    { "Id": "restored", "Outcome": "Won", "Lines": [ "end_restored" ],
+      "Variants": [
+        { "Survivors": "All", "Lines": [ "end_all" ] },
+        { "Survivors": "Some", "Lines": [ "end_some" ] },
+        { "Survivors": "None", "Lines": [ "end_none" ] }
+      ] },
+    { "Id": "unwoven", "Outcome": "Lost", "Lines": [ "end_unwoven" ] }
+  ]
+}

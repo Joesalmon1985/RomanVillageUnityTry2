@@ -15,7 +15,7 @@ namespace World.Sim.Tests
         [Test]
         public void LeadQueue_BestThree_StableIds_DeclineWaits600()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             var q = CampaignApi.Leads(s);
             Assert.AreEqual(3, q.Count, "QueueLength");
@@ -40,7 +40,7 @@ namespace World.Sim.Tests
         [Test]
         public void Present_NoAnswer_SheGoesAnywayAfterLeadPatience()
         {
-            var sim = CampaignSamples.Started(7);
+            var sim = Sample(7);
             var s = sim.State;
             var top = CampaignApi.TopLead(s);
             long t0 = s.Tick;
@@ -56,7 +56,7 @@ namespace World.Sim.Tests
         [Test]
         public void Choice_PlayerAnswersRight_OrNoAnswer_SheFindsItInTheWorld()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             var c = s.Campaign;
             Follow(sim, "air_watch");
@@ -80,7 +80,7 @@ namespace World.Sim.Tests
         [Test]
         public void Choice_LeftOpenByAnOverrun_ComesBackAsALead()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             var c = s.Campaign;
             Follow(sim, "air_watch");
@@ -101,6 +101,7 @@ namespace World.Sim.Tests
             var sim = WorldSimFactory.CreateNew(7);
             var s = sim.State;
             CampaignRuntime.Start(s, Patient(), null);
+            s.Campaign.MakeOwnLeads = true;
             foreach (var k in s.Campaign.Companions) { k.Alive = false; k.FellAt = "dev"; k.FellTick = 0; }
             sim.Step();
             var c = s.Campaign;
@@ -119,7 +120,7 @@ namespace World.Sim.Tests
         [Test]
         public void Scout_SentByThePlayer_ReportsTheTruth_AndBlocksACommit()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             var c = s.Campaign;
             Do(sim, new DevRivalNextStep());
@@ -151,7 +152,7 @@ namespace World.Sim.Tests
         {
             var d = CampaignSamples.Skeleton();
             d.Lead("air_watch").Crystal = "";   // Orrin stays worth a visit after the Skyshard is found, so she meets his riddle
-            var sim = CampaignSamples.Started(7, d);
+            var sim = Sample(7, d);
             var s = sim.State;
             var c = s.Campaign;
             Quiet(sim);
@@ -187,8 +188,8 @@ namespace World.Sim.Tests
         public void Away_AtAThreshold_WithNothingElseOpen_SheHoldsThere()
         {
             var d = Patient();
-            d.Leads.Clear();   // only the runtime's own leads
-            var sim = CampaignSamples.Started(7, d);
+            d.Leads.RemoveAll(l => l.Id != "earth_stone");   // only the runtime's own leads (and the stone, which the validator needs for the stair)
+            var sim = Sample(7, d);
             var s = sim.State;
             var c = s.Campaign;
             Quiet(sim);

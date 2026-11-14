@@ -29,7 +29,7 @@ namespace World.Sim.Tests
         /// <summary>All four carried; the first three set in this order; the party walks to the fourth's tower.</summary>
         private static WorldSim ToTheLastTower(Element[] order, out List<SimEvent> all)
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             Quiet(sim);
             all = new List<SimEvent>();
             foreach (Element e in System.Enum.GetValues(typeof(Element))) Do(sim, new DevSetCustody { Crystal = e, To = Custody.Carried });
@@ -108,7 +108,7 @@ namespace World.Sim.Tests
         [Test]
         public void Restoration_DemonsAndBoons_AlwaysFromTheSavedBase()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             var c = s.Campaign;
             var econ = s.Economy.Tuning;

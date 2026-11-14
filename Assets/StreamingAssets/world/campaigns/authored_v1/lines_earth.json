@@ -1,0 +1,65 @@
+{
+  "Lines": [
+    { "Id": "mira_open_earth", "Speaker": "mira", "Topic": "opening", "Text": "{crystal.earth.name} lies under old workings. The foresters' marks point the way, if we can read them." },
+
+    { "Id": "mira_reason_sawyer", "Speaker": "mira", "Topic": "lead", "Text": "The sawyer knows the foresters' notches. He can read us the way." },
+    { "Id": "mira_reason_posts", "Speaker": "mira", "Topic": "lead", "Text": "The foresters left posts where the home wood begins. Slow to read, but they don't forget." },
+    { "Id": "mira_reason_stone", "Speaker": "mira", "Topic": "lead", "Text": "The notches point to a stone in the glade between the two woods." },
+    { "Id": "mira_reason_marks", "Speaker": "mira", "Topic": "lead", "Text": "Surveyors marked these walls. Their marks will show the branch we want." },
+    { "Id": "mira_reason_root", "Speaker": "mira", "Topic": "lead", "Text": "The double cuts lead to the Root Chamber. With luck, we're first." },
+    { "Id": "mira_reason_tally", "Speaker": "mira", "Topic": "lead", "Text": "The tally counts turnings. Follow it and we find where they went." },
+    { "Id": "mira_reason_vault", "Speaker": "mira", "Topic": "lead", "Text": "{role.keeper_earth.name} waits below with what they took. We get it back there." },
+    { "Id": "mira_reason_tower_earth", "Speaker": "mira", "Topic": "lead", "Text": "{crystal.earth.name} belongs in {crystal.earth.tower}. Let's take it home." },
+    { "Id": "mira_where_earth", "Speaker": "mira", "Topic": "earth", "Text": "Last we heard, {crystal.earth.name} was at {crystal.earth.place}." },
+
+    { "Id": "odo_marks", "Speaker": "odo", "Topic": "earth", "Guards": [ "alive: odo" ], "Text": "Three short notches, again and again. Somebody wanted us at that glade." },
+    { "Id": "sawyer_notches_1", "Speaker": "sawyer", "Topic": "earth", "Text": "Foresters cut notches as they walk. Three short ones mean stone ahead." },
+    { "Id": "sawyer_notches_2", "Speaker": "sawyer", "Topic": "earth", "Text": "Follow the threes out of the home wood. They end in a glade with a grey stone in it." },
+    { "Id": "sawyer_notches_3", "Speaker": "sawyer", "Topic": "earth", "Text": "Odd stone, that. Nobody stands a stone that square by accident." },
+    { "Id": "mira_posts_1", "Speaker": "mira", "Topic": "earth", "Text": "Three notches, then three, then three. Every post leans the same way." },
+    { "Id": "mira_posts_2", "Speaker": "mira", "Topic": "earth", "Text": "They point between the two woods. There's a glade there." },
+    { "Id": "journal_earth_sawyer", "Speaker": "", "Topic": "journal", "Text": "The sawyer read the foresters' notches: they lead to a stone in a glade between the two woods." },
+    { "Id": "journal_earth_posts", "Speaker": "", "Topic": "journal", "Text": "Mira read the foresters' posts at the edge of the home wood. They lean toward the glade." },
+
+    { "Id": "mira_stone_1", "Speaker": "mira", "Topic": "earth", "Text": "Three cuts and a ring. Surveyors' marks, older than the camps." },
+    { "Id": "mira_stone_2", "Speaker": "mira", "Topic": "earth", "Text": "The ring is on this slab. Push with me." },
+    { "Id": "odo_stone", "Speaker": "odo", "Topic": "earth", "Guards": [ "alive: odo" ], "Text": "Not a forester's cut. Somebody wanted this found, but only by the right people." },
+    { "Id": "journal_earth_stone", "Speaker": "", "Topic": "journal", "Guards": [ "fact: earth.stair_open" ], "Text": "Mira read the boundary stone in the Stonemark Glade and found the stair." },
+
+    { "Id": "mira_way_out", "Speaker": "mira", "Topic": "underground", "Text": "Mind your feet. The stair we came down stays lit, and any of us can lead you back to it." },
+    { "Id": "ivo_drawing", "Speaker": "ivo", "Topic": "underground", "Guards": [ "alive: ivo" ], "Text": "I'm drawing as we go. Left is fallen rock. Right looks worked." },
+    { "Id": "petra_cold", "Speaker": "petra", "Topic": "underground", "Guards": [ "alive: petra" ], "Text": "Cold in here. Nothing's burned in this place for a long while." },
+    { "Id": "nell_walls", "Speaker": "nell", "Topic": "underground", "Guards": [ "alive: nell" ], "Text": "Water's been through these walls. Long gone now." },
+
+    { "Id": "mira_marks_1", "Speaker": "mira", "Topic": "earth", "Text": "Double cuts, all pointing up the right-hand branch." },
+    { "Id": "mira_marks_2", "Speaker": "mira", "Topic": "earth", "Text": "They were going somewhere they wanted to find again." },
+    { "Id": "journal_earth_marks", "Speaker": "", "Topic": "journal", "Guards": [ "fact: earth.root_way_known" ], "Text": "Mira read the survey marks in the Old Quarry. The double cuts lead to the Root Chamber." },
+
+    { "Id": "mira_take_1", "Speaker": "mira", "Topic": "earth", "Text": "There you are. Heavier than it looks." },
+    { "Id": "mira_inscription", "Speaker": "mira", "Topic": "earth", "Text": "The pedestal reads: what was cut from the rock goes home to {crystal.earth.tower}." },
+    { "Id": "journal_earth_taken", "Speaker": "", "Topic": "journal", "Guards": [ "fact: earth.in_hand" ], "Text": "Mira took {crystal.earth.name} from its pedestal in the Old Quarry." },
+
+    { "Id": "mira_empty_1", "Speaker": "mira", "Topic": "earth", "Text": "Bare. Someone was quicker." },
+    { "Id": "garrick_boots", "Speaker": "garrick", "Topic": "earth", "Guards": [ "alive: garrick" ], "Text": "Fresh boot marks. Not ours, and not old." },
+    { "Id": "mira_tally_found", "Speaker": "mira", "Topic": "earth", "Text": "An Ash tally stick. A notch for every turning they took, and they took the stair down." },
+    { "Id": "journal_earth_stolen", "Speaker": "", "Topic": "journal", "Guards": [ "fact: earth.stolen_seen" ], "Text": "The pedestal in the Old Quarry was bare. An Ash tally stick lay beside it." },
+    { "Id": "mira_tally_1", "Speaker": "mira", "Topic": "earth", "Text": "Five notches, then a cross. Five turnings, then the place they stopped." },
+    { "Id": "mira_tally_2", "Speaker": "mira", "Topic": "earth", "Text": "Down here, then. Stay close and count with me." },
+    { "Id": "journal_earth_vault", "Speaker": "", "Topic": "journal", "Guards": [ "fact: earth.vault_known" ], "Text": "Mira counted the tally's turnings down the old stair to the Tally Vault." },
+    { "Id": "tansy_spoil", "Speaker": "tansy", "Topic": "earth", "Guards": [ "alive: tansy", "fact: earth.ash_cut_seen" ], "Text": "Fresh spoil round the hill. They dug in from outside, then barred it behind them." },
+
+    { "Id": "dolm_greet", "Speaker": "keeper_earth", "Topic": "keeper_earth", "Text": "Every stone taken is a notch on my stick. Come to be counted?" },
+    { "Id": "mira_threshold_earth", "Speaker": "mira", "Topic": "threshold", "Text": "{role.keeper_earth.name} has seen us. If this goes badly, {volunteer.name} holds the way out. Do we fight?" },
+    { "Id": "garrick_holds", "Speaker": "garrick", "Topic": "volunteer", "Guards": [ "alive: garrick" ], "Text": "Go. I've had the practice." },
+    { "Id": "mira_after_garrick", "Speaker": "mira", "Topic": "memorial", "Guards": [ "dead: garrick" ], "Text": "Garrick held the passage so we could run. He knew he would." },
+    { "Id": "dolm_beaten", "Speaker": "keeper_earth", "Topic": "keeper_earth", "Guards": [ "fact: earth.recovered" ], "Text": "Count's finished. Take it. The bar's off the door, too." },
+    { "Id": "mira_recovered", "Speaker": "mira", "Topic": "earth", "Guards": [ "fact: earth.recovered" ], "Text": "{crystal.earth.name} is ours again. And that door is the Ash cut: a shorter way up." },
+    { "Id": "journal_earth_recovered", "Speaker": "", "Topic": "journal", "Guards": [ "fact: earth.recovered" ], "Text": "Mira beat Dolm in the Tally Vault and took {crystal.earth.name} from the Ash altar." },
+
+    { "Id": "mira_set_1", "Speaker": "mira", "Topic": "restore", "Text": "Stone to stone. Hold still, all of you." },
+    { "Id": "mira_set_2", "Speaker": "mira", "Topic": "restore", "Text": "It's lit. Feel that? The ground's settling." },
+    { "Id": "prince_earth_lit", "Speaker": "prince", "Topic": "state", "Guards": [ "custody: earth = Restored" ], "Text": "Green-gold light on the south-west shore. The camp talks of nothing else." },
+    { "Id": "mira_for_garrick_tower", "Speaker": "mira", "Topic": "memorial", "Guards": [ "dead: garrick", "custody: earth = Restored" ], "Text": "Garrick should have seen this." },
+    { "Id": "journal_earth_restored", "Speaker": "", "Topic": "journal", "Guards": [ "custody: earth = Restored" ], "Text": "Mira set {crystal.earth.name} in {crystal.earth.tower}. The tower is lit." }
+  ]
+}

@@ -16,7 +16,7 @@ namespace World.Sim.Tests
         /// <summary>The Deepstone is on Dolm's altar, the party knows it, and the stair is open.</summary>
         public static WorldSim KeeperHasEarth(ulong seed = 7)
         {
-            var sim = CampaignSamples.Started(seed, Patient());
+            var sim = Sample(seed, Patient());
             var s = sim.State;
             Do(sim, new DevRivalNextStep());
             Assert.AreEqual(Custody.AtRivalAltar, Held(sim, Element.Earth));
@@ -164,7 +164,7 @@ namespace World.Sim.Tests
         [Test]
         public void FriendlyAndPractice_NeverMakeAnAttempt()
         {
-            var sim = CampaignSamples.Started(7, Patient());
+            var sim = Sample(7, Patient());
             var s = sim.State;
             Follow(sim, "air_watch");
             Assert.AreEqual(PartyMode.AskingChoice, Mode(sim), "Orrin asks; his place is not a threshold");

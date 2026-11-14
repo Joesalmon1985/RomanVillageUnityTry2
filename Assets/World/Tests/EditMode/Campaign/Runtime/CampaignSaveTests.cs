@@ -72,7 +72,7 @@ namespace World.Sim.Tests
             var d = CampaignSamples.Skeleton();
             d.Lead("air_watch").Crystal = "";   // so Orrin's riddle comes up, early
             d.Lead("air_watch").Priority = 70;
-            return CampaignSamples.Started(11, d);
+            return Sample(11, d);
         }
 
         private static void RunTo(WorldSim sim, long tick, Action<WorldSim> each = null)

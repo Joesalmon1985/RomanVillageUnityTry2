@@ -1,0 +1,2 @@
+{ "Why": "Volunteer orders 1, 2, 2, 4, 5, 6", "Base": "skeleton_v1", "Expect": "volunteer_order",
+  "Patch": [ { "Op": "replace", "Path": "/Companions/petra/VolunteerOrder", "Value": 2 } ] }
