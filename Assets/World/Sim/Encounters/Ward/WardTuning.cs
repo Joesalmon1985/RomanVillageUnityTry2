@@ -53,6 +53,7 @@ namespace World.Sim.Encounters.Ward
             t.MiraThinkMinMs = p.ThinkMinMs;
             t.MiraThinkMaxMs = p.ThinkMaxMs;
             t.MiraMistakeRatePercent = p.MistakeRatePercent;
+            if (p.MaxCasts > 0) t.MaxCasts = p.MaxCasts;
             return t;
         }
     }

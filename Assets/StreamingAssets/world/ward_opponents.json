@@ -1,0 +1,163 @@
+{
+  "Profiles": [
+    {
+      "Id": "practice_mira",
+      "DisplayName": "Mira",
+      "FirstCastMinMs": 3000,
+      "FirstCastMaxMs": 6000,
+      "ThinkMinMs": 6000,
+      "ThinkMaxMs": 10000,
+      "MistakeRatePercent": 0,
+      "MaxCasts": 0,
+      "Pool": null,
+      "CastTempo": "measured",
+      "CastAnimMs": 1200,
+      "StyleNote": "as shipped"
+    },
+    {
+      "Id": "keeper",
+      "DisplayName": "Keeper",
+      "FirstCastMinMs": 4000,
+      "FirstCastMaxMs": 7000,
+      "ThinkMinMs": 7000,
+      "ThinkMaxMs": 11000,
+      "MistakeRatePercent": 15,
+      "MaxCasts": 0,
+      "Pool": [
+        "Flame",
+        "Frost",
+        "Vine"
+      ],
+      "CastTempo": "slow",
+      "CastAnimMs": 1500,
+      "StyleNote": "unhurried, guarded"
+    },
+    {
+      "Id": "keeper_earth",
+      "DisplayName": "Dolm",
+      "FirstCastMinMs": 4000,
+      "FirstCastMaxMs": 7000,
+      "ThinkMinMs": 7000,
+      "ThinkMaxMs": 11000,
+      "MistakeRatePercent": 15,
+      "MaxCasts": 0,
+      "Pool": [
+        "Flame",
+        "Frost",
+        "Vine"
+      ],
+      "CastTempo": "slow",
+      "CastAnimMs": 1600,
+      "StyleNote": "stone-heavy, plants each cast"
+    },
+    {
+      "Id": "keeper_fire",
+      "DisplayName": "Brask",
+      "FirstCastMinMs": 4000,
+      "FirstCastMaxMs": 7000,
+      "ThinkMinMs": 7000,
+      "ThinkMaxMs": 11000,
+      "MistakeRatePercent": 15,
+      "MaxCasts": 0,
+      "Pool": [
+        "Flame",
+        "Frost",
+        "Vine"
+      ],
+      "CastTempo": "brisk",
+      "CastAnimMs": 1100,
+      "StyleNote": "sharp, impatient gestures"
+    },
+    {
+      "Id": "keeper_water",
+      "DisplayName": "Nual",
+      "FirstCastMinMs": 4000,
+      "FirstCastMaxMs": 7000,
+      "ThinkMinMs": 7000,
+      "ThinkMaxMs": 11000,
+      "MistakeRatePercent": 15,
+      "MaxCasts": 0,
+      "Pool": [
+        "Flame",
+        "Frost",
+        "Vine"
+      ],
+      "CastTempo": "measured",
+      "CastAnimMs": 1400,
+      "StyleNote": "flowing, sweeping arcs"
+    },
+    {
+      "Id": "keeper_air",
+      "DisplayName": "Pike",
+      "FirstCastMinMs": 4000,
+      "FirstCastMaxMs": 7000,
+      "ThinkMinMs": 7000,
+      "ThinkMaxMs": 11000,
+      "MistakeRatePercent": 15,
+      "MaxCasts": 0,
+      "Pool": [
+        "Flame",
+        "Frost",
+        "Vine"
+      ],
+      "CastTempo": "brisk",
+      "CastAnimMs": 1000,
+      "StyleNote": "light, flicking casts"
+    },
+    {
+      "Id": "rival_hesk",
+      "DisplayName": "Hesk Varr",
+      "FirstCastMinMs": 3500,
+      "FirstCastMaxMs": 6500,
+      "ThinkMinMs": 6500,
+      "ThinkMaxMs": 10500,
+      "MistakeRatePercent": 5,
+      "MaxCasts": 0,
+      "Pool": [
+        "Flame",
+        "Frost",
+        "Vine"
+      ],
+      "CastTempo": "measured",
+      "CastAnimMs": 1200,
+      "StyleNote": "an ember-sworn duellist, deliberate"
+    },
+    {
+      "Id": "friendly_orrin",
+      "DisplayName": "Orrin",
+      "FirstCastMinMs": 5000,
+      "FirstCastMaxMs": 8000,
+      "ThinkMinMs": 9000,
+      "ThinkMaxMs": 13000,
+      "MistakeRatePercent": 25,
+      "MaxCasts": 0,
+      "Pool": [
+        "Flame",
+        "Frost",
+        "Vine"
+      ],
+      "CastTempo": "slow",
+      "CastAnimMs": 1800,
+      "StyleNote": "a teacher: shows each cast"
+    },
+    {
+      "Id": "finale_unweaver",
+      "DisplayName": "the Unweaver, in Hesk Varr",
+      "FirstCastMinMs": 3000,
+      "FirstCastMaxMs": 6000,
+      "ThinkMinMs": 5500,
+      "ThinkMaxMs": 9500,
+      "MistakeRatePercent": 0,
+      "MaxCasts": 0,
+      "Pool": [
+        "Flame",
+        "Frost",
+        "Vine",
+        "Light"
+      ],
+      "CastTempo": "hasty",
+      "CastAnimMs": 900,
+      "StyleNote": "the loose knot: quick, cold, exact"
+    }
+  ]
+}
