@@ -58,6 +58,7 @@ namespace World.Game
                 Sim = World.Sim.Save.SaveCodec.CreateSim(loaded.State);
                 Seed = unchecked((long)loaded.State.Seed);
             }
+            else if ((Sim = DevStart.TakePending(unchecked((ulong)Seed))) != null) Seed = unchecked((long)Sim.State.Seed); // F1 / -start developer starts
             else Sim = WorldSimFactory.CreateNew(unchecked((ulong)Seed));
 
             Clock = gameObject.AddComponent<GameClock>();
@@ -73,8 +74,11 @@ namespace World.Game
             PlayerInstaller.Install(this);   // P: walker, pointer, speech bubbles, spell caster, map, HUD toggle
             CampInstaller.Install(this);     // D: dance circle, camp dressing, Mira and Sol
             LandViewsInstaller.Install(this); // V: terrain and land views
+            GradeViewsInstaller.Install(this); // ages H1-5: grade visuals, towns (shell)
             LightingInstaller.Install(this); // L: day-night cycle, fires and torches, night readability (after V: it dresses the sky and the views)
             PrinceInstaller.Install(this);   // N: prince, sawyer, merchant, first scene
+            InteriorsInstaller.Install(this); // crystals I5: interiors (shell)
+            ExpeditionInstaller.Install(this); // crystals I6: the expedition director (shell)
             DevToolsInstaller.Install(this); // P: F1 developer tools
 
             Saves = gameObject.AddComponent<SaveSystem>(); // F5 / F9, one slot; applies the loaded save's game-layer data in Start

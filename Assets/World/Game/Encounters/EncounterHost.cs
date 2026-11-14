@@ -41,6 +41,11 @@ namespace World.Game
         public EncounterStage Stage;
         /// <summary>Set before or in Begin: if true the player keeps mouse look and the cursor stays locked. Default false (cursor free for GUI).</summary>
         public bool AllowMouseLook;
+        /// <summary>
+        /// What the encounter is asked to be (PRD_CRYSTALS appendix B, I0): a <see cref="WardDuelRequest"/> for the
+        /// campaign duel, set by <see cref="EncounterDirectory.TryStart(string, Npc, object)"/>. Null = behaviour as today.
+        /// </summary>
+        public object Request;
         /// <summary>True if the host is aborting (End called without IsFinished).</summary>
         public bool Aborted { get; internal set; }
 
@@ -186,6 +191,8 @@ namespace World.Game
     public static class EncounterDirectory
     {
         public const string WardMira = "ward_mira", RhythmParty = "rhythm_party";
+        /// <summary>The crystal campaign's Ward duel (PRD_CRYSTALS I0; its factory is <see cref="CampaignDuel.Create"/>, I7's).</summary>
+        public const string WardCampaign = "ward_campaign";
         private static readonly Dictionary<string, Func<IEncounter>> Factories = new Dictionary<string, Func<IEncounter>>();
 
         public static void Register(string id, Func<IEncounter> factory) => Factories[id] = factory;
@@ -193,11 +200,20 @@ namespace World.Game
         public static bool IsRegistered(string id) => id != null && Factories.ContainsKey(id);
 
         /// <summary>Creates and starts the encounter registered under id. False if missing or one is running.</summary>
-        public static bool TryStart(string id, Npc source = null)
+        public static bool TryStart(string id, Npc source = null) => TryStart(id, source, null);
+
+        /// <summary>
+        /// As <see cref="TryStart(string, Npc)"/>, with a request the encounter reads in Begin from
+        /// <see cref="EncounterContext.Request"/> (PRD_CRYSTALS appendix B; null = as today).
+        /// </summary>
+        public static bool TryStart(string id, Npc source, object request)
         {
-            if (!Factories.TryGetValue(id, out var f) || EncounterHost.Instance == null) return false;
+            if (id == null || !Factories.TryGetValue(id, out var f) || EncounterHost.Instance == null) return false;
             var enc = f();
-            return enc != null && EncounterHost.Instance.Start(enc, EncounterContext.Create(source));
+            if (enc == null) return false;
+            var ctx = EncounterContext.Create(source);
+            ctx.Request = request;
+            return EncounterHost.Instance.Start(enc, ctx);
         }
     }
 

@@ -16,6 +16,7 @@ namespace World.Game
         {
             EncounterDirectory.Register(EncounterDirectory.WardMira, () => new WardDuelEncounter());
             EncounterDirectory.Register(EncounterDirectory.RhythmParty, () => new RhythmPartyEncounter());
+            EncounterDirectory.Register(EncounterDirectory.WardCampaign, CampaignDuel.Create); // crystals I0; I7 fills CampaignDuel
             AutoPlayScripts.Register(DuelDance.Name, DuelDance.Create);
         }
     }

@@ -23,8 +23,18 @@ namespace World.Game
 
         public static event System.Action<bool> Toggled;
 
+        /// <summary>Island or interior (PRD_CRYSTALS I5; the island only until I5 lands).</summary>
+        public static MapMode Mode { get; set; } = MapMode.Island;
+
+        private static readonly List<IMapLayer> s_layers = new List<IMapLayer>();
+        /// <summary>The added layers, in drawing order.</summary>
+        public static IReadOnlyList<IMapLayer> Layers => s_layers;
+        /// <summary>Adds content to the map (<see cref="IMapLayer"/>); packages never edit this file for map content.</summary>
+        public static void AddLayer(IMapLayer layer) { if (layer != null && !s_layers.Contains(layer)) s_layers.Add(layer); }
+        public static void RemoveLayer(IMapLayer layer) => s_layers.Remove(layer);
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() { IsOpen = false; Target = null; Toggled = null; }
+        private static void ResetStatics() { IsOpen = false; Target = null; Toggled = null; Mode = MapMode.Island; s_layers.Clear(); }
 
         public static void Open()
         {
@@ -103,7 +113,13 @@ namespace World.Game
             if (!MapScreen.IsOpen || _rect.width <= 0) return false;
             var gui = new Vector2(screen.x, Screen.height - screen.y);
             if (!_rect.Contains(gui)) return false;
-            return MapScreen.SetTarget(GuiToWorld(gui));
+            var world = GuiToWorld(gui);
+            foreach (var l in MapScreen.Layers)
+            {
+                try { if (l.Tap(world)) return true; }
+                catch (System.Exception e) { Debug.LogException(e); }
+            }
+            return MapScreen.SetTarget(world);
         }
 
         public Vector3 GuiToWorld(Vector2 gui)
@@ -288,6 +304,13 @@ namespace World.Game
             // The prince.
             var prince = PrinceDirector.Instance != null ? PrinceDirector.Instance.Prince : null;
             if (prince != null) Marker(prince.transform.position, new Color(1f, 0.75f, 0.2f), "Prince");
+            // Content of other packages (IMapLayer), under the walk target and the player.
+            foreach (var l in MapScreen.Layers)
+            {
+                try { l.Draw(this); }
+                catch (System.Exception e) { Debug.LogException(e); }
+                GUI.color = Color.white;
+            }
             // Walk target and player.
             var w = PlayerWalker.Instance;
             var target = MapScreen.Target ?? (w != null ? w.AutoGoal : null);

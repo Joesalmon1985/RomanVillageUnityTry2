@@ -10,6 +10,7 @@ namespace World.Game
         public static void Install(WorldBootstrap boot)
         {
             DevTools.Register();
+            DevStart.RegisterTool(); // developer starts (dev.historic)
             var bar = boot.gameObject.AddComponent<GodToolbar>();
             bar.Bind(boot);
         }
