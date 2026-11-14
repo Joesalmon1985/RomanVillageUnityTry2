@@ -29,7 +29,7 @@ namespace World.Sim.Tests
         private static string M(long ticks) => ticks < 0 ? "-" : (ticks / 600.0).ToString("0.0", Inv);
         private static string F1(double v) => v.ToString("0.0", Inv);
 
-        [Test, Timeout(1200000)] // Unity's EditMode runner stops a test at 180 s by default; this proof passes under .NET in under 2 minutes
+        [Test, Timeout(1200000), Category("HeavyProof")] // Unity stops a test at 180 s by default; this proof takes 1.5 min under .NET and 3.5 min in Unity. Routine Unity runs may exclude the category; dotnet test runs it
         public void Proof_WritesAgesProofSectionH_AndMeetsTheCriteria()
         {
             var failures = new List<string>();

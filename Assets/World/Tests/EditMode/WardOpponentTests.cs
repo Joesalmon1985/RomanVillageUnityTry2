@@ -18,12 +18,16 @@ namespace World.Sim.Tests
 
         static string FindFile()
         {
-            var d = new DirectoryInfo(AppContext.BaseDirectory);
-            while (d != null)
+            // dotnet test runs from DotNet/.../bin; Unity's runner has the project folder as its working directory.
+            foreach (var start in new[] { AppContext.BaseDirectory, Directory.GetCurrentDirectory() })
             {
-                var f = Path.Combine(d.FullName, "Assets", "StreamingAssets", "world", "ward_opponents.json");
-                if (File.Exists(f)) return f;
-                d = d.Parent;
+                var d = new DirectoryInfo(start);
+                while (d != null)
+                {
+                    var f = Path.Combine(d.FullName, "Assets", "StreamingAssets", "world", "ward_opponents.json");
+                    if (File.Exists(f)) return f;
+                    d = d.Parent;
+                }
             }
             Assert.Fail("ward_opponents.json not found");
             return null;
