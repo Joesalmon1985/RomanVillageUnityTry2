@@ -61,6 +61,9 @@ REFERENCE_HEAD_HEIGHT = 0.258        # Prince head-skin height; data lengths are
 EYE_PIVOT_BACK = 0.025               # contract (README 2.4)
 EYE_BONE_LENGTH = 0.06
 MOUTH_CUTS = 4
+# Integration fix (WP-3 found thin brows vanish at a head about 53 px tall in firelight): a brow piece is never
+# thinner than this (vertical extent, metres on the reference head), whatever the character's brow_thickness says.
+BROW_MIN_HEIGHT = 0.022
 
 # ---------------------------------------------------------------------------------------------------------------
 # Defaults. A cast/<key>.json "face" block overrides any of these (deep merge, numbers only).
@@ -406,10 +409,12 @@ def differentiate(ctx, pieces, P):
         vs = d["verts"]
         mn, mx, c = _bbox(orig, vs)
         ang = math.radians(P["brow_angle_deg"])
+        thick = max(P["brow_thickness"], BROW_MIN_HEIGHT * pieces.unit / max(1e-6, float(mx[2] - mn[2])))
+        d["brow_thickness_applied"] = thick
         for v in vs:
             rel = orig[v] - c
             rel[0] *= P["brow_length"]
-            rel[2] *= P["brow_thickness"]
+            rel[2] *= thick
             # tilt: inner end (towards x = 0) down for + angle
             inward = -sgn * rel[0]                         # + at the inner end
             rel[2] -= math.tan(ang) * inward
@@ -674,6 +679,8 @@ def build_face(ctx, face=None):
         "tuning": face["tuning"],
         "differentiation": _num(face["differentiation"]),
         "head_unit": common.r(pieces.unit, 4),
+        "brow_thickness_applied": {i: common.r(pieces.by_id[i].get("brow_thickness_applied", 1.0), 3)
+                                   for i in pieces.ids("brow")},
         "mouth_refine": mouth_report,
         "face_bones": bones_report,
     }
