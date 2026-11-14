@@ -33,8 +33,8 @@
                 {"z": 0.22, "fit": ["role:robe_or_skirt"], "margin": 0.03},
                 {"z": 0.14, "fit": ["role:robe_or_skirt"], "margin": 0.045}],
       "weights": {"bones": ["Hips", "Skirt.F", "Skirt.B", "Skirt.L", "Skirt.R"], "falloff": 2.0}},
-     {"name": "Boots", "when": "no_role:robe_or_skirt", "type": "band", "bone": "LowerLeg.L", "slot": "cloth_trim", "sides": 10, "teeth": 5, "tooth_depth": 0.035, "teeth_at": "first",
-      "rings": [{"t": 0.42, "r": 0.14}, {"t": 0.52, "r": 0.128}, {"t": 0.62, "r": 0.122}],
+     {"name": "Boots", "when": "no_role:robe_or_skirt", "type": "band", "bone": "LowerLeg.L", "slot": "cloth_trim", "sides": 10, "teeth": 5, "tooth_depth": 0.022, "teeth_at": "first",
+      "rings": [{"t": 0.46, "r": 0.14}, {"t": 0.56, "r": 0.128}, {"t": 0.66, "r": 0.122}],
       "weights": {"bones": ["LowerLeg.L", "LowerLeg.R"], "falloff": 6.0, "eps": 0.01}},
      {"name": "Necklace", "type": "necklace", "slot": "metal", "count": 12, "z": "neck_z+0.03", "rx": 0.10, "ry": 0.095, "cy": 0.0, "drop": 0.09, "push": 0.05,
       "weights": {"bones": ["Chest", "Neck"], "falloff": 2.0}}

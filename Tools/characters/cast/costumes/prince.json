@@ -259,19 +259,19 @@
      "slot": "cloth_trim",
      "sides": 10,
      "teeth": 5,
-     "tooth_depth": 0.035,
+     "tooth_depth": 0.022,
      "teeth_at": "first",
      "rings": [
       {
-       "t": 0.42,
+       "t": 0.46,
        "r": 0.14
       },
       {
-       "t": 0.52,
+       "t": 0.56,
        "r": 0.128
       },
       {
-       "t": 0.62,
+       "t": 0.66,
        "r": 0.122
       }
      ],
@@ -282,7 +282,8 @@
       ],
       "falloff": 6.0,
       "eps": 0.01
-     }
+     },
+     "note_cuff": "Cuff teeth shortened and the cuff moved 4 % down the shin: in deep knee bends the teeth reached 5 to 6 cm into the thigh."
     },
     {
      "name": "Circlet",

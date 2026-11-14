@@ -1072,10 +1072,16 @@ def _assign_materials(ctx, g, resolved):
             if iid in slots:
                 s = slots[iid]
             else:
-                # island added after the map (WP-2 joint covers): take the slot of the nearest mapped island
+                # island added after the map (WP-2 joint covers): take the slot of the nearest mapped island; but if a
+                # piece it sits in is hidden (a knee inside a closed robe), the cover is hidden too (integration fix:
+                # Hesta's knee caps showed through her robe)
                 c = co[isl["verts"]].mean(axis=0)
-                best = min(known, key=lambda k: (k["centre"][0] - c[0]) ** 2 + (k["centre"][1] - c[1]) ** 2 + (k["centre"][2] - c[2]) ** 2)
-                s = slots[best["id"]]
+                inside = [k for k in known if all(k["min"][j] - 0.02 <= c[j] <= k["max"][j] + 0.02 for j in range(3))]
+                if any(slots.get(k["id"]) == contract.HIDDEN_SLOT for k in inside):
+                    s = contract.HIDDEN_SLOT
+                else:
+                    best = min(known, key=lambda k: (k["centre"][0] - c[0]) ** 2 + (k["centre"][1] - c[1]) ** 2 + (k["centre"][2] - c[2]) ** 2)
+                    s = slots[best["id"]]
             used_slots.add(s)
             for fi in isl["faces"]:
                 face_slot[fi] = s
