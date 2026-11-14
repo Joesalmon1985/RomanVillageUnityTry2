@@ -98,7 +98,7 @@ def main():
                 if not s:
                     continue
                 hpx = s["head_box_px"][3] - s["head_box_px"][1]
-                scale = max(1, int(ch // (hpx * 1.6)))
+                scale = max(1, int(round(ch / (hpx * 1.6))))
                 im, size = crop_head(os.path.join(rroot, key, s["file"]), s["head_box_px"], scale)
                 sizes[(v, l)] = round(hpx)
                 canvas = Image.new("RGB", (ch, ch), (24, 24, 28))
