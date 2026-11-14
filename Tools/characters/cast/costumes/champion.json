@@ -1,0 +1,600 @@
+{
+ "schema": 1,
+ "key": "champion",
+ "identity_colour": "354563",
+ "variants": {
+  "historic": {
+   "description": "Supplied look: blue tunic, blue cape with a steel shoulder plate, steel sword."
+  },
+  "prehistoric": {
+   "description": "Charcoal hide wrap and kilt, blue-grey fur cloak (collar and long back drape), bone pauldrons, hide bracers, leg wraps and fur boot cuffs, blue-grey face paint, bone necklace, stone-headed war club in place of the sword.",
+   "palette": {
+    "hair": "22222D",
+    "cloth_main": "4E4A4C",
+    "cloth_trim": "6C88B4",
+    "leather": "6A4B33",
+    "metal": "B2AA96"
+   },
+   "slot_overrides": {
+    "role:upper_arm_piece&hex:39475F": "skin",
+    "role:thigh": "skin",
+    "hex:4C4548": "skin",
+    "Body.20": "leather",
+    "Body.22": "leather"
+   },
+   "hidden": [
+    "part:Cloth",
+    "part:Prop",
+    "Body.23"
+   ],
+   "overlays": [
+    {
+     "name": "Cloak",
+     "type": "shell",
+     "slot": "cloth_trim",
+     "parts": [
+      {
+       "type": "shell",
+       "sides": 12,
+       "teeth": 6,
+       "tooth_depth": 0.045,
+       "jitter": 0.006,
+       "boxy": 2.4,
+       "rings": [
+        {
+         "z": "neck_z+0.07",
+         "cx": 0.0,
+         "cy": -0.01,
+         "rx": 0.115,
+         "ry": 0.11
+        },
+        {
+         "z": "neck_z+0.02",
+         "cx": 0.0,
+         "cy": -0.01,
+         "rx": 0.155,
+         "ry": 0.14
+        },
+        {
+         "z": "neck_z-0.01",
+         "cx": 0.0,
+         "cy": -0.01,
+         "rx": 0.17,
+         "ry": 0.15
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Chest",
+         "Neck"
+        ],
+        "falloff": 2.0
+       }
+      },
+      {
+       "type": "shell",
+       "sides": 12,
+       "arc": [
+        95,
+        265
+       ],
+       "teeth": 6,
+       "tooth_depth": 0.045,
+       "jitter": 0.012,
+       "boxy": 3.0,
+       "rings": [
+        {
+         "z": "neck_z-0.02",
+         "fit": [
+          "role:torso"
+         ],
+         "margin": 0.03
+        },
+        {
+         "z": "shoulder_z-0.10",
+         "fit": [
+          "role:torso"
+         ],
+         "margin": 0.075,
+         "dy": 0.02
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Chest",
+         "Spine",
+         "Cape.1",
+         "Cape.2",
+         "Cape.3",
+         "Hips"
+        ],
+        "falloff": 2.2
+       }
+      },
+      {
+       "type": "shell",
+       "sides": 16,
+       "arc": [
+        95,
+        265
+       ],
+       "teeth": 8,
+       "tooth_depth": 0.06,
+       "jitter": 0.012,
+       "boxy": 3.0,
+       "rings": [
+        {
+         "z": "shoulder_z-0.05",
+         "fit": [
+          "role:torso"
+         ],
+         "margin": 0.055,
+         "dy": 0.02
+        },
+        {
+         "z": "hip_z+0.28",
+         "fit": [
+          "role:torso"
+         ],
+         "margin": 0.125,
+         "dy": 0.05
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Chest",
+         "Spine",
+         "Cape.1",
+         "Cape.2",
+         "Cape.3",
+         "Hips"
+        ],
+        "falloff": 2.2
+       }
+      },
+      {
+       "type": "shell",
+       "sides": 16,
+       "arc": [
+        95,
+        265
+       ],
+       "teeth": 8,
+       "tooth_depth": 0.075,
+       "jitter": 0.012,
+       "boxy": 3.0,
+       "rings": [
+        {
+         "z": "hip_z+0.34",
+         "fit": [
+          "role:torso"
+         ],
+         "margin": 0.105,
+         "dy": 0.05
+        },
+        {
+         "z": "hip_z-0.02",
+         "fit": [
+          "role:torso"
+         ],
+         "margin": 0.175,
+         "dy": 0.08
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Chest",
+         "Spine",
+         "Cape.1",
+         "Cape.2",
+         "Cape.3",
+         "Hips"
+        ],
+        "falloff": 2.2
+       }
+      },
+      {
+       "type": "shell",
+       "sides": 16,
+       "arc": [
+        95,
+        265
+       ],
+       "teeth": 8,
+       "tooth_depth": 0.09,
+       "jitter": 0.012,
+       "boxy": 3.0,
+       "rings": [
+        {
+         "z": "hip_z+0.04",
+         "fit": [
+          "role:torso"
+         ],
+         "margin": 0.17,
+         "dy": 0.08
+        },
+        {
+         "z": "knee_z+0.04",
+         "fit": [
+          "role:thigh"
+         ],
+         "margin": 0.19,
+         "min_rx": 0.3,
+         "dy": 0.1
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Chest",
+         "Spine",
+         "Cape.1",
+         "Cape.2",
+         "Cape.3",
+         "Hips"
+        ],
+        "falloff": 2.2
+       }
+      }
+     ]
+    },
+    {
+     "name": "Wrap",
+     "type": "shell",
+     "slot": "cloth_main",
+     "sides": 16,
+     "teeth": 8,
+     "tooth_depth": 0.06,
+     "jitter": 0.007,
+     "rings": [
+      {
+       "z": "hip_z+0.03",
+       "fit": [
+        "role:torso"
+       ],
+       "margin": 0.045
+      },
+      {
+       "z": "hip_z-0.10",
+       "fit": [
+        "role:thigh"
+       ],
+       "margin": 0.075,
+       "min_rx": 0.25
+      },
+      {
+       "z": "knee_z+0.12",
+       "fit": [
+        "role:thigh"
+       ],
+       "margin": 0.09,
+       "min_ry": 0.15
+      }
+     ],
+     "weights": {
+      "bones": [
+       "Hips",
+       "Spine",
+       "UpperLeg.L",
+       "UpperLeg.R"
+      ],
+      "falloff": 3.0
+     }
+    },
+    {
+     "name": "Boots",
+     "type": "band",
+     "bone": "LowerLeg.L",
+     "slot": "cloth_trim",
+     "parts": [
+      {
+       "type": "band",
+       "bone": "LowerLeg.L",
+       "slot": "cloth_trim",
+       "sides": 10,
+       "teeth": 5,
+       "tooth_depth": 0.04,
+       "teeth_at": "first",
+       "rings": [
+        {
+         "t": 0.42,
+         "r": 0.14
+        },
+        {
+         "t": 0.52,
+         "r": 0.128
+        },
+        {
+         "t": 0.62,
+         "r": 0.122
+        }
+       ]
+      },
+      {
+       "type": "band",
+       "bone": "LowerLeg.L",
+       "slot": "leather",
+       "sides": 8,
+       "rings": [
+        {
+         "t": 0.08,
+         "r": 0.084
+        },
+        {
+         "t": 0.15,
+         "r": 0.088
+        }
+       ]
+      },
+      {
+       "type": "band",
+       "bone": "LowerLeg.L",
+       "slot": "leather",
+       "sides": 8,
+       "rings": [
+        {
+         "t": 0.22,
+         "r": 0.088
+        },
+        {
+         "t": 0.29,
+         "r": 0.09
+        }
+       ]
+      }
+     ],
+     "weights": {
+      "bones": [
+       "LowerLeg.L",
+       "LowerLeg.R"
+      ],
+      "falloff": 6.0,
+      "eps": 0.01
+     }
+    },
+    {
+     "name": "Harness",
+     "type": "sash",
+     "slot": "leather",
+     "parts": [
+      {
+       "type": "sash",
+       "slot": "leather",
+       "fit": [
+        "role:torso",
+        "role:torso_detail"
+       ],
+       "margin": 0.02,
+       "width": 0.06,
+       "steps": 6,
+       "from": {
+        "theta": 38,
+        "z": "shoulder_z+0.05"
+       },
+       "to": {
+        "theta": -38,
+        "z": "hip_z+0.04"
+       }
+      },
+      {
+       "type": "sash",
+       "slot": "leather",
+       "fit": [
+        "role:torso",
+        "role:torso_detail"
+       ],
+       "margin": 0.026,
+       "width": 0.06,
+       "steps": 6,
+       "from": {
+        "theta": -38,
+        "z": "shoulder_z+0.05"
+       },
+       "to": {
+        "theta": 38,
+        "z": "hip_z+0.04"
+       }
+      }
+     ],
+     "weights": {
+      "bones": [
+       "Chest",
+       "Spine",
+       "Hips"
+      ],
+      "falloff": 3.0
+     }
+    },
+    {
+     "name": "Adorn",
+     "type": "necklace",
+     "slot": "metal",
+     "parts": [
+      {
+       "type": "necklace",
+       "slot": "metal",
+       "count": 12,
+       "z": "neck_z-0.02",
+       "rx": 0.1,
+       "ry": 0.1,
+       "cy": 0.0,
+       "drop": 0.11,
+       "push": 0.07,
+       "bead": [
+        0.026,
+        0.02,
+        0.05
+       ],
+       "pendant": [
+        0.04,
+        0.024,
+        0.09
+       ],
+       "weights": {
+        "bones": [
+         "Chest",
+         "Neck"
+        ],
+        "falloff": 2.0
+       }
+      },
+      {
+       "type": "stripes",
+       "slot": "cloth_trim",
+       "stripes": [
+        {
+         "x": 0.062,
+         "z": "head_cz-0.035",
+         "angle": 25,
+         "len": 0.055,
+         "w": 0.012
+        },
+        {
+         "x": 0.066,
+         "z": "head_cz-0.058",
+         "angle": 25,
+         "len": 0.055,
+         "w": 0.012
+        },
+        {
+         "x": 0.07,
+         "z": "head_cz-0.081",
+         "angle": 25,
+         "len": 0.05,
+         "w": 0.012
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Head"
+        ],
+        "rigid": true
+       }
+      }
+     ]
+    },
+    {
+     "name": "Club",
+     "type": "lathe",
+     "slot": "leather",
+     "prop": {
+      "socket": "Sock.Hand.R",
+      "key": "stone_club"
+     },
+     "parts": [
+      {
+       "type": "lathe",
+       "slot": "leather",
+       "p0": [
+        -0.4108,
+        -0.034,
+        1.15
+       ],
+       "p1": [
+        -0.4108,
+        -0.034,
+        0.46
+       ],
+       "sides": 6,
+       "twist": 40,
+       "profile": [
+        [
+         0,
+         0.026
+        ],
+        [
+         0.08,
+         0.024
+        ],
+        [
+         0.55,
+         0.022
+        ],
+        [
+         1.0,
+         0.03
+        ]
+       ]
+      },
+      {
+       "type": "lathe",
+       "slot": "metal",
+       "p0": [
+        -0.4108,
+        -0.034,
+        0.56
+       ],
+       "p1": [
+        -0.4108,
+        -0.034,
+        0.215
+       ],
+       "sides": 7,
+       "squash": [
+        1.0,
+        0.9
+       ],
+       "phase": 10,
+       "profile": [
+        [
+         0,
+         0.03
+        ],
+        [
+         0.18,
+         0.07
+        ],
+        [
+         0.5,
+         0.085
+        ],
+        [
+         0.82,
+         0.062
+        ],
+        [
+         1.0,
+         0.0
+        ]
+       ]
+      },
+      {
+       "type": "lathe",
+       "slot": "leather",
+       "p0": [
+        -0.4108,
+        -0.034,
+        0.585
+       ],
+       "p1": [
+        -0.4108,
+        -0.034,
+        0.5
+       ],
+       "sides": 8,
+       "profile": [
+        [
+         0,
+         0.036
+        ],
+        [
+         0.5,
+         0.044
+        ],
+        [
+         1,
+         0.07
+        ]
+       ]
+      }
+     ],
+     "weights": {
+      "bones": [
+       "Hand.R"
+      ],
+      "rigid": true
+     }
+    }
+   ]
+  }
+ }
+}
