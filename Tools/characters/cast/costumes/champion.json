@@ -235,7 +235,9 @@
         "falloff": 2.2
        }
       }
-     ]
+     ],
+     "stray_m": 0.65,
+     "note": "A wide cloak: its lower corners hang 0.6 m from the hips and cape bones that carry them."
     },
     {
      "name": "Wrap",

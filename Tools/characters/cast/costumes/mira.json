@@ -2,13 +2,14 @@
  "schema": 1,
  "key": "mira",
  "identity_colour": "493052",
- "merge": {
-  "hair": "leather"
- },
- "note": "Mira would use 9 slots; her hair (362B32) is within 5 RGB steps of her leather (392D31), so hair is folded into leather in both variants.",
+ "note": "Contract v2 (budget 9 slots, iris added): the supplied look folds hair into leather (same colour); the prehistoric look gives hair and brows their own slot and puts the bone charms on the ivory eye_white material.",
  "variants": {
   "historic": {
-   "description": "Supplied look: purple hooded robe, cape pieces, brass fittings, amethyst staff."
+   "description": "Supplied look: purple hooded robe, cape pieces, brass fittings, amethyst staff.",
+   "merge": {
+    "hair": "leather"
+   },
+   "note_merge": "Contract v2 slot budget (9): the supplied hair and leather are the same dark plum-brown, so they share one material in the supplied look."
   },
   "prehistoric": {
    "description": "Plum-dyed long hide robe with a rough fringed hem, soft hide hood (cape pieces off), bone necklace, thong charms at the belt, hide cuff bindings, carved wooden staff with a glowing ember stone.",
@@ -485,7 +486,11 @@
       "eps": 0.01
      }
     }
-   ]
+   ],
+   "merge": {
+    "metal": "eye_white"
+   },
+   "note_merge": "Contract v2 slot budget (9): bone charms share the ivory eye_white material so hair and brows keep their own slot."
   }
  }
 }

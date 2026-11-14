@@ -104,6 +104,7 @@ def load_defaults():
 
 
 def flat_islands(imap):
+    roles = {i["id"]: i["role"] for pn in PART_ORDER if pn in imap["parts"] for i in imap["parts"][pn]["islands"]}
     out = []
     for pn in PART_ORDER:
         part = imap["parts"].get(pn)
@@ -114,6 +115,7 @@ def flat_islands(imap):
             d["part"] = pn
             d["hexname"] = hex_of(i["materials"][0])
             d["is_emissive"] = bool(i.get("emissive")) or "_Ember" in i["materials"][0]
+            d["nested_role"] = roles.get(i.get("nested_in")) if i.get("nested_in") else None
             out.append(d)
     return out
 
@@ -139,6 +141,8 @@ def base_slots(imap, defaults):
             slots[i["id"]] = "emissive"
         elif role == "eye_sclera":
             slots[i["id"]] = "eye_white"
+        elif role in set(defaults.get("iris_roles", [])):
+            slots[i["id"]] = "iris"          # contract v2: the iris keeps the character's eye colour
         elif role in eye_dark_roles:
             slots[i["id"]] = "eye_dark"
         elif role in hair_roles or role == "hood":
@@ -192,6 +196,8 @@ def selector_match(i, sel):
                 ok = i["side"] == v
             elif k == "emissive":
                 ok = i["is_emissive"] == (v == "1")
+            elif k == "nested":
+                ok = i.get("nested_role") == v      # 'nested:robe_or_skirt' = a piece that sits inside the robe
             else:
                 raise ValueError("bad selector term " + term)
         if not ok:
@@ -287,11 +293,17 @@ def resolve_variant(key, imap, variant_name, data=None):
     var = data["variants"][variant_name]
     hist_slots = base_slots(imap, defaults)
     merges = dict(data.get("merge", {}))
+    merges.update(var.get("merge", {}))          # a variant may merge differently (contract v2 slot budget)
     _apply_merges(hist_slots, merges)
     merged = dict(merges)
     merged.update(_fit_slot_budget(hist_slots, defaults))
     hist_colours = _historic_means(imap, hist_slots)
     slots = dict(hist_slots)
+    # every variant: pieces that sit wholly inside a closed robe can never be seen, only poke through it in a stride,
+    # so they are hidden (integration fix for the dress family: legs showed through the robe in walk and run)
+    for sel in defaults.get("always_hidden", []):
+        for iid in select_ids(imap, sel):
+            slots[iid] = contract.HIDDEN_SLOT
     if variant_name != "historic":
         for sel, slot in var.get("slot_overrides", {}).items():
             for iid in select_ids(imap, sel):
@@ -311,7 +323,25 @@ def resolve_variant(key, imap, variant_name, data=None):
                     for iid in select_ids(imap, sel):
                         slots[iid] = contract.HIDDEN_SLOT
         _apply_merges(slots, var.get("merge", {}))
-    used = sorted({v for v in slots.values() if v != contract.HIDDEN_SLOT}, key=contract.ROLE_SLOTS.index)
+    # slots the overlays draw with, after the same merges (an overlay that asks for a merged slot uses its target)
+    slot_map = {}
+    for s in contract.ROLE_SLOTS:
+        t = s
+        for _ in range(4):
+            t = merged.get(t, t)
+            if variant_name != "historic":
+                t = var.get("merge", {}).get(t, t)
+        slot_map[s] = t
+    overlay_slots = set()
+    if variant_name != "historic":
+        for o in var.get("overlays", []):
+            if _cond(imap, o.get("when")):
+                for p in (o.get("parts") or [o]):
+                    overlay_slots.add(slot_map[p.get("slot", o.get("slot"))])
+    used = sorted({v for v in slots.values() if v != contract.HIDDEN_SLOT} | overlay_slots, key=contract.ROLE_SLOTS.index)
+    if len(used) > contract.MAX_SLOTS_PER_CHARACTER:
+        raise RuntimeError("%s/%s uses %d role slots %s (max %d): add a merge to the costume data"
+                           % (key, variant_name, len(used), used, contract.MAX_SLOTS_PER_CHARACTER))
     colours = {}
     pal = dict(var.get("palette", {}))
     if variant_name != "historic" and data.get("auto"):
@@ -352,7 +382,7 @@ def resolve_variant(key, imap, variant_name, data=None):
         e["w"] += i["tris"]
     colour_error = {s: {"max_rgb": round(e["max"], 1), "mean_rgb": round(e["mean_w"] / e["w"], 1)} for s, e in sorted(err.items())}
     return {"name": variant_name, "description": var.get("description", ""), "slots": colours,
-            "slot_count": len(used), "island_slots": dict(sorted(slots.items())), "hidden_islands": hidden,
+            "slot_count": len(used), "slot_map": {k: v for k, v in slot_map.items() if k != v}, "island_slots": dict(sorted(slots.items())), "hidden_islands": hidden,
             "overlay_recipes": overlays, "overlays": [contract.OVERLAY_PREFIX + o["name"] for o in overlays],
             "props": props, "merged": merged, "colour_error": colour_error}
 
@@ -448,6 +478,11 @@ class Geo:
             for b in arm.data.bones:
                 self.segs[b.name] = (M @ b.head_local, M @ b.tail_local)
         self._head_bvh = None
+        # WP-2's real skin fields, when the production rig ran (the stub rig has no ctx.wp2)
+        self.fields = None
+        if arm is not None and hasattr(ctx, "wp2"):
+            import skin as skin_mod
+            self.fields = skin_mod.Fields(ctx)
 
     # ---- values
     def val(self, e):
@@ -745,19 +780,34 @@ def part_prongs(g, mb, p, name):
 
 
 def part_necklace(g, mb, p, name):
-    """Beads or fangs around the neck: ring (rx, ry) at z, front dropped by `drop`; each bead a small tapered box pointing down."""
+    """Beads or fangs around the neck: ring (rx, ry) at z, front dropped by `drop`; each bead a small tapered box pointing down.
+    With "fit" (default: the torso and neck pieces) every bead is laid on the body's own section at its height plus
+    "margin", never inside it (integration fix: the champion's necklace hung on a 10 cm ring and its front beads sank
+    into his chest, which is far wider than his neck at the height the front of the necklace drops to)."""
     rng = _rng(name + "neck")
     n = p.get("count", 12)
     cx, cy = p.get("cx", 0.0), p.get("cy", 0.0)
+    fit = p.get("fit", ["role:torso", "role:neck", "role:torso_detail"])
+    margin = p.get("margin", 0.012)
     for k in range(n):
         ang = 360.0 * k / n
-        x, y = _ring_point(cx, cy, p["rx"], p["ry"], ang, 2.0)
         front = max(0.0, math.cos(math.radians(ang + 180.0)))
         z = g.val(p["z"]) - p.get("drop", 0.06) * front ** 1.5
+        x, y = _ring_point(cx, cy, p["rx"], p["ry"], ang, 2.0)
         y -= p.get("push", 0.0) * front ** 1.5
         size = list(p.get("bead", [0.022, 0.018, 0.04]))
         if abs(((ang + 180) % 360) - 180) < 1:   # pendant at the front
             size = list(p.get("pendant", [0.035, 0.02, 0.075]))
+        if fit:
+            ext = g.section(fit, z)
+            if ext is not None:
+                # the body's section at this height, grown by the margin and half the bead's depth
+                ex, ey = (ext[0] + ext[1]) / 2, (ext[2] + ext[3]) / 2
+                rx = (ext[1] - ext[0]) / 2 + margin + size[1] / 2
+                ry = (ext[3] - ext[2]) / 2 + margin + size[1] / 2
+                bx, by = _ring_point(ex, ey, rx, ry, ang, 2.4)
+                if math.hypot(bx - ex, by - ey) > math.hypot(x - ex, y - ey):
+                    x, y = bx, by
         j = rng.uniform(-0.1, 0.1)
         c = Vector((x, y, z))
         R = Euler((0, 0, math.radians(-ang)), "XYZ").to_matrix()
@@ -866,13 +916,91 @@ def _closest_on_segment(p, a, b):
     return a + ab * t
 
 
+def skin_field_for(spec):
+    """Which of WP-2's skin fields (skin.Fields) an overlay weight spec stands for, so overlays move exactly like the
+    supplied pieces they cover (integration fix: overlays were weighted by bone distance on the stand-in rig, which
+    put weights on bones 30 to 45 cm away and let garments drift off the body in a stride).
+      explicit {"field": name}                 -> that field
+      any Skirt.* bone                         -> "skirt"  (robe hems, charms and patches ride the robe)
+      any Cape.* bone                          -> "cape"   (cloak drapes follow the cape chain below its top)
+      UpperLeg.* with Hips/Spine               -> "torso"  (kilts and wraps: the skin's thigh share below the hip)
+      only Hips / Spine / Chest                -> "torso"  (sashes, harness)
+      Chest + Neck                             -> "chest"  (necklaces sit rigidly on the chest, never sink into it)
+      Chest + Shoulder.x (+ UpperArm.x)        -> "mantle" (Chest blended to the shoulder cap, never the arm)
+    Returns None for anything else (distance weights, as before)."""
+    if spec.get("rigid"):
+        return None
+    if spec.get("field"):
+        return spec["field"]
+    bones = set(spec.get("bones", []))
+    if any(b.startswith("Skirt.") for b in bones):
+        return "skirt"
+    if any(b.startswith("Cape.") for b in bones):
+        return "cape"
+    if bones and bones <= {"Hips", "Spine", "Chest", "UpperLeg.L", "UpperLeg.R"}:
+        return "torso"
+    if bones == {"Chest", "Neck"}:
+        return "chest"
+    if "Chest" in bones and any(b.startswith("Shoulder.") for b in bones):
+        return "mantle"
+    return None
+
+
+def _field_weights(g, pos, field, spec):
+    F = g.fields
+    p = (pos.x, pos.y, pos.z)
+    if field == "chest":
+        return {"Chest": 1.0}
+    if field == "mantle":
+        side = "L" if pos.x >= 0 else "R"
+        sh = "Shoulder." + side
+        if sh not in g.segs:
+            return {"Chest": 1.0}
+        a, c = g.segs[sh]
+        u = (abs(pos.x) - abs(a.x) - 0.03) / 0.08          # 0 at the inner end of the shoulder bone, 1 over the cap
+        u = max(0.0, min(1.0, u))
+        u = u * u * (3 - 2 * u)
+        w = {k: v * (1.0 - u) for k, v in F.torso(p, legs=False).items()}
+        w[sh] = w.get(sh, 0.0) + u
+        return w
+    if field == "cape":
+        if not F.has_cape:
+            return F.torso(p, legs=False)
+        yc = g.segs["Hips"][0].y
+        if pos.y < yc or pos.z > F.cape_top:
+            return F.torso(p, legs=False)                  # a cloak's collar and front ride the chest
+        # straight behind the body the cloak follows the cape chain; toward the sides it blends to the body (and,
+        # below the hips, the thigh share of the skin's torso field), so a wide drape never hangs off a far chain
+        back = min(1.0, (pos.y - yc) / 0.12) * max(0.0, min(1.0, 1.0 - (abs(pos.x) - 0.12) / 0.16))
+        back = back * back * (3 - 2 * back)
+        w = {k: v * (1 - back) for k, v in F.torso(p, legs=True).items()}
+        for k, v in F.cape(p).items():
+            w[k] = w.get(k, 0.0) + v * back
+        return w
+    if field == "torso":
+        return F.torso(p, legs=any(b.startswith("UpperLeg") for b in spec.get("bones", [])) or spec.get("legs", True))
+    if field == "plate":
+        return F.plate(p)
+    if field == "skirt":
+        return F.skirt(p)
+    if field == "hood":
+        return F.hood(p) if F.has_hood else {"Head": 1.0}
+    raise ValueError("unknown skin field %r" % field)
+
+
 def vertex_weights(g, pos, spec):
-    """spec: {"bones":[...], "rigid":bool, "falloff":p, "eps":m, "bias":{bone:factor}} -> [(bone, w)] (<= 4)."""
+    """spec: {"bones":[...], "rigid":bool, "falloff":p, "eps":m, "bias":{bone:factor}, "field": name} -> [(bone, w)]."""
     bones = [b for b in spec["bones"] if b in g.segs]
     if not bones:
         raise RuntimeError("none of the bones %s exist on the armature" % spec["bones"])
     if spec.get("rigid") or len(bones) == 1:
         return [(bones[0], 1.0)]
+    field = skin_field_for(spec) if getattr(g, "fields", None) is not None else None
+    if field is not None:
+        w = {b: v for b, v in _field_weights(g, pos, field, spec).items() if v > 0.005 and b in g.segs}
+        w = dict(sorted(w.items(), key=lambda kv: -kv[1])[:contract.MAX_INFLUENCES])
+        tot = sum(w.values())
+        return [(b, v / tot) for b, v in sorted(w.items())]
     pw = spec.get("falloff", 3.0)
     eps = spec.get("eps", 0.03)
     bias = spec.get("bias", {})
@@ -889,9 +1017,11 @@ def vertex_weights(g, pos, spec):
     return [(b, w / tot) for b, w in ws]
 
 
-def create_overlay_object(ctx, g, recipe, colours):
+def create_overlay_object(ctx, g, recipe, colours, slot_map=None):
     name = contract.OVERLAY_PREFIX + recipe["name"]
     mb = build_overlay_mesh(g, recipe)
+    if slot_map:
+        mb.fs = [slot_map.get(s, s) for s in mb.fs]
     me = bpy.data.meshes.new(name)
     me.from_pydata(mb.v, [], mb.f)
     used = sorted({s for s in mb.fs}, key=contract.ROLE_SLOTS.index)
@@ -918,6 +1048,10 @@ def create_overlay_object(ctx, g, recipe, colours):
     mod = obj.modifiers.new("Armature", "ARMATURE")
     mod.object = ctx.armature
     obj["costume_overlay"] = recipe["name"]
+    if recipe.get("stray_m"):
+        obj["stray_m"] = float(recipe["stray_m"])      # a wide garment: how far from its bones the reach check allows
+    if recipe.get("prop"):
+        obj["costume_prop"] = recipe["prop"]["key"]      # a held prop: rigid on the hand, exempt from the reach check
     return obj, len(me.polygons), sum(len(p.vertices) - 2 for p in me.polygons)
 
 
@@ -987,7 +1121,7 @@ def apply_costume(ctx, costume_name="prehistoric"):
     mats = _assign_materials(ctx, g, cur)
     overlays_made = {}
     for recipe in cur["overlay_recipes"]:
-        obj, nf, nt = create_overlay_object(ctx, g, recipe, cur["slots"])
+        obj, nf, nt = create_overlay_object(ctx, g, recipe, cur["slots"], cur.get("slot_map"))
         overlays_made[obj.name] = {"tris": nt, "slots": [m.name for m in obj.data.materials]}
         ctx.overlay_objects = getattr(ctx, "overlay_objects", [])
         ctx.overlay_objects.append(obj)
@@ -1002,7 +1136,8 @@ def apply_costume(ctx, costume_name="prehistoric"):
         section["variants"][n] = {
             "description": r["description"], "slots": r["slots"], "slot_count": r["slot_count"],
             "island_slots": r["island_slots"], "hidden_islands": r["hidden_islands"], "overlays": r["overlays"],
-            "props": r["props"], "merged_slots": r["merged"], "colour_error": r["colour_error"],
+            "props": r["props"], "merged_slots": r["merged"], "slot_map": r.get("slot_map", {}),
+            "colour_error": r["colour_error"],
         }
     section["draw"] = {"visible_base_tris": vis, "overlay_tris": overlay_tris, "total_tris": vis + overlay_tris,
                        "overlays": overlays_made, "slot_materials": mats}

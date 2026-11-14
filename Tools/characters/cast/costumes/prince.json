@@ -178,7 +178,8 @@
         "falloff": 2.0
        }
       }
-     ]
+     ],
+     "stray_m": 0.55
     },
     {
      "name": "Sash",
@@ -374,9 +375,9 @@
        "type": "box",
        "slot": "leather",
        "centre": [
-        -0.26,
-        0.0,
-        "hip_z-0.13"
+        -0.27,
+        0.07,
+        "hip_z-0.12"
        ],
        "size": [
         0.034,
@@ -388,18 +389,18 @@
         0.5
        ],
        "rot": [
-        180,
+        170,
         0,
-        4
+        6
        ]
       },
       {
        "type": "box",
        "slot": "metal",
        "centre": [
-        -0.262,
-        0.0,
-        "hip_z-0.02"
+        -0.272,
+        0.075,
+        "hip_z-0.015"
        ],
        "size": [
         0.026,
@@ -407,9 +408,9 @@
         0.075
        ],
        "rot": [
+        -10,
         0,
-        0,
-        4
+        6
        ]
       }
      ],
@@ -418,7 +419,8 @@
        "Hips"
       ],
       "rigid": true
-     }
+     },
+     "note": "Sits on the back of the right hip so the thigh never swings through it (it is rigid on Hips)."
     }
    ]
   }
