@@ -224,7 +224,7 @@ namespace World.Game
         public static Component Thing(string marker)
         {
             MarkerRef.TryParse(marker, out var r);
-            foreach (var t in UnityEngine.Object.FindObjectsByType<InteriorThing>(FindObjectsSortMode.None)) if (t.Ref == r) return t;
+            foreach (var t in UnityEngine.Object.FindObjectsByType<InteriorThing>(FindObjectsInactive.Include, FindObjectsSortMode.None)) if (t.Ref == r) return t;
             return null;
         }
 
