@@ -141,6 +141,8 @@ namespace World.Sim.Economy
         public bool IsTown;
         /// <summary>A Town raised to a District (Modern; M1-2). Implies IsTown.</summary>
         public bool IsDistrict;
+        /// <summary>The tick this settlement became a Town (-1 before): the first town keeps a contested outer plot (PRD_AGES 5.3).</summary>
+        public long TownTick = -1;
     }
 
     public sealed class Building
@@ -270,6 +272,11 @@ namespace World.Sim.Economy
         public int[] TakenByType = new int[BuildingDefs.Count];
         /// <summary>Lost to a campaign overrun (PRD_AGES 4.3, ledger line "Looted"). Also counted in Consumed, so 4.4 holds.</summary>
         public int[] Looted = new int[Wares.Count];
+        /// <summary>
+        /// Wares above the type's base yield that upgraded collectors made, counted when the cycle starts (like TakenByType),
+        /// so Collected = taken x base yield + GradeYield still holds (H1-2).
+        /// </summary>
+        public int[] GradeYield = new int[Wares.Count];
 
         private static int[][] NewTable()
         {

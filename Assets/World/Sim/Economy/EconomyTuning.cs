@@ -65,6 +65,13 @@ namespace World.Sim.Economy
         public int DistrictShipmentSize = 8;
 
         /// <summary>
+        /// Per building type (index = <see cref="BuildingType"/>; a missing entry is 0): permille taken off the type's cycle
+        /// time on top of its grade, e.g. 200 = cycles take 80% as long. Default 0 everywhere; the crystal campaign's Fire
+        /// boon sets it (PRD_AGES 11.1, H1-2). Clamped to 0..900 when read. Saved with the state.
+        /// </summary>
+        public int[] CycleBonusPermille = new int[BuildingDefs.Count];
+
+        /// <summary>
         /// The values a new game uses: the spec's starting values (the field initialisers, kept as written in
         /// REFACTOR_SPEC) with the changes S made in tuning (PROGRESS.md, tuning log): carriers walk 5 m in 10 ticks,
         /// 5 carriers at a starting camp and 3 at a new one, 4 sheep in the starting stock, hex cap 16.

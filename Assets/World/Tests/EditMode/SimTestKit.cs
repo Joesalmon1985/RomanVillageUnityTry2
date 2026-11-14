@@ -135,10 +135,11 @@ namespace World.Sim.Tests
             var expect = new int[Wares.Count];
             foreach (var def in BuildingDefs.All)
                 if (def.IsCollector) expect[(int)TerrainInfo.RawWare(def.Terrain).Value] += l.TakenByType[(int)def.Type] * def.Yield;
+            for (int w = 0; w < Wares.Count; w++) expect[w] += l.GradeYield[w]; // wares above the base yield from upgraded collectors (H1-2)
             foreach (var b in e.Buildings)
             {
                 var def = BuildingDefs.Get(b.Type);
-                if (def.IsCollector && b.WorkProgress > 0) expect[(int)TerrainInfo.RawWare(def.Terrain).Value] -= def.Yield;
+                if (def.IsCollector && b.WorkProgress > 0) expect[(int)TerrainInfo.RawWare(def.Terrain).Value] -= GradeLogic.YieldPerUnit(def, b.Grade);
             }
             for (int w = 0; w < Wares.Count; w++)
                 if (l.Collected[w] != expect[w]) return "collected " + (Ware)w + " " + l.Collected[w] + " vs taken x yield " + expect[w];

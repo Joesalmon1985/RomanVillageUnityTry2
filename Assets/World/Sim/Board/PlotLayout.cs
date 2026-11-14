@@ -22,11 +22,12 @@ namespace World.Sim
 
         public static int PlotId(int corner, int sector, int slot) => corner * PlotsPerCorner + sector * SlotsPerSector + slot;
 
-        public static int CornerOf(int plot) => plot / PlotsPerCorner;
+        /// <summary>Outer town plots (id from <see cref="PlotLayoutOuter.OuterBase"/>, H1-2) answer through PlotLayoutOuter; slots 3 and 4.</summary>
+        public static int CornerOf(int plot) => plot >= PlotLayoutOuter.OuterBase ? PlotLayoutOuter.CornerOf(plot) : plot / PlotsPerCorner;
 
-        public static int SectorOf(int plot) => plot % PlotsPerCorner / SlotsPerSector;
+        public static int SectorOf(int plot) => plot >= PlotLayoutOuter.OuterBase ? PlotLayoutOuter.SectorOf(plot) : plot % PlotsPerCorner / SlotsPerSector;
 
-        public static int SlotOf(int plot) => plot % SlotsPerSector;
+        public static int SlotOf(int plot) => plot >= PlotLayoutOuter.OuterBase ? PlotLayoutOuter.SlotOf(plot) : plot % SlotsPerSector;
 
         /// <summary>Highest plot id + 1 on a topology.</summary>
         public static int PlotCount(BoardTopology t) => t == null ? 0 : t.CornerCount * PlotsPerCorner;
@@ -35,9 +36,12 @@ namespace World.Sim
         public static bool IsSettlementCorner(BoardTopology t, int corner) =>
             t != null && t.IsCorner(corner) && t.VertexHexes(corner).Count == 3;
 
-        /// <summary>True when the plot id belongs to a settlement corner and its slot and sector are in range.</summary>
+        /// <summary>
+        /// True when the plot id belongs to a settlement corner and its slot and sector are in range. Includes the outer
+        /// town plots (ids from 1350, H1-2); <see cref="PlotCount"/> still counts the inner plots only.
+        /// </summary>
         public static bool IsValidPlot(BoardTopology t, int plot) =>
-            plot >= 0 && plot < PlotCount(t) && IsSettlementCorner(t, CornerOf(plot));
+            plot >= 0 && ((plot < PlotCount(t) && IsSettlementCorner(t, CornerOf(plot))) || PlotLayoutOuter.IsValidOuterPlot(t, plot));
 
         /// <summary>The hex of a corner's sector (adjacent hex ids ascending), or -1.</summary>
         public static int SectorHex(BoardTopology t, int corner, int sector)
@@ -73,6 +77,7 @@ namespace World.Sim
         /// <summary>Facing in degrees, 0 = north, clockwise: slots 0 and 1 face their spoke point, slot 2 faces the corner.</summary>
         public static double PlotYaw(BoardTopology t, int plot)
         {
+            if (plot >= PlotLayoutOuter.OuterBase) return PlotLayoutOuter.Yaw(t, plot);
             if (!Spoke(t, plot, out double cx, out double cz, out double bx, out double bz)) return 0;
             Centre(t, plot, out double px, out double pz);
             double tx, tz;
@@ -87,6 +92,7 @@ namespace World.Sim
         /// </summary>
         public static double[] PathPoints(BoardTopology t, int plot)
         {
+            if (plot >= PlotLayoutOuter.OuterBase) return PlotLayoutOuter.PathPoints(t, plot);
             if (!Spoke(t, plot, out double cx, out double cz, out double bx, out double bz)) return new double[0];
             Centre(t, plot, out double px, out double pz);
             if (SlotOf(plot) == CitySlot) return new[] { cx, cz, px, pz };
@@ -94,7 +100,7 @@ namespace World.Sim
         }
 
         /// <summary>Length of the local path in 5 m steps: 8 for slots 0 and 1, 9 for slot 2.</summary>
-        public static int LocalSteps(int plot) => SlotOf(plot) == CitySlot ? 9 : 8;
+        public static int LocalSteps(int plot) => plot >= PlotLayoutOuter.OuterBase ? PlotLayoutOuter.LocalSteps : SlotOf(plot) == CitySlot ? 9 : 8;
 
         /// <summary>Yaw in degrees (0 = north, clockwise) of a direction (dx east, dz north); 0 for a zero vector.</summary>
         public static double Yaw(double dx, double dz)
@@ -143,6 +149,7 @@ namespace World.Sim
 
         private static void Centre(BoardTopology t, int plot, out double x, out double z)
         {
+            if (plot >= PlotLayoutOuter.OuterBase) { PlotLayoutOuter.Centre(t, plot, out x, out z); return; }
             if (!Spoke(t, plot, out double cx, out double cz, out double bx, out double bz))
             {
                 x = z = 0;
