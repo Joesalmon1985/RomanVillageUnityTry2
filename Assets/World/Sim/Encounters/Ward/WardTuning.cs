@@ -38,5 +38,22 @@ namespace World.Sim.Encounters.Ward
             if (!string.IsNullOrEmpty(json)) JsonConvert.PopulateObject(json, t);
             return t;
         }
+
+        /// <summary>
+        /// A copy of baseTuning (Practice() when null) with the opponent's timing and mistakes in the Mira* fields
+        /// (PRD_CRYSTALS 5.12, A.5). The duel rules are untouched; a null profile gives the plain copy. The pool is the
+        /// profile's own (WardDuelSpec.Pool). Added by PRD_CRYSTALS I0; package I3 owns it from tag cry-I0-sim.
+        /// </summary>
+        public static WardTuning For(WardOpponentProfile p, WardTuning baseTuning = null)
+        {
+            var t = (WardTuning)(baseTuning ?? Practice()).MemberwiseClone();
+            if (p == null) return t;
+            t.MiraFirstCastMinMs = p.FirstCastMinMs;
+            t.MiraFirstCastMaxMs = p.FirstCastMaxMs;
+            t.MiraThinkMinMs = p.ThinkMinMs;
+            t.MiraThinkMaxMs = p.ThinkMaxMs;
+            t.MiraMistakeRatePercent = p.MistakeRatePercent;
+            return t;
+        }
     }
 }

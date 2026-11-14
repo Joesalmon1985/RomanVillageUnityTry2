@@ -36,7 +36,9 @@ namespace World.Sim
             Eras.ErasModule.InitState(s);
             Ledger.LedgerModule.InitState(s);
 
-            return Save.SaveCodec.CreateSim(s);
+            var sim = Save.SaveCodec.CreateSim(s);
+            Campaign.CampaignModule.Register(sim);   // PRD_CRYSTALS I0 (idempotent; loaded saves need the same line in SaveCodec.CreateSim)
+            return sim;
         }
     }
 }

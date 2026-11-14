@@ -83,6 +83,18 @@ namespace World.Sim.Encounters.Ward
             Outcome = WardOutcome.None;
         }
 
+        /// <summary>
+        /// The same session as <c>new WardDuelSession(spec.Tuning, spec.Pool, spec.Seed)</c> (PRD_CRYSTALS 5.12, A.5). A null
+        /// spec, tuning or pool falls back to the practice tuning and its first pool. Added by PRD_CRYSTALS I0; package I3
+        /// owns it from tag cry-I0-sim.
+        /// </summary>
+        public static WardDuelSession Create(WardDuelSpec spec)
+        {
+            var tuning = spec?.Tuning ?? WardTuning.Practice();
+            var pool = spec?.Pool != null && spec.Pool.Length > 0 ? spec.Pool : WardFormat.For(0, tuning);
+            return new WardDuelSession(tuning, pool, spec?.Seed ?? 0UL);
+        }
+
         bool Legal(int[] w)
         {
             if (w == null || w.Length != _t.Loci) return false;
