@@ -1,0 +1,117 @@
+{
+  "Locations": [
+    { "Id": "home", "Name": "the home camp", "Kind": "Camp", "Anchor": { "Kind": "HomeCamp" }, "SafePoint": "fire",
+      "Markers": [
+        { "Id": "fire", "Kind": "SafePoint", "Name": "the home fire", "I": 2, "J": 0 },
+        { "Id": "elder", "Kind": "Witness", "Name": "the elder's bench", "I": 2, "J": 1 },
+        { "Id": "sign", "Kind": "Inscription", "Name": "the old signpost", "I": -2, "J": 2 }
+      ] },
+    { "Id": "glade", "Name": "the Stonemark Glade", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": 0, "R": -1 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "stair", "Kind": "Stairs", "Name": "the stair down", "I": 0, "J": 1, "To": "glade/skel_upper/exit" },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the glade's edge", "I": 1, "J": 0 }
+      ] },
+    { "Id": "kiln", "Name": "the Cold Kiln", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": 4, "R": -1 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "pedestal", "Kind": "Pedestal", "Name": "the kiln hearth", "Crystal": "fire" },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the kiln yard", "I": 1, "J": 0 }
+      ] },
+    { "Id": "forge", "Name": "the Black Forge", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": -4, "R": 2 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "altar", "Kind": "Altar", "Name": "the forge altar", "Crystal": "fire" },
+        { "Id": "keeper", "Kind": "DuelOpponent", "Name": "the keeper's place", "I": 1, "J": 0 },
+        { "Id": "threshold", "Kind": "Threshold", "Name": "the forge gate", "I": 1, "J": -1 },
+        { "Id": "caster", "Kind": "DuelCaster", "Name": "where Mira stands", "I": 2, "J": -1 },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the slag heap", "I": -1, "J": 0 }
+      ] },
+    { "Id": "causeway", "Name": "the Low Causeway", "Kind": "Shore", "Anchor": { "Kind": "MeadowHexCentre", "Q": 1, "R": -4 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "pedestal", "Kind": "Pedestal", "Name": "the tide cellar", "Crystal": "water" },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the causeway head", "I": 1, "J": 0 }
+      ] },
+    { "Id": "cistern", "Name": "the Old Cistern", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": 2, "R": -3 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "altar", "Kind": "Altar", "Name": "the cistern altar", "Crystal": "water" },
+        { "Id": "keeper", "Kind": "DuelOpponent", "Name": "the keeper's place", "I": 1, "J": 0 },
+        { "Id": "threshold", "Kind": "Threshold", "Name": "the cistern steps", "I": 1, "J": -1 },
+        { "Id": "caster", "Kind": "DuelCaster", "Name": "where Mira stands", "I": 2, "J": -1 },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the cistern wall", "I": -1, "J": 0 }
+      ] },
+    { "Id": "shoulder", "Name": "the Bare Shoulder", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": 3, "R": 1 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "pedestal", "Kind": "Pedestal", "Name": "the wind-worn pedestal", "Crystal": "air" },
+        { "Id": "cairn", "Kind": "Inscription", "Name": "the wind cairn", "I": 1, "J": 0 },
+        { "Id": "carving", "Kind": "Inscription", "Name": "the carving", "I": 0, "J": 1 },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the lee of the rock", "I": -1, "J": 0 }
+      ] },
+    { "Id": "cliff", "Name": "the Cliff Stair", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": 1, "R": 3 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "altar", "Kind": "Altar", "Name": "the signal altar", "Crystal": "air" },
+        { "Id": "keeper", "Kind": "DuelOpponent", "Name": "the keeper's place", "I": 1, "J": 0 },
+        { "Id": "threshold", "Kind": "Threshold", "Name": "the top of the stair", "I": 1, "J": -1 },
+        { "Id": "caster", "Kind": "DuelCaster", "Name": "where Mira stands", "I": 2, "J": -1 },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the cliff path", "I": -1, "J": 0 }
+      ] },
+    { "Id": "tower_earth", "Name": "the Rooted Tower", "Kind": "Tower", "Anchor": { "Kind": "RimCorner", "Corner": 17 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "door", "Kind": "Inscription", "Name": "the tower door", "I": 1, "J": 0 },
+        { "Id": "opponent", "Kind": "DuelOpponent", "Name": "the tower steps", "I": 2, "J": 0 },
+        { "Id": "caster", "Kind": "DuelCaster", "Name": "below the steps", "I": 3, "J": 0 },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the tower path", "I": 6, "J": 0 }
+      ] },
+    { "Id": "tower_fire", "Name": "the Beacon Tower", "Kind": "Tower", "Anchor": { "Kind": "RimCorner", "Corner": 74 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "door", "Kind": "Inscription", "Name": "the tower door", "I": -1, "J": 1 },
+        { "Id": "opponent", "Kind": "DuelOpponent", "Name": "the tower steps", "I": -2, "J": 2 },
+        { "Id": "caster", "Kind": "DuelCaster", "Name": "below the steps", "I": -3, "J": 3 },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the tower path", "I": -6, "J": 6 }
+      ] },
+    { "Id": "tower_water", "Name": "the Tide Tower", "Kind": "Tower", "Anchor": { "Kind": "RimCorner", "Corner": 2 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "door", "Kind": "Inscription", "Name": "the tower door", "I": 0, "J": 1 },
+        { "Id": "opponent", "Kind": "DuelOpponent", "Name": "the tower steps", "I": 0, "J": 2 },
+        { "Id": "caster", "Kind": "DuelCaster", "Name": "below the steps", "I": 0, "J": 3 },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the tower path", "I": 0, "J": 6 }
+      ] },
+    { "Id": "tower_air", "Name": "the Whistling Tower", "Kind": "Tower", "Anchor": { "Kind": "RimCorner", "Corner": 147 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "door", "Kind": "Inscription", "Name": "the tower door", "I": 0, "J": -1 },
+        { "Id": "opponent", "Kind": "DuelOpponent", "Name": "the tower steps", "I": 0, "J": -2 },
+        { "Id": "caster", "Kind": "DuelCaster", "Name": "below the steps", "I": 0, "J": -3 },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the tower path", "I": 0, "J": -6 }
+      ] }
+  ],
+  "Interiors": [
+    { "Id": "skel_upper", "Name": "the upper hollow", "Location": "glade",
+      "Rows": [
+        "#####",
+        "#E.P#",
+        "#S.D#",
+        "#####"
+      ],
+      "Legend": {
+        "E": { "Id": "exit", "Kind": "Exit", "Name": "the way up", "To": "glade/stair" },
+        "P": { "Id": "pedestal", "Kind": "Pedestal", "Name": "the pedestal", "Crystal": "earth" },
+        "S": { "Id": "safe", "Kind": "SafePoint", "Name": "the landing" },
+        "D": { "Id": "down", "Kind": "Stairs", "Name": "the stair down", "To": "glade/skel_lower/up" }
+      } },
+    { "Id": "skel_lower", "Name": "the lower hollow", "Location": "glade",
+      "Rows": [
+        "#####",
+        "#U.H#",
+        "#AKC#",
+        "#####"
+      ],
+      "Legend": {
+        "U": { "Id": "up", "Kind": "Stairs", "Name": "the stair up", "To": "glade/skel_upper/down" },
+        "H": { "Id": "threshold", "Kind": "Threshold", "Name": "the altar room door" },
+        "A": { "Id": "altar", "Kind": "Altar", "Name": "the Ash altar", "Crystal": "earth" },
+        "K": { "Id": "keeper", "Kind": "DuelOpponent", "Name": "the keeper's place" },
+        "C": { "Id": "caster", "Kind": "DuelCaster", "Name": "where Mira stands" }
+      } }
+  ],
+  "Connections": [
+    { "Id": "glade_stair", "A": "glade/stair", "B": "glade/skel_upper/exit", "OpenWhen": "" },
+    { "Id": "hollow_steps", "A": "glade/skel_upper/down", "B": "glade/skel_lower/up", "OpenWhen": "" }
+  ]
+}

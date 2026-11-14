@@ -1,0 +1,14 @@
+{
+  "Locations": [
+    { "Id": "kiln", "Name": "the Cold Kiln", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": 4, "R": -1 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "pedestal", "Kind": "Pedestal", "Name": "the kiln hearth", "Crystal": "fire" },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the kiln yard", "I": 1, "J": 0 }
+      ] },
+    { "Id": "forge", "Name": "the Black Forge", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": -4, "R": 2 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "altar", "Kind": "Altar", "Name": "the forge altar", "Crystal": "fire" },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the slag heap", "I": -1, "J": 0 }
+      ] }
+  ]
+}

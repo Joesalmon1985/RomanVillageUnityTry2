@@ -1,0 +1,2 @@
+{ "Why": "A rival plan naming a crystal twice", "Base": "skeleton_v1", "Expect": "rival_plan",
+  "Patch": [ { "Op": "add", "Path": "/Rival/Steps/-", "Value": { "Crystal": "fire", "MarchCost": 3600, "CarryCost": 900, "Altar": "forge/altar" } } ] }

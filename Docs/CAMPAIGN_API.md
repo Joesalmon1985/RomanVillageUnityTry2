@@ -80,3 +80,4 @@ Tokens: `{crystal.<id>.name}`, `{crystal.<id>.place}` (where the party believes 
 ## Change log
 
 - **14 Nov 2026, I0 Sim half (`cry-I0-sim`).** First landing. Additions and fixes against appendix A are listed in `PRD_CRYSTALS.md` A.6.
+- **14 Nov 2026, I2 (`cry/i2`).** The real loader, validator v1, `CampaignPlaces`, `InteriorDef.Location`, the authored (Partial, Earth) and skeleton (Complete) packs. All additive, from `Definition/**` and `Validation/**` (new files `Definition/CampaignPlaces.cs`, `Definition/DefinitionFormat.cs`, `Validation/ValidationRun.cs`, `Validation/ValidationRoutes.cs`). Details in `PRD_CRYSTALS.md` A.6 (I2 entry); the format and the validator's checks are in `Docs/CAMPAIGN_FORMAT.md`.

@@ -1,0 +1,3 @@
+{ "Why": "An essential clue held only by a companion", "Base": "skeleton_v1", "Expect": "companion_only_clue",
+  "Patch": [ { "Op": "replace", "Path": "/Clues/fire_elder/Source", "Value": { "Kind": "Companion", "Ref": "petra" } },
+             { "Op": "replace", "Path": "/Clues/fire_elder/Fallback", "Value": "" } ] }

@@ -1,0 +1,11 @@
+{
+  "Locations": [
+    { "Id": "home", "Name": "the home camp", "Kind": "Camp", "Anchor": { "Kind": "HomeCamp" }, "SafePoint": "fire",
+      "Markers": [
+        { "Id": "fire", "Kind": "SafePoint", "Name": "the home fire", "I": 2, "J": 0 },
+        { "Id": "sawyer", "Kind": "Witness", "Name": "the sawyer's bench", "I": 2, "J": 1 },
+        { "Id": "smithy", "Kind": "Witness", "Name": "Hod's smithy", "I": 1, "J": 2 },
+        { "Id": "posts", "Kind": "Inscription", "Name": "the foresters' posts", "I": -2, "J": 2 }
+      ] }
+  ]
+}

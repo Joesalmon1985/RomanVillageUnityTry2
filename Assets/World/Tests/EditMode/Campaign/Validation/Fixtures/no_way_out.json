@@ -1,0 +1,2 @@
+{ "Why": "A deep level with stairs down and none up", "Base": "skeleton_v1", "Expect": "no_way_out",
+  "Patch": [ { "Op": "replace", "Path": "/Interiors/skel_lower/Legend/U", "Value": { "Id": "up", "Kind": "Inscription", "Name": "a blank wall" } } ] }

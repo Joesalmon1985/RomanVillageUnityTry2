@@ -1,0 +1,2 @@
+{ "Why": "A stolen crystal whose altar no trail reaches", "Base": "skeleton_v1", "Expect": "no_recovery",
+  "Patch": [ { "Op": "replace", "Path": "/Leads/water_altar/Requires", "Value": [ "water.trail_lost" ] } ] }

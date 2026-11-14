@@ -1,0 +1,134 @@
+{
+  "Locations": [
+    { "Id": "glade", "Name": "the Stonemark Glade", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": 0, "R": -1 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "stone", "Kind": "Inscription", "Name": "the boundary stone", "I": 0, "J": 0 },
+        { "Id": "stair", "Kind": "Stairs", "Name": "the hidden stair", "I": 0, "J": 1, "To": "glade/quarry_upper/exit", "OpenWhen": "earth.stair_open" },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the edge of the glade", "I": 1, "J": 0 }
+      ] },
+    { "Id": "ash_cut", "Name": "the Ash cut", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": -2, "R": -2 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "cut", "Kind": "Stairs", "Name": "the Ash cut", "I": 0, "J": 0, "To": "ash_cut/tally_vault/cut_exit", "OpenWhen": "earth.ash_cut_open" },
+        { "Id": "spoil", "Kind": "Inscription", "Name": "the fresh spoil", "I": 0, "J": 1 },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the hillside", "I": 1, "J": 0 }
+      ] }
+  ],
+  "Interiors": [
+    { "Id": "quarry_upper", "Name": "the Old Quarry", "Location": "glade",
+      "Rows": [
+        "#############",
+        "#########...#",
+        "#########.P.#",
+        "#########t..#",
+        "##########.##",
+        "#R...##..M.##",
+        "###.....S#.##",
+        "####.E####.##",
+        "##########D##",
+        "#############"
+      ],
+      "Legend": {
+        "E": { "Id": "exit", "Kind": "Exit", "Name": "the stair up to the glade", "To": "glade/stair" },
+        "R": { "Id": "rubble", "Kind": "Inscription", "Name": "the fallen adit" },
+        "S": { "Id": "safe", "Kind": "SafePoint", "Name": "the survey gallery" },
+        "M": { "Id": "marks", "Kind": "Inscription", "Name": "the survey marks" },
+        "P": { "Id": "pedestal", "Kind": "Pedestal", "Name": "the pedestal in the Root Chamber", "Crystal": "earth" },
+        "t": { "Id": "tally", "Kind": "Inscription", "Name": "the floor by the pedestal" },
+        "D": { "Id": "stair_down", "Kind": "Stairs", "Name": "the stair to the lower workings", "To": "ash_cut/tally_vault/stair_up" }
+      } },
+    { "Id": "tally_vault", "Name": "the Tally Vault", "Location": "ash_cut",
+      "Rows": [
+        "############",
+        "#U.#########",
+        "##.#########",
+        "##...#######",
+        "####.#######",
+        "##...#######",
+        "##.#########",
+        "##H.C.######",
+        "##..K.BX####",
+        "##..A.######",
+        "############"
+      ],
+      "Legend": {
+        "U": { "Id": "stair_up", "Kind": "Stairs", "Name": "the stair up to the survey gallery", "To": "glade/quarry_upper/stair_down" },
+        "H": { "Id": "threshold", "Kind": "Threshold", "Name": "the mouth of the vault" },
+        "C": { "Id": "caster", "Kind": "DuelCaster", "Name": "where Mira stands" },
+        "K": { "Id": "keeper", "Kind": "DuelOpponent", "Name": "Dolm's place" },
+        "A": { "Id": "altar", "Kind": "Altar", "Name": "the Ash altar", "Crystal": "earth" },
+        "B": { "Id": "bar", "Kind": "Door", "Name": "the barred door", "OpenWhen": "earth.ash_cut_open" },
+        "X": { "Id": "cut_exit", "Kind": "Exit", "Name": "the Ash cut", "To": "ash_cut/cut" }
+      } }
+  ],
+  "Connections": [
+    { "Id": "glade_stair", "A": "glade/stair", "B": "glade/quarry_upper/exit", "OpenWhen": "earth.stair_open" },
+    { "Id": "quarry_steps", "A": "glade/quarry_upper/stair_down", "B": "ash_cut/tally_vault/stair_up", "OpenWhen": "" },
+    { "Id": "ash_cut_way", "A": "ash_cut/cut", "B": "ash_cut/tally_vault/cut_exit", "OpenWhen": "earth.ash_cut_open" }
+  ],
+  "Clues": [
+    { "Id": "earth_opening", "Source": { "Kind": "Opening", "Ref": "mira" }, "Gives": [ "earth.marks_heard" ], "Essential": true },
+    { "Id": "earth_sawyer", "Source": { "Kind": "Witness", "Ref": "home/sawyer" }, "Requires": [ "earth.marks_heard" ], "Gives": [ "earth.glade_known" ], "Essential": true, "Fallback": "earth_posts" },
+    { "Id": "earth_posts", "Source": { "Kind": "Marker", "Ref": "home/posts" }, "Requires": [ "earth.marks_heard" ], "Gives": [ "earth.glade_known" ] },
+    { "Id": "earth_odo", "Source": { "Kind": "Companion", "Ref": "odo" }, "Requires": [ "earth.marks_heard" ], "Gives": [ "earth.glade_known" ], "Fallback": "earth_sawyer" },
+    { "Id": "earth_spoil", "Source": { "Kind": "Scout", "Ref": "ash_cut" }, "Requires": [ "earth.stolen_seen" ], "Gives": [ "earth.ash_cut_seen" ] }
+  ],
+  "Leads": [
+    { "Id": "earth_sawyer", "Title": "The sawyer's notches", "Goal": { "At": "home/sawyer", "Action": "Talk" }, "Requires": [ "earth.marks_heard" ], "DoneWhen": "earth.glade_known", "ReasonLine": "mira_reason_sawyer", "Priority": 60, "Crystal": "earth" },
+    { "Id": "earth_posts", "Title": "The foresters' posts", "Goal": { "At": "home/posts", "Action": "Search" }, "Requires": [ "earth.marks_heard" ], "DoneWhen": "earth.glade_known", "ReasonLine": "mira_reason_posts", "Priority": 40, "Crystal": "earth" },
+    { "Id": "earth_stone", "Title": "The boundary stone", "Goal": { "At": "glade/stone", "Action": "Examine" }, "Requires": [ "earth.glade_known" ], "DoneWhen": "earth.stair_open", "ReasonLine": "mira_reason_stone", "Priority": 60, "Crystal": "earth" },
+    { "Id": "earth_marks", "Title": "The survey gallery", "Goal": { "At": "glade/quarry_upper/marks", "Action": "Examine" }, "Requires": [ "earth.stair_open" ], "DoneWhen": "earth.root_way_known", "ReasonLine": "mira_reason_marks", "Priority": 60, "Crystal": "earth" },
+    { "Id": "earth_root", "Title": "The Root Chamber", "Goal": { "At": "glade/quarry_upper/pedestal", "Action": "Take" }, "Requires": [ "earth.root_way_known" ], "DoneWhen": "earth.site_seen", "ReasonLine": "mira_reason_root", "Priority": 70, "Crystal": "earth" },
+    { "Id": "earth_tally", "Title": "The tally's turnings", "Goal": { "At": "glade/quarry_upper/stair_down", "Action": "Examine" }, "Requires": [ "earth.tally_read" ], "DoneWhen": "earth.vault_known", "ReasonLine": "mira_reason_tally", "Priority": 70, "Crystal": "earth" },
+    { "Id": "earth_vault", "Title": "The Tally Vault", "Goal": { "At": "ash_cut/tally_vault/threshold", "Action": "Arrive" }, "Requires": [ "earth.vault_known" ], "DoneWhen": "earth.recovered", "ReasonLine": "mira_reason_vault", "Priority": 80, "Crystal": "earth" },
+    { "Id": "earth_tower", "Title": "The Rooted Tower", "Goal": { "At": "tower_earth/door", "Action": "Restore" }, "Requires": [ "tower.earth_known", "earth.in_hand" ], "DoneWhen": "earth.restored", "ReasonLine": "mira_reason_tower_earth", "Priority": 80, "Crystal": "earth" }
+  ],
+  "Encounters": [
+    { "Id": "keeper_earth", "Name": "Dolm at the Ash altar", "Kind": "Lethal", "Profile": "keeper_earth", "OpponentActorId": "keeper_earth", "OpponentName": "Dolm the Tally-Keeper",
+      "Threshold": "ash_cut/tally_vault/threshold", "SafePoint": "glade/quarry_upper/safe",
+      "Stage": { "Caster": "ash_cut/tally_vault/caster", "Opponent": "ash_cut/tally_vault/keeper", "Volunteer": "ash_cut/tally_vault/threshold" },
+      "OnVictory": [
+        { "Kind": "TakeCrystal", "Crystal": "earth" },
+        { "Kind": "SetFact", "Ref": "earth.recovered" },
+        { "Kind": "SetFact", "Ref": "earth.in_hand" },
+        { "Kind": "SetFact", "Ref": "tower.earth_known" },
+        { "Kind": "SetFact", "Ref": "earth.ash_cut_open" },
+        { "Kind": "Journal", "Ref": "journal_earth_recovered" }
+      ] }
+  ],
+  "Events": [
+    { "Id": "earth_sawyer_talk", "At": "home/sawyer", "Action": "Talk", "Requires": [ "earth.marks_heard" ],
+      "Lines": [ "sawyer_notches_1", "sawyer_notches_2", "sawyer_notches_3" ],
+      "Effects": [ { "Kind": "Journal", "Ref": "journal_earth_sawyer" } ] },
+    { "Id": "earth_posts_read", "At": "home/posts", "Action": "Search", "Requires": [ "earth.marks_heard" ],
+      "Lines": [ "mira_posts_1", "mira_posts_2" ],
+      "Effects": [ { "Kind": "Journal", "Ref": "journal_earth_posts" } ] },
+    { "Id": "earth_read_stone", "At": "glade/stone", "Action": "Examine", "Requires": [ "earth.glade_known" ], "Sets": [ "earth.stair_open" ],
+      "Lines": [ "mira_stone_1", "mira_stone_2", "odo_stone" ],
+      "Effects": [ { "Kind": "Journal", "Ref": "journal_earth_stone" } ] },
+    { "Id": "earth_underground", "At": "glade/quarry_upper/exit", "Action": "Arrive", "Requires": [ "earth.stair_open" ],
+      "Lines": [ "mira_way_out", "ivo_drawing" ] },
+    { "Id": "earth_read_marks", "At": "glade/quarry_upper/marks", "Action": "Examine", "Requires": [ "earth.stair_open" ], "Sets": [ "earth.root_way_known" ],
+      "Lines": [ "mira_marks_1", "mira_marks_2" ],
+      "Effects": [ { "Kind": "Journal", "Ref": "journal_earth_marks" } ] },
+    { "Id": "earth_take", "At": "glade/quarry_upper/pedestal", "Action": "Take", "Guards": [ "custody: earth = AtSite" ],
+      "Sets": [ "earth.site_seen", "earth.in_hand", "tower.earth_known" ],
+      "Lines": [ "mira_take_1", "mira_inscription" ],
+      "Effects": [ { "Kind": "TakeCrystal", "Crystal": "earth" }, { "Kind": "Journal", "Ref": "journal_earth_taken" } ] },
+    { "Id": "earth_empty", "At": "glade/quarry_upper/pedestal", "Action": "Take", "Guards": [ "custody: earth = AtRivalAltar" ],
+      "Sets": [ "earth.site_seen", "earth.stolen_seen", "earth.tally_read" ],
+      "Lines": [ "mira_empty_1", "garrick_boots", "mira_tally_found" ],
+      "Effects": [ { "Kind": "SetBelief", "Crystal": "earth" }, { "Kind": "Journal", "Ref": "journal_earth_stolen" } ] },
+    { "Id": "earth_empty_transit", "At": "glade/quarry_upper/pedestal", "Action": "Take", "Guards": [ "custody: earth = RivalTransit" ],
+      "Sets": [ "earth.site_seen", "earth.stolen_seen", "earth.tally_read" ],
+      "Lines": [ "mira_empty_1", "garrick_boots", "mira_tally_found" ],
+      "Effects": [ { "Kind": "SetBelief", "Crystal": "earth" }, { "Kind": "Journal", "Ref": "journal_earth_stolen" } ] },
+    { "Id": "earth_follow_tally", "At": "glade/quarry_upper/stair_down", "Action": "Examine", "Requires": [ "earth.tally_read" ], "Sets": [ "earth.vault_known" ],
+      "Lines": [ "mira_tally_1", "mira_tally_2" ],
+      "Effects": [ { "Kind": "Journal", "Ref": "journal_earth_vault" } ] },
+    { "Id": "earth_see_dolm", "At": "ash_cut/tally_vault/threshold", "Action": "Arrive", "Requires": [ "earth.vault_known" ], "Guards": [ "nofact: earth.recovered" ],
+      "Lines": [ "dolm_greet" ] },
+    { "Id": "earth_restore", "At": "tower_earth/door", "Action": "Restore", "Requires": [ "earth.in_hand" ], "Sets": [ "earth.restored" ],
+      "Lines": [ "mira_set_1", "mira_set_2", "prince_earth_lit" ],
+      "Effects": [ { "Kind": "Journal", "Ref": "journal_earth_restored" } ] }
+  ]
+}
