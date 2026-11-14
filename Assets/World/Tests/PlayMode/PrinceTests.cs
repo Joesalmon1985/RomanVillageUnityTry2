@@ -190,8 +190,7 @@ namespace World.Game.Tests
             var p = FactionApi.GetProposal(S, pid);
             Assert.IsTrue(D.Said.Any(l => l.Speaker == NpcIds.Prince && l.Text == p.Reason), "he explained at the spot");
             Assert.AreEqual(TapOutcome.Cast, PointerInput.TapGround(Target(pid)), "the press casts");
-            yield return null; yield return null;
-            Assert.IsTrue(S.Economy.Buildings.Any(b => b.Plot == 631 && b.Type == BuildingType.WoodcutterHut && b.Faction == PlayerIds.Human), "hut site on plot 631");
+            yield return Until(() => S.Economy.Buildings.Any(b => b.Plot == 631 && b.Type == BuildingType.WoodcutterHut && b.Faction == PlayerIds.Human), 2f, "no hut site on plot 631");
             yield return Until(() => D.Said.Any(l => l.Text == PrinceLines.Bank(NpcIds.Prince, "first.cast")[0]), 3f, "no answer to the cast");
             Assert.AreEqual(PrinceDirector.SceneBuilding, D.FirstSceneStep);
             Assert.IsNotNull(D.Builder, "the builder was called over");
@@ -315,6 +314,7 @@ namespace World.Game.Tests
             // Test tuning (tests may write state; the game layer may not): equal strength now counts as overrunning.
             S.Factions.Tuning.OverrunMargin = 0;
             S.Factions.Tuning.WarningTicks = 40;
+            S.Factions.Tuning.WarningGraceTicks = 0;
             yield return Until(() => FactionApi.Outcome(S).GameOver, 30f, "no ending");
             Assert.AreEqual(GameOutcome.Victory, FactionApi.Outcome(S).Outcome);
             Assert.IsTrue(D.Said.Any(l => PrinceLines.Bank(NpcIds.Prince, "warn.attack").Any(t => l.Text.StartsWith(t.Substring(0, 10)))), "he announced the coming overrun");
@@ -333,6 +333,9 @@ namespace World.Game.Tests
             S.Factions.Tuning.OverrunMargin = 1;
             S.Factions.Tuning.WarningTicks = 50;
             S.Factions.Tuning.RivalCastDelayTicks = 20;
+            S.Factions.Tuning.RivalMinDelayTicks = 0;
+            S.Factions.Tuning.RivalSettleTicks = 20;
+            S.Factions.Tuning.WarningGraceTicks = 0;
             yield return Until(() => FactionApi.Outcome(S).GameOver, 1200f, "no ending");
             var o = FactionApi.Outcome(S);
             Assert.AreEqual(GameOutcome.Defeat, o.Outcome);
