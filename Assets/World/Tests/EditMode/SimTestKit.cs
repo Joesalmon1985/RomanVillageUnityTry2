@@ -98,7 +98,7 @@ namespace World.Sim.Tests
             foreach (var st in e.Settlements)
                 for (int i = 0; i < Wares.Count; i++) w[i] += st.Stock[i] + st.Delivered[i] + st.UpgradeDelivered[i];
             foreach (var b in e.Buildings)
-                for (int i = 0; i < Wares.Count; i++) w[i] += b.Stock[i] + b.Delivered[i];
+                for (int i = 0; i < Wares.Count; i++) w[i] += b.Stock[i] + b.Delivered[i] + b.UpgradeDelivered[i];
             foreach (var r in e.Roads)
                 for (int i = 0; i < Wares.Count; i++) w[i] += r.Delivered[i];
             foreach (var c in e.Carriers)
@@ -135,10 +135,11 @@ namespace World.Sim.Tests
             var expect = new int[Wares.Count];
             foreach (var def in BuildingDefs.All)
                 if (def.IsCollector) expect[(int)TerrainInfo.RawWare(def.Terrain).Value] += l.TakenByType[(int)def.Type] * def.Yield;
+            for (int w = 0; w < Wares.Count; w++) expect[w] += l.GradeYield[w]; // wares above the base yield from upgraded collectors (H1-2)
             foreach (var b in e.Buildings)
             {
                 var def = BuildingDefs.Get(b.Type);
-                if (def.IsCollector && b.WorkProgress > 0) expect[(int)TerrainInfo.RawWare(def.Terrain).Value] -= def.Yield;
+                if (def.IsCollector && b.WorkProgress > 0) expect[(int)TerrainInfo.RawWare(def.Terrain).Value] -= GradeLogic.YieldPerUnit(def, b.Grade);
             }
             for (int w = 0; w < Wares.Count; w++)
                 if (l.Collected[w] != expect[w]) return "collected " + (Ware)w + " " + l.Collected[w] + " vs taken x yield " + expect[w];
@@ -153,6 +154,7 @@ namespace World.Sim.Tests
             var incS = new int[e.Settlements.Count, Wares.Count];
             var incB = new int[e.Buildings.Count, Wares.Count];
             var incR = new int[e.Roads.Count, Wares.Count];
+            var incU = new int[e.Buildings.Count, Wares.Count]; // building upgrades (H1-1: the autonomous brain starts them)
             var resS = new int[e.Settlements.Count, Wares.Count];
             var resB = new int[e.Buildings.Count, Wares.Count];
             foreach (var j in e.Jobs)
@@ -160,6 +162,7 @@ namespace World.Sim.Tests
                 int w = (int)j.Ware;
                 if (j.ToKind == PlaceKind.Building) incB[j.ToId, w] += j.Count;
                 else if (j.ToKind == PlaceKind.RoadSite) incR[j.ToId, w] += j.Count;
+                else if (j.ToKind == PlaceKind.BuildingUpgrade) incU[j.ToId, w] += j.Count;
                 else incS[j.ToId, w] += j.Count;
                 if (j.State != JobState.Carrying)
                 {
@@ -177,6 +180,7 @@ namespace World.Sim.Tests
                 for (int i = 0; i < e.Buildings.Count; i++)
                 {
                     if (e.Buildings[i].Incoming[w] != incB[i, w]) return "building " + i + " incoming " + (Ware)w;
+                    if (e.Buildings[i].UpgradeIncoming[w] != incU[i, w]) return "building " + i + " upgrade incoming " + (Ware)w;
                     if (e.Buildings[i].Reserved[w] != resB[i, w]) return "building " + i + " reserved " + (Ware)w;
                 }
                 for (int i = 0; i < e.Roads.Count; i++)

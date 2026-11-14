@@ -3,9 +3,9 @@ using System;
 namespace World.Sim.Eras
 {
     /// <summary>
-    /// Chapter readiness and the one-shot step (PRD_AGES 4.6). Sim code only. H1-0 FIRST VERSION: readiness, the era and
-    /// chapter switch, the history record and the events are real; the content of each step (the smith's chest at the
-    /// Historic step, the transfer tables of the time jumps) is an H1-0 STUB in <see cref="ApplyStepContent"/>.
+    /// Chapter readiness and the one-shot step (PRD_AGES 4.6). Sim code only. Readiness, the era and chapter switch, the
+    /// history record and the events are real; <see cref="ApplyStepContent"/> holds the content of each step (the
+    /// Historic step from H1-1; the transfer tables of the time jumps arrive with M1-4 and F1-2).
     /// </summary>
     internal static class ErasLogic
     {
@@ -49,12 +49,41 @@ namespace World.Sim.Eras
         }
 
         /// <summary>
-        /// H1-0 STUB: what each step carries and grants. Prehistoric to Historic: the smith's chest (H1-1; only wares that
-        /// exist in <see cref="Wares"/> can be delivered, so nothing in H1). Historic to Modern: transfer table 4.4 (M1-4).
-        /// Modern to Future: transfer table 4.5 (F1-2). Must stay deterministic and never throw.
+        /// What each step carries and grants. Prehistoric to Historic (4.2, H1-1): nothing is transferred (it is the same
+        /// moment); the Historic content unlocks by era (grade 1 upgrades and City to Town check AgesApi.AtLeast(Historic),
+        /// new building types arrive with H2), and each faction's home storehouse receives the smith's chest
+        /// (ErasTuning.SmithsChestWares / Counts). Only units whose ware exists in <see cref="Wares"/> are delivered (none
+        /// in H1: the chest holds tools and iron, wares 17 and 22-28 of H2); they enter as starting stock of the chapter
+        /// (WareLedger.Starting), so the ware balance of REFACTOR_SPEC 4.4 holds. Historic to Modern: transfer table 4.4
+        /// (M1-4). Modern to Future: transfer table 4.5 (F1-2). Deterministic and never throws.
         /// </summary>
         internal static void ApplyStepContent(WorldState s, string from, string to, EventBuffer ev)
         {
+            if (to == ChapterIds.Historic && ChapterIds.EraOf(from) == Era.Prehistoric) DeliverSmithsChest(s);
+        }
+
+        /// <summary>Delivers the smith's chest to every home storehouse; returns the units delivered (0 in H1, where its wares do not exist yet).</summary>
+        internal static int DeliverSmithsChest(WorldState s)
+        {
+            var e = s?.Economy;
+            var tu = s?.Eras?.Tuning;
+            var starts = s?.Board?.StartCorners;
+            if (e == null || tu?.SmithsChestWares == null || tu.SmithsChestCounts == null || starts == null) return 0;
+            int total = 0;
+            for (int f = 0; f < starts.Length; f++)
+            {
+                var home = Economy.EconomyLogic.SettlementAt(s, starts[f]);
+                if (home == null || home.Faction != f || home.State != Economy.SettlementState.Active) continue;
+                for (int i = 0; i < tu.SmithsChestWares.Length && i < tu.SmithsChestCounts.Length; i++)
+                {
+                    int w = tu.SmithsChestWares[i], n = tu.SmithsChestCounts[i];
+                    if (w < 0 || w >= Wares.Count || n <= 0) continue;
+                    home.Stock[w] += n;
+                    e.Ledger.Starting[w] += n;
+                    total += n;
+                }
+            }
+            return total;
         }
     }
 

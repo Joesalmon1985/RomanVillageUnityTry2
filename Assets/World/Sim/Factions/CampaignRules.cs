@@ -1,13 +1,17 @@
+using System.Collections.Generic;
 using World.Sim.Economy;
 using World.Sim.Eras;
 
 namespace World.Sim.Factions
 {
     /// <summary>
-    /// The campaign overrun rule (PRD_AGES 4.3; crystals PRD N-2, N-3). Only reached when AgesApi.IsCampaign: in skirmish
-    /// the overrun stays fatal (StrengthSystem). H1-0 FIRST VERSION: target choice, the home-loot branch, the halt, the
-    /// setback grace and CampOverrun are real; the capture branch waits on EconomySeams.TransferSettlement (H1-0 STUB in
-    /// the economy, implemented by H1-2): until then a capture falls back to looting the home camp. H1-1 owns this file.
+    /// The campaign overrun rule, the "setback" (PRD_AGES 4.3; crystals PRD N-2, N-3). Applies to every game except the
+    /// 20-minute Prehistoric skirmish, where the overrun stays fatal (StrengthSystem; H1-1 widened it from campaign mode
+    /// to the Historic age and dev starts too, so a story game between "Show me" and StartCampaign, and dev.historic,
+    /// never end by overrun). The overrun captures the defender's camp nearest the attacker's home, never the home
+    /// (EconomySeams.TransferSettlement, H1-2); with no other camp, or until H1-2 lands (the seam returns false), it loots
+    /// the home: half its stock, its buildings stop LootHaltTicks. Then no new warning against the defender for
+    /// SetbackGraceTicks. CampOverrun is raised either way.
     /// </summary>
     internal static class CampaignRules
     {
@@ -20,6 +24,7 @@ namespace World.Sim.Factions
             if (captured)
             {
                 ev.Add(new CampOverrun { Attacker = attacker, Defender = defender, SettlementId = target, Kind = CampOverrunKind.CampLost });
+                DropStaleProposals(s, ev);
             }
             else if (home >= 0)
             {
@@ -30,6 +35,17 @@ namespace World.Sim.Factions
                 ev.Add(new CampOverrun { Attacker = attacker, Defender = defender, SettlementId = home, Kind = CampOverrunKind.Looted });
             }
             f.Factions[defender].SetbackUntilTick = s.Tick + f.Tuning.SetbackGraceTicks;
+        }
+
+        /// <summary>
+        /// After a capture: open proposals of either people that the new map no longer allows (a building on a plot of the
+        /// lost camp, its city upgrade, a road through it) are removed at once ("expired"), not at the next plan.
+        /// </summary>
+        public static void DropStaleProposals(WorldState s, EventBuffer ev)
+        {
+            var stale = new List<Proposal>();
+            foreach (var p in s.Factions.Proposals) if (!FactionLogic.CheckAction(s, p).Ok) stale.Add(p);
+            foreach (var p in stale) FactionLogic.Remove(s, p, "expired", ev);
         }
 
         /// <summary>The defender's home settlement (on its start corner), or -1.</summary>

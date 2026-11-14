@@ -59,6 +59,49 @@ namespace World.Sim
             return true;
         }
 
+        /// <summary>Length of the local path of an outer plot in 5 m steps: 45 m along the spoke, then 17 m aside (62 m).</summary>
+        public const int LocalSteps = 13;
+
+        /// <summary>Two outer plots closer than this (centre to centre) cannot both be used: the first town keeps the ground.</summary>
+        public const double MinSpacing = 15;
+
+        /// <summary>Local path from the storehouse (the corner) to the plot centre: [corner, spoke point at 45 m, plot]. Empty for an invalid plot.</summary>
+        public static double[] PathPoints(BoardTopology t, int plot)
+        {
+            if (!Centre(t, plot, out double px, out double pz)) return new double[0];
+            int corner = CornerOf(plot);
+            int hex = PlotLayout.SectorHex(t, corner, SectorOf(plot));
+            double cx = t.VertexX(corner), cz = t.VertexZ(corner);
+            double bx = (t.HexX(hex) - cx) / BoardTopology.HexEdgeLength, bz = (t.HexZ(hex) - cz) / BoardTopology.HexEdgeLength;
+            return new[] { cx, cz, cx + OuterSpoke * bx, cz + OuterSpoke * bz, px, pz };
+        }
+
+        /// <summary>
+        /// Outer plots of other settlement corners within <see cref="MinSpacing"/> of this one (ascending). They exist only
+        /// where two camps share a hex from corners two edges apart (the first town keeps the ground).
+        /// </summary>
+        public static System.Collections.Generic.List<int> Rivals(BoardTopology t, int plot)
+        {
+            var list = new System.Collections.Generic.List<int>();
+            if (!Centre(t, plot, out double x, out double z)) return list;
+            int corner = CornerOf(plot);
+            int hex = PlotLayout.SectorHex(t, corner, SectorOf(plot));
+            foreach (int c in t.HexCorners(hex))
+            {
+                if (c == corner || !PlotLayout.IsSettlementCorner(t, c)) continue;
+                for (int sec = 0; sec < 3; sec++)
+                    for (int slot = FirstOuterSlot; slot <= LastOuterSlot; slot++)
+                    {
+                        int o = OuterPlotId(c, sec, slot);
+                        if (!Centre(t, o, out double ox, out double oz)) continue;
+                        double d = System.Math.Sqrt((ox - x) * (ox - x) + (oz - z) * (oz - z));
+                        if (d < MinSpacing) list.Add(o);
+                    }
+            }
+            list.Sort();
+            return list;
+        }
+
         /// <summary>Facing in degrees (0 = north, clockwise): towards the spoke point at 45 m.</summary>
         public static double Yaw(BoardTopology t, int plot)
         {

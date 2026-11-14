@@ -379,7 +379,7 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void DevHistoric_IsValid_RaisesCampaignMayStart_AndUpgradesWaitForH12()
+        public void DevHistoric_IsValid_RaisesCampaignMayStart_AndUpgradesAreOpen()
         {
             var sim = ScenarioStarts.Create(ScenarioStarts.DevHistoric, 7);
             Assert.IsNotNull(sim);
@@ -389,14 +389,15 @@ namespace World.Sim.Tests
             Assert.AreEqual(Era.Historic, AgesApi.Current(s));
             Assert.AreEqual(ChapterIds.Historic, AgesApi.Chapter(s));
             Assert.AreEqual(Eras.PlayMode.DevStart, AgesApi.Mode(s));
-            Assert.AreEqual(0, AgesApi.HandoverTick(s, 0));
+            // H1-1: dev.historic is the end state of a scripted run; the handover happened on the way, the step at ChapterStartTick.
+            Assert.That(AgesApi.HandoverTick(s, 0), Is.InRange(0, s.Eras.ChapterStartTick));
             Assert.IsTrue(AgesApi.CampaignMayStart(s));
             var ev = SimTestKit.Step(sim, 5);
             Assert.AreEqual(1, ev.OfType<Eras.CampaignMayStart>().Count());
-            Assert.AreEqual(1, s.Eras.CampaignMayStartTick);
+            Assert.AreEqual(s.Eras.ChapterStartTick + 1, s.Eras.CampaignMayStartTick);
             Assert.AreEqual(0, SimTestKit.Step(sim, 5).OfType<Eras.CampaignMayStart>().Count(), "once");
             var mine = s.Economy.Buildings.First(b => b.Faction == 0 && b.State == BuildingState.Active);
-            Assert.AreEqual(Reasons.Disabled, sim.Check(new UpgradeBuilding { PlayerId = 0, BuildingId = mine.Id }).Reason, "H1-0 STUB tail");
+            Assert.IsTrue(sim.Check(new UpgradeBuilding { PlayerId = 0, BuildingId = mine.Id }).Ok, "H1-2: grade 1 is real in Historic");
             ErasModule.EnterCampaign(s);
             Assert.IsTrue(AgesApi.IsCampaign(s));
             SimTestKit.Step(sim, 600); // autonomous people keep playing, no exception
@@ -424,7 +425,7 @@ namespace World.Sim.Tests
             Assert.IsFalse(AgesApi.CampaignMayStart(s), "no handover yet");
             Assert.AreEqual("chapter_not_ready", sim.Check(new AdvanceChapter { To = ChapterIds.Historic }).Reason);
             var mine = s.Economy.Buildings.First(b => b.Faction == 0 && b.State == BuildingState.Active);
-            Assert.AreEqual(Reasons.Disabled, sim.Check(new UpgradeBuilding { PlayerId = 0, BuildingId = mine.Id }).Reason, "Historic: past the era check, H1-0 STUB tail");
+            Assert.IsTrue(sim.Check(new UpgradeBuilding { PlayerId = 0, BuildingId = mine.Id }).Ok, "Historic: past the era check, H1-2 accepts grade 1");
         }
 
         [Test]
@@ -455,7 +456,7 @@ namespace World.Sim.Tests
             var s = sim.State;
             var top = FactionApi.Top(s, 0);
             var ex = FactionApi.Explain(s, 0);
-            Assert.AreEqual(FactionApi.ProposalTitle(s, top.Id), ex.Doing);
+            StringAssert.Contains(FactionApi.ProposalTitle(s, top.Id), ex.Doing); // H1-1: a plain sentence around the title
             Assert.AreEqual(top.Reason, ex.Why);
             Assert.AreEqual(top.Id, ex.TopProposalIds[0]);
             var ev = SimTestKit.Do(sim, new Advise { Faction = 0, Kind = AdviceKind.Favour, ProposalId = top.Id });
