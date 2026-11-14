@@ -18,7 +18,13 @@ namespace World.Game
             EncounterDirectory.Register(EncounterDirectory.RhythmParty, () => new RhythmPartyEncounter());
             EncounterDirectory.Register(EncounterDirectory.WardCampaign, CampaignDuel.Create); // crystals I0; I7 fills CampaignDuel
             AutoPlayScripts.Register(DuelDance.Name, DuelDance.Create);
+            CampaignDuelScripts.Register(); // crystals I7: duel_keeper_win, duel_keeper_loss, duel_friendly
+            // crystals I7: each scene's world gets the campaign duel's driver (stages EncounterCommitted, restarts a pending attempt).
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= OnSceneLoaded;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += OnSceneLoaded;
         }
+
+        private static void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode) => CampaignDuel.BindScene();
     }
 
     /// <summary>

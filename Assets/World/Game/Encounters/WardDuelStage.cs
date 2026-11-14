@@ -7,11 +7,24 @@ namespace World.Game
     /// <summary>
     /// The 3D side of the Ward duel: the player's wizard body facing Mira, a shimmering Ward in front of each wizard that
     /// cracks as fractures land (never showing which locus), and a weave-coloured bolt per cast. Purely visual.
+    /// <para>
+    /// Campaign modes (<see cref="BuildCampaign"/>, PRD_CRYSTALS I7): the "player" side is Mira, the caster the player
+    /// plays through (a stand-in body made by the actor factory with Mira's id), the "Mira" side is the opponent (a keeper,
+    /// Orrin, the champion), and the volunteer companion stands by at the way out. The names <see cref="PlayerActor"/> /
+    /// <see cref="MiraActor"/> are kept for the practice duel's tests; <see cref="CasterActor"/> / <see cref="OpponentActor"/>
+    /// say the same thing for every mode.
+    /// </para>
+    /// Hooks for the character package's duel director (WP-9, from tag cry-I7): <see cref="CastQueued"/> (a cast was
+    /// accepted: side, wind-up), <see cref="BoltReleased"/>, <see cref="Struck"/> (impact on a Ward: side, totals), and
+    /// <see cref="ResetWards"/> for a rematch. Every cue uses aggregate totals only, never a locus (<see cref="Log"/>).
     /// </summary>
     public sealed class WardDuelStage : MonoBehaviour
     {
         public static readonly Color PlayerWardColor = new Color(0.30f, 0.85f, 1.00f);
         public static readonly Color MiraWardColor = new Color(0.80f, 0.45f, 1.00f);
+        /// <summary>The opponent's Ward in campaign modes (Mira's own Ward keeps the player's blue).</summary>
+        public static readonly Color OpponentWardColor = new Color(1.00f, 0.50f, 0.28f);
+        public static readonly Color MiraTunic = new Color(0.45f, 0.25f, 0.70f);
 
         public ICharacterActor PlayerActor { get; private set; }
         public ICharacterActor MiraActor { get; private set; }
@@ -20,15 +33,59 @@ namespace World.Game
         public WardShield PlayerWard { get; private set; }
         public WardShield MiraWard { get; private set; }
         public int BoltsInFlight => _bolts.Count;
+        /// <summary>Casts accepted but not yet released (the caster's wind-up).</summary>
+        public int CastsWindingUp => _pending.Count;
+
+        /// <summary>The body casting for the player: the player's wizard (practice) or Mira (campaign modes).</summary>
+        public ICharacterActor CasterActor => PlayerActor;
+        /// <summary>The body across the stage: Mira (practice) or the opponent (campaign modes).</summary>
+        public ICharacterActor OpponentActor => MiraActor;
+        public WardShield CasterWard => PlayerWard;
+        public WardShield OpponentWard => MiraWard;
+        /// <summary>The companion who holds the way out (lethal duels), or null.</summary>
+        public ICharacterActor VolunteerActor { get; private set; }
+        public Vector3 VolunteerPos { get; private set; }
+        /// <summary>True when the stage was built by <see cref="BuildCampaign"/>.</summary>
+        public bool IsCampaign { get; private set; }
+        /// <summary>The volunteer has stepped into the gap (a lethal defeat or surrender).</summary>
+        public bool VolunteerHolding { get; private set; }
+        /// <summary>Essence orbs gathered at the caster's hand (the weave being built).</summary>
+        public int GatheredOrbs => _gather.Count;
+
+        /// <summary>A cast was accepted (byPlayer side, seconds of wind-up before the bolt leaves).</summary>
+        public event System.Action<bool, float> CastQueued;
+        /// <summary>A bolt left the caster's hand (byPlayer side).</summary>
+        public event System.Action<bool> BoltReleased;
+        /// <summary>A bolt struck a Ward: byPlayer = the player's (caster's) bolt hit the opponent's Ward; then fractures, echoes, broken.</summary>
+        public event System.Action<bool, int, int, bool> Struck;
+
+        /// <summary>
+        /// Every presentation cue in order (cast, release, hit, sound) with the side and the aggregate totals only. Tests
+        /// compare it across weaves that match on different loci: it must be identical.
+        /// </summary>
+        public readonly List<string> Log = new List<string>();
+
+        /// <summary>Wind-up before the bolt leaves: the caster's (player inputs) and the opponent's (profile tempo).</summary>
+        public float CasterWindUp = 0f, OpponentWindUp = 0f;
 
         private readonly List<Bolt> _bolts = new List<Bolt>();
+        private readonly List<PendingCast> _pending = new List<PendingCast>();
+        private readonly List<Transform> _gather = new List<Transform>();
+        private int[] _gatherShown = new int[0];
         private EncounterSfx _sfx;
+        private Light _volunteerLight;
+        private Vector3 _volunteerTarget;
 
         private sealed class Bolt
         {
             public Transform Root; public Transform[] Orbs; public Light Light;
             public Vector3 From, To; public float T, Duration;
-            public WardShield Target; public int Fractures; public bool Broken;
+            public WardShield Target; public int Fractures, Echoes; public bool Broken, ByPlayer;
+        }
+
+        private sealed class PendingCast
+        {
+            public bool ByPlayer; public int[] Weave; public int Fractures, Echoes; public bool Broken; public float At;
         }
 
         public static WardDuelStage Build(Transform parent, Vector3 playerPos, ICharacterActor mira, EncounterSfx sfx)
@@ -57,23 +114,131 @@ namespace World.Game
             return s;
         }
 
-        /// <summary>Whole Wards again (rematch).</summary>
+        /// <summary>
+        /// The campaign stage (lethal, friendly): Mira (a factory body with her id) on the caster mark, the opponent facing
+        /// her, the volunteer standing by. Positions come from the request's <see cref="DuelStageSpec"/> only, so it works
+        /// on the surface and inside an interior alike.
+        /// </summary>
+        public static WardDuelStage BuildCampaign(Transform parent, DuelStageSpec spec, Color opponentColour, Color volunteerColour, EncounterSfx sfx)
+        {
+            var go = new GameObject("WardDuelStage");
+            go.transform.SetParent(parent, false);
+            var s = go.AddComponent<WardDuelStage>();
+            s._sfx = sfx;
+            s.IsCampaign = true;
+            s.PlayerPos = spec.CasterPos;
+            s.MiraPos = spec.OpponentPos;
+            var dir = spec.OpponentPos - spec.CasterPos; dir.y = 0;
+            if (dir.sqrMagnitude < 1e-4f) dir = Vector3.forward;
+            dir.Normalize();
+            float yaw = BoardSpace.YawOf(dir);
+            s.PlayerActor = ActorFactory.Create(spec.HasCaster ? spec.CasterActorId : NpcIds.Mira, MiraTunic, spec.CasterPos, yaw, go.transform);
+            s.PlayerActor.Root.name = "Caster Mira";
+            s.MiraActor = ActorFactory.Create(string.IsNullOrEmpty(spec.OpponentActorId) ? "opponent" : spec.OpponentActorId, opponentColour, spec.OpponentPos, yaw + 180f, go.transform);
+            s.MiraActor.Root.name = "Opponent " + spec.OpponentActorId;
+            if (spec.HasVolunteer)
+            {
+                s.VolunteerPos = spec.VolunteerPos;
+                var mid = (spec.CasterPos + spec.OpponentPos) * 0.5f;
+                s.VolunteerActor = ActorFactory.Create(spec.VolunteerActorId, volunteerColour, spec.VolunteerPos, BoardSpace.YawOf(mid - spec.VolunteerPos), go.transform);
+                s.VolunteerActor.Root.name = "Volunteer " + spec.VolunteerActorId;
+            }
+            s.PlayerWard = WardShield.Build(go.transform, "CasterWard", spec.CasterPos + dir * 1.05f + Vector3.up * 1.25f, dir, PlayerWardColor);
+            s.MiraWard = WardShield.Build(go.transform, "OpponentWard", spec.OpponentPos - dir * 1.05f + Vector3.up * 1.25f, -dir, OpponentWardColor);
+            var lgo = new GameObject("DuelLight");
+            lgo.transform.SetParent(go.transform, false);
+            lgo.transform.position = (spec.CasterPos + spec.OpponentPos) / 2f + Vector3.up * 3f;
+            var l = lgo.AddComponent<Light>();
+            l.type = LightType.Point; l.range = 10f; l.intensity = 1.3f; l.color = new Color(0.85f, 0.75f, 1f);
+            return s;
+        }
+
+        /// <summary>Whole Wards again (rematch): bolts, wind-ups and shards gone, everyone idle.</summary>
         public void ResetWards()
         {
             PlayerWard.ResetWard();
             MiraWard.ResetWard();
             foreach (var b in _bolts) if (b.Root != null) Destroy(b.Root.gameObject);
             _bolts.Clear();
+            _pending.Clear();
+            SetGathering(null);
+            PlayerActor?.PlayIdle();
+            MiraActor?.PlayIdle();
+            Log.Add("reset");
         }
 
-        /// <summary>Plays a cast: the caster animates, a bolt coloured by the weave flies to the other Ward and cracks it on arrival.</summary>
-        public void Cast(bool byPlayer, int[] weave, int fractures, bool broken)
+        /// <summary>
+        /// Orbs gather at the caster's hand while the player builds a weave (campaign modes): one small orb per essence, in
+        /// the order picked. Null or empty clears them.
+        /// </summary>
+        public void SetGathering(IReadOnlyList<int> weave)
+        {
+            int n = weave != null ? weave.Count : 0;
+            bool same = n == _gatherShown.Length;
+            for (int i = 0; same && i < n; i++) same = _gatherShown[i] == weave[i];
+            if (same) return;
+            foreach (var t in _gather) if (t != null) Destroy(t.gameObject);
+            _gather.Clear();
+            _gatherShown = new int[n];
+            for (int i = 0; i < n; i++)
+            {
+                _gatherShown[i] = weave[i];
+                var c = EncounterUi.EssenceColor(weave[i]);
+                var mb = new MeshBuilder();
+                Octahedron(mb, Vector3.zero, 0.07f, new Color(c.r, c.g, c.b, 1f));
+                Octahedron(mb, Vector3.zero, 0.13f, new Color(c.r, c.g, c.b, 0.3f));
+                _gather.Add(mb.ToObject("Gather" + i, transform, MaterialFactory.CreateGlow(Color.white)).transform);
+            }
+        }
+
+        /// <summary>The volunteer steps into the gap between the opponent and the way out and holds it (a lethal loss).</summary>
+        public void VolunteerHolds()
+        {
+            if (VolunteerActor == null || VolunteerHolding) return;
+            VolunteerHolding = true;
+            var gap = Vector3.Lerp(PlayerPos, MiraPos, 0.45f);
+            var side = Vector3.Cross(Vector3.up, (MiraPos - PlayerPos).normalized);
+            _volunteerTarget = gap + side * 0.6f;
+            _volunteerTarget.y = Mathf.Lerp(PlayerPos.y, MiraPos.y, 0.45f);
+            VolunteerActor.FaceTowards(MiraPos);
+            var lgo = new GameObject("VolunteerLight");
+            lgo.transform.SetParent(transform, false);
+            lgo.transform.position = _volunteerTarget + Vector3.up * 2.2f;
+            _volunteerLight = lgo.AddComponent<Light>();
+            _volunteerLight.type = LightType.Point; _volunteerLight.range = 4.5f; _volunteerLight.intensity = 2.2f; _volunteerLight.color = new Color(1f, 0.55f, 0.35f);
+            PlayerActor?.FaceTowards(VolunteerPos);
+            Log.Add("volunteer holds");
+        }
+
+        /// <summary>
+        /// Plays a cast: the caster animates, and after its wind-up a bolt coloured by the weave flies to the other Ward and
+        /// cracks it on arrival. Several casts may overlap; each has its own bolt.
+        /// </summary>
+        public void Cast(bool byPlayer, int[] weave, int fractures, bool broken) => Cast(byPlayer, weave, fractures, 0, broken);
+
+        /// <summary>As <see cref="Cast(bool, int[], int, bool)"/> with the echo total for the struck cue.</summary>
+        public void Cast(bool byPlayer, int[] weave, int fractures, int echoes, bool broken)
         {
             var caster = byPlayer ? PlayerActor : MiraActor;
             caster?.PlayOneShot(ActorKeys.Cast);
+            float wind = byPlayer ? CasterWindUp : OpponentWindUp;
+            Log.Add("cast " + Side(byPlayer) + " wind " + wind.ToString("0.00"));
+            CastQueued?.Invoke(byPlayer, wind);
+            if (byPlayer) SetGathering(null);
+            var p = new PendingCast { ByPlayer = byPlayer, Weave = (int[])weave.Clone(), Fractures = fractures, Echoes = echoes, Broken = broken, At = Time.unscaledTime + wind };
+            if (wind <= 0f) Release(p); else _pending.Add(p);
+        }
+
+        private static string Side(bool byPlayer) => byPlayer ? "caster" : "opponent";
+
+        private void Release(PendingCast p)
+        {
+            bool byPlayer = p.ByPlayer; var weave = p.Weave; int fractures = p.Fractures; bool broken = p.Broken;
             var target = byPlayer ? MiraWard : PlayerWard;
             var from = (byPlayer ? PlayerPos : MiraPos) + Vector3.up * 1.45f;
-            var b = new Bolt { From = from, To = target.transform.position, Duration = 0.6f, Target = target, Fractures = fractures, Broken = broken };
+            Log.Add("release " + Side(byPlayer));
+            BoltReleased?.Invoke(byPlayer);
+            var b = new Bolt { From = from, To = target.transform.position, Duration = 0.6f, Target = target, Fractures = fractures, Echoes = p.Echoes, Broken = broken, ByPlayer = byPlayer };
             b.Root = new GameObject("Bolt").transform;
             b.Root.SetParent(transform, false);
             b.Root.position = from;
@@ -98,6 +263,32 @@ namespace World.Game
         private void Update()
         {
             float dt = Time.unscaledDeltaTime;
+            for (int i = 0; i < _pending.Count; i++)
+            {
+                if (Time.unscaledTime < _pending[i].At) continue;
+                var p = _pending[i];
+                _pending.RemoveAt(i--);
+                Release(p);
+            }
+            if (_gather.Count > 0 && PlayerActor != null)
+            {
+                // Orbs circle a point in front of Mira's right hand.
+                var root = PlayerActor.Root;
+                var hand = root.position + root.forward * 0.45f + root.right * 0.25f + Vector3.up * 1.2f;
+                for (int k = 0; k < _gather.Count; k++)
+                {
+                    float a = Time.unscaledTime * 4f + k * Mathf.PI * 2f / _gather.Count;
+                    _gather[k].position = hand + (root.right * Mathf.Cos(a) + Vector3.up * Mathf.Sin(a)) * 0.16f;
+                }
+            }
+            if (VolunteerHolding && VolunteerActor != null)
+            {
+                var vr = VolunteerActor.Root;
+                vr.position = Vector3.MoveTowards(vr.position, _volunteerTarget, dt * 2.6f);
+                if ((vr.position - _volunteerTarget).sqrMagnitude < 0.01f && !VolunteerActor.IsPlayingOneShot && VolunteerActor.CurrentKey != ActorKeys.Cheer)
+                    VolunteerActor.PlayOneShot(ActorKeys.Cheer); // arms up across the way: holding it
+                if (_volunteerLight != null) _volunteerLight.intensity = 2.0f + 0.4f * Mathf.Sin(Time.unscaledTime * 6f);
+            }
             for (int i = _bolts.Count - 1; i >= 0; i--)
             {
                 var b = _bolts[i];
@@ -115,9 +306,14 @@ namespace World.Game
                 if (u >= 1f)
                 {
                     b.Target.Hit(b.Fractures, b.Broken);
-                    if (b.Fractures > 0 || b.Broken) _sfx?.Play(EncounterSfx.CrackClip, b.Broken ? 0.9f : 0.5f);
+                    bool crack = b.Fractures > 0 || b.Broken;
+                    if (crack) _sfx?.Play(EncounterSfx.CrackClip, b.Broken ? 0.9f : 0.5f);
+                    Log.Add("hit " + (b.ByPlayer ? "opponent" : "caster") + " ward fr " + b.Fractures + " ec " + b.Echoes + " broken " + b.Broken
+                        + " crack level " + b.Target.CrackLevel + " sfx " + (crack ? (b.Broken ? "crack 0.9" : "crack 0.5") : "none"));
+                    if (b.Broken && IsCampaign) (b.ByPlayer ? MiraActor : PlayerActor)?.PlayOneShot(ActorKeys.Surprise);
                     Destroy(b.Root.gameObject);
                     _bolts.RemoveAt(i);
+                    Struck?.Invoke(b.ByPlayer, b.Fractures, b.Echoes, b.Broken);
                 }
             }
         }
