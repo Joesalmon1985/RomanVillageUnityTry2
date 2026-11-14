@@ -43,19 +43,22 @@
   "Rival": {
     "LeaderRole": "rival_leader",
     "Steps": [
-      { "Crystal": "earth", "MarchCost": 4800, "CarryCost": 900, "Altar": "ash_cut/tally_vault/altar" },
-      { "Crystal": "fire", "MarchCost": 3600, "CarryCost": 900, "Altar": "forge/altar" },
-      { "Crystal": "water", "MarchCost": 3600, "CarryCost": 900, "Altar": "cistern/altar" },
-      { "Crystal": "air", "MarchCost": 3600, "CarryCost": 900, "Altar": "cliff/altar" }
+      { "Crystal": "earth", "MarchCost": 2250, "MarchSpread": 600, "CarryCost": 900, "Altar": "ash_cut/tally_vault/altar" },
+      { "Crystal": "fire", "MarchCost": 3000, "MarchSpread": 600, "CarryCost": 900, "Altar": "forge/altar" },
+      { "Crystal": "water", "MarchCost": 3000, "MarchSpread": 600, "CarryCost": 900, "Altar": "cistern/altar" },
+      { "Crystal": "air", "MarchCost": 3000, "MarchSpread": 600, "CarryCost": 900, "Altar": "cliff/altar" }
     ],
+    "OpenWith": [ "earth" ],
     "StolenAtStart": []
   },
   "Tuning": {
-    "PartyTicksPerStep": 7, "ScoutTicksPerStep": 4, "ReadTicks": 50, "SearchTicks": 150, "TakeTicks": 50, "RestoreTicks": 100,
-    "LeadPatience": 450, "SoloDecide": 100, "ChoicePatience": 300, "SoloStudyTicks": 200, "ThresholdWait": 900,
+    "PartyTicksPerStep": 20, "PartyRunTicksPerStep": 7, "InteriorTicksPerStep": 30, "StairTicks": 120, "ScoutTicksPerStep": 7,
+    "ReadTicks": 200, "SearchTicks": 300, "TakeTicks": 150, "RestoreTicks": 300,
+    "LeadPatience": 1200, "SoloDecide": 900, "ChoicePatience": 1200, "SoloStudyTicks": 200,
+    "ThresholdWait": 900, "ThresholdWaitPresent": 0, "OpeningReportDelay": 0,
     "DeclineCooldown": 600, "PlanInterval": 20, "QueueLength": 3, "StaleTicks": 3000, "ReportDelay": 300, "SearchCost": 300,
     "DefeatCharge": 900, "DrawCharge": 600, "DrawChargeWithShield": 300, "WrongAnswerCharge": 300,
-    "CampOverrunCharge": 1800, "AshCampLostPause": 900,
+    "CampOverrunCharge": 600, "AshCampLostPause": 300, "RetreatOnLooting": 0, "OverrunRetreatCooldown": 12000,
     "TideCycle": 2400, "TideDry": 900, "BoonPercent": 20
   }
 }
