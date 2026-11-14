@@ -1,0 +1,2 @@
+{ "Why": "A format version from the future", "Base": "skeleton_v1", "Expect": "bad_version",
+  "Patch": [ { "Op": "replace", "Path": "/FormatVersion", "Value": 99 } ] }

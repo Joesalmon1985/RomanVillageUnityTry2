@@ -1,0 +1,41 @@
+{
+  "Lines": [
+    { "Id": "companion_garrick_line", "Speaker": "garrick", "Text": "Ready.", "Topic": "intro", "Guards": [ "alive: garrick" ] },
+    { "Id": "companion_ivo_line", "Speaker": "ivo", "Text": "Ready.", "Topic": "intro", "Guards": [ "alive: ivo" ] },
+    { "Id": "companion_petra_line", "Speaker": "petra", "Text": "Ready.", "Topic": "intro", "Guards": [ "alive: petra" ] },
+    { "Id": "companion_nell_line", "Speaker": "nell", "Text": "Ready.", "Topic": "intro", "Guards": [ "alive: nell" ] },
+    { "Id": "companion_odo_line", "Speaker": "odo", "Text": "Ready.", "Topic": "intro", "Guards": [ "alive: odo" ] },
+    { "Id": "companion_tansy_line", "Speaker": "tansy", "Text": "Ready.", "Topic": "intro", "Guards": [ "alive: tansy" ] },
+
+    { "Id": "tower_earth_sign", "Speaker": "", "Text": "This door keeps {crystal.earth.name}.", "Topic": "sign" },
+    { "Id": "tower_fire_sign", "Speaker": "", "Text": "This door keeps {crystal.fire.name}.", "Topic": "sign" },
+    { "Id": "tower_water_sign", "Speaker": "", "Text": "This door keeps {crystal.water.name}.", "Topic": "sign" },
+    { "Id": "tower_air_sign", "Speaker": "", "Text": "This door keeps {crystal.air.name}.", "Topic": "sign" },
+
+    { "Id": "reason_fire_ask", "Speaker": "mira", "Text": "The elder knows where the fire went.", "Topic": "lead" },
+    { "Id": "reason_fire_sign", "Speaker": "mira", "Text": "The old signpost says the same, slowly.", "Topic": "lead" },
+    { "Id": "reason_air_cairn", "Speaker": "mira", "Text": "The cairn asks a question before it helps.", "Topic": "lead" },
+    { "Id": "reason_site", "Speaker": "mira", "Text": "If we are first, it is still there.", "Topic": "lead" },
+    { "Id": "reason_altar", "Speaker": "mira", "Text": "They took it. We take it back.", "Topic": "lead" },
+    { "Id": "reason_tower_earth", "Speaker": "mira", "Text": "Take {crystal.earth.name} to {crystal.earth.tower}.", "Topic": "lead" },
+    { "Id": "reason_tower_fire", "Speaker": "mira", "Text": "Take {crystal.fire.name} to {crystal.fire.tower}.", "Topic": "lead" },
+    { "Id": "reason_tower_water", "Speaker": "mira", "Text": "Take {crystal.water.name} to {crystal.water.tower}.", "Topic": "lead" },
+    { "Id": "reason_tower_air", "Speaker": "mira", "Text": "Take {crystal.air.name} to {crystal.air.tower}.", "Topic": "lead" },
+
+    { "Id": "air_question", "Speaker": "mira", "Text": "Which wind does the cairn lean from?", "Topic": "air" },
+    { "Id": "air_wrong", "Speaker": "mira", "Text": "No. Look again.", "Topic": "air" },
+    { "Id": "answer_east", "Speaker": "", "Text": "The east wind", "Topic": "reply" },
+    { "Id": "answer_west", "Speaker": "", "Text": "The west wind", "Topic": "reply" },
+    { "Id": "answer_north", "Speaker": "", "Text": "The north wind", "Topic": "reply" },
+
+    { "Id": "mira_take", "Speaker": "mira", "Text": "Got it.", "Topic": "take" },
+    { "Id": "mira_empty", "Speaker": "mira", "Text": "Gone. They were here first.", "Topic": "take" },
+    { "Id": "mira_restored", "Speaker": "mira", "Text": "Set. {count.restored} of four.", "Topic": "restore" },
+
+    { "Id": "end_restored", "Speaker": "mira", "Text": "Four beams meet over the island.", "Topic": "ending" },
+    { "Id": "end_all", "Speaker": "mira", "Text": "No cairn was needed.", "Topic": "ending" },
+    { "Id": "end_some", "Speaker": "mira", "Text": "{count.alive} came home.", "Topic": "ending" },
+    { "Id": "end_none", "Speaker": "mira", "Text": "Six fires, then.", "Topic": "ending" },
+    { "Id": "end_unwoven", "Speaker": "prince", "Text": "The towers are going out.", "Topic": "ending" }
+  ]
+}

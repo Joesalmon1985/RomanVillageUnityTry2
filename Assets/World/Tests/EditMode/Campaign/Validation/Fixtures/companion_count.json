@@ -1,0 +1,2 @@
+{ "Why": "Five companions", "Base": "skeleton_v1", "Expect": "companion_count",
+  "Patch": [ { "Op": "remove", "Path": "/Companions/tansy" }, { "Op": "remove", "Path": "/Lines/companion_tansy_line" } ] }

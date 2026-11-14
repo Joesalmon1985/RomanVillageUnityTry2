@@ -1,0 +1,2 @@
+{ "Why": "A line spoken by a companion with no alive guard", "Base": "skeleton_v1", "Expect": "dead_speaker",
+  "Patch": [ { "Op": "add", "Path": "/Lines/-", "Value": { "Id": "odo_unguarded", "Speaker": "odo", "Text": "The trees are talking again.", "Topic": "earth" } } ] }
