@@ -170,6 +170,8 @@ namespace World.Sim.Factions
         {
             var f = s.Factions;
             if (f == null || f.GameOver || f.Factions.Count < PlayerIds.Count) return;
+            bool campaign = Eras.AgesApi.IsCampaign(s);
+            if (f.Halts.Count > 0) f.Halts.RemoveAll(h => h.UntilTick <= s.Tick);
             foreach (var fa in f.Factions)
             {
                 int before = fa.Strength;
@@ -196,14 +198,20 @@ namespace World.Sim.Factions
                 {
                     w.Active = false;
                     ev.Add(new FactionOverrun { Attacker = w.Attacker, Defender = w.Defender });
-                    End(s, FactionLogic.OutcomeFor(w.Attacker), OutcomeReasons.Overrun, ps, rs, ev);
-                    return;
+                    if (!campaign)
+                    {
+                        End(s, FactionLogic.OutcomeFor(w.Attacker), OutcomeReasons.Overrun, ps, rs, ev);
+                        return;
+                    }
+                    CampaignRules.Overrun(s, w.Attacker, w.Defender, ev);
                 }
             }
             if (!w.Active)
             {
                 int attacker = s.Tick < tu.WarningGraceTicks ? -1
                     : ps >= rs + tu.OverrunMargin ? PlayerIds.Human : rs >= ps + tu.OverrunMargin ? PlayerIds.Rival : -1;
+                // Campaign setback grace (4.3): no new warning against a people just overrun. -1 (never set) outside the campaign.
+                if (attacker >= 0 && f.Factions[1 - attacker].SetbackUntilTick > s.Tick) attacker = -1;
                 if (attacker >= 0)
                 {
                     w.Active = true;
@@ -214,7 +222,7 @@ namespace World.Sim.Factions
                     ev.Add(new OverrunWarningStarted { Attacker = w.Attacker, Defender = w.Defender, EndTick = w.EndTick });
                 }
             }
-            if (s.Tick >= tu.TimeLimitTicks)
+            if (!campaign && s.Tick >= tu.TimeLimitTicks)
             {
                 if (w.Active)
                 {
@@ -285,6 +293,9 @@ namespace World.Sim.Factions
             sim.AddSystem(SystemOrder.Strength, new StrengthSystem());
             sim.RegisterHandler(new CastSpellHandler());
             sim.RegisterHandler(new DeclineProposalHandler());
+            // Later ages (PRD_AGES A.5, 4.3; H1-0).
+            sim.RegisterHandler(new AdviseHandler());
+            EconomyApi.Hooks(sim).IsSettlementHalted.Add(CampaignRules.IsHalted);
         }
     }
 }

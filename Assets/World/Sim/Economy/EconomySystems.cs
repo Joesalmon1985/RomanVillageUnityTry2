@@ -417,6 +417,8 @@ namespace World.Sim.Economy
                         if (take <= 0) continue;
                         st.Stock[w] -= take;
                         st.UpgradeDelivered[w] += take;
+                        if (_hooks.OnConstructionDelivery.Count > 0)
+                            _hooks.ConstructionDelivered(s, ev, st.Faction, SiteKind.City, st.Id, (Ware)w, take);
                     }
                     if (Covered(st.UpgradeDelivered, tu.CityCost)) { st.Upgrade = UpgradeState.Constructing; st.UpgradeProgress = 0; }
                 }

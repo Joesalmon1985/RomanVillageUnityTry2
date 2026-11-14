@@ -25,7 +25,7 @@ namespace World.Sim.Factions
     }
 
     /// <summary>Read helpers (REFACTOR_SPEC 5.4, A.3). Static, never mutate, null-safe.</summary>
-    public static class FactionApi
+    public static partial class FactionApi
     {
         /// <summary>Press areas (A.3): building plot radius, corner radius, road strip half width, road midpoint radius.</summary>
         public const double PlotPressRadius = 5, CornerPressRadius = 6, RoadStripHalfWidth = 3, RoadPressRadius = 30;

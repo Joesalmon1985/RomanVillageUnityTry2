@@ -42,6 +42,15 @@ namespace World.Sim.Economy
         public const string UpgradeInProgress = "upgrade_in_progress";
         public const string NotASite = "not_a_site";
 
+        // Grades and towns (PRD_AGES A.4; added by H1-0). upgrade_in_progress takes an optional subject: "building" or "town".
+        public const string WrongEra = "wrong_era";
+        public const string MaxGrade = "max_grade";
+        public const string UnknownBuilding = "unknown_building";
+        public const string NotActive = "not_active";
+        public const string NotUpgrading = "not_upgrading";
+        public const string NotACity = "not_a_city";
+        public const string PlotBlockedByNeighbour = "plot_blocked_by_neighbour";
+
         /// <summary>The exact sentence for a code; args fill {Name}/{name}/{terrain} in order.</summary>
         public static string Sentence(string code, params string[] args)
         {
@@ -68,8 +77,18 @@ namespace World.Sim.Economy
                 case BlockedByRival: return "A camp of another people blocks that road.";
                 case NotASettlement: return "There is no camp of yours there.";
                 case AlreadyCity: return "This camp is already a city.";
-                case UpgradeInProgress: return "This camp is already being raised to a city.";
+                case UpgradeInProgress:
+                    if (a0 == "building") return "That building is already being improved.";
+                    if (a0 == "town") return "This city is already being raised to a town.";
+                    return "This camp is already being raised to a city.";
                 case NotASite: return "There is no unfinished site there.";
+                case WrongEra: return "That needs the " + a0 + " age.";
+                case MaxGrade: return "It cannot be improved further.";
+                case UnknownBuilding: return "There is no building there.";
+                case NotActive: return "It must be finished first.";
+                case NotUpgrading: return "Nothing is being improved there.";
+                case NotACity: return "This camp must become a city first.";
+                case PlotBlockedByNeighbour: return "A neighbouring town already uses that ground.";
                 default: return code;
             }
         }

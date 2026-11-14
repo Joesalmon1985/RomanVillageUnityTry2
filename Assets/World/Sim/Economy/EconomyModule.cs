@@ -21,6 +21,10 @@ namespace World.Sim.Economy
             sim.RegisterHandler(new FoundSettlementHandler());
             sim.RegisterHandler(new UpgradeCityHandler());
             sim.RegisterHandler(new CancelSiteHandler());
+            // Grades and towns (PRD_AGES A.4; H1-0 validation, H1-2 and M1-2 behaviour).
+            sim.RegisterHandler(new UpgradeBuildingHandler());
+            sim.RegisterHandler(new CancelUpgradeHandler());
+            sim.RegisterHandler(new UpgradeSettlementHandler());
         }
 
         /// <summary>

@@ -57,6 +57,16 @@ namespace World.Sim.Economy
         public int BuildTicks;
         public bool Placeable;
 
+        // Grades (PRD_AGES 5.6, A.4; added by H1-0).
+        /// <summary>The grade a new building of this type starts at (Prehistoric for types 0-15, Historic for 16-39).</summary>
+        public Grade BornGrade;
+        /// <summary>Index = grade: [0] as built, [1] Historic, [2] Modern (<see cref="GradeDefs"/>). Entries below BornGrade are unused.</summary>
+        public GradeDef[] Grades;
+        /// <summary>The worker's tool as a ware id (PRD_AGES 5.2), charged with a grade 1 upgrade or a Historic-born build once that ware exists; -1 if none.</summary>
+        public int ToolWare = -1;
+        /// <summary>The era from which this type may be placed.</summary>
+        public Eras.Era Era;
+
         public bool IsCollector => Class == BuildingClass.PrimitiveCollector || Class == BuildingClass.ImprovedCollector;
     }
 
@@ -131,6 +141,13 @@ namespace World.Sim.Economy
             };
 
         private static BuildingDef[] Build()
+        {
+            var table = BuildTable();
+            foreach (var d in table) GradeDefs.Attach(d);
+            return table;
+        }
+
+        private static BuildingDef[] BuildTable()
         {
             var tier1Cheap = W((Ware.Wood, 2));
             var tier1 = W((Ware.Wood, 2), (Ware.Clay, 1));

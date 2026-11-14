@@ -19,6 +19,9 @@ namespace World.Sim.Save
     public sealed class SaveModel
     {
         public int Version = SaveCodec.CurrentVersion;
+        /// <summary>The version the file was written with (FromJson migrates Version up to CurrentVersion). Not saved.</summary>
+        [JsonIgnore]
+        public int LoadedVersion;
         /// <summary>Sim tick at save (copy of State.Tick, for slot lists).</summary>
         public long Tick;
         public PlayerPose Player;
@@ -35,12 +38,15 @@ namespace World.Sim.Save
     public static class SaveCodec
     {
         /// <summary>
+        /// 5 = the later ages, slice H1 (PRD_AGES A.2-A.5): WorldState.Eras, History, Ledger and Campaign (null = none),
+        /// Board.Landmarks, building grades, town fields, advice and handover fields. Version 4 loads by migration
+        /// (<see cref="SaveMigrations"/>) as a Prehistoric skirmish.
         /// 4 = prehistoric refactor (dice and hex stock, settlements with plots, main roads, factions, demons). Older saves are refused.
         /// 3 = economy rebalance (harvest season: EconomyState.RoundStartedTick; one draft pick per round:
         /// StrategyState.DraftNextStep; 24 cards; economy targets and per-terrain batch sizes in the tuning).
         /// 2 = unified economy (14 wares, 20 building types, outbreaks, military comparison). Older saves are refused.
         /// </summary>
-        public const int CurrentVersion = 4;
+        public const int CurrentVersion = 5;
 
         /// <summary>Oldest save version this build reads.</summary>
         public const int OldestVersion = 4;
@@ -79,6 +85,7 @@ namespace World.Sim.Save
             if (m.Version > CurrentVersion) throw new FormatException("The save is from a newer version (" + m.Version + ").");
             if (m.Version < OldestVersion) throw new FormatException("The save is from an older version (" + m.Version + ") with a different world.");
             if (m.Extras == null) m.Extras = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            SaveMigrations.Upgrade(m);
             return m;
         }
 
@@ -96,6 +103,8 @@ namespace World.Sim.Save
             Economy.EconomyModule.Register(sim);
             Factions.FactionsModule.Register(sim);
             Demons.DemonsModule.Register(sim);
+            Eras.ErasModule.Register(sim);
+            Ledger.LedgerModule.Register(sim);
             return sim;
         }
 

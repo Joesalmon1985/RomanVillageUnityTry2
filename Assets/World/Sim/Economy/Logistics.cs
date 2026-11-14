@@ -114,6 +114,7 @@ namespace World.Sim.Economy
                 case PlaceKind.SettlementSite: return EconomyLogic.GetSettlement(s, id)?.Incoming;
                 case PlaceKind.Building: return EconomyLogic.GetBuilding(s, id)?.Incoming;
                 case PlaceKind.RoadSite: return EconomyLogic.GetRoad(s, id)?.Incoming;
+                case PlaceKind.BuildingUpgrade: return EconomyLogic.GetBuilding(s, id)?.UpgradeIncoming;
             }
             return null;
         }
@@ -126,6 +127,7 @@ namespace World.Sim.Economy
                 case PlaceKind.SettlementSite: return EconomyLogic.GetSettlement(s, id)?.Delivered;
                 case PlaceKind.Building: return EconomyLogic.GetBuilding(s, id)?.Delivered;
                 case PlaceKind.RoadSite: return EconomyLogic.GetRoad(s, id)?.Delivered;
+                case PlaceKind.BuildingUpgrade: return EconomyLogic.GetBuilding(s, id)?.UpgradeDelivered;
             }
             return null;
         }
@@ -519,11 +521,11 @@ namespace World.Sim.Economy
                     continue; // waits on the road until the demons are banished
                 }
                 c.Progress++;
-                if (c.Progress >= c.LegTicks) Arrive(s, ev, c);
+                if (c.Progress >= c.LegTicks) Arrive(s, ev, c, h);
             }
         }
 
-        private static void Arrive(WorldState s, EventBuffer ev, Carrier c)
+        private static void Arrive(WorldState s, EventBuffer ev, Carrier c, EconomyHooks h)
         {
             var e = s.Economy;
             var j = c.JobId >= 0 ? FindJob(s, c.JobId) : null;
@@ -543,7 +545,7 @@ namespace World.Sim.Economy
                         else BeginLocal(s, ev, c, c.LegToKind, c.LegToId, PlaceKind.Storehouse, c.Home, CarrierState.Carrying);
                         return;
                     }
-                    Deliver(s, ev, c, j);
+                    Deliver(s, ev, c, j, h);
                     if (j.ToKind == PlaceKind.Storehouse && j.ToId == c.Home) { Idle(c); return; }
                     if (j.ToKind == PlaceKind.Building)
                     {
@@ -590,7 +592,28 @@ namespace World.Sim.Economy
             c.Progress = 0;
         }
 
-        private static void Deliver(WorldState s, EventBuffer ev, Carrier c, Job j)
+        private static void Deliver(WorldState s, EventBuffer ev, Carrier c, Job j, EconomyHooks h)
+        {
+            // Construction deliveries (PRD_AGES 4.2 handover detection; H1-0): which site, decided before the job goes.
+            SiteKind siteKind = (SiteKind)(-1);
+            if (h != null && h.OnConstructionDelivery.Count > 0)
+            {
+                switch (j.ToKind)
+                {
+                    case PlaceKind.Building:
+                        var b = EconomyLogic.GetBuilding(s, j.ToId);
+                        if (b != null && (b.State == BuildingState.Site || b.State == BuildingState.Constructing)) siteKind = SiteKind.Building;
+                        break;
+                    case PlaceKind.RoadSite: siteKind = SiteKind.Road; break;
+                    case PlaceKind.SettlementSite: siteKind = SiteKind.Settlement; break;
+                    case PlaceKind.BuildingUpgrade: siteKind = SiteKind.BuildingUpgrade; break;
+                }
+            }
+            DeliverGoods(s, ev, c, j);
+            if (siteKind >= 0) h.ConstructionDelivered(s, ev, j.Faction, siteKind, j.ToId, j.Ware, j.Count);
+        }
+
+        private static void DeliverGoods(WorldState s, EventBuffer ev, Carrier c, Job j)
         {
             var into = DeliveredArray(s, j.ToKind, j.ToId);
             into[(int)j.Ware] += j.Count;
