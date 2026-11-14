@@ -12,6 +12,11 @@ namespace World.Sim.Eras
         public const string ChapterNotReady = "chapter_not_ready";
         public const string ChapterUnknown = "chapter_unknown";
         public const string GameOver = "game_over";
+        /// <summary>
+        /// sim-H1-cry-S1 addition: the chapter is ready but its content is not built yet (ch.modern.harbour until M1-4,
+        /// ch.future.core until F1-2). See <see cref="ChapterIds.IsBuilt"/>.
+        /// </summary>
+        public const string ChapterNotBuilt = "chapter_not_built";
 
         public static string Sentence(string code)
         {
@@ -20,6 +25,7 @@ namespace World.Sim.Eras
                 case ChapterNotReady: return "That time has not come yet.";
                 case ChapterUnknown: return "There is no such chapter.";
                 case GameOver: return "The game is over.";
+                case ChapterNotBuilt: return "That time is not written yet.";
                 default: return code;
             }
         }

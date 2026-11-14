@@ -30,7 +30,21 @@ namespace World.Sim.Eras
             if (s?.Eras == null || !ChapterIds.IsKnown(to)) return ErasRefusals.Reject(ErasRefusals.ChapterUnknown);
             if (s.Factions != null && s.Factions.GameOver) return ErasRefusals.Reject(ErasRefusals.GameOver);
             if (!s.Eras.ReadyChapters.Contains(to)) return ErasRefusals.Reject(ErasRefusals.ChapterNotReady);
+            if (!ChapterIds.IsBuilt(to)) return ErasRefusals.Reject(ErasRefusals.ChapterNotBuilt);
             return CommandResult.Accept();
+        }
+
+        /// <summary>
+        /// PRD_AGES 4.4 and its reconciliation, crystals N-6: the crystal campaign ended with the restored ending. The whole
+        /// record is kept in History (the H to M transfer reads it) and ch.modern.harbour is marked ready (ChapterReady), so
+        /// the ending's "Onward" can offer the step. Idempotent: a second call keeps the first record and raises nothing.
+        /// </summary>
+        public static void OnCampaignWon(WorldState s, Campaign.CampaignRecord record, EventBuffer ev)
+        {
+            if (s == null || record == null) return;
+            if (s.History == null) s.History = new HistoryState();
+            if (s.History.CampaignRecord == null) s.History.CampaignRecord = record;
+            MarkReady(s, ChapterIds.ModernHarbour, ev);
         }
 
         /// <summary>Applies a validated step in one tick: content, era and chapter, history, event (4.6 order).</summary>
@@ -100,6 +114,25 @@ namespace World.Sim.Eras
         }
     }
 
+    /// <summary>
+    /// Just after the campaign slot (1250 + 10): reacts to CampaignEnded{Won} raised earlier in this tick (by the campaign
+    /// system or by a ResolveEncounter applied at the start of the tick) with <see cref="ErasLogic.OnCampaignWon"/>.
+    /// </summary>
+    internal sealed class ErasCampaignLinkSystem : ISimSystem
+    {
+        public const int Order = SystemOrder.Campaign + 10;
+
+        public void Tick(WorldState s, EventBuffer ev)
+        {
+            var items = ev?.Items;
+            if (items == null || items.Count == 0) return;
+            int first = items.Count;
+            while (first > 0 && items[first - 1].Tick == s.Tick) first--;
+            for (int i = first; i < items.Count; i++)
+                if (items[i] is Campaign.CampaignEnded ce && ce.Won) ErasLogic.OnCampaignWon(s, ce.Record, ev);
+        }
+    }
+
     internal sealed class AdvanceChapterHandler : CommandHandler<AdvanceChapter>
     {
         protected override CommandResult Validate(WorldState s, AdvanceChapter c) => ErasLogic.CheckAdvance(s, c.To);
@@ -149,6 +182,7 @@ namespace World.Sim.Eras
         public static void Register(WorldSim sim)
         {
             sim.AddSystem(SystemOrder.Eras, new ErasSystem());
+            sim.AddSystem(ErasCampaignLinkSystem.Order, new ErasCampaignLinkSystem());
             sim.RegisterHandler(new AdvanceChapterHandler());
         }
     }

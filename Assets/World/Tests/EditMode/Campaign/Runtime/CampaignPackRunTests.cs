@@ -190,7 +190,6 @@ namespace World.Sim.Tests
             {
                 n++;
                 var run = SaveCodec.Load(carried, out _);
-                CampaignModule.Register(run);
                 var s = run.State;
                 var all = new List<SimEvent>();
                 for (int i = 0; i < 3; i++)

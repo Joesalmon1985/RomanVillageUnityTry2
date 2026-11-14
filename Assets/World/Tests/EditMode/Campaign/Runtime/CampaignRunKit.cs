@@ -101,11 +101,11 @@ namespace World.Sim.Tests
         /// <summary>The state as JSON (the save's own serialisation).</summary>
         public static string Json(WorldSim sim) => SaveCodec.StateJson(sim.State);
 
-        /// <summary>Saves and loads (registering the campaign module, which SaveCodec.CreateSim does not do yet).</summary>
+        /// <summary>Saves and loads (SaveCodec.CreateSim registers the campaign module since sim-H1-cry-S1).</summary>
         public static WorldSim SaveLoad(WorldSim sim)
         {
             var loaded = SaveCodec.Load(SaveCodec.ToJson(sim.State), out _);
-            CampaignModule.Register(loaded);
+            Assert.IsTrue(loaded.HasHandler(typeof(ResolveEncounter)), "a loaded save has the campaign's handlers");
             Assert.AreEqual(Json(sim), Json(loaded), "the save holds the whole state");
             return loaded;
         }

@@ -105,6 +105,8 @@ namespace World.Sim.Save
             Demons.DemonsModule.Register(sim);
             Eras.ErasModule.Register(sim);
             Ledger.LedgerModule.Register(sim);
+            // The crystal campaign (PRD_CRYSTALS A.5): a loaded save keeps its campaign system and handlers. Idempotent.
+            Campaign.CampaignModule.Register(sim);
             return sim;
         }
 

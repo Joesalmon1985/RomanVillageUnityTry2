@@ -36,6 +36,14 @@ namespace World.Sim.Eras
         /// <summary>True for a known chapter id.</summary>
         public static bool IsKnown(string id) => id != null && Array.IndexOf(All, id) >= 0;
 
+        /// <summary>
+        /// sim-H1-cry-S1 addition: chapters whose step content exists in this build, so AdvanceChapter may enter them
+        /// (Prehistoric and Historic now; M1-4 adds ch.modern.harbour, F1-2 ch.future.core). A chapter may be marked ready
+        /// before it is built (the crystal ending readies ch.modern.harbour); advancing to it is refused with
+        /// chapter_not_built until then.
+        /// </summary>
+        public static bool IsBuilt(string id) => id == Prehistoric || id == Historic;
+
         /// <summary>The era a chapter belongs to; Prehistoric for an unknown id.</summary>
         public static Era EraOf(string id)
         {

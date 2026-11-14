@@ -143,7 +143,7 @@ namespace World.Sim.Tests
         [TestCase(PackFiles.Skeleton)]
         public void CampaignLandmarks_DoNotCollideWithTheAgesLandmarks(string pack)
         {
-            var sim = WorldSimFactory.CreateNew(21);
+            var sim = CampaignSamples.DevGame(21);
             Assert.IsTrue(sim.Submit(new StartCampaign { Definition = PackFiles.Load(pack) }).Ok);
             sim.Step();
             var s = sim.State;

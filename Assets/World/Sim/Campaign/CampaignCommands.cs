@@ -70,11 +70,16 @@ namespace World.Sim.Campaign
         public const string PlayerNeeded = "player_needed";
         /// <summary>I0 addition: SuggestScout to a location the definition does not have.</summary>
         public const string UnknownPlace = "unknown_place";
+        /// <summary>
+        /// sim-H1-cry-S1 addition: StartCampaign in a story game before AgesApi.CampaignMayStart (the prince's handover and
+        /// the Historic step). A developer start (PlayMode.DevStart) and "Begin again" after an earlier run are not gated.
+        /// </summary>
+        public const string CampaignNotYet = "campaign_not_yet";
 
         public static readonly string[] All =
         {
             NoCampaign, CampaignRunning, CampaignOver, InvalidDefinition, UnknownLead, NotAtChoice, NotAtThreshold, ScoutOut,
-            NoScout, UnknownAttempt, AlreadyResolved, NotCarried, WrongTower, PlayerNeeded, UnknownPlace,
+            NoScout, UnknownAttempt, AlreadyResolved, NotCarried, WrongTower, PlayerNeeded, UnknownPlace, CampaignNotYet,
         };
 
         /// <summary>The sentence; arg fills {first problem} (invalid_definition) or {name} (scout_out: also refused to CommitEncounter while the scout is out).</summary>
@@ -97,6 +102,7 @@ namespace World.Sim.Campaign
                 case WrongTower: return "This is not its tower.";
                 case PlayerNeeded: return "Mira waits for you before she does that.";
                 case UnknownPlace: return "Mira does not know that place.";
+                case CampaignNotYet: return "The expedition waits until the prince leads the camp and the Historic age begins.";
                 default: return code;
             }
         }

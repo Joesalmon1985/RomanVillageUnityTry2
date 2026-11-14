@@ -243,6 +243,7 @@ namespace World.Sim.Tests
                 { "wrong_tower", "This is not its tower." },
                 { "player_needed", "Mira waits for you before she does that." },
                 { "unknown_place", "Mira does not know that place." },
+                { "campaign_not_yet", "The expedition waits until the prince leads the camp and the Historic age begins." },
             };
             CollectionAssert.AreEquivalent(want.Keys, CampaignRefusals.All);
             foreach (var kv in want)
@@ -468,7 +469,7 @@ namespace World.Sim.Tests
         [Test]
         public void Start_BuildsTheRun_SwitchesCampaignMode_RegistersLandmarks()
         {
-            var sim = WorldSimFactory.CreateNew(7);
+            var sim = CampaignSamples.DevGame(7);
             Assert.IsTrue(sim.Submit(new StartCampaign { Definition = CampaignSamples.Skeleton() }).Ok);
             var ev = SimTestKit.Step(sim, 1);
             var s = sim.State;
@@ -521,7 +522,7 @@ namespace World.Sim.Tests
         [Test]
         public void Start_RefusesAnInvalidDefinition()
         {
-            var sim = WorldSimFactory.CreateNew(7);
+            var sim = CampaignSamples.DevGame(7);
             var d = CampaignSamples.Skeleton();
             d.FormatVersion = 99;
             var r = sim.Submit(new StartCampaign { Definition = d });
@@ -537,7 +538,7 @@ namespace World.Sim.Tests
         {
             var d = CampaignSamples.Skeleton();
             d.Rival.StolenAtStart.Add("earth");
-            var sim = WorldSimFactory.CreateNew(7);
+            var sim = CampaignSamples.DevGame(7);
             sim.Submit(new StartCampaign { Definition = d });
             var ev = SimTestKit.Step(sim, 1);
             var s = sim.State;
@@ -707,7 +708,9 @@ namespace World.Sim.Tests
             sim.Step(20);
             string json = SaveCodec.ToJson(s);
             var loaded = SaveCodec.Load(json, out _);
-            CampaignModule.Register(loaded);   // until SaveCodec.CreateSim registers it (requested of PRD_AGES)
+            // SaveCodec.CreateSim registers the campaign (sim-H1-cry-S1): a loaded save has its system and handlers.
+            Assert.IsTrue(loaded.HasHandler(typeof(ResolveEncounter)));
+            Assert.AreEqual(1, loaded.Systems.Count(x => x is CampaignSystem));
             Assert.AreEqual(SaveCodec.StateJson(s), SaveCodec.StateJson(loaded.State));
             Assert.AreEqual(1, CampaignApi.Attempt(loaded.State).Id, "the pending attempt is in the save");
             Assert.AreEqual('P', loaded.State.Campaign.Definition.Interior("quarry").Rows[1][3]);

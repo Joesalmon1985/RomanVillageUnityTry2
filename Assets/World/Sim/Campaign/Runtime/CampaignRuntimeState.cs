@@ -46,6 +46,11 @@ namespace World.Sim.Campaign
         /// <summary>EconomyTuning.CarrierTicksPerStep when the campaign started; -1 = not captured.</summary>
         public int BaseCarrierTicksPerStep = -1;
         /// <summary>
+        /// EconomyTuning.CycleBonusPermille when the campaign started (the Kilnheart's boon is applied from it); null = not
+        /// captured (a save from before sim-H1-cry-S1: captured at the next island change, when no boon had touched it).
+        /// </summary>
+        public int[] BaseCycleBonusPermille;
+        /// <summary>
         /// The runtime also makes its own leads ("@take:", "@recover:", "@restore:", "@clue:") where the definition has no
         /// lead with that goal. Off by default: a pack that follows the story contract (CAMPAIGN_FORMAT section 7) runs with
         /// it off, so Mira goes only where a lead sends her. On for hand-made definitions without a full story (tests, F1

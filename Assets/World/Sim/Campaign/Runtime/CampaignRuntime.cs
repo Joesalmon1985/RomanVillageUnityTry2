@@ -107,8 +107,17 @@ namespace World.Sim.Campaign
             if (start.Definition == null) return CampaignRefusals.Reject(CampaignRefusals.InvalidDefinition, "no campaign was given.");
             foreach (var problem in CampaignValidator.Validate(start.Definition))
                 if (problem != null && problem.IsError) return CampaignRefusals.Reject(CampaignRefusals.InvalidDefinition, problem.Sentence);
+            if (!MayStart(s)) return CampaignRefusals.Reject(CampaignRefusals.CampaignNotYet);
             return CommandResult.Accept();
         }
+
+        /// <summary>
+        /// The start gate (5.9, N-1): in a story game the expedition sets out only once AgesApi.CampaignMayStart holds (the
+        /// player's handover happened and the Historic step was accepted). A developer start (dev.historic and the test
+        /// starts, PlayMode.DevStart) is not gated, nor "Begin again" on an island that has already run a campaign.
+        /// </summary>
+        internal static bool MayStart(WorldState s) =>
+            AgesApi.CampaignMayStart(s) || AgesApi.Mode(s) == PlayMode.DevStart || s.Campaign != null;
 
         private static bool HasLead(CampaignState c, int id) => c.Leads != null && c.Leads.Exists(l => l.Id == id);
 
@@ -229,6 +238,7 @@ namespace World.Sim.Campaign
             {
                 c.BaseGrowTicks = econ.GrowTicks != null ? (int[])econ.GrowTicks.Clone() : null;
                 c.BaseCarrierTicksPerStep = econ.CarrierTicksPerStep;
+                c.BaseCycleBonusPermille = econ.CycleBonusPermille != null ? (int[])econ.CycleBonusPermille.Clone() : null;
             }
             var stolen = d.Rival?.StolenAtStart ?? new List<string>();
             for (int i = 0; i < 4; i++)
@@ -545,8 +555,9 @@ namespace World.Sim.Campaign
         /// The island's change (5.7), always recomputed from the saved base values so nothing stacks: demons draw every
         /// max(1, base + restored - on altars) sevens (never again with four restored, and the board is cleared); the
         /// Deepstone makes Hills and Mountain grow BoonPercent faster, the Tideglass Fields and Pasture, the Skyshard
-        /// takes one tick off each carrier step. The Kilnheart's workshop boon waits for EconomyTuning.CycleBonusPermille
-        /// (PRD_AGES H1-2), which does not exist yet.
+        /// takes one tick off each carrier step, and the Kilnheart makes the workshops that burn wood (Kiln, Smokehouse)
+        /// work BoonPercent faster through EconomyTuning.CycleBonusPermille (PRD_AGES H1-2): base + 1000 * pct / (100 + pct)
+        /// permille off the cycle (166 for 20%: a cycle takes 100/120 as long, the same "20% faster" as the growth boons).
         /// </summary>
         internal static void ApplyIslandEffects(WorldState s, CampaignState c, EventBuffer ev)
         {
@@ -584,6 +595,18 @@ namespace World.Sim.Campaign
                 }
             }
             econ.CarrierTicksPerStep = Math.Max(1, c.BaseCarrierTicksPerStep - (air ? 1 : 0));
+            if (c.BaseCycleBonusPermille == null && econ.CycleBonusPermille != null) c.BaseCycleBonusPermille = (int[])econ.CycleBonusPermille.Clone();
+            if (c.BaseCycleBonusPermille != null && econ.CycleBonusPermille != null)
+            {
+                bool fire = c.Crystal(Element.Fire)?.Custody == Custody.Restored;
+                int bonus = 1000 * pct / (100 + pct);
+                for (int t = 0; t < econ.CycleBonusPermille.Length; t++)
+                {
+                    int b = t < c.BaseCycleBonusPermille.Length ? c.BaseCycleBonusPermille[t] : 0;
+                    bool wood = t == (int)Economy.BuildingType.Kiln || t == (int)Economy.BuildingType.Smokehouse;
+                    econ.CycleBonusPermille[t] = fire && wood ? b + bonus : b;
+                }
+            }
         }
 
         // ---------------------------------------------------------------- shared steps

@@ -62,7 +62,7 @@ namespace World.Sim.Tests
         public void Pack_StartsACampaign(string pack)
         {
             var d = PackFiles.Load(pack);
-            var sim = WorldSimFactory.CreateNew(11);
+            var sim = CampaignSamples.DevGame(11);
             var r = sim.Submit(new StartCampaign { Definition = d });
             Assert.IsTrue(r.Ok, r.ToString());
             sim.Step();
@@ -91,7 +91,7 @@ namespace World.Sim.Tests
         public void Loader_RoundTrip_ThroughTheSave()
         {
             var d = PackFiles.Load(PackFiles.Authored);
-            var sim = WorldSimFactory.CreateNew(5);
+            var sim = CampaignSamples.DevGame(5);
             Assert.IsTrue(sim.Submit(new StartCampaign { Definition = d }).Ok);
             sim.Step();
             string save = SaveCodec.ToJson(sim.State);
@@ -197,7 +197,7 @@ namespace World.Sim.Tests
         [Test]
         public void Authored_LinesFollowState_InARun()
         {
-            var sim = WorldSimFactory.CreateNew(3);
+            var sim = CampaignSamples.DevGame(3);
             Assert.IsTrue(sim.Submit(new StartCampaign { Definition = PackFiles.Load(PackFiles.Authored) }).Ok);
             sim.Step();
             var s = sim.State;

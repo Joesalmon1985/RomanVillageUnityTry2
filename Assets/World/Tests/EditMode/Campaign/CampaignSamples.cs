@@ -201,10 +201,22 @@ namespace World.Sim.Tests
             return d;
         }
 
+        /// <summary>
+        /// A new game marked as a developer start (PlayMode.DevStart), so StartCampaign is not gated on the handover and the
+        /// Historic step (sim-H1-cry-S1). Otherwise exactly WorldSimFactory.CreateNew; StartCampaign then switches the
+        /// mode to Campaign as in any start.
+        /// </summary>
+        public static WorldSim DevGame(ulong seed)
+        {
+            var sim = WorldSimFactory.CreateNew(seed);
+            sim.State.Eras.Mode = Eras.PlayMode.DevStart;
+            return sim;
+        }
+
         /// <summary>A new game with the campaign started from <see cref="Skeleton"/> (one tick stepped so the start applied).</summary>
         public static WorldSim Started(ulong seed = 7, CampaignDefinition d = null)
         {
-            var sim = WorldSimFactory.CreateNew(seed);
+            var sim = DevGame(seed);
             var r = sim.Submit(new StartCampaign { Definition = d ?? Skeleton() });
             NUnit.Framework.Assert.IsTrue(r.Ok, r.ToString());
             sim.Step();

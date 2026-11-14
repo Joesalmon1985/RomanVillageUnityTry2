@@ -40,7 +40,7 @@ namespace World.Sim.Tests
             Assert.IsNotEmpty(errors, fx.Why);
             CollectionAssert.AreEquivalent(new[] { fx.Expect }, errors.Select(p => p.Code).Distinct().ToArray(), fx.Why + ":\n" + Show(errors));
 
-            var sim = WorldSimFactory.CreateNew(1);
+            var sim = CampaignSamples.DevGame(1);
             var r = sim.Submit(new StartCampaign { Definition = d });
             Assert.IsFalse(r.Ok);
             Assert.AreEqual(CampaignRefusals.InvalidDefinition, r.Reason);

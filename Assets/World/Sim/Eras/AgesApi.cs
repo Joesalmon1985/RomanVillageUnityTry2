@@ -15,9 +15,13 @@ namespace World.Sim.Eras
 
         public static PlayMode Mode(WorldState s) => s?.Eras?.Mode ?? PlayMode.Skirmish;
 
-        /// <summary>True when AdvanceChapter to this chapter would be accepted now (game not over).</summary>
+        /// <summary>
+        /// True when AdvanceChapter to this chapter would be accepted now (ready, built in this build, game not over). A
+        /// chapter can be in <see cref="ReadyChapters"/> before it is built (ch.modern.harbour after the crystal ending).
+        /// </summary>
         public static bool IsReady(WorldState s, string chapter) =>
-            s?.Eras != null && chapter != null && s.Eras.ReadyChapters.Contains(chapter) && !(s.Factions?.GameOver ?? false);
+            s?.Eras != null && chapter != null && s.Eras.ReadyChapters.Contains(chapter) && ChapterIds.IsBuilt(chapter)
+            && !(s.Factions?.GameOver ?? false);
 
         /// <summary>Chapters ready to advance to, sorted ordinal (empty when none).</summary>
         public static IReadOnlyList<string> ReadyChapters(WorldState s) =>

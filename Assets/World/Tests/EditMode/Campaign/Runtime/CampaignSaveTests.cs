@@ -120,7 +120,6 @@ namespace World.Sim.Tests
             foreach (var kv in saves)
             {
                 var loaded = SaveCodec.Load(kv.Value, out _);
-                CampaignModule.Register(loaded);
                 RunTo(loaded, End);
                 Assert.AreEqual(final, Json(loaded), "loaded at: " + kv.Key);
             }
