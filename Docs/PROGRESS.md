@@ -492,3 +492,41 @@ Earlier runs of the same day, before the deadlock fix: 20 s gave one Draw at the
 Ran (editor, 14 Nov): `first_scene` OK at time scale 1 (the prince asks after 0.3 game seconds; the load is followed to the storehouse at 147 game seconds); PlayMode 75 passed on the tree that already held the F-1 save code (prince tests 13, lighting 5, integration 8, the rest as before); `dotnet` and EditMode were not rerun for this step (no sim change). The Unity editor crashed once between runs, right after an audio device change on the machine (`ADTM: Attempting to update control while a mix is ongoing`); it was reopened and nothing was lost.
 
 Rough: the left-pointing "calls you" box clips its last letter; at 30 s the win is only on the clock; a slower player than that was not tried.
+
+## F-1: save and load, guide, Windows build; the refactor is finished (14 Nov 2026, branch `refactor/prehistoric`, tag `refactor-done`)
+
+- **Save and load** (F5, F9, pause menu; save version 4 unchanged): the file now also holds the walker's lattice cell and heading, whether the HUD is on, and the step of the prince's first scene. The time of day needs no saving (it follows the tick). The prince's pitch loop is not saved: it starts again from the open proposals. Saving and loading are refused during the duel and the dance. New PlayMode tests: walker, HUD, first-scene step and time of day restored and the prince speaks again after the load; a carrier saved mid-path delivers its load exactly once after the load.
+- **Guide**: the pause menu's Controls and How to play pages and `Docs/PLAY_GUIDE.md` are rewritten for this game.
+- **Fine graph**: not removed. Eight game files and eight test files still use the topology's vertex and edge members, so it was not a quick, safe change.
+- **Docs**: `HANDOFF.md`, `README.md`, `CLAUDE.md`, `RESUME.md` updated; `docs/next-ages` merged (four documents, docs only): what comes next is `Docs/NEXT_START_HERE.md`.
+
+Ran (14 Nov):
+
+- `dotnet test DotNet`: 201 passed. Unity EditMode: 201 passed. PlayMode: 75 passed. Console: 0 errors.
+- Windows build: `Builds/Windows/WorldMVP.exe`, Succeeded, 0 errors, 7 warnings; the folder is 101 MB without captures (the exe file itself is 0.7 MB; the game is in `WorldMVP_Data`). The probe's `Resources` list was parked for the build and is back.
+- Packaged runs (windowed 1280x720, `-novsync`, night start; logs in `Builds/logs`; "errors" = lines with "exception", "FAILED" or an error marker in the player log):
+
+| Run | Exit code | Errors | Result |
+|---|---|---|---|
+| `walk_tour` | 0 | 0 | OK, 23 s |
+| `first_scene` | 0 | 0 | OK, 152 s |
+| `duel_dance` | 0 | 0 | OK, 54 s |
+| `follow_prince -princeDelay 3 -timescale 8` | 0 | 0 | Victory by overrun, minute 14.4, 27 casts, pitch to cast 19.7 s on average |
+| `ignore_prince -timescale 8` | 0 | 0 | Defeat by overrun, minute 11.9, 0 casts |
+| `cast_all -speed 8` | 0 | 0 | Victory by overrun, minute 12.5, 28 casts, all by screen press |
+| `save_load` | 0 | 0 | OK: refused a corrupt and an older file, loaded, the carried load arrived once |
+| `capture_tour` | 0 | 0 | OK |
+| plain launch, no window flags, `-quitAfterReady` | 0 | 0 | `[Boot] playable`: hour 22.6, night 1.00, 1920x1080 FullScreenWindow, prince present |
+
+- The window-size registry key of this product (`HKCU\Software\Joe Salmon\WorldMVP`) was deleted after the windowed runs; the plain launch that followed wrote full screen at the native size again. The AutoPlay save file was deleted.
+- Packaged captures looked at (`Builds/Windows/Evidence/screenshots`): the spawn at night, the prince's opening bubble with its three replies, the pause menu's guide, the map, the loss scene. No magenta, fonts as in the editor, night readable.
+
+Not done, rough, or not verified:
+
+- Nobody has played it by hand: not the walking, not the pointer, not the dance by ear, not a whole game at 1x.
+- One `follow_prince` run at a 20 s answer delay ended in a Draw and was not explained (5 other runs at 20 s were won).
+- The Unity editor crashed once after an audio device change on the machine; the game's own audio guard logged the change just before. Not reproduced, not fixed.
+- In the opening the prince can stand half behind the brazier beside the spawn.
+- After a load, spots cleared for earlier proposals grow back until they are proposed again; the dance and duel cannot be saved; the time-of-day scrub of the F1 tools is not saved.
+- The hover ring at night, a porter on a built road from close by, and the cast sparks at night were not seen in captures.
+- `refactor/prehistoric` is not merged into `main` and was not pushed by this session.
