@@ -1,0 +1,52 @@
+{
+ "key": "champion",
+ "schema": "cast/1",
+ "face": {
+  "identity": "The Ash champion (Road Hero model). Broadest, heaviest face of the three: wide square jaw and wide cheekbones, heavy brow ridge with thick low brows angled down at the inner ends (a resting scowl), smaller deep-set narrow eyes set closer, big broad nose, wide mouth set low, dark hair swept down over a lower hairline. Determined, jaw set; surprised on a break.",
+  "island_roles": {"Head.19": "hair"},
+  "differentiation": {
+   "face_width": 1.07,
+   "cheek_width": 1.04,
+   "jaw_width": 1.22,
+   "chin_drop_m": 0.004,
+   "chin_forward_m": 0.006,
+   "brow_ridge_m": 0.007,
+   "brow_thickness": 1.6,
+   "brow_length": 1.12,
+   "brow_angle_deg": 9.0,
+   "brow_height_m": -0.004,
+   "brow_forward_m": 0.004,
+   "brow_gap_m": -0.002,
+   "eye_size": 0.9,
+   "eye_height": 0.82,
+   "eye_spacing_m": -0.002,
+   "eye_height_m": -0.001,
+   "nose_size": 1.22,
+   "nose_length": 1.0,
+   "nose_width": 1.2,
+   "nose_projection": 1.05,
+   "mouth_width": 1.15,
+   "mouth_thickness": 1.0,
+   "mouth_height_m": -0.003,
+   "hairline_m": 0.008,
+   "hair_forward_m": 0.004,
+   "ear_scale": 1.1
+  },
+  "shape_key_amplitude": {
+   "brow_raise_m": 0.0145,
+   "brow_furrow_forward_m": 0.012
+  },
+  "tuning": {
+   "gain": {"blink": 1.0, "brow": 1.0, "mouth": 1.0, "jaw": 1.2}
+  },
+  "expressions": {
+   "neutral": {"keys": {}, "jaw_deg": 0.0, "gaze": "target", "blink_rate": 0.9},
+   "attentive": {"keys": {"BrowRaise.L": 0.75, "BrowRaise.R": 0.75, "BrowWorry": 0.1, "MouthSmile": 0.15}, "jaw_deg": 0.0, "gaze": "target", "blink_rate": 0.7},
+   "concentrating": {"keys": {"BrowFurrow": 0.8, "Blink.L": 0.35, "Blink.R": 0.35, "MouthFrown": 0.2}, "jaw_deg": 0.0, "gaze": "target", "blink_rate": 0.5},
+   "surprised": {"keys": {"BrowRaise.L": 1.0, "BrowRaise.R": 1.0, "BrowWorry": 0.2, "MouthRound": 0.5, "MouthOpen": 0.9}, "jaw_deg": 4.0, "gaze": "target", "blink_rate": 0.2},
+   "pleased": {"keys": {"MouthSmile": 0.75, "BrowRaise.L": 0.2, "BrowRaise.R": 0.2, "Blink.L": 0.2, "Blink.R": 0.2}, "jaw_deg": 0.0, "gaze": "target", "blink_rate": 1.0},
+   "pained": {"keys": {"BrowWorry": 0.8, "BrowFurrow": 0.4, "Blink.L": 0.5, "Blink.R": 0.5, "MouthFrown": 0.7, "MouthOpen": 0.3}, "jaw_deg": 2.0, "gaze": "down", "blink_rate": 1.4},
+   "determined": {"keys": {"BrowFurrow": 0.7, "MouthFrown": 0.75}, "jaw_deg": 0.0, "gaze": "target", "blink_rate": 0.6}
+  }
+ }
+}
