@@ -19,7 +19,7 @@
   "lock": {"L": 1.0},
   "pin": {"L": {"pos": [-0.05, 0.10, 0.0]}}
  },
- "layers": {"breath": 0.8, "noise": 0.55, "overlap": 0.7, "hip_drop": 3.0, "shift_lat": 0.6},
+ "layers": {"breath": 1.1, "noise": 0.55, "overlap": 0.7, "hip_drop": 3.0, "shift_lat": 0.6},
  "springs": {
   "Chest": [28.0, 0.9], "Neck": [26.0, 0.9], "Head": [26.0, 0.85],
   "UpperArm": [26.0, 0.85], "LowerArm": [24.0, 0.8], "Hand": [22.0, 0.75]

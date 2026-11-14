@@ -56,14 +56,16 @@ WEAVE_L = [{"reach": [0.24, 0.58, -0.34], "palm": "up"}, {"reach": [0.34, 0.60, 
 M_WOUND = {
     "pinL": "off", "propL": {"aim": [0.0, -0.26, 0.97]},
     "armL": {"reach": [0.30, 0.22, 0.12], "elbow": [0.75, -0.55, -0.35]},
-    "armR": {"reach": [-0.04, 0.90, 0.04], "elbow": [-0.6, -0.3, -0.7], "palm": "fwd"},
+    # the free hand gathers in front of the chest, elbow bent and out, palm toward the target (it draws the weave)
+    "armR": {"reach": [0.06, 0.58, 0.06], "elbow": [-0.75, -0.35, -0.55], "palm": "fwd", "hand": [-12, 0, 0]},
     "Hips": [0, 4, 0], "Spine": [-1, 6, 0], "Chest": [-3, 16, 0], "Head": [0, -5, 0],
     "weight": 0.62, "pelvis": [0, -0.03, -0.012], "shoulderL": [4, -5],
 }
 M_THRUST = {
     "pinL": "off", "propL": {"aim": [0.0, 0.80, 0.60]},
     "armL": {"reach": [0.36, 0.86, 0.02], "elbow": [0.6, -0.3, -0.7]},
-    "armR": {"reach": [-0.26, 0.14, -0.36], "elbow": [-0.5, -0.8, -0.2], "palm": "left"},
+    # the free hand flings open down and back as the staff goes forward (counter-swing, elbow soft, fingers spread)
+    "armR": {"reach": [-0.40, 0.10, -0.42], "elbow": [-0.55, -0.75, -0.2], "palm": "back", "hand": [18, 0, 0]},
     "Hips": [1, -3, 0], "Spine": [2, -5, 0], "Chest": [5, -14, 0], "Head": [-3, 2, 0],
     "weight": 0.42, "pelvis": [0, 0.05, -0.02], "shoulderL": [0, 8],
 }
@@ -100,7 +102,7 @@ C_KNEES = {
     "pelvis": [0, 0.54, -0.42], "footL": {"pitch": 68}, "footR": {"pitch": 66},
     "Chest": [16, 0, 0], "Spine": [8, 0, 0], "Head": [20, 0, 0], "Neck": [6, 0, 0],
     "armL": {"at": [0.22, 0.20, 0.10], "elbow": [0.8, -0.5, 0.2], "palm": "down"},
-    "armR": {"at": [-0.46, 0.10, 0.14], "elbow": [-0.8, -0.5, 0.2]}, "propR": {"aim": [-0.5, 0.85, 0.0]},
+    "armR": {"at": [-0.46, 0.10, 0.14], "elbow": [-0.8, -0.5, 0.2]}, "propR": {"aim": [-0.32, 0.76, -0.56]},   # head on the ground
 }
 
 POSES = {
@@ -268,8 +270,10 @@ CLIPS = {
                 {"f": 15, "pose": "stand"}]},
         },
     },
+    # Integration pass: at duel distance the light recoil hardly read, so its torso and pelvis moves are scaled up
+    # ("amplitude"; arms are absolute and unchanged) in the base clip and both variants.
     "RecoilLight": {
-        "frames": 18, "events": [{"name": "Impact", "f": 0}],
+        "frames": 18, "events": [{"name": "Impact", "f": 0}], "amplitude": 1.6,
         "keys": [{"f": 0, "pose": "stand"},
                  {"f": 2, "pose": "fling", "set": {"Chest": [-14, 0, 0], "Spine": [-6, 0, 0], "Head": [8, 0, 0], "Neck": [3, 0, 0],
                                                    "head_level": 0.15, "pelvis": [0, -0.05, -0.012], "shoulderL": [6, 0], "shoulderR": [6, 0]},
@@ -280,7 +284,7 @@ CLIPS = {
                  {"f": 18, "pose": "stand"}],
         "variants": {
             # Mira: gives at the chest, a half step back, the planted staff holds her; step back in.
-            "mira": {"replace": True, "frames": 18, "tempo": False, "events": [{"name": "Impact", "f": 0}], "keys": [
+            "mira": {"replace": True, "frames": 18, "tempo": False, "amplitude": 1.5, "events": [{"name": "Impact", "f": 0}], "keys": [
                 {"f": 0, "pose": "stand"},
                 {"f": 2, "set": {"Chest": [-15, 5, 0], "Spine": [-6, 2, 0], "Head": [8, 0, 0], "Neck": [3, 0, 0], "head_level": 0.15,
                                  "pelvis": [0, -0.03, -0.01],
@@ -292,7 +296,7 @@ CLIPS = {
                 "steps": [{"foot": "R", "f0": 1, "f1": 6, "to": [0.0, -0.17], "lift": 0.03, "shift": 2, "w_support": 0.25, "settle": 3},
                           {"foot": "R", "f0": 10, "f1": 15, "to": [0.0, 0.0], "lift": 0.03, "shift": 3, "w_support": 0.2, "settle": 3}]},
             # Champion: rocks back on his heels, plants, shakes it off.
-            "champion": {"replace": True, "frames": 19, "tempo": False, "events": [{"name": "Impact", "f": 0}], "keys": [
+            "champion": {"replace": True, "frames": 19, "tempo": False, "amplitude": 1.5, "events": [{"name": "Impact", "f": 0}], "keys": [
                 {"f": 0, "pose": "stand"},
                 {"f": 3, "set": {"Chest": [-15, 0, 0], "Spine": [-7, 0, 0], "Head": [9, 0, 0], "head_level": 0.15, "pelvis": [0, -0.09, 0.0],
                                  "footL": {"pitch": -15}, "armL+": {"UpperArm": [-16, 0, -8], "LowerArm": [-10, 0, 0]},
@@ -555,7 +559,7 @@ CLIPS = {
     },
     # 0.8 s: starts back (shoulders up, arms out, head away), peers forward, settles. Also the old 'surprise' key.
     "Surprise": {
-        "frames": 24,
+        "frames": 24, "amplitude": 1.4,
         "keys": [{"f": 0, "pose": "stand"},
                  {"f": 3, "set": {"Chest": [-8, 0, 0], "Spine": [-3, 0, 0], "Head": [-7, 0, 0], "Neck": [-2, 0, 0],
                                   "pelvis": [0, -0.02, 0.012], "shoulderL": [9, -2], "shoulderR": [9, -2],

@@ -18,6 +18,8 @@ SHOW_R = {"reach": [0.36, 0.60, 0.40], "elbow": [-0.7, -0.3, -0.6], "palm": "lef
 SHOW_L = {"reach": [-0.36, 0.60, 0.40], "elbow": [0.7, -0.3, -0.6], "palm": "right"}
 
 KT_KNEEL = {"pelvis": [0, 0.04, -0.41], "weight": 0.74, "footR": {"pitch": 66},
+            # a weapon in the right hand hangs down and out of the way while both hands take the crystal
+            "propR": {"aim": [-0.62, 0.10, -0.78]},
             "Chest": [12, 0, 0], "Spine": [5, 0, 0], "Head": [10, 0, 0], "Neck": [3, 0, 0]}
 
 POINT_FAR = {"reach": [-0.20, 0.95, 0.04], "elbow": [-0.5, -0.4, -0.7], "palm": "left", "space": "root"}
@@ -64,7 +66,7 @@ CLIPS = {
             {"f": 37, "pose": "kt_kneel", "set": {"armR": PED_GRASP_R, "armL": PED_GRASP_L, "Chest": [14, 0, 0], "Head": [12, 0, 0]}},
             {"f": 46, "pose": "kt_kneel", "set": {"armR": PED_LIFT_R, "armL": PED_LIFT_L, "Chest": [8, 0, 0], "Head": [4, 0, 0],
                                                   "pelvis": [0, 0.03, -0.40]}, "ease": "smooth"},
-            {"f": 64, "set": {"armR": CHEST_R, "armL": CHEST_L, "pelvis": [0, 0, 0.004], "weight": 0.5, "Chest": [1, 0, 0],
+            {"f": 64, "set": {"propR": "stand", "armR": CHEST_R, "armL": CHEST_L, "pelvis": [0, 0, 0.004], "weight": 0.5, "Chest": [1, 0, 0],
                               "Spine": [0, 0, 0], "Head": [8, 0, 0], "Neck": [2, 0, 0], "footR": {"pitch": 0}, "eyes": [0, 4]},
              "ease": "smooth"},
             {"f": 76, "set": {"armR": SHOW_R, "armL": SHOW_L, "Chest": [-3, 0, 0], "Head": [-5, 0, 0], "Neck": [-1, 0, 0],

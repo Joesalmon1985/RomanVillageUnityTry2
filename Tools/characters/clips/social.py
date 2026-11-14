@@ -20,6 +20,24 @@ TALK_L_OUT = {"reach": [0.36, 0.52, -0.46], "elbow": [0.35, -0.6, -0.7], "palm":
 CHOP_UP = {"reach": [-0.20, 0.55, -0.12], "elbow": [-0.7, -0.4, -0.6], "palm": "left"}
 CHOP_DN = {"reach": [-0.16, 0.74, -0.52], "elbow": [-0.6, -0.5, -0.6], "palm": "left"}
 
+# Characteristic gestures (integration pass: the talk loops were the same for everyone).
+# Prince: open and eager. Both arms open wide, palms up ("all of this"), then the right fist into the left palm.
+P_OPEN_R = {"reach": [-0.58, 0.60, -0.22], "elbow": [-0.6, -0.5, -0.6], "palm": [0.3, 0.2, 0.9]}
+P_OPEN_L = {"reach": [0.58, 0.60, -0.22], "elbow": [0.6, -0.5, -0.6], "palm": [-0.3, 0.2, 0.9]}
+P_FIST_R = {"reach": [0.26, 0.62, -0.30], "elbow": [-0.7, -0.4, -0.5], "palm": "left"}
+P_FIST_R_UP = {"reach": [0.20, 0.58, -0.16], "elbow": [-0.7, -0.4, -0.5], "palm": "left"}
+P_PALM_L = {"reach": [-0.26, 0.60, -0.40], "elbow": [0.7, -0.4, -0.5], "palm": "up"}
+# Mira: economical. The free hand comes to the brooch at her chest, then opens slowly outward, palm up; a small
+# palm-down settle ends the thought. The staff stays planted.
+M_BROOCH = {"reach": [0.30, 0.30, -0.08], "elbow": [-0.8, -0.3, -0.5], "palm": "back"}
+M_OPEN = {"reach": [-0.30, 0.66, -0.30], "elbow": [-0.6, -0.5, -0.6], "palm": [0.2, 0.2, 0.95]}
+M_SETTLE = {"reach": [-0.14, 0.62, -0.46], "elbow": [-0.6, -0.5, -0.6], "palm": "down"}
+# Champion (baked mirrored: his right hand holds the weapon, so this right-hand data plays on his left hand):
+# a fist thumped twice on the chest, then a hard jab forward.
+C_THUMP_OUT = {"reach": [0.10, 0.42, -0.10], "elbow": [-0.8, -0.3, -0.4], "palm": "back"}
+C_THUMP = {"reach": [0.30, 0.24, -0.02], "elbow": [-0.8, -0.3, -0.4], "palm": "back"}
+C_JAB = {"reach": [-0.06, 0.86, -0.12], "elbow": [-0.6, -0.3, -0.7], "palm": "left"}
+
 CLIPS = {
     # 2 s. Chin lifts as the eyes meet the other person, the arm dips before it rises (anticipation), palm up
     # beside the head, a nod while the hand holds, then the elbow leads the hand down and the arm swings past and settles.
@@ -113,6 +131,36 @@ CLIPS = {
         ],
         "offsets": {"armR": 3, "head": -2},
         "layers": {"noise": 0.7},
+        "variants": {
+            "prince": {"replace": True, "frames": 108, "loop": True, "keys": [
+                {"f": 0, "set": {"weight": 0.50}},
+                {"f": 16, "set": {"armR": P_OPEN_R, "armL": P_OPEN_L, "Chest": [-4, 0, 0], "Spine": [-1, 0, 0], "Head": [-4, 0, 0],
+                                  "shoulderL": [4, -4], "shoulderR": [4, -4], "weight": 0.56, "pelvis": [0, 0.01, 0.004]}, "ease": "decel"},
+                {"f": 34, "set": {"armR": P_OPEN_R, "armL": P_OPEN_L, "Chest": [-3, 6, 0], "Head": [-2, 8, 0], "weight": 0.60}, "ease": "soft"},
+                {"f": 48, "set": {"armR": P_FIST_R_UP, "armL": P_PALM_L, "Chest": [2, -2, 0], "Head": [2, -2, 0],
+                                  "shoulderL": [0, 2], "shoulderR": [3, 4], "weight": 0.50}, "ease": "soft"},
+                {"f": 54, "set": {"armR": P_FIST_R, "armL": P_PALM_L, "Chest": [6, -3, 0], "Spine": [2, 0, 0], "Head": [8, -2, 0],
+                                  "pelvis": [0, 0.015, -0.012]}, "ease": "accel"},
+                {"f": 62, "set": {"armR": P_FIST_R_UP, "armL": P_PALM_L, "Chest": [2, -2, 0], "Head": [0, -2, 0],
+                                  "pelvis": [0, 0.01, -0.004]}, "ease": "soft"},
+                {"f": 67, "set": {"armR": P_FIST_R, "armL": P_PALM_L, "Chest": [7, -3, 0], "Spine": [2, 0, 0], "Head": [9, -2, 0],
+                                  "pelvis": [0, 0.018, -0.014]}, "ease": "accel"},
+                {"f": 86, "set": {"armR": "hang", "armL": "hang", "shoulderL": [0, 0], "shoulderR": [0, 0], "Chest": [-1, 0, 0],
+                                  "Spine": [0, 0, 0], "Head": [1, 0, 0], "pelvis": [0, 0, 0], "weight": 0.44}, "ease": "smooth"},
+                {"f": 108, "set": {"weight": 0.50}}],
+                "offsets": {"armL": 2, "head": -2}, "layers": {"noise": 0.7}},
+            "mira": {"replace": True, "frames": 108, "loop": True, "tempo": False, "keys": [
+                {"f": 0, "set": {"weight": 0.50}},
+                {"f": 20, "set": {"armR": M_BROOCH, "shoulderR": [2, 3], "Head": [3, -3, 2], "Chest": [1, -3, 0], "weight": 0.44}, "ease": "decel"},
+                {"f": 38, "set": {"armR": M_BROOCH, "Head": [5, -4, 2]}, "ease": "soft"},
+                {"f": 60, "set": {"armR": M_OPEN, "shoulderR": [0, 0], "Head": [-3, 2, -1], "Chest": [-1, 2, 0], "weight": 0.50},
+                 "ease": "smooth"},
+                {"f": 74, "set": {"armR": M_OPEN, "Head": [-2, 3, -1]}, "ease": "soft"},
+                {"f": 84, "set": {"armR": M_SETTLE, "Head": [4, 0, 0], "Chest": [1, 0, 0]}, "ease": "decel"},
+                {"f": 98, "set": {"armR": "hang", "Head": [1, 0, 0], "Chest": [0, 0, 0]}, "ease": "smooth"},
+                {"f": 108, "set": {"weight": 0.50}}],
+                "offsets": {"head": -3}, "layers": {"noise": 0.5}},
+        },
     },
     # 3 s loop. Leans in, the hand comes down twice with a head accent on each, opens both hands, settles.
     "Talk_Emphasis": {
@@ -136,6 +184,23 @@ CLIPS = {
         ],
         "offsets": {"armL": 3, "head": 1},
         "layers": {"noise": 0.6},
+        "variants": {
+            "champion": {"replace": True, "frames": 90, "loop": True, "tempo": False, "keys": [
+                {"f": 0, "set": {"weight": 0.50}},
+                {"f": 12, "set": {"armR": C_THUMP_OUT, "Chest": [-3, -4, 0], "Head": [-4, 0, 0], "weight": 0.44}, "ease": "decel"},
+                {"f": 17, "set": {"armR": C_THUMP, "Chest": [3, -4, 0], "Head": [5, 0, 0], "pelvis": [0, 0.01, -0.01]}, "ease": "accel"},
+                {"f": 23, "set": {"armR": C_THUMP_OUT, "Chest": [-2, -4, 0], "Head": [-2, 0, 0], "pelvis": [0, 0, 0]}, "ease": "soft"},
+                {"f": 28, "set": {"armR": C_THUMP, "Chest": [4, -4, 0], "Head": [6, 0, 0], "pelvis": [0, 0.012, -0.012]}, "ease": "accel"},
+                {"f": 40, "set": {"armR": C_THUMP_OUT, "Chest": [0, -6, 0], "Head": [-2, 2, 0], "pelvis": [0, -0.01, -0.006]}, "ease": "soft"},
+                {"f": 46, "set": {"armR": C_JAB, "shoulderR": [0, 10], "Chest": [8, 10, 0], "Spine": [3, 3, 0], "Head": [-4, -6, 0],
+                                  "pelvis": [0, 0.035, -0.02], "weight": 0.36}, "ease": "accel"},
+                {"f": 60, "set": {"armR": C_JAB, "shoulderR": [0, 8], "Chest": [6, 8, 0], "Head": [-3, -5, 0], "pelvis": [0, 0.03, -0.018]},
+                 "ease": "soft"},
+                {"f": 78, "set": {"armR": "hang", "shoulderR": [0, 0], "Chest": [0, 0, 0], "Spine": [0, 0, 0], "Head": [1, 0, 0],
+                                  "pelvis": [0, 0, 0], "weight": 0.50}, "ease": "smooth"},
+                {"f": 90, "set": {"weight": 0.50}}],
+                "offsets": {"head": 1}, "layers": {"noise": 0.5}},
+        },
     },
     # 4 s loop. Weight on one leg, head tilted toward the speaker, two small nods, a shift, one more nod.
     "Listen": {

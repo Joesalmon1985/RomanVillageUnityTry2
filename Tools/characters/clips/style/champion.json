@@ -2,8 +2,10 @@
  "summary": "Ash champion: heavy and martial. Wide, low, weight forward, chin up from a forward lean; slow to start, long settles.",
  "amplitude": 1.0,
  "tempo": 1.08,
- "variants": ["idle", "locomotion", "duel"],
- "prop": {"hand": "R", "walk": "carry"},
+ "variants": ["idle", "locomotion", "social", "duel", "Point", "KneelTake", "Cover"],
+ "prop": {"hand": "R", "walk": "carry", "swing": 0.28, "out_deg": 7.0, "elbow": 8.0, "aim": [-0.2, 0.1, -0.975], "rock": 0.05, "lock": 1.0},
+ "prop_note": "Carry: the weapon hand swings about a quarter as far as the free hand, held a little out; the club (or the sword) rests low and slightly out from the leg.",
+ "mirror_clips": ["Greet", "Talk_A", "Talk_Emphasis", "Point", "Listen"],
  "stand": {
   "stance_width": 0.06,
   "toe_out": 16.0,
@@ -18,7 +20,7 @@
   "lock": {"R": 0.85}
  },
  "chains": {"cape": {"max": 38.0}},
- "layers": {"breath": 1.4, "breath_period": 3.8, "noise": 0.8, "overlap": 1.3, "hip_drop": 5.0, "shift_lat": 0.75},
+ "layers": {"breath": 1.7, "breath_period": 3.8, "noise": 0.8, "overlap": 1.3, "hip_drop": 5.0, "shift_lat": 0.75},
  "springs": {
   "Chest": [16.0, 0.6], "Neck": [16.0, 0.6], "Head": [15.0, 0.55],
   "UpperArm": [15.0, 0.55], "LowerArm": [14.0, 0.5], "Hand": [13.0, 0.45]

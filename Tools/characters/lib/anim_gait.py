@@ -41,7 +41,7 @@ def gait_params(B, gait_name=None):
     base = (gait_name or B.name).split("@")[0]
     src = B.cdef if gait_name is None else B.all_clips[base]
     if gait_name is not None and B.style["key"]:
-        src = ac.variant_def(src, B.style["key"])
+        src = ac.variant_def(src, B.style["key"], B.style.get("costume"))
     g.update(src.get("gait", {}))
     sg = B.style.get("gait", {})
     if base in ("Walk", "WalkBrisk"):
@@ -131,17 +131,26 @@ def cycle_state(B, g, phi):
     out["Head"] = np.array(st["Head"]) + np.array([-0.3 * g["chest_pitch"] + 0.6 * hn, 0.0, 0.0])
     out["head_level"] = np.array([g["head_level"]])
     # arms swing against the legs: right arm forward on the left heel strike
+    pr = B.style.get("prop") or {}
+    carry_hand = pr.get("hand") if pr.get("walk") == "carry" else None
     for s, off, sg in (("R", 0.0, -1.0), ("L", 0.5, 1.0)):
         gain = g["arm_gain"].get(s, 1.0)
+        carry = s == carry_hand
+        if carry:
+            # a hand that carries a weapon swings much less and is held a little out, so the weapon never passes
+            # through the leg (integration fix: the champion's sword and club swept 57 cm through his thigh)
+            gain *= pr.get("swing", 0.3)
         lag = g["arm_lag"] + (0.012 if s == "L" else 0.0)
         sw = math.cos(two * (phi - off - lag))
         mid = 0.5 * (g["arm_fwd"] + g["arm_back"]) * gain
         bias = 0.5 * (g["arm_fwd"] - g["arm_back"]) * gain
         ua = np.array(st["UpperArm." + s], dtype=float)
         ua[0] += -(bias + mid * sw)
-        ua[2] += sg * (g["arm_cross"] * max(0.0, sw) - g["arm_out"])
+        ua[2] += sg * ((0.0 if carry else g["arm_cross"] * max(0.0, sw)) - g["arm_out"] - (pr.get("out_deg", 8.0) if carry else 0.0))
         la = np.array(st["LowerArm." + s], dtype=float)
         la[0] += -(g["elbow"] + g["elbow_dyn"] * (0.5 + 0.5 * math.cos(two * (phi - off - lag - 0.07)))) * gain
+        if carry:
+            la[0] += -pr.get("elbow", 6.0)
         ha = np.array(st["Hand." + s], dtype=float)
         ha[0] += g["hand_flop"] * math.sin(two * (phi - off - lag - 0.12))
         out["UpperArm." + s], out["LowerArm." + s], out["Hand." + s] = ua, la, ha
@@ -167,13 +176,29 @@ def fill_cycle(B):
 
 def carry_prop(B, g):
     """Walking with a planted staff (style 'prop': {'hand': 'L', 'walk': 'staff'}): the staff's foot rides the ground
-    like a foot, once per cycle with the opposite leg, and the hand is pinned so the arm follows the staff."""
+    like a foot, once per cycle with the opposite leg, and the hand is pinned so the arm follows the staff.
+    Walking with a carried weapon (style 'prop': {'hand': 'R', 'walk': 'carry', 'aim': [left, fwd, up], ...}): the arm
+    swing is cut (cycle_state) and the weapon is locked to a resting direction, low and a little out from the leg,
+    rocking slightly with the stride."""
     pr = B.style.get("prop")
-    if not pr or pr.get("walk") != "staff" or not B.is_gait:
+    if not pr or not B.is_gait:
         return
     s = pr["hand"]
     P = B.rig.prop[s]
     if P is None:
+        return
+    if pr.get("walk") == "carry":
+        aim0 = np.array(pr.get("aim", [-0.30, 0.10, -0.95]), dtype=float)
+        if s == "L":
+            aim0[0] = -aim0[0] if pr.get("aim_side_auto", True) and aim0[0] < 0 else aim0[0]
+        rock = pr.get("rock", 0.06)
+        for i in range(B.F):
+            ph = 2.0 * math.pi * (i / B.n)
+            a = aim0 + np.array([0.0, rock * math.cos(ph - 0.6), 0.0])
+            B.ch["aim" + s][i] = list(a / np.linalg.norm(a))
+            B.ch["lock" + s][i] = pr.get("lock", 1.0)
+        return
+    if pr.get("walk") != "staff":
         return
     if g.get("prop") == "carry":
         # too fast to plant a staff: it is carried off the ground, leaning forward, rocking a little with the stride
@@ -239,11 +264,11 @@ _GAIT_CACHE = {}
 
 def gait_post(B, gait_name):
     """The gait clip for the same rig and style, with every layer applied (channels per frame)."""
-    key = (id(B.rig), B.style["key"], gait_name)
+    key = (id(B.rig), B.style["key"], B.style.get("costume"), gait_name)
     if key not in _GAIT_CACHE:
         cdef = B.all_clips[gait_name]
         if B.style["key"]:
-            cdef = ac.variant_def(cdef, B.style["key"])
+            cdef = ac.variant_def(cdef, B.style["key"], B.style.get("costume"))
         G = ac.ClipBuilder(B.rig, B.style, gait_name, cdef, B.poses, B.all_clips)
         G.prepare()
         _GAIT_CACHE[key] = G

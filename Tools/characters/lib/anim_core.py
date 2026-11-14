@@ -269,14 +269,21 @@ def _deep_merge(a, b):
     return out
 
 
-def load_style(key=None):
+def load_style(key=None, costume=None):
+    """Template style merged with clips/style/<key>.json; a style may carry per-costume overrides under
+    "costumes": {"historic": {...}} (the champion carries a stone club in one costume and a sword in the other)."""
     base = common.read_json(os.path.join(STYLE_DIR, "base.json"))
     if key is None or key == "base":
         base["key"] = None
+        base["costume"] = costume
         return base
     path = os.path.join(STYLE_DIR, key + ".json")
     st = _deep_merge(base, common.read_json(path))
+    if costume and costume in st.get("costumes", {}):
+        st = _deep_merge(st, st["costumes"][costume])
+    st.pop("costumes", None)
     st["key"] = key
+    st["costume"] = costume
     return st
 
 
@@ -374,11 +381,16 @@ class ClipBuilder:
         if cdef.get("mirror_of"):                         # same data as the source clip, left and right swapped
             src = self.all_clips[cdef["mirror_of"]]
             if style["key"]:
-                src = variant_def(src, style["key"])
+                src = variant_def(src, style["key"], style.get("costume"))
             merged = dict(src)
             merged.update({k: v for k, v in cdef.items() if k != "mirror_of"})
             cdef = merged
             self.mirror = True
+        base_name = name.split("@")[0]
+        if base_name in style.get("mirror_clips", []) and not cdef.get("variants_replaced"):
+            # a character whose right hand holds a weapon greets, talks and points with the left (integration fix:
+            # the champion waved his club overhead in Greet)
+            self.mirror = not self.mirror
         self.cdef = cdef
         self.loop = bool(cdef.get("loop", name.split("@")[0] in contract.LOOP_CLIPS))
         tempo = float(style.get("tempo", 1.0)) if cdef.get("tempo", True) else 1.0
@@ -555,6 +567,8 @@ class ClipBuilder:
                     v["foot%s.rot" % s] = [val.get("yaw", 0.0), val.get("pitch", 0.0), val.get("roll", 0.0)]
             elif k in ("propL", "propR"):
                 s = k[-1]
+                if self.rig.prop[s] is None:
+                    continue                              # nothing in that hand on this character
                 if val == "stand":
                     v["lock" + s] = stand["lock" + s]
                     v["aim" + s] = stand["aim" + s]
@@ -1209,10 +1223,12 @@ class ClipBuilder:
             k = par.get("follow", 0.9)
             om, ze = par.get("spring", [16.0, 0.55])
             mx = par.get("max", 40.0)
+            # sideways the robe follows less (integration pass: a 60 degree turn step flared the hem out like a bell)
+            kl, ml = par.get("lat_follow", 0.6), par.get("lat_max", 26.0)
             tr = {"Skirt.F": np.stack([-np.clip(k * f, 0, mx), np.zeros(F), np.zeros(F)], axis=1),
                   "Skirt.B": np.stack([np.clip(k * b, 0, mx), np.zeros(F), np.zeros(F)], axis=1),
-                  "Skirt.L": np.stack([np.zeros(F), np.zeros(F), -np.clip(k * lat["L"], 0, mx)], axis=1),
-                  "Skirt.R": np.stack([np.zeros(F), np.zeros(F), np.clip(k * lat["R"], 0, mx)], axis=1)}
+                  "Skirt.L": np.stack([np.zeros(F), np.zeros(F), -np.clip(kl * lat["L"], 0, ml)], axis=1),
+                  "Skirt.R": np.stack([np.zeros(F), np.zeros(F), np.clip(kl * lat["R"], 0, ml)], axis=1)}
             for nm, tgt in tr.items():
                 if nm in rig.has:
                     out[nm] = np.radians(self.spring(tgt, om, ze))
@@ -1353,6 +1369,10 @@ def write_action(arm, baked):
     act.use_frame_range = True
     act.frame_start = 0
     act.frame_end = baked.frames
+    # the ground under the in-place clip (root motion the game applies), for previews and the Unity import
+    act["ground_m"] = [round(float(v), 5) for v in baked.ground_dist[:nF]]
+    act["ground_yaw_deg"] = [round(float(v), 4) for v in baked.ground_yaw[:nF]]
+    act["native_speed_mps"] = float(baked.native_speed)
     try:
         act.use_cyclic = bool(baked.loop)
     except AttributeError:
@@ -1385,9 +1405,13 @@ def clip_set_of(name):
     return None
 
 
-def variant_def(cdef, key):
-    """Clip definition for a character: the base definition with its 'variants'[key] merged over it."""
-    v = cdef.get("variants", {}).get(key)
+def variant_def(cdef, key, costume=None):
+    """Clip definition for a character: the base definition with its 'variants'[key] merged over it. A variant
+    written for one costume only is keyed "<key>:<costume>" and wins over "<key>" in that costume."""
+    vs = cdef.get("variants", {})
+    v = vs.get("%s:%s" % (key, costume)) if costume else None
+    if v is None:
+        v = vs.get(key)
     if v is None:
         return cdef
     if v.get("replace"):
@@ -1404,7 +1428,7 @@ def wants_variant(name, cdef, style):
     key = style["key"]
     if "only_for" in cdef and key not in cdef["only_for"]:
         return False
-    if key in cdef.get("variants", {}):
+    if key in cdef.get("variants", {}) or ("%s:%s" % (key, style.get("costume"))) in cdef.get("variants", {}):
         return True
     want = style.get("variants", [])
     return name in want or clip_set_of(name) in want
@@ -1413,7 +1437,7 @@ def wants_variant(name, cdef, style):
 def build_one(rig, style, name, cdef, poses, all_clips):
     key = style["key"]
     action_name = name if key is None else "%s@%s" % (name, key)
-    cd = cdef if key is None else variant_def(cdef, key)
+    cd = cdef if key is None else variant_def(cdef, key, style.get("costume"))
     b = ClipBuilder(rig, style, action_name, cd, poses, all_clips)
     baked = b.build()
     baked.base = name
@@ -1431,6 +1455,13 @@ def record(baked):
         "native_speed_mps": common.r(baked.native_speed, 3),
         "events": [{"name": e["name"], "frame": int(e["frame"])} for e in baked.events],
     }
+    gd = [float(v) for v in baked.ground_dist[:baked.frames + 1]]
+    gy = [float(v) for v in baked.ground_yaw[:baked.frames + 1]]
+    if baked.native_speed > 0 and not baked.loop:
+        # start, stop: the root does not move at a constant speed; the game moves the root along this curve
+        rec["root_curve"] = {"dist_m": [common.r(v, 4) for v in gd]}
+    if any(abs(v) > 1e-6 for v in gy):
+        rec.setdefault("root_curve", {})["yaw_deg"] = [common.r(v, 3) for v in gy]
     if baked.style_key:
         rec["base"] = base
         rec["style"] = baked.style_key
@@ -1439,7 +1470,7 @@ def record(baked):
     return rec
 
 
-def build_clips(ctx_or_armature, set_names=None, style=True, only=None, keep=None):
+def build_clips(ctx_or_armature, set_names=None, style=True, only=None, keep=None, costume=None):
     """Create one action per clip on the armature (contract 2.8).
 
     ctx_or_armature  a BuildContext (uses ctx.armature, writes manifest section 'clips') or an armature object
@@ -1458,6 +1489,8 @@ def build_clips(ctx_or_armature, set_names=None, style=True, only=None, keep=Non
     if arm is None or arm.type != "ARMATURE":
         raise RuntimeError("build_clips needs an armature (run rig.fit_rig or stub_rig.build_stub_armature first)")
     rig = Rig(arm)
+    import anim_gait
+    anim_gait._GAIT_CACHE.clear()        # keyed by id(rig): a new rig in the same process may reuse an old id
     clips, poses = load_clip_data()
     sets = list(contract.CLIP_SETS) if set_names is None else list(set_names)
     names = [c for s in sets for c in contract.CLIP_SETS[s]]
@@ -1470,7 +1503,7 @@ def build_clips(ctx_or_armature, set_names=None, style=True, only=None, keep=Non
         keys = []
     else:
         keys = list(style)
-    styles = [load_style(None)] + [load_style(k) for k in keys]
+    styles = [load_style(None, costume)] + [load_style(k, costume) for k in keys]
     records = []
     for name in names:
         if name not in clips:

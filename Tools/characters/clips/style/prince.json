@@ -14,7 +14,7 @@
    "R": {"fk": {"UpperArm": [2.0, -4.0, -10.0], "LowerArm": [-14.0, 0.0, 0.0], "Hand": [0.0, 0.0, 0.0]}}
   }
  },
- "layers": {"breath": 1.1, "noise": 1.15, "overlap": 1.2},
+ "layers": {"breath": 1.4, "noise": 1.15, "overlap": 1.2},
  "springs": {
   "Chest": [24.0, 0.65], "Neck": [22.0, 0.6], "Head": [20.0, 0.5],
   "UpperArm": [21.0, 0.6], "LowerArm": [17.0, 0.45], "Hand": [14.0, 0.38]
