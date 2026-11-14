@@ -527,6 +527,7 @@
         "Walk",
         "WalkBrisk",
         "Jog",
+        "Run",
         "StartL",
         "StartR",
         "StopL",
@@ -562,6 +563,12 @@
         "Victory",
         "Defeat",
         "Surprise"
+      ],
+      "campaign": [
+        "KneelTake",
+        "Cover",
+        "Fall",
+        "Point"
       ]
     },
     "loop": [
@@ -572,6 +579,7 @@
       "Walk",
       "WalkBrisk",
       "Jog",
+      "Run",
       "Talk_A",
       "Talk_B",
       "Talk_Emphasis",

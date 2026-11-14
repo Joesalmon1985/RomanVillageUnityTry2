@@ -188,18 +188,20 @@ HIDDEN_SLOT = "hidden"
 FPS = 30
 CLIP_SETS = {
     "idle": ["Idle_A", "Idle_B", "Idle_Look", "Idle_Staff"],
-    "locomotion": ["Walk", "WalkBrisk", "Jog", "StartL", "StartR", "StopL", "StopR",
+    "locomotion": ["Walk", "WalkBrisk", "Jog", "Run", "StartL", "StartR", "StopL", "StopR",
                    "Turn60L", "Turn60R", "TurnSmallL", "TurnSmallR"],
     "social": ["Greet", "Nod", "ShakeHead", "Talk_A", "Talk_B", "Talk_Emphasis", "Listen"],
     "prince": ["Beckon", "LeadLook", "PointGround"],
     "duel": ["CastAnticipate", "CastRelease", "CastRecover", "CastWeave_Loop", "Block",
              "RecoilLight", "RecoilHeavy", "WardBreak", "Victory", "Defeat", "Surprise"],
+    # Campaign beats (PRD 6.2, added by WP-5 for PRD_CRYSTALS N-11): exported as anim_campaign.fbx.
+    "campaign": ["KneelTake", "Cover", "Fall", "Point"],
 }
 ALL_CLIPS = [c for names in CLIP_SETS.values() for c in names]
 # Clips whose additive/overlay use is intended (Unity sets additive reference pose; manifest flag "additive").
 ADDITIVE_CLIPS = ["Nod", "ShakeHead", "LeadLook", "TurnSmallL", "TurnSmallR"]
 # Clips that loop (manifest flag "loop"). Others are one-shots. Hold loops at the end are separate keys in the data.
-LOOP_CLIPS = ["Idle_A", "Idle_B", "Idle_Look", "Idle_Staff", "Walk", "WalkBrisk", "Jog",
+LOOP_CLIPS = ["Idle_A", "Idle_B", "Idle_Look", "Idle_Staff", "Walk", "WalkBrisk", "Jog", "Run",
               "Talk_A", "Talk_B", "Talk_Emphasis", "Listen", "CastWeave_Loop"]
 EVENT_NAMES = ["Release", "Impact", "FootL", "FootR", "PropHit", "BeatHit"]
 ANIM_FBX_PREFIX = "anim_"        # anim_idle.fbx, anim_locomotion.fbx ...
