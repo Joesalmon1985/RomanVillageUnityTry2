@@ -11,7 +11,8 @@ namespace World.Sim.Campaign
     /// <summary>Why: "done", "declined", "closed" (its requirements no longer hold), "dropped" (pushed out of the queue).</summary>
     public sealed class LeadRemoved : SimEvent { public int LeadId; public string Why; }
 
-    public sealed class PartySetOut : SimEvent { public int LeadId; public MarkerRef From; public MarkerRef To; public int LegTicks; }
+    /// <summary>One leg begins. Running (tuning pass): Mira runs this leg (PartyRunTicksPerStep); otherwise she walks (PartyTicksPerStep).</summary>
+    public sealed class PartySetOut : SimEvent { public int LeadId; public MarkerRef From; public MarkerRef To; public int LegTicks; public bool Running; }
 
     public sealed class PartyArrived : SimEvent { public MarkerRef At; }
 

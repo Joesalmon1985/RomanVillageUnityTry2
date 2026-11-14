@@ -252,7 +252,8 @@ namespace World.Sim.Campaign
             foreach (var k in d.Companions) c.Companions.Add(new CompanionState { Id = k.Id, Alive = true });
 
             c.Party = new PartyState { Mode = PartyMode.Idle, PlayerPresent = true, ModeSinceTick = s.Tick, At = Home(d) };
-            var plan = d.Rival?.Steps ?? new List<RivalStepDef>();
+            c.RivalPlan = DrawRivalPlan(s, d);
+            var plan = RunPlan(c);
             c.Rival = new RivalState { Phase = plan.Count > 0 ? RivalPhase.Marching : RivalPhase.PlanDone, Step = 0 };
 
             s.Campaign = c;
@@ -276,6 +277,10 @@ namespace World.Sim.Campaign
 
             // The expedition sets out on its first step (skipping crystals already on an altar).
             StartRivalStep(s, c, 0, ev);
+            int opening = d.Tuning?.OpeningReportDelay ?? -1;
+            if (opening >= 0)
+                foreach (var r in c.Reports)
+                    if (r.Tick == s.Tick) r.DueTick = s.Tick + opening;
         }
 
         /// <summary>The landmarks of appendix C: lm.tower.* at each tower's corner, lm.altar.* at each altar location's hex.</summary>

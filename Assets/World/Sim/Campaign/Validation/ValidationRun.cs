@@ -619,6 +619,8 @@ namespace World.Sim.Campaign
                 if (d.Crystal(step.Crystal) == null) { Add(ProblemCodes.RivalPlan, step.Crystal, "the " + owner + " names the crystal " + Q(step.Crystal) + ", which does not exist."); continue; }
                 if (!named.Add(step.Crystal)) Add(ProblemCodes.RivalPlan, step.Crystal, "the rival plan names " + Q(step.Crystal) + " twice.");
                 if (step.MarchCost <= 0 || step.CarryCost <= 0) Add(ProblemCodes.RivalPlan, step.Crystal, "the " + owner + " has a march or carry cost that is not positive.");
+                if (step.MarchSpread < 0 || (step.MarchSpread > 0 && step.MarchSpread >= step.MarchCost))
+                    Add(ProblemCodes.RivalPlan, step.Crystal, "the " + owner + " has a march spread that is negative or not smaller than its march cost.");
                 var altar = Resolve(step.Altar);
                 if (altar == null) Add(ProblemCodes.RivalPlan, step.Crystal, "the " + owner + " names the altar " + Q(step.Altar.ToString()) + ", which does not exist.");
                 else if (altar.Marker.Kind != MarkerKind.Altar || (!Empty(altar.Marker.Crystal) && altar.Marker.Crystal != step.Crystal))
@@ -626,6 +628,8 @@ namespace World.Sim.Campaign
             }
             foreach (var id in Items(plan.StolenAtStart))
                 if (!named.Contains(id)) Add(ProblemCodes.RivalPlan, id, "the crystal " + Q(id) + " is stolen at the start but no plan step names its altar.");
+            foreach (var id in Items(plan.OpenWith))
+                if (!named.Contains(id)) Add(ProblemCodes.RivalPlan, id, "the expedition may open with " + Q(id) + " but no plan step names that crystal.");
         }
 
         private RivalStepDef StepFor(string crystal) => d.Rival?.Steps?.Find(s => s != null && s.Crystal == crystal);
