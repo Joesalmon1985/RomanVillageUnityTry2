@@ -323,6 +323,18 @@ Sockets (empty bones, no weights): `Sock.Hand.R`, `Sock.Hand.L`, `Sock.StaffTip`
 
 Budget per hero character: at most 45 bones including face and sockets; at most 16 shape keys on the head.
 
+### 5.3a Contract resolutions (WP-1, 14 Nov 2026)
+
+The exact contract (bone, part, shape-key, socket, slot, clip and file names, step signatures, file ownership) is `Tools/characters/lib/contract.py`, explained in `Tools/characters/README.md` section 2. Where it differs from the text above, the contract wins:
+
+- Brow and lid bones are dropped: brows, lids and mouth are shape keys (`Blink.L/R`, `BrowRaise.L/R`, `BrowFurrow`, `BrowWorry`, `MouthSmile`, `MouthFrown`, `MouthRound`, `MouthOpen`). Face bones are only `Jaw`, `Eye.L`, `Eye.R`. All 14 humans have flattened-ellipsoid ("disc") eyes: gaze is eye bones carrying iris and pupil, horizontal +-14 degrees, vertical +-5 (the iris fills the sclera's height); no gaze shape keys.
+- Role slots are nine names plus a `hidden` slot for pieces a costume hides; one character uses at most 8.
+- `Sock.StaffTip` hangs from the socket of the hand that holds the prop (Mira holds her staff in her left hand).
+- Left is Blender +X; every supplied character faces Blender -Y; arm rest angle is 21 to 25 degrees (centre to centre), symmetric.
+- Elbows and knees are only touching on all 14 humans, so WP-2 adds joint covers there; shoulders, wrists, hips and ankles are covered.
+- FBX normals are flat in all 16 meshes.
+- `cast/<key>.json` is face data (WP-3); island maps are `cast/islands/<key>.json` and `cast/index.json` (WP-1).
+
 Demons share `Demon` armature: root, hips, spine, chest, neck, head, jaw, two arms of three bones, two legs of three bones, and a few horn and claw tips if the pieces allow. Generic type, shared bone names so one clip set plays on the Stalker and the Brute.
 
 ### 5.4 Face rig

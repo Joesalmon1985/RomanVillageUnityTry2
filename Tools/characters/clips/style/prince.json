@@ -1,0 +1,27 @@
+{
+ "summary": "Prince: open and eager. Chest lifted, arms a little away from the body, quick and springy, bigger gestures.",
+ "amplitude": 1.12,
+ "tempo": 0.95,
+ "variants": ["idle", "locomotion", "social", "prince", "Surprise", "Point"],
+ "stand": {
+  "stance_width": 0.02,
+  "toe_out": 10.0,
+  "pelvis": [0.0, 0.005, -0.006],
+  "bones": {"Spine": [0.0, 0.0, 0.0], "Chest": [-4.0, 0.0, 0.0], "Neck": [1.0, 0.0, 0.0], "Head": [-2.0, 0.0, 0.0]},
+  "shoulders": [0.0, -3.0],
+  "arms": {
+   "L": {"fk": {"UpperArm": [2.0, 4.0, 10.0], "LowerArm": [-16.0, 0.0, 0.0], "Hand": [0.0, 0.0, 0.0]}},
+   "R": {"fk": {"UpperArm": [2.0, -4.0, -10.0], "LowerArm": [-14.0, 0.0, 0.0], "Hand": [0.0, 0.0, 0.0]}}
+  }
+ },
+ "layers": {"breath": 1.4, "noise": 1.15, "overlap": 1.2},
+ "springs": {
+  "Chest": [24.0, 0.65], "Neck": [22.0, 0.6], "Head": [20.0, 0.5],
+  "UpperArm": [21.0, 0.6], "LowerArm": [17.0, 0.45], "Hand": [14.0, 0.38]
+ },
+ "gait": {
+  "walk": {"bob": 0.024, "arm_fwd": 27.0, "arm_back": 19.0, "chest_pitch": 1.0, "chest_yaw": 6.5, "lift": 0.045,
+          "heel_strike": 22.0, "elbow_dyn": 12.0, "arm_gain": {"L": 0.95, "R": 1.08}},
+  "Jog": {"bob": 0.036, "chest_pitch": 7.0}, "Run": {"chest_pitch": 12.0}
+ }
+}

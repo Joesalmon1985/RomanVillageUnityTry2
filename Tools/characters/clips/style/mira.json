@@ -1,0 +1,34 @@
+{
+ "summary": "Mira: controlled and precise. Upright, narrow, economical; the staff stays planted or vertical; little noise, well damped.",
+ "amplitude": 0.85,
+ "tempo": 1.0,
+ "stride": 0.84,
+ "variants": ["idle", "locomotion", "social", "duel", "campaign"],
+ "prop": {"hand": "L", "walk": "staff", "duty": 0.5, "reach": 0.24, "hand_fwd": 0.10, "hand_in": 0.05, "lift": 0.06},
+ "stand": {
+  "stance_width": -0.02,
+  "toe_out": 3.0,
+  "pelvis": [0.0, 0.0, -0.004],
+  "head_level": 0.75,
+  "bones": {"Spine": [0.0, 0.0, 0.0], "Chest": [-2.0, 0.0, 0.0], "Neck": [1.0, 0.0, 0.0], "Head": [0.0, 0.0, 0.0]},
+  "shoulders": [0.0, -1.0],
+  "arms": {
+   "L": {"fk": {"UpperArm": [-6.0, 6.0, 6.0], "LowerArm": [-22.0, 0.0, 0.0], "Hand": [0.0, 0.0, 0.0]}},
+   "R": {"fk": {"UpperArm": [2.0, -10.0, -15.0], "LowerArm": [-18.0, 0.0, 0.0], "Hand": [0.0, 0.0, 0.0]}}
+  },
+  "lock": {"L": 1.0},
+  "pin": {"L": {"pos": [-0.05, 0.10, 0.0]}}
+ },
+ "layers": {"breath": 1.1, "noise": 0.55, "overlap": 0.7, "hip_drop": 3.0, "shift_lat": 0.6},
+ "springs": {
+  "Chest": [28.0, 0.9], "Neck": [26.0, 0.9], "Head": [26.0, 0.85],
+  "UpperArm": [26.0, 0.85], "LowerArm": [24.0, 0.8], "Hand": [22.0, 0.75]
+ },
+ "gait": {
+  "walk": {"bob": 0.010, "sway": 0.012, "hip_yaw": 3.5, "hip_roll": 2.0, "chest_yaw": 3.0, "chest_roll": 1.0,
+          "arm_fwd": 12.0, "arm_back": 9.0, "elbow_dyn": 6.0, "lift": 0.028, "heel_strike": 14.0, "toe_off": 34.0,
+          "hand_flop": 3.0, "chest_pitch": 1.0, "head_nod": 0.5},
+  "Jog": {"arm_fwd": 22.0, "arm_back": 20.0, "elbow": 50.0, "bob": 0.022, "chest_pitch": 6.0, "lift": 0.07, "kick": 18.0},
+  "Run": {"arm_fwd": 34.0, "arm_back": 30.0, "bob": 0.03, "chest_pitch": 11.0, "lift": 0.12, "kick": 34.0}
+ }
+}

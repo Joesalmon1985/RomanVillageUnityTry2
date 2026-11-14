@@ -1,0 +1,45 @@
+{
+ "schema": 1,
+ "note": "Rules and generic recipe for WP-4 (lib/costume.py). Geometry free. Colours are sRGB hex.",
+ "metal_hexes": ["B78348", "777D87"],
+ "leather_hexes": ["392D31", "4C4548", "5F4033", "614839"],
+ "skin_roles": ["head_skin", "ear", "nose", "neck", "hand", "thumb"],
+ "eye_dark_roles": ["eye_pupil", "eye_outline", "mouth"],
+ "iris_roles": ["eye_iris"],
+ "always_hidden": ["nested:robe_or_skirt&part:Legs"],
+ "hair_roles": ["hair", "brow", "beard"],
+ "eye_colours": {"eye_white": "F2ECDC", "eye_dark": "2B2024"},
+ "fallback_merge_order": [["metal", "leather"], ["hair", "leather"]],
+ "auto_palette": {"hide": "B08D62", "hide_mix": 0.45, "leather": "6B4A30", "bone": "E6DBC0", "dye_lift_v": 0.10, "dye_sat": 1.25},
+ "auto_character": {
+  "schema": 1,
+  "identity_colour": "auto",
+  "variants": {
+   "historic": {"description": "The supplied dark-fantasy look: original pieces and palette, no overlays."},
+   "prehistoric": {
+    "description": "Generic camp look: bare arms and legs, hide kilt or rough hem, fur boot cuffs, bone necklace; cloth colours become dyed hide and fur.",
+    "conditional": [
+     {"when": "no_role:robe_or_skirt", "slot_overrides": {"role:shoulder_cap": "skin", "role:upper_arm_piece": "skin", "role:thigh": "skin", "role:shin_or_boot&hex:4C4548": "skin"}},
+     {"slot_overrides": {"role:cuff": "leather"}, "hidden": ["role:cloth_back", "role:cloth_shoulder_or_wrap"]}
+    ],
+    "overlays": [
+     {"name": "Kilt", "when": "no_role:robe_or_skirt", "type": "shell", "slot": "leather", "sides": 16, "teeth": 8, "tooth_depth": 0.05, "jitter": 0.006,
+      "rings": [{"z": "hip_z+0.02", "fit": ["role:torso"], "margin": 0.045},
+                {"z": "hip_z-0.10", "fit": ["role:thigh"], "margin": 0.07, "min_rx": 0.235},
+                {"z": "knee_z+0.14", "fit": ["role:thigh"], "margin": 0.085, "min_ry": 0.14}],
+      "weights": {"bones": ["Hips", "Spine", "UpperLeg.L", "UpperLeg.R"], "falloff": 3.0}},
+     {"name": "Hem", "when": "has_role:robe_or_skirt", "type": "shell", "slot": "cloth_trim", "sides": 16, "teeth": 8, "tooth_depth": 0.07, "jitter": 0.008,
+      "rings": [{"z": 0.42, "fit": ["role:robe_or_skirt"], "margin": 0.012},
+                {"z": 0.22, "fit": ["role:robe_or_skirt"], "margin": 0.03},
+                {"z": 0.14, "fit": ["role:robe_or_skirt"], "margin": 0.045}],
+      "weights": {"bones": ["Hips", "Skirt.F", "Skirt.B", "Skirt.L", "Skirt.R"], "falloff": 2.0}},
+     {"name": "Boots", "when": "no_role:robe_or_skirt", "type": "band", "bone": "LowerLeg.L", "slot": "cloth_trim", "sides": 10, "teeth": 5, "tooth_depth": 0.022, "teeth_at": "first",
+      "rings": [{"t": 0.46, "r": 0.14}, {"t": 0.56, "r": 0.128}, {"t": 0.66, "r": 0.122}],
+      "weights": {"bones": ["LowerLeg.L", "LowerLeg.R"], "falloff": 6.0, "eps": 0.01}},
+     {"name": "Necklace", "type": "necklace", "slot": "metal", "count": 12, "z": "neck_z+0.03", "rx": 0.10, "ry": 0.095, "cy": 0.0, "drop": 0.09, "push": 0.05,
+      "weights": {"bones": ["Chest", "Neck"], "falloff": 2.0}}
+    ]
+   }
+  }
+ }
+}

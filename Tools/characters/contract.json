@@ -1,0 +1,650 @@
+{
+  "version": 2,
+  "authoring": {
+    "forward": "-Y",
+    "up": "Z",
+    "left_sign_x": 1,
+    "fbx_axis_forward": "-Z",
+    "fbx_axis_up": "Y",
+    "unity_forward": "+Z"
+  },
+  "cast": [
+    {
+      "key": "prince",
+      "number": 1,
+      "fbx": "01_Prince.fbx",
+      "display": "Prince",
+      "rig": "humanoid",
+      "slice": 1
+    },
+    {
+      "key": "mira",
+      "number": 2,
+      "fbx": "02_Mira.fbx",
+      "display": "Mira",
+      "rig": "humanoid",
+      "slice": 1
+    },
+    {
+      "key": "juno",
+      "number": 3,
+      "fbx": "03_Juno.fbx",
+      "display": "Juno",
+      "rig": "humanoid",
+      "slice": 1
+    },
+    {
+      "key": "sol",
+      "number": 4,
+      "fbx": "04_DJ_Sol.fbx",
+      "display": "DJ Sol",
+      "rig": "humanoid",
+      "slice": 2
+    },
+    {
+      "key": "woodcutter",
+      "number": 5,
+      "fbx": "05_Woodcutter.fbx",
+      "display": "Woodcutter",
+      "rig": "humanoid",
+      "slice": 2
+    },
+    {
+      "key": "carpenter",
+      "number": 6,
+      "fbx": "06_Carpenter.fbx",
+      "display": "Carpenter",
+      "rig": "humanoid",
+      "slice": 2
+    },
+    {
+      "key": "hesta",
+      "number": 7,
+      "fbx": "07_Hesta_Market_Keeper.fbx",
+      "display": "Hesta",
+      "rig": "humanoid",
+      "slice": 2
+    },
+    {
+      "key": "merchant",
+      "number": 8,
+      "fbx": "08_Village_Merchant.fbx",
+      "display": "Village Merchant",
+      "rig": "humanoid",
+      "slice": 2
+    },
+    {
+      "key": "dancer_ochre",
+      "number": 9,
+      "fbx": "09_Dancer_Ochre.fbx",
+      "display": "Dancer Ochre",
+      "rig": "humanoid",
+      "slice": 2
+    },
+    {
+      "key": "dancer_ash",
+      "number": 10,
+      "fbx": "10_Dancer_Ash.fbx",
+      "display": "Dancer Ash",
+      "rig": "humanoid",
+      "slice": 2
+    },
+    {
+      "key": "dancer_moss",
+      "number": 11,
+      "fbx": "11_Dancer_Moss.fbx",
+      "display": "Dancer Moss",
+      "rig": "humanoid",
+      "slice": 2
+    },
+    {
+      "key": "dancer_plum",
+      "number": 12,
+      "fbx": "12_Dancer_Plum.fbx",
+      "display": "Dancer Plum",
+      "rig": "humanoid",
+      "slice": 2
+    },
+    {
+      "key": "carrier",
+      "number": 13,
+      "fbx": "13_Timber_Carrier.fbx",
+      "display": "Timber Carrier",
+      "rig": "humanoid",
+      "slice": 2
+    },
+    {
+      "key": "champion",
+      "number": 14,
+      "fbx": "14_Road_Hero.fbx",
+      "display": "Road Hero (Ash champion)",
+      "rig": "humanoid",
+      "slice": 1
+    },
+    {
+      "key": "stalker",
+      "number": 15,
+      "fbx": "15_Shadow_Stalker.fbx",
+      "display": "Shadow Stalker",
+      "rig": "demon",
+      "slice": 2
+    },
+    {
+      "key": "brute",
+      "number": 16,
+      "fbx": "16_Shadow_Brute.fbx",
+      "display": "Shadow Brute",
+      "rig": "demon",
+      "slice": 2
+    }
+  ],
+  "first_three": [
+    "prince",
+    "mira",
+    "champion"
+  ],
+  "objects": {
+    "armature": "Armature",
+    "parts": [
+      "Body",
+      "Legs",
+      "Head",
+      "Cloth",
+      "Prop"
+    ],
+    "overlay_prefix": "Ov_"
+  },
+  "human_bones": [
+    {
+      "name": "Hips",
+      "parent": null
+    },
+    {
+      "name": "Spine",
+      "parent": "Hips"
+    },
+    {
+      "name": "Chest",
+      "parent": "Spine"
+    },
+    {
+      "name": "Neck",
+      "parent": "Chest"
+    },
+    {
+      "name": "Head",
+      "parent": "Neck"
+    },
+    {
+      "name": "Shoulder.L",
+      "parent": "Chest"
+    },
+    {
+      "name": "Shoulder.R",
+      "parent": "Chest"
+    },
+    {
+      "name": "UpperArm.L",
+      "parent": "Shoulder.L"
+    },
+    {
+      "name": "UpperArm.R",
+      "parent": "Shoulder.R"
+    },
+    {
+      "name": "LowerArm.L",
+      "parent": "UpperArm.L"
+    },
+    {
+      "name": "LowerArm.R",
+      "parent": "UpperArm.R"
+    },
+    {
+      "name": "Hand.L",
+      "parent": "LowerArm.L"
+    },
+    {
+      "name": "Hand.R",
+      "parent": "LowerArm.R"
+    },
+    {
+      "name": "UpperLeg.L",
+      "parent": "Hips"
+    },
+    {
+      "name": "UpperLeg.R",
+      "parent": "Hips"
+    },
+    {
+      "name": "LowerLeg.L",
+      "parent": "UpperLeg.L"
+    },
+    {
+      "name": "LowerLeg.R",
+      "parent": "UpperLeg.R"
+    },
+    {
+      "name": "Foot.L",
+      "parent": "LowerLeg.L"
+    },
+    {
+      "name": "Foot.R",
+      "parent": "LowerLeg.R"
+    },
+    {
+      "name": "Toes.L",
+      "parent": "Foot.L"
+    },
+    {
+      "name": "Toes.R",
+      "parent": "Foot.R"
+    },
+    {
+      "name": "Jaw",
+      "parent": "Head"
+    },
+    {
+      "name": "Eye.L",
+      "parent": "Head"
+    },
+    {
+      "name": "Eye.R",
+      "parent": "Head"
+    }
+  ],
+  "optional_bones": {
+    "cape": [
+      {
+        "name": "Cape.1",
+        "parent": "Chest"
+      },
+      {
+        "name": "Cape.2",
+        "parent": "Cape.1"
+      },
+      {
+        "name": "Cape.3",
+        "parent": "Cape.2"
+      }
+    ],
+    "hood": [
+      {
+        "name": "Hood.1",
+        "parent": "Head"
+      },
+      {
+        "name": "Hood.2",
+        "parent": "Hood.1"
+      }
+    ],
+    "skirt": [
+      {
+        "name": "Skirt.F",
+        "parent": "Hips"
+      },
+      {
+        "name": "Skirt.B",
+        "parent": "Hips"
+      },
+      {
+        "name": "Skirt.L",
+        "parent": "Hips"
+      },
+      {
+        "name": "Skirt.R",
+        "parent": "Hips"
+      }
+    ]
+  },
+  "sockets": [
+    {
+      "name": "Sock.Hand.R",
+      "parent": "Hand.R"
+    },
+    {
+      "name": "Sock.Hand.L",
+      "parent": "Hand.L"
+    },
+    {
+      "name": "Sock.StaffTip",
+      "parent": "Sock.Hand.R"
+    },
+    {
+      "name": "Sock.SpellOrigin",
+      "parent": "Sock.StaffTip"
+    },
+    {
+      "name": "Sock.Back",
+      "parent": "Chest"
+    },
+    {
+      "name": "Sock.Hip.R",
+      "parent": "Hips"
+    },
+    {
+      "name": "Sock.HeadTop",
+      "parent": "Head"
+    },
+    {
+      "name": "Sock.Foot.L",
+      "parent": "Foot.L"
+    },
+    {
+      "name": "Sock.Foot.R",
+      "parent": "Foot.R"
+    }
+  ],
+  "humanoid_map": {
+    "Hips": "Hips",
+    "Spine": "Spine",
+    "Chest": "Chest",
+    "Neck": "Neck",
+    "Head": "Head",
+    "Jaw": "Jaw",
+    "Eye.L": "LeftEye",
+    "Eye.R": "RightEye",
+    "Shoulder.L": "LeftShoulder",
+    "Shoulder.R": "RightShoulder",
+    "UpperArm.L": "LeftUpperArm",
+    "UpperArm.R": "RightUpperArm",
+    "LowerArm.L": "LeftLowerArm",
+    "LowerArm.R": "RightLowerArm",
+    "Hand.L": "LeftHand",
+    "Hand.R": "RightHand",
+    "UpperLeg.L": "LeftUpperLeg",
+    "UpperLeg.R": "RightUpperLeg",
+    "LowerLeg.L": "LeftLowerLeg",
+    "LowerLeg.R": "RightLowerLeg",
+    "Foot.L": "LeftFoot",
+    "Foot.R": "RightFoot",
+    "Toes.L": "LeftToes",
+    "Toes.R": "RightToes"
+  },
+  "demon_bones": [
+    {
+      "name": "Root",
+      "parent": null
+    },
+    {
+      "name": "Hips",
+      "parent": "Root"
+    },
+    {
+      "name": "Spine",
+      "parent": "Hips"
+    },
+    {
+      "name": "Chest",
+      "parent": "Spine"
+    },
+    {
+      "name": "Neck",
+      "parent": "Chest"
+    },
+    {
+      "name": "Head",
+      "parent": "Neck"
+    },
+    {
+      "name": "Jaw",
+      "parent": "Head"
+    },
+    {
+      "name": "UpperArm.L",
+      "parent": "Chest"
+    },
+    {
+      "name": "LowerArm.L",
+      "parent": "UpperArm.L"
+    },
+    {
+      "name": "Hand.L",
+      "parent": "LowerArm.L"
+    },
+    {
+      "name": "UpperArm.R",
+      "parent": "Chest"
+    },
+    {
+      "name": "LowerArm.R",
+      "parent": "UpperArm.R"
+    },
+    {
+      "name": "Hand.R",
+      "parent": "LowerArm.R"
+    },
+    {
+      "name": "UpperLeg.L",
+      "parent": "Hips"
+    },
+    {
+      "name": "LowerLeg.L",
+      "parent": "UpperLeg.L"
+    },
+    {
+      "name": "Foot.L",
+      "parent": "LowerLeg.L"
+    },
+    {
+      "name": "UpperLeg.R",
+      "parent": "Hips"
+    },
+    {
+      "name": "LowerLeg.R",
+      "parent": "UpperLeg.R"
+    },
+    {
+      "name": "Foot.R",
+      "parent": "LowerLeg.R"
+    }
+  ],
+  "demon_optional_bones": [
+    "Horn.L",
+    "Horn.R",
+    "Claw.L",
+    "Claw.R",
+    "Claw.Foot.L",
+    "Claw.Foot.R"
+  ],
+  "demon_sockets": [
+    {
+      "name": "Sock.Hand.R",
+      "parent": "Hand.R"
+    },
+    {
+      "name": "Sock.Hand.L",
+      "parent": "Hand.L"
+    },
+    {
+      "name": "Sock.HeadTop",
+      "parent": "Head"
+    },
+    {
+      "name": "Sock.Foot.L",
+      "parent": "Foot.L"
+    },
+    {
+      "name": "Sock.Foot.R",
+      "parent": "Foot.R"
+    }
+  ],
+  "limits": {
+    "max_bones": 45,
+    "max_shape_keys": 16,
+    "max_influences": 4,
+    "max_slots": 9
+  },
+  "shape_keys": {
+    "basis": "Basis",
+    "names": [
+      "Blink.L",
+      "Blink.R",
+      "BrowRaise.L",
+      "BrowRaise.R",
+      "BrowFurrow",
+      "BrowWorry",
+      "MouthSmile",
+      "MouthFrown",
+      "MouthRound",
+      "MouthOpen"
+    ]
+  },
+  "expressions": [
+    "neutral",
+    "attentive",
+    "concentrating",
+    "surprised",
+    "pleased",
+    "pained",
+    "determined"
+  ],
+  "role_slots": {
+    "names": [
+      "skin",
+      "hair",
+      "cloth_main",
+      "cloth_trim",
+      "leather",
+      "metal",
+      "eye_white",
+      "eye_dark",
+      "emissive",
+      "iris"
+    ],
+    "material_prefix": "Role_",
+    "hidden": "hidden",
+    "max_per_character": 9
+  },
+  "costumes": [
+    "prehistoric",
+    "historic"
+  ],
+  "animation": {
+    "fps": 30,
+    "clip_sets": {
+      "idle": [
+        "Idle_A",
+        "Idle_B",
+        "Idle_Look",
+        "Idle_Staff"
+      ],
+      "locomotion": [
+        "Walk",
+        "WalkBrisk",
+        "Jog",
+        "Run",
+        "StartL",
+        "StartR",
+        "StopL",
+        "StopR",
+        "Turn60L",
+        "Turn60R",
+        "TurnSmallL",
+        "TurnSmallR"
+      ],
+      "social": [
+        "Greet",
+        "Nod",
+        "ShakeHead",
+        "Talk_A",
+        "Talk_B",
+        "Talk_Emphasis",
+        "Listen"
+      ],
+      "prince": [
+        "Beckon",
+        "LeadLook",
+        "PointGround"
+      ],
+      "duel": [
+        "CastAnticipate",
+        "CastRelease",
+        "CastRecover",
+        "CastWeave_Loop",
+        "Block",
+        "RecoilLight",
+        "RecoilHeavy",
+        "WardBreak",
+        "Victory",
+        "Defeat",
+        "Surprise"
+      ],
+      "campaign": [
+        "KneelTake",
+        "Cover",
+        "Fall",
+        "Point"
+      ]
+    },
+    "loop": [
+      "Idle_A",
+      "Idle_B",
+      "Idle_Look",
+      "Idle_Staff",
+      "Walk",
+      "WalkBrisk",
+      "Jog",
+      "Run",
+      "Talk_A",
+      "Talk_B",
+      "Talk_Emphasis",
+      "Listen",
+      "CastWeave_Loop"
+    ],
+    "additive": [
+      "Nod",
+      "ShakeHead",
+      "LeadLook",
+      "TurnSmallL",
+      "TurnSmallR"
+    ],
+    "events": [
+      "Release",
+      "Impact",
+      "FootL",
+      "FootR",
+      "PropHit",
+      "BeatHit"
+    ],
+    "fbx_prefix": "anim_",
+    "variant_separator": "@"
+  },
+  "layout": {
+    "character_dir": "characters/<key>/",
+    "character_blend": "characters/<key>/<key>.blend",
+    "character_fbx": "characters/<key>/<key>.fbx",
+    "character_costume_dir": "characters/<key>/<costume>/",
+    "character_costume_fbx": "characters/<key>/<costume>/<key>@<costume>.fbx",
+    "character_costume_blend": "characters/<key>/<costume>/<key>@<costume>.blend",
+    "character_costume_manifest": "characters/<key>/<costume>/manifest.json",
+    "character_costume_reports": "characters/<key>/<costume>/reports/",
+    "character_manifest": "characters/<key>/manifest.json",
+    "character_reports": "characters/<key>/reports/",
+    "anim_dir": "anim/",
+    "anim_fbx": "anim/anim_<set>.fbx",
+    "anim_variant_fbx": "anim/anim_<set>@<key>.fbx",
+    "anim_manifest": "anim/anim_manifest.json",
+    "cast_manifest": "cast_manifest.json",
+    "inspect_dir": "inspect/",
+    "islands_dir": "inspect/islands/"
+  },
+  "unity_paths": {
+    "character_fbx": "Assets/Characters/Resources/Characters/Models/<key>.fbx",
+    "character_costume_fbx": "Assets/Characters/Resources/Characters/Models/<key>@<costume>.fbx",
+    "prefab": "Assets/Characters/Resources/Characters/<key>.prefab",
+    "anim_fbx": "Assets/Characters/Animation/anim_<set>.fbx",
+    "anim_variant_fbx": "Assets/Characters/Animation/anim_<set>@<key>.fbx"
+  },
+  "manifest_sections": {
+    "identity": "WP-1/common: key, number, display, rig, source fbx file name (no path)",
+    "meshes": "WP-2 export: per part {name, tris, verts, materials[], hidden}",
+    "bones": "WP-2: list of {name, parent, deform, head, tail} in rest pose (metres, Blender axes)",
+    "sockets": "WP-2: {name: {parent, head, placeholder: bool}}",
+    "skin": "WP-2: max_influences, unweighted_verts (must be 0), pieces[{island, bone}]",
+    "face": "WP-3: gaze_method, shape_keys[], eye_bones[], expressions{}, tuning{}",
+    "costumes": "WP-4: {name: {slots{slot: hex}, overlays[], hidden_islands[], props{socket: propKey}}}",
+    "clips": "WP-5: list of {name, set, length_s, frames, fps, loop, additive, native_speed_mps, events[{name,frame}]}",
+    "verify": "WP-2: list of {check, ok, detail}",
+    "export": "WP-2/WP-6: forward_axis check, fbx file name, triangle counts"
+  }
+}
