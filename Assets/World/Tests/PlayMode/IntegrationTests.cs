@@ -168,6 +168,138 @@ namespace World.Game.Tests
             Assert.IsFalse(SpeechBubbles.ShowInEncounter, "bubbles hidden in encounters again");
         }
 
+        [UnityTest, Timeout(60000)]
+        public IEnumerator Camp_NothingGrowsInClearings_GatherersGoRoundTheCircle_IdleCarriersKeepOff()
+        {
+            yield return Load();
+            yield return null; yield return null;
+            var camp = new CampLayout(S.Board);
+            var t = S.Board.Topology;
+            // Nothing grows inside a clearing of the home camp.
+            int checkedPoints = 0;
+            for (int h = 0; h < t.HexCount; h++)
+            {
+                if (BoardSpace.Flat(BoardSpace.Hex(t, h) - camp.Hearth) > 130f) continue;
+                foreach (var pt in TerrainBuilder.PropPoints(h))
+                {
+                    checkedPoints++;
+                    foreach (var c in camp.Clearings)
+                    {
+                        float dx = pt.x - c.x, dz = pt.z - c.y;
+                        Assert.GreaterOrEqual(Mathf.Sqrt(dx * dx + dz * dz), c.z - 0.01f, "a prop of hex " + h + " at " + pt + " stands in a camp clearing at (" + c.x + ", " + c.y + ") r " + c.z);
+                    }
+                }
+            }
+            Assert.Greater(checkedPoints, 200, "prop points recorded round the home camp");
+
+            // Every gatherer's way keeps out of the dance circle.
+            float ring = (float)PlotLayout.DanceCircleRadius + 0.5f;
+            int routes = 0, bent = 0;
+            foreach (var bv in LandViews.Instance.Buildings)
+            {
+                if (!bv.IsCollector) continue;
+                var r = bv.GathererRoute;
+                routes++;
+                if (r.Count > 2) bent++;
+                for (int i = 1; i < r.Count; i++)
+                {
+                    var a = r[i - 1]; var ab = r[i] - a; ab.y = 0;
+                    float u = Mathf.Clamp01(Vector3.Dot(camp.DanceCircleCentre - a, ab) / Mathf.Max(1e-4f, ab.sqrMagnitude));
+                    Assert.Greater(BoardSpace.Flat(a + ab * u - camp.DanceCircleCentre), ring, "a gatherer's way crosses the dance circle (building " + bv.BuildingId + ")");
+                }
+            }
+            Assert.Greater(routes, 3, "collectors with gatherers");
+            Assert.Greater(bent, 0, "the Fields gatherer of the home camp steps round the circle");
+
+            // Idle carriers wait by the hearth, at least 3 m from every cell the player can stand on.
+            int idle = 0;
+            foreach (var c in S.Economy.Carriers)
+            {
+                if (c.State != CarrierState.Idle) continue;
+                var v = LandViews.Instance.Carrier(c.Id);
+                Assert.IsNotNull(v);
+                idle++;
+                var pos = v.transform.position;
+                var cell = WalkLattice.ToCell(pos);
+                for (int di = -2; di <= 2; di++)
+                    for (int dj = -2; dj <= 2; dj++)
+                    {
+                        var n = new Cell(cell.I + di, cell.J + dj);
+                        if (WalkGrid.IsBlocked(n)) continue;
+                        Assert.GreaterOrEqual(BoardSpace.Flat(WalkLattice.ToWorld(n) - pos), 3f, "idle carrier " + c.Id + " stands near a walkable cell");
+                    }
+            }
+            Assert.Greater(idle, 3, "idle carriers at the start");
+        }
+
+        [UnityTest, Timeout(60000)]
+        public IEnumerator Camp_DressingIsSolid_AndTrapsNobody()
+        {
+            yield return Load();
+            var camp = new CampLayout(S.Board);
+            Assert.Greater(WalkGrid.SolidCount, 5, "dressing registered as solids");
+            // The spawn, the prince's line, Mira and Sol stay reachable.
+            Assert.IsFalse(WalkGrid.IsBlocked(camp.Spawn), "spawn free");
+            var c = camp.Spawn;
+            for (int i = 0; i < 4; i++)
+            {
+                var n = c + WalkLattice.Dir(camp.SpawnHeading);
+                Assert.IsFalse(WalkGrid.IsStepBlocked(c, n), "the line from the spawn to the prince's start is free (step " + i + ")");
+                c = n;
+            }
+            foreach (string id in new[] { NpcIds.Mira, NpcIds.Host })
+            {
+                var npc = Npc.Find(id);
+                var near = AutoPlay.ApproachCell(npc.transform.position, 0.1f);
+                Assert.IsTrue(near.HasValue, "a free cell beside " + id);
+                Assert.IsNotNull(WalkGrid.FindPath(camp.Spawn, near.Value), "a way from the spawn to " + id);
+                Assert.LessOrEqual(BoardSpace.Flat(WalkLattice.ToWorld(near.Value) - npc.transform.position), 8f, id + " can be reached to a neighbouring cell");
+            }
+            // No step of any found path passes through a solid, and a step into a tent bumps.
+            int solidSteps = 0;
+            foreach (var prop in camp.Dressing)
+            {
+                if (prop.Kind == "figure") continue;
+                var pc = WalkLattice.ToCell(prop.Position);
+                for (int di = -1; di <= 1; di++)
+                    for (int dj = -1; dj <= 1; dj++)
+                        for (int h = 0; h < 6; h++)
+                        {
+                            var a = new Cell(pc.I + di, pc.J + dj); var b = a + WalkLattice.Dir(h);
+                            if (WalkGrid.SolidBetween(a, b) == null) continue;
+                            solidSteps++;
+                            if (WalkGrid.IsBlocked(a) || WalkGrid.IsBlocked(b)) continue;
+                            var path = WalkGrid.FindPath(a, b);
+                            Assert.IsNotNull(path, "the cells either side of a " + prop.Kind + " stay joined another way");
+                            Assert.Greater(path.Count, 1, "the path goes round the " + prop.Kind);
+                        }
+            }
+            Assert.Greater(solidSteps, 0, "some step is blocked by dressing");
+        }
+
+        [UnityTest, Timeout(60000)]
+        public IEnumerator Night_Start_LanternOnTheWalker_ScrubWorks()
+        {
+            yield return Load();
+            yield return null; yield return null;
+            Assert.IsNotNull(DayNight.Instance, "day-night cycle installed");
+            Assert.AreEqual(22.5, DayNight.HourAtTick(0), 0.01, "a new game starts at 22:30");
+            Assert.Greater(DayNight.Instance.Night, 0.95f, "full night at the start");
+            var lantern = WorldLights.Instance.Lantern;
+            Assert.IsTrue(lantern.enabled, "lantern lit");
+            Assert.Less(BoardSpace.Flat(lantern.transform.position - Boot.Avatar.Position), 2.5f, "the lantern rides with the lattice walker");
+            Boot.Avatar.Teleport(Boot.Avatar.Cell + WalkLattice.Dir(Boot.Avatar.Heading) * 3, Boot.Avatar.Heading);
+            yield return null; yield return null;
+            Assert.Less(BoardSpace.Flat(lantern.transform.position - Boot.Avatar.Position), 2.5f, "the lantern follows the walker");
+            DevTools.TimeOfDay(3);
+            yield return null;
+            Assert.Less(DayNight.Instance.Night, 0.05f, "noon by the F1 scrub");
+            DevTools.TimeOfDay(5);
+            yield return null;
+            Assert.Greater(DayNight.Instance.Night, 0.95f, "night again");
+            DayNight.DevOffsetHours = 0;
+        }
+
         [UnityTest, Timeout(600000)]
         public IEnumerator CastAll_AutoPlay_PlaysToAnEnding()
         {

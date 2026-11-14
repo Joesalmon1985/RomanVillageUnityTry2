@@ -257,10 +257,8 @@ namespace World.Game
                 lit = mv.gameObject.AddComponent<LitBy>();
                 bool banish = mv.name.Contains("Banish");
                 var col = banish ? MarkBlue : MarkGold;
-                // V's wide pillar becomes a slim soft beam (same object and material, so V's pulse still drives it).
-                var pillar = mv.transform.Find("Pillar");
-                var mf = pillar != null ? pillar.GetComponent<MeshFilter>() : null;
-                if (mf != null) mf.sharedMesh = LightShapes.SlimBeam(col);
+                // The beam itself is V's (ProposalMarkerView: slim, hidden close by, turned down at night there);
+                // L adds only the light and the ground glow.
                 lit.Main = WorldLights.Add(mv.transform, new Vector3(0, 1.5f, 0), col, 1.5f, 11f, 2, "Cast mark light");
                 lit.Main.Look = FireLight.Style.Steady;
                 lit.Main.DayLevel = 0.2f; lit.Main.Sparks = false; lit.Main.Halo = 0f;

@@ -393,3 +393,38 @@ Ran:
 - Captures inspected and iterated (git-ignored, `Evidence/screenshots/l_*.png`, rendered from the game camera at 1920x1080 without IMGUI): spawn, hearth and tents, cast mark, forest token, dance mid-phrase, Mira, rival camp, dawn, midday, dusk, overview at night, and late-game stock, demons, carriers, war camp, overview.
 
 Not run: no Windows build; nobody played it by hand; shadow shimmer and flicker were judged from stills and code, not from watching motion; speech bubbles, the HUD and P's Tab map do not exist on this branch (stubs), so their night legibility is unverified (the interim God View is checked).
+
+## Integration 2: lighting merged, the game starts at night, camp fixes (14 Nov 2026, branch `refactor/prehistoric`, tag `pre-integrated-2`)
+
+Merged `pre/l` (dac217f): day-night cycle, fires and torches, night readability. Conflicts only in this file and the spec's change log (both sides kept). The prince (`pre/n`) is still not merged.
+
+Lighting joins:
+
+- **One owner per effect.** The cast mark's beam stays V's (`ProposalMarkerView`): the lighting decorator no longer swaps its mesh and adds only the mark's light and ground glow. At night the ring and arrows show at half their daylight strength and the beam a little stronger. The roll's pay beam, ring and halo keep the daylight values of integration 1 with L's night fade on top. Looked at by capture: no white-out at night, the mark and the roll effect still read by day.
+- The lantern already followed the lattice walker's camera (`WorldBootstrap.Avatar.Camera`); now tested. The night map fill also applies while the Tab map is open. The F1 Time tool has a time-of-day row (-1 h, +1 h, Dawn, Noon, Dusk, Night, time-lapse; `DevTools.TimeOfDay`); L's F2 / F3 keys clash with nothing.
+- The game starts at 22:30 (L's test and a new one).
+- `RhythmPartyTests.Phrase_FailFinalBlock_NoEnding_RetryWorks_AbortStopsAudio` (failed once on `pre/l`, viewpoint restored 3.3 mm off): passed 4 of 4 runs on the merged branch. On `pre/l` the test stood the old way, at an exact pose off the lattice; here `Accept` stands on a lattice cell and the walker's `RestoreCell` puts it back exactly, so the limit was left alone. Not reproduced, so the cause on `pre/l` is an inference, not a measurement.
+
+Rough items from integration 1, fixed:
+
+- **Gatherers go round the dance circle** (`BuildingView.GathererRoute`, 10 m from its centre); test checks every collector's route. Carriers never cross it (no path leads there). No one stood in the circle in the night dance capture.
+- **Idle carriers stand round the hearth**, 1.5 m from the corner inside the storehouse cell: at least 3 m from every cell the player can stand on (tested).
+- **Tents, the lean-to, racks, the wood pile and totems are solid** (`WalkGrid.AddSolid`: blocks the cells inside and every step that would glide through). Test: the spawn, the line to the prince's start, Mira and Sol stay reachable, and the cells either side of a blocked step are still joined another way.
+- **Nothing grows in `CampLayout.Clearings`**: test over the recorded prop points of the hexes round the home camp. The check found a real gap first: crop rows were tested only at their two ends, so a 7 m row could lie across a small clearing; rows are now tested at five points.
+
+Ran (editor, 14 Nov, night start):
+
+- `dotnet test DotNet`: 201 passed. Unity EditMode: 201 passed. PlayMode: 59 passed (51 from integration 1, 5 `LightingTests`, 3 new `IntegrationTests`). Console: 0 errors.
+- AutoPlay at 1920x1080 from the 22:30 start: `walk_tour` OK (4.43 s to the neighbouring corner); `duel_dance` OK (duel won after 3 casts, 4 blocks passed, Spirit call, HUD off); `cast_all` OK at time scale 8: Victory by overrun at game minute 12.7, 29 casts, all by screen press, 2550 m walked.
+- Frame rate, late game at night (6 camps, 26 buildings, 38 carriers), time scale 1, 1920x1080: average 277 fps far from home and 372 fps at the home camp, worst frame 7.6 ms.
+- Captures looked at: night spawn, Mira's bubble with replies, the cast mark and the site, the map, the HUD strip, the dance with the HUD off, Mira's duel, the late-game home camp and hearth with idle carriers, the same view at dawn and at noon.
+
+Not done, rough, or not verified:
+
+- Nothing was played by hand; no Windows build; no packaged AutoPlay run.
+- The hover ring was not seen at night (it needs a real mouse); the cast ring was.
+- The cast effect's sparks were not caught in a night capture (the capture came a moment late); by day they were.
+- At night the building site and distant plots are dark until the lantern or a torch reaches them; the site board is hard to read from 10 m.
+- A porter on a built main road has still only been seen from afar.
+- From the spawn the first cast mark is still behind the player; the prince is to lead there.
+- Dressing solids block steps for the player only; `Npc.WalkTo` still walks straight lines (the prince package owns that).

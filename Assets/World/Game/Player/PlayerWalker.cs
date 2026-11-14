@@ -187,7 +187,7 @@ namespace World.Game
         private void BeginStep(Cell to)
         {
             var from = transform.position;
-            if (WalkGrid.IsBlocked(to))
+            if (WalkGrid.IsStepBlocked(Cell, to))
             {
                 var dir = WalkLattice.ToWorld(to) - WalkLattice.ToWorld(Cell); dir.y = 0;
                 var home = IsOffLattice ? from : CellPosition(Cell);
@@ -398,7 +398,7 @@ namespace World.Game
                 return false;
             }
             var next = _path[0];
-            if (WalkGrid.IsBlocked(next) || WalkGrid.Distance(Cell, next) != 1)
+            if (WalkGrid.IsStepBlocked(Cell, next) || WalkGrid.Distance(Cell, next) != 1)
             {
                 // Something changed (a site finished on the way): re-plan from here.
                 if (!PlanTo(_autoGoal.Value)) { StopAuto(false); AutoWalkEnded?.Invoke(false); return false; }

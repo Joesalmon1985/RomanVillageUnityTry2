@@ -116,6 +116,20 @@ public static class Integ
         var sp = cam.WorldToScreenPoint(new Vector3((float)x, 0, (float)z));
         return PointerInput.TapAt(sp).ToString();
     }
+    public static string Dawn() { DayNight.Instance.SetHour(5.9); return "hour " + DayNight.Instance.Hour.ToString("0.00"); }
+    public static string Noon() { DayNight.Instance.SetHour(12); return "hour " + DayNight.Instance.Hour.ToString("0.00"); }
+    public static string Night() { DayNight.Instance.SetHour(22.5); return "hour " + DayNight.Instance.Hour.ToString("0.00"); }
+    public static string Hour() => "hour " + DayNight.Instance.Hour.ToString("0.00") + " night " + DayNight.Instance.Night.ToString("0.00") + " offset " + DayNight.DevOffsetHours.ToString("0.00");
+    public static string ToMira()
+    {
+        var m = Npc.Find(NpcIds.Mira);
+        var c = AutoPlay.ApproachCell(m.transform.position, 0.1f);
+        if (!c.HasValue) return "no cell";
+        B.Avatar.StopAuto();
+        B.Avatar.Teleport(c.Value, WalkLattice.HeadingOf(BoardSpace.YawOf(m.transform.position - WalkLattice.ToWorld(c.Value))));
+        return "by mira " + PointerInput.TapObject(m);
+    }
+    public static string CloseTalk() { DialoguePanel.Close(); return "closed"; }
     public static string MeasureFps() { B.AutoPlay.Run(new AutoPlayScript("fps").MeasureFps("late game first person", 5f)); return "measuring"; }
     public static string TurnRight() { B.Avatar.TurnRight(); return "h" + B.Avatar.Heading; }
     public static string TurnLeft() { B.Avatar.TurnLeft(); return "h" + B.Avatar.Heading; }

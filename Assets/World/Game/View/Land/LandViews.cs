@@ -306,8 +306,14 @@ namespace World.Game
             }
         }
 
-        /// <summary>Idle carriers wait 4 m from the corner in the six gaps between the spokes and the hex edges, then a ring further out.</summary>
-        private static Vector3 IdleOffset(WorldState s, Settlement home, int k)
+        /// <summary>
+        /// Idle carriers stand round their camp's hearth, inside the storehouse cell (which the walker cannot enter):
+        /// at least 3 m from every cell and every step the player can take, so an idle carrier never fills the view.
+        /// Twelve places on the first ring (30 degrees apart, starting in the gaps between spokes and hex edges), then
+        /// a second ring between the store piles.
+        /// </summary>
+        public const float IdleRingRadius = 1.5f;
+        public static Vector3 IdleOffset(WorldState s, Settlement home, int k)
         {
             float baseYaw = 0f;
             if (home != null)
@@ -315,9 +321,10 @@ namespace World.Game
                 int h = PlotLayout.SectorHex(s.Board.Topology, home.Corner, 0);
                 if (h >= 0) baseYaw = BoardSpace.YawOf(BoardSpace.Hex(s.Board.Topology, h) - BoardSpace.Vertex(s.Board.Topology, home.Corner));
             }
-            int ring = k / 6, slot = k % 6;
-            float yaw = baseYaw + 30f + slot * 60f + ring * 12f;
-            return BoardSpace.DirOf(yaw) * (4.0f + ring * 1.3f);
+            int ring = k / 12, slot = k % 12;
+            // Slots 0-5 in the gaps (30, 90, ...), 6-11 on the lines between them.
+            float yaw = baseYaw + 30f + (slot < 6 ? slot * 60f : (slot - 6) * 60f + 30f) + ring * 15f;
+            return BoardSpace.DirOf(yaw) * (IdleRingRadius + Mathf.Min(ring, 1) * 0.45f);
         }
 
         private readonly HashSet<string> _seenDemons = new HashSet<string>();

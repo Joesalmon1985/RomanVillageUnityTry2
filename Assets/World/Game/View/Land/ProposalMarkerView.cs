@@ -23,6 +23,8 @@ namespace World.Game
 
         /// <summary>Within this distance of the viewer the top proposal's beam is hidden.</summary>
         public const float PillarHideMetres = 9f;
+        /// <summary>Brightness of the ring, arrows and beam at full night as a share of their daylight brightness.</summary>
+        public const float NightShare = 0.5f;
         public bool PillarShown => _pillar != null && _pillar.activeSelf;
         private bool _near;
         private Renderer[] _glow;
@@ -129,8 +131,17 @@ namespace World.Game
             if (near != _near) { _near = near; _pillar.SetActive(IsTop && !_near); }
             float pulse = 0.5f + 0.5f * Mathf.Sin(now * 3.2f + ProposalId);
             float k = IsTop ? 0.55f + 0.35f * pulse : 0.25f + 0.2f * pulse;
-            _mpb.SetColor("_Color", new Color(k, k, k, 1f));
-            foreach (var r in _glow) r.SetPropertyBlock(_mpb);
+            // Additive marks are tuned for daylight; against the night they need far less to read.
+            // (The beam is already faint: it keeps its strength, and a dark sky shows it better than a bright one.)
+            float night = DayNight.Instance != null ? DayNight.Instance.Night : 0f;
+            float kg = k * Mathf.Lerp(1f, NightShare, night);
+            var pr = _pillar.GetComponent<Renderer>();
+            foreach (var r in _glow)
+            {
+                float kk = r == pr ? k * Mathf.Lerp(1f, 1.6f, night) : kg;
+                _mpb.SetColor("_Color", new Color(kk, kk, kk, 1f));
+                r.SetPropertyBlock(_mpb);
+            }
             if (_runes != null) _runes.transform.localRotation = Quaternion.Euler(0, now * 20f, 0);
             if (_runes != null) _runes.transform.localScale = Vector3.one * (1f - 0.06f * pulse);
         }

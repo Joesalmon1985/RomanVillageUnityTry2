@@ -11,6 +11,9 @@ namespace World.Game
     public static class CampInstaller
     {
         public const string BlockerOwner = "dance_circle";
+        public const string DressingOwner = "camp_dressing";
+        /// <summary>Share of a dressing prop's footprint radius that blocks walking.</summary>
+        public const float SolidShare = 0.8f;
 
         public static Transform Root { get; private set; }
 
@@ -28,6 +31,11 @@ namespace World.Game
             WalkGrid.RemoveStaticBlockers(BlockerOwner);
             WalkGrid.AddStaticBlocker(layout.DanceCircleCentre, CampLayout.FireBlockRadius, BlockerOwner);
             for (int p = 1; p <= 4; p++) WalkGrid.AddStaticBlocker(layout.DrumPosition(p), CampLayout.DrumBlockRadius, BlockerOwner);
+
+            // Tents, the lean-to, racks, the wood pile and totems are solid: the walker goes round them.
+            WalkGrid.RemoveStaticBlockers(DressingOwner);
+            foreach (var prop in layout.Dressing)
+                if (prop.Kind != "figure") WalkGrid.AddSolid(prop.Position, prop.Radius * SolidShare, DressingOwner);
 
             SpawnMira(layout);
             SpawnSol(layout);

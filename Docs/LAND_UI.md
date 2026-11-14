@@ -74,3 +74,5 @@ Views per state item for both peoples (camps, plots, buildings, roads, carriers,
 - The top proposal's beam is slim and soft and hidden within 9 m of the viewer (`ProposalMarkerView.PillarHideMetres`, `PillarShown`).
 - Carriers, porters, gatherers, builders and warriors wear hides and furs in their people's colour; a figure the eye is inside of (within 1.1 m) is not drawn.
 - `IntegrationTests.CarrierViews_FollowTheRealSim_PositionsLoadsAndPorters` checks the carrier views against the real logistics (one view per carrier, on the sim's position within 5 cm, load shown, porter look on main-road legs).
+
+- (14 Nov, `pre-integrated-2`) Gatherers walk round the dance circle (`BuildingView.GathererRoute`). Idle carriers stand round the hearth, 1.5 m from the corner. `TerrainBuilder.PropPoints(hex)` backs the test that nothing grows in `CampLayout.Clearings`. The cast mark's beam stays V's at night (the lighting package adds only light and glow).

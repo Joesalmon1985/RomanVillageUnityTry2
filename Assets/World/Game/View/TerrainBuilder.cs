@@ -240,6 +240,11 @@ namespace World.Game
             return false;
         }
 
+        private static List<Vector3>[] _propPoints = new List<Vector3>[0];
+        /// <summary>Ground points of the props on a hex as last built (trees, rocks, crop row points, tufts); empty if none.</summary>
+        public static IReadOnlyList<Vector3> PropPoints(int hex) =>
+            hex >= 0 && hex < _propPoints.Length && _propPoints[hex] != null ? _propPoints[hex] : (IReadOnlyList<Vector3>)new Vector3[0];
+
         /// <summary>The prop mesh object of a hex (null if it has none).</summary>
         public static GameObject HexProps(int hex) => hex >= 0 && hex < _props.Length ? _props[hex] : null;
 
@@ -267,6 +272,9 @@ namespace World.Game
             var rnd = new PropRandom(5000 + h * 7919);
             var centre = BoardSpace.Hex(t, h);
             float R = BoardSpace.HexSize;
+            // Every point a prop was allowed at (tests: nothing grows inside a clearing).
+            if (_propPoints.Length != t.HexCount) _propPoints = new List<Vector3>[t.HexCount];
+            var points = _propPoints[h] = new List<Vector3>();
             // Props (one combined mesh per hex, no colliders except mountain peaks).
             var props = new MeshBuilder();
             Vector3 RandomInHex(float margin)
@@ -287,6 +295,7 @@ namespace World.Game
                         float dx = p.x - c.x, dz = p.z - c.y, rr = c.z + clear;
                         if (dx * dx + dz * dz < rr * rr) return false;
                     }
+                points.Add(p);
                 return true;
             }
             int placed = 0;
@@ -337,7 +346,9 @@ namespace World.Game
                         {
                             var p = centre + side * (row * rowStep) + dir * (s * piece);
                             var a = p - dir * (piece * 0.45f); var b = p + dir * (piece * 0.45f);
-                            if (!Ok(a, RoadMargin, 0.5f) || !Ok(b, RoadMargin, 0.5f)) continue;
+                            // A row piece is 7 m long: its ends, middle and quarter points must all be clear.
+                            if (!Ok(a, RoadMargin, 0.5f) || !Ok(b, RoadMargin, 0.5f) || !Ok(p, RoadMargin, 0.5f)
+                                || !Ok((a + p) * 0.5f, RoadMargin, 0.5f) || !Ok((b + p) * 0.5f, RoadMargin, 0.5f)) continue;
                             props.Box(p + Vector3.up * 0.26f, new Vector3(0.95f, 0.52f + rnd.Range(-0.06f, 0.1f), piece * 0.9f), (row & 1) == 0 ? cropA : cropB, ang);
                             placed++;
                         }

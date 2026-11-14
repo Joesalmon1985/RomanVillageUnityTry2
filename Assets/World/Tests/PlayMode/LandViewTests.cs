@@ -403,9 +403,9 @@ namespace World.Game.Tests
                 Assert.Less(BoardSpace.Flat(walker.transform.position - LandLook.Ground(x0, z0)), 0.05f, "carrier on the feed position at u " + feed.U);
                 Assert.Less(BoardSpace.Flat(porter.transform.position - LandLook.Ground(x1, z1)), 0.05f, "porter on the feed position at u " + feed.U);
             }
-            // Idle carriers wait beside their storehouse, outside the 3 m store and clear of nothing else.
+            // Idle carriers wait round the hearth, inside the storehouse cell (off the cells the player walks through).
             float d = BoardSpace.Flat(idle.transform.position - BoardSpace.Vertex(t, home));
-            Assert.That(d, Is.InRange(3.5f, 6f), "idle carrier beside the storehouse");
+            Assert.That(d, Is.InRange(1f, 2.5f), "idle carrier by the hearth");
             // Carrier events go through the same reconcile path without errors.
             _views.Inject(new List<SimEvent>
             {

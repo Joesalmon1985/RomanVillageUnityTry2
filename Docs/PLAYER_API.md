@@ -67,3 +67,5 @@ The cursor is always free; there is no mouse look. Touch strips read real touche
 - The map's side text and the HUD strip show both peoples' strength, the overrun margin and how often the Ash Clan now builds (`MapScreenView.StrengthLine`, `RivalPace`).
 - AutoPlay `cast_all` (`CastAll`): plays a whole game with no prince by walking to each top proposal and pressing its ground on screen; `-autoplay cast_all [-speed 4]`. Logs `[AutoPlay] cast_all result <outcome> (<reason>), game minute N, casts N (...), metres walked N` and `[AutoPlay] cast_all OK`.
 - `SpeechBubbles.ShowInEncounter`: set by an encounter that wants bubbles shown while it runs (the dance).
+
+- (14 Nov, `pre-integrated-2`) `WalkGrid.AddSolid(centre, radius, owner)`: a solid between cells; `IsStepBlocked(from, to)` is what the walker and `FindPath` now ask, so a step that would glide through a tent bumps. `DevTools.TimeOfDay(action)` and the Time tool's time-of-day row scrub the day-night cycle.

@@ -351,7 +351,7 @@ namespace World.Game
             var s = Evaluate(Hour);
             State = s;
 
-            bool map = ViewSwitcher.Instance != null && ViewSwitcher.Instance.CurrentView == ViewMode.God;
+            bool map = (ViewSwitcher.Instance != null && ViewSwitcher.Instance.CurrentView == ViewMode.God) || MapScreen.IsOpen;
             _mapBoost = Mathf.MoveTowards(_mapBoost, map ? 1f : 0f, Time.unscaledDeltaTime * 4f);
             float mb = _mapBoost * s.Night;
 

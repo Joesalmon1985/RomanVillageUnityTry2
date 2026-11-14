@@ -408,6 +408,22 @@ namespace World.Game
                 GUI.Label(new Rect(x, a.yMax - UiStyle.Px(60), w, UiStyle.Px(56)), "<color=#BBB0A0>Adding wares needs a sim developer command (DevAddWares); the sim has none yet.</color>", _small);
         }
 
+        /// <summary>Time-of-day scrub for the F1 tools and scripts: 0 -1 h, 1 +1 h, 2 dawn (05:40), 3 noon, 4 dusk (18:10), 5 night (22:30), 6 toggles the time-lapse.</summary>
+        public static void TimeOfDay(int action)
+        {
+            var dn = DayNight.Instance; if (dn == null) return;
+            switch (action)
+            {
+                case 0: DayNight.Scrub(-1); break;
+                case 1: DayNight.Scrub(1); break;
+                case 2: dn.SetHour(5.67); break;
+                case 3: dn.SetHour(12); break;
+                case 4: dn.SetHour(18.17); break;
+                case 5: dn.SetHour(22.5); break;
+                case 6: DayNight.DevTimeLapse = DayNight.DevTimeLapse > 0f ? 0f : 1f; break;
+            }
+        }
+
         private static void TimePanel(GodTool t, Rect a)
         {
             Styles();
@@ -427,6 +443,18 @@ namespace World.Game
                 else SkipToDemon();
             }
             y += bh + UiStyle.Px(12);
+            // Time of day (package L): a scrub on top of the game time, not saved. F2 / Shift+F2 / F3 do the same.
+            var dn = DayNight.Instance;
+            if (dn != null)
+            {
+                int hh = (int)dn.Hour, mm = (int)((dn.Hour - hh) * 60);
+                GUI.Label(new Rect(x, y, w, UiStyle.Px(26)), "Time of day " + hh.ToString("00") + ":" + mm.ToString("00") + (DayNight.DevTimeLapse > 0f ? "  (time-lapse)" : ""), _small); y += UiStyle.Px(28);
+                string[] names = { "-1 h", "+1 h", "Dawn", "Noon", "Dusk", "Night", ">>" };
+                float tw = (w - UiStyle.Px(5) * (names.Length - 1)) / names.Length;
+                for (int i = 0; i < names.Length; i++)
+                    if (GUI.Button(new Rect(x + i * (tw + UiStyle.Px(5)), y, tw, bh), names[i], UiStyle.Button)) TimeOfDay(i);
+                y += bh + UiStyle.Px(12);
+            }
             var roll = EconomyApi.LastRoll(s);
             GUI.Label(new Rect(x, y, w, UiStyle.Px(80)), "Last roll " + (s.Economy.Dice.RollCount > 0 ? roll.Sum.ToString() : "-") + ", next in " + EconomyApi.TicksToNextRoll(s) + " ticks.\n" + FactionApi.Headline(s), _small);
         }

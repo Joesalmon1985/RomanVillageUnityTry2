@@ -111,3 +111,11 @@ Also: a camp's `LocalPaths` mesh has overlapping coplanar strips, which a per-pi
 ## Captures
 
 `AgentScripts/LightCaptures.cs` reads `Temp/l_cmd.txt` (`open`, `hour H`, `grow TICKS MINE THEIRS`, `stockmix`, `at PLACE`, `moon`, `sun`, `god`, `fp`, `dance`, `shot NAME`, `info`) and renders the active camera at 1920x1080 into `Evidence/screenshots` (git-ignored). `shot` also reports mean luminance and the share of near-black and near-white pixels. IMGUI (the dance strip, panels) is not in these renders.
+
+## Integration notes (14 Nov 2026, `pre-integrated-2`)
+
+- The cast mark's beam belongs to V (`ProposalMarkerView`); the decorator no longer swaps its mesh (`LightShapes.SlimBeam` is unused). At night V shows the ring and arrows at half strength and the beam a little stronger; L's mark light and ground glow are unchanged.
+- The lantern follows `WorldBootstrap.Avatar.Camera`, which is the lattice walker's camera since P (tested: it stays within 2.5 m of the walker after a move).
+- The night map fill also applies while the Tab map is open. The Tab map itself is screen-space and unlit.
+- F1 tools, Time: -1 h, +1 h, Dawn, Noon, Dusk, Night and a time-lapse toggle (`DevTools.TimeOfDay`).
+- Checked at night by capture with the real player layer: speech bubble with replies, the cast mark, the map, the HUD strip, the dance with the HUD off.

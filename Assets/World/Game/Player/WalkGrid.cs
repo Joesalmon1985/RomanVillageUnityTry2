@@ -26,6 +26,7 @@ namespace World.Game
 
         private struct Blocker { public Vector3 Centre; public float Radius; public string Owner; }
         private static readonly List<Blocker> _static = new List<Blocker>();
+        private static readonly List<Blocker> _solids = new List<Blocker>();
         private static readonly HashSet<Cell> _stateBlocked = new HashSet<Cell>();
         private static readonly List<Vector3> _stateCentres = new List<Vector3>();
         private static readonly List<float> _stateRadii = new List<float>();
@@ -39,7 +40,7 @@ namespace World.Game
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
-            _static.Clear(); _stateBlocked.Clear(); _stateCentres.Clear(); _stateRadii.Clear();
+            _static.Clear(); _solids.Clear(); _stateBlocked.Clear(); _stateCentres.Clear(); _stateRadii.Clear();
             _cachedFor = null; _cachedTick = -1; _cachedCounts = -1; StateOverride = null;
         }
 
@@ -73,7 +74,39 @@ namespace World.Game
         public static void AddStaticBlocker(Vector3 centre, float radius, string owner) =>
             _static.Add(new Blocker { Centre = centre, Radius = radius, Owner = owner });
 
-        public static void RemoveStaticBlockers(string owner) => _static.RemoveAll(b => b.Owner == owner);
+        public static void RemoveStaticBlockers(string owner) { _static.RemoveAll(b => b.Owner == owner); _solids.RemoveAll(b => b.Owner == owner); }
+
+        /// <summary>
+        /// A solid thing that usually sits between lattice cells (a tent, a rack, a totem): it blocks every cell within
+        /// its radius like a static blocker, and also every step whose straight glide would pass through it
+        /// (<see cref="IsStepBlocked"/>). Removed with <see cref="RemoveStaticBlockers"/>.
+        /// </summary>
+        public static void AddSolid(Vector3 centre, float radius, string owner)
+        {
+            var b = new Blocker { Centre = centre, Radius = radius, Owner = owner };
+            _static.Add(b); _solids.Add(b);
+        }
+
+        public static int SolidCount => _solids.Count;
+
+        /// <summary>True when a step between two neighbouring cells cannot be taken: the target is blocked or a solid stands on the way.</summary>
+        public static bool IsStepBlocked(Cell from, Cell to) => IsBlocked(to) || SolidBetween(from, to) != null;
+
+        /// <summary>The owner of the solid a straight glide between two cells would pass through, or null.</summary>
+        public static string SolidBetween(Cell from, Cell to)
+        {
+            if (_solids.Count == 0) return null;
+            var a = WalkLattice.ToWorld(from); var b = WalkLattice.ToWorld(to);
+            var ab = b - a; ab.y = 0;
+            float len2 = ab.sqrMagnitude;
+            foreach (var s in _solids)
+            {
+                var ac = s.Centre - a; ac.y = 0;
+                float u = len2 > 1e-6f ? Mathf.Clamp01(Vector3.Dot(ac, ab) / len2) : 0f;
+                if (BoardSpace.Flat(a + ab * u - s.Centre) < s.Radius) return s.Owner ?? "solid";
+            }
+            return null;
+        }
 
         /// <summary>Number of registered static blockers (tests, diagnostics).</summary>
         public static int StaticBlockerCount => _static.Count;
@@ -147,6 +180,7 @@ namespace World.Game
                     var n = cur.c + WalkLattice.Dir(h);
                     if (closed.Contains(n)) continue;
                     if (n != to && IsBlocked(n)) continue;
+                    if (SolidBetween(cur.c, n) != null) continue;
                     int ng = gc + 1;
                     if (g.TryGetValue(n, out int old) && old <= ng) continue;
                     g[n] = ng; came[n] = cur.c;

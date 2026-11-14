@@ -216,8 +216,8 @@ namespace World.Game
             foreach (var w in _warriors) w.Animate(now);
             if (Gatherer == null) return;
             var g = Gatherer;
-            float dist = (PatchSpot - _home).magnitude;
-            float walk = dist / GathererSpeed;
+            EnsureRoute();
+            float walk = _routeLength / GathererSpeed;
             switch (_leg)
             {
                 case Leg.Home:
@@ -228,7 +228,8 @@ namespace World.Game
                 {
                     float u = Mathf.Clamp01((now - _legStart) / walk);
                     g.Pose = FigurePose.Walk;
-                    g.Place(Vector3.Lerp(_home, PatchSpot, u), BoardSpace.YawOf(PatchSpot - _home));
+                    RoutePoint(u, out var po, out float yo);
+                    g.Place(po, yo);
                     if (u >= 1f) { _leg = Leg.Work; _legStart = now; }
                     break;
                 }
@@ -245,12 +246,68 @@ namespace World.Game
                 {
                     float u = Mathf.Clamp01((now - _legStart) / walk);
                     g.Pose = FigurePose.Walk;
-                    g.Place(Vector3.Lerp(PatchSpot, _home, u), BoardSpace.YawOf(_home - PatchSpot));
+                    RoutePoint(1f - u, out var pb, out float yb);
+                    g.Place(pb, yb + 180f);
                     if (u >= 1f) { _leg = Leg.Home; g.SetLoad(false, Ware.Wood, 0, false); }
                     break;
                 }
             }
             g.Animate(now);
+        }
+
+        // The gatherer's way to the patch: straight, except round the dance circle (nobody walks through the dance).
+        private readonly List<Vector3> _route = new List<Vector3>();
+        private float _routeLength;
+        private Vector3 _routeTo;
+        /// <summary>Metres the gatherer's way keeps from the dance circle's centre.</summary>
+        public const float CircleClearance = (float)PlotLayout.DanceCircleRadius + 3f;
+        public IReadOnlyList<Vector3> GathererRoute { get { EnsureRoute(); return _route; } }
+
+        private void EnsureRoute()
+        {
+            if (_route.Count > 0 && _routeTo == PatchSpot) return;
+            _routeTo = PatchSpot;
+            _route.Clear();
+            _route.Add(_home);
+            var s = LandText.State;
+            if (s != null && s.Board.ReservedPlots != null)
+                foreach (int plot in s.Board.ReservedPlots)
+                {
+                    if (!PlotLayout.IsValidPlot(s.Board.Topology, plot)) continue;
+                    var c = LandLook.Ground(PlotLayout.PlotX(s.Board.Topology, plot), PlotLayout.PlotZ(s.Board.Topology, plot));
+                    var ab = PatchSpot - _home; ab.y = 0;
+                    if (ab.sqrMagnitude < 0.01f) continue;
+                    float u = Mathf.Clamp01(Vector3.Dot(c - _home, ab) / ab.sqrMagnitude);
+                    var near = _home + ab * u;
+                    var off = near - c; off.y = 0;
+                    if (off.magnitude >= CircleClearance - 2f) continue;
+                    // Step aside on the side the straight line already passes (or to its left when it goes through the centre).
+                    var dir = off.sqrMagnitude > 0.01f ? off.normalized : new Vector3(-ab.z, 0, ab.x).normalized;
+                    var way = c + dir * CircleClearance;
+                    _route.Add(LandLook.Ground(way.x, way.z));
+                }
+            _route.Add(PatchSpot);
+            _routeLength = 0f;
+            for (int i = 1; i < _route.Count; i++) _routeLength += (_route[i] - _route[i - 1]).magnitude;
+            if (_routeLength < 0.01f) _routeLength = 0.01f;
+        }
+
+        /// <summary>The point and facing at share u (0 home, 1 patch) of the way, by length.</summary>
+        private void RoutePoint(float u, out Vector3 p, out float yaw)
+        {
+            float want = Mathf.Clamp01(u) * _routeLength;
+            for (int i = 1; i < _route.Count; i++)
+            {
+                float seg = (_route[i] - _route[i - 1]).magnitude;
+                if (want <= seg || i == _route.Count - 1)
+                {
+                    p = Vector3.Lerp(_route[i - 1], _route[i], seg > 1e-4f ? Mathf.Clamp01(want / seg) : 1f);
+                    yaw = BoardSpace.YawOf(_route[i] - _route[i - 1]);
+                    return;
+                }
+                want -= seg;
+            }
+            p = PatchSpot; yaw = 0f;
         }
 
         /// <summary>True while the gatherer is away from the building (walking or working at the patch).</summary>
