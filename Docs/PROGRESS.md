@@ -428,3 +428,28 @@ Not done, rough, or not verified:
 - A porter on a built main road has still only been seen from afar.
 - From the spawn the first cast mark is still behind the player; the prince is to lead there.
 - Dressing solids block steps for the player only; `Npc.WalkTo` still walks straight lines (the prince package owns that).
+
+## Prehistoric refactor, package N: the prince, proposals as speech, the first scene (14 Nov 2026, branch `pre/n`)
+
+Merged: `pre/p` (base), sim `f18df39`, then sim `4868ca0` (the second tuning pass); all numbers below are on `4868ca0`.
+
+Built (details in `Docs/PRINCE_API.md`, interface additions in REFACTOR_SPEC B.1): `PrinceDirector` (the pitch loop of 8.5 with "Show me" / "Not this" / "Later", leading with wait, call and fetch, the explanation at the spot from `Proposal.Reason`, reactions, escalating pestering, decline through `DeclineProposal`, the first scene of 2.C.5 with its exact lines, the builder and the followed first load, overrun warnings voiced, win and loss scenes in bubbles, a HUD line); the sawyer and the merchant by `Proposal.Speaker`; original line banks per speaker, kind and mood with no sentence twice in a row; `Npc` walking on the lattice; the name plate hidden under a bubble; P's reply column kept off the speaker. AutoPlay `first_scene`, `follow_prince`, `prompt_game`, `ignore_prince`, `prince_captures`. Placeholder land views (`Game/Prince/Placeholder`) until package V lands.
+
+Ran:
+- `dotnet test DotNet`: 201 passed, 0 failed.
+- Unity EditMode 201 passed; PlayMode 43 passed (13 of them `PrinceTests`), 0 failed; console 0 errors from game code.
+- In the editor (default seed, 1920x1080, time x2-x10; every timer runs on game time): `first_scene` OK (the prince asks 2.5 game s after the start, the hut, the builder, the first load followed to the storehouse at about 147 game s); `ignore_prince` OK (nothing built, 12 pitches with moods Calm, Keen, Pressing, Urgent, 4 quiet spells, Defeat by overrun at 11.9 min, loss scene played); `prince_captures` OK; `follow_prince` at four delays (below).
+
+Pace measured by `follow_prince` (the player answers each pitch after the delay, follows the speaker and presses the ground by a screen tap as soon as it is in range; "direct" walks straight to the spot instead):
+
+| Delay | Mode | Result | Casts | Pitch to cast (avg / median) | Between casts (avg / median) | Walked per cast (avg / median) |
+|---|---|---|---|---|---|---|
+| 3 s | follow | Victory by overrun, 14.5 min | 26 | 16.6 / 17.8 s | 30.9 / 29.1 s | 101 / 100 m |
+| 3 s | direct | Victory by overrun, 13.7 min | 27 | 14.6 / 12.1 s | 29.8 / 23.6 s | 91 / 77 m |
+| 10 s | follow | Draw at 20 min (2-2) | 17 | 22.7 / 22.4 s | 36.3 / 30.9 s | 97 / 95 m |
+| 20 s | follow | Victory by overrun, 19.6 min | 21 | 43.0 / 37.2 s | 53.0 / 47.3 s | 95 / 115 m |
+| 30 s | follow | Victory at 20 min (3-2) | 16 | 50.8 / 42.1 s | 75.6 / 76.0 s | 75 / 65 m |
+
+What a real walk costs: a typical pitch sends the player 60-200 m (median about 100 m); following the leading villager at 7 m/s that is about 14 s of walking, plus 2-3 s of turning and reaching range, so pitch to cast is about 17 s with a 3 s answer (12 s walking straight at the player's own 12.5 m/s). The headless model's "30-45 s per pitch" is therefore answer delay plus about 15 s of walking. Above a 15 s answer delay the question times out and comes back later (40/30/20 s escalation), which is why delays of 20-30 s cost far more than the delay itself. The 10 s and 20 s results (a draw, then a win) show the outcome is noisy around those delays (demons and the rival's pace); one game per setting only.
+
+Not done / caveats: package V's views are missing, so camps, buildings, carriers and the ground ring are N's plain placeholders (players stand among trees on plots until V clears them); one seed only; no packaged run (`-autoplay` is wired but no build was made, as asked); captures at time x2-x10 in the editor; screen taps sometimes land on a bubble or person and the script falls back to a ground press (counted as `groundFallbacks`).
