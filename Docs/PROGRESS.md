@@ -530,3 +530,28 @@ Not done, rough, or not verified:
 - After a load, spots cleared for earlier proposals grow back until they are proposed again; the dance and duel cannot be saved; the time-of-day scrub of the F1 tools is not saved.
 - The hover ring at night, a porter on a built road from close by, and the cast sparks at night were not seen in captures.
 - `refactor/prehistoric` is not merged into `main` and was not pushed by this session.
+
+## Historic base: H1 and crystal sims merged into the game, crystals I0 Unity half, package shells (14 Nov 2026, branch `historic/main`, tag `historic-base`)
+
+- The refactor's Windows build was copied first to `Builds/Refactor_2026-11-14` (kept; not rebuilt).
+- `historic/main` from `refactor-done`; merged tag `sim-H1-cry-S1` (no conflicts) and then, at the coordinator's request, `sim-H1-cry-S1-tuned` (the campaign race tuning; no conflicts). The hand-written `.meta` files of the sim lanes were checked (GUIDs well formed and unique, folder metas marked); Unity wrote the two that were missing (`UpgradeTests.cs.meta`, `UpgradeBenefitTests.cs.meta`).
+- Game layer, minimal: the prince's words handle the new proposal kinds (`KindOf` gives "upgrade" and "town", any later unknown kind falls back to the plain collector line; `Args` fills both; two placeholder banks in `PrinceLines`); `LandViews` clears the ground of a town's outer plots and their paths, and takes extra clearings from other packages (`AddClearing`); the save shell needed no change (it already writes `SaveCodec.CurrentVersion`, now 5, and reads version 4 through the sim's migration). A real version-4 save written by the refactor's packaged build (`save_load` run, tick 194) is a PlayMode fixture and loads as a Prehistoric skirmish and plays on. Map, HUD and proposal markers read the sim's helpers, which already know `Upgrade` and `Town`: no change.
+- Tests for Unity's runner: `ProofReport` (20 min), `HandoverProof` (20 min) and `CampaignProof` (60 min) carry `Timeout`; the two heavy ones are `[Category("HeavyProof")]` so a routine Unity run may leave them out (`dotnet test` always runs them). `WardOpponentTests` now finds `ward_opponents.json` from Unity's working directory too (it failed in Unity only).
+- Crystals I0, Unity half: `DuelStageSpec` (with `VolunteerActorId`, `VolunteerPos`), `WardDuelRequest` in `EncounterRequest.cs`, `EncounterContext.Request` with `EncounterDirectory.TryStart(id, npc, request)`, `ward_campaign` registered through the I7 shell `CampaignDuel.Create`; installer shells `InteriorsInstaller`, `ExpeditionInstaller` (called after the prince, before the F1 tools) and `GradeViewsInstaller` (after the land views); shells `Interiors`, `InteriorSpace`, `ExpeditionDirector`; `IMapLayer`, `MapMode`, `MapScreen.AddLayer`. The sim `Lattice` equals `WalkLattice` (PlayMode test). Owners and entry points: `Docs/NEXT_START_HERE.md` section 10.
+- Developer starts: `Game/Boot/DevStart.cs`, F1 tool "Starts" (G), command line `-start dev.historic [-seed n]`; `AgentScripts/Integ.cs` gained `DevHistoric` and `Ages`.
+- An editor quirk on this machine: after the merge the editor kept a script compilation pending and never started it, and later would not reload the domain (unfocused editor). Ticking the compilation pipeline once by reflection compiled; entering Play Mode reloaded. Later recompiles worked normally.
+
+Ran (14 Nov, editor):
+
+- `dotnet test DotNet`: 442 passed on `sim-H1-cry-S1`; 450 passed after the tuned merge (7 min 13 s).
+- Unity: 0 compile errors; console 0 errors. EditMode 442/442 minus one (`WardOpponentTests` file lookup) before the fix and the tuned merge; after: **450 passed** (23 min 26 s; `CampaignProof` 18 min, `HandoverProof` 3.7 min, economy proof 55 s). PlayMode **79 passed** (75 before plus 4 in `HistoricBaseTests`: lattice, version-4 save, encounter request, dev.historic boot).
+- AutoPlay in the editor from the night start: `walk_tour` OK (27 s); `first_scene` OK (152 s at time scale 1); `duel_dance` OK; `follow_prince` (3 s, time scale 8) OK: Victory by overrun at game minute 14.4, 30 casts by the player; `ignore_prince` (time scale 8) OK: Defeat by overrun at minute 11.9, 0 casts, 12 pitches.
+- What moved in the skirmish: with the handover on (PRD_AGES 14.2 default), the player's prince took over at game minute 7.4 in `follow_prince` and then built 6 things alone besides the player's casts (30 casts against 27 on 13-14 Nov; the end minute 14.4 against 14.3). The Ash Clan's handover fired at minute 13.5 there and 11.3 in `ignore_prince`, where it changes nothing (the rival was already autonomous): an ignoring player never delivers a worked good, so his prince never takes over and the game is lost as before.
+- F1 developer start `dev.historic` from a running night game: the start built in 1.4 s, the scene reloaded at tick 12,210 (Historic, DevStart, both peoples handed over, 14 camps, 58 buildings), the prince announced and built on his own (7 then 8 autonomous casts), the map opened, console 0 errors. No views for campaign things (expected).
+
+Not done or not verified:
+
+- Nobody played any of it by hand. The packaged build was not rebuilt; the packaged runs were not repeated.
+- The map's side text in a Historic game still speaks of falling to an overrun ("they fall in 33 s"), which is a setback there, not a defeat; the overrun wording is H1-4's or H2-7's.
+- `follow_prince` was run once (no repeat at 10, 20, 30 s delays).
+- The window-size registry key written by one windowed run of the refactor build (made to capture the version-4 save) could not be deleted from this session: the owner's next double-click may open in a 1280 x 720 window. Delete `HKCU\Software\Joe Salmon\WorldMVP` to restore full screen.

@@ -99,6 +99,26 @@ public static class Integ
         SaveSystem.PathOverride = System.IO.Path.Combine(Application.temporaryCachePath, "worldmvp_integ_save.json");
         return Run("save_load") + " slot " + SaveSystem.PathOverride;
     }
+    /// <summary>The F1 "Starts" tool's button for dev.historic (the scene reloads on the start).</summary>
+    public static string DevHistoric()
+    {
+        if (B == null) return "not in play mode";
+        if (B.Views != null) B.Views.SetView(ViewMode.God);
+        if (GodToolbar.Instance != null) GodToolbar.Instance.Activate(DevStart.ToolId);
+        return DevStart.Begin(World.Sim.Eras.ScenarioStarts.DevHistoric) ? "building dev.historic" : DevStart.LastError;
+    }
+    /// <summary>The Historic state of your people: era, mode, handover, the prince's own casts.</summary>
+    public static string Ages()
+    {
+        if (B == null) return "not in play mode";
+        var s = B.Sim.State;
+        var f = s.Factions.Factions[0];
+        int lost = 0; foreach (var st in s.Economy.Settlements) if (st.Faction != 0 && st.State == SettlementState.Active) lost++;
+        return "start " + (DevStart.Current ?? "-") + " era " + World.Sim.Eras.AgesApi.Current(s) + " mode " + World.Sim.Eras.AgesApi.Mode(s)
+            + " tick " + s.Tick + " handover " + World.Sim.Eras.AgesApi.HandoverTick(s, 0) + " auto " + FactionApi.IsAutonomous(s, 0)
+            + " princeCasts " + f.AutoCasts + " rivalHandover " + World.Sim.Eras.AgesApi.HandoverTick(s, 1) + " over " + s.Factions.GameOver + " " + s.Factions.Outcome + " " + s.Factions.OutcomeReason
+            + " campaign " + (s.Campaign != null) + " towns " + f.Towns;
+    }
     public static string WalkTour() => Run("walk_tour");
     public static string DuelDance() => Run("duel_dance");
     public static string CastAll1() { CastAll.Speed = 1f; return Run("cast_all"); }
