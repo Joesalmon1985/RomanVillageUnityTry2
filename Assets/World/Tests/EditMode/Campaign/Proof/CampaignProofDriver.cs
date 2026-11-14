@@ -26,6 +26,12 @@ namespace World.Sim.Tests
         public bool Away;
         /// <summary>Away: "I'm with you" once Mira waits for the player (at a tower, or holding at a threshold).</summary>
         public bool RejoinWhenWaiting;
+        /// <summary>
+        /// With the prince: away at the start; comes back (after <see cref="Delay"/>) only when Mira waits for the player (a
+        /// tower, a held threshold), does what she needs promptly ("Set it", "Fight"), and says "Go on without me" again
+        /// as soon as she sets out.
+        /// </summary>
+        public bool Wander;
         /// <summary>"Not that way" to every lead of a crystal the party still believes on its pedestal.</summary>
         public bool Reluctant;
         /// <summary>Lethal duels: these results first (injected through ResolveEncounter), then <see cref="Duel"/>.</summary>
@@ -59,10 +65,10 @@ namespace World.Sim.Tests
         public int OverrunsOfYou, OverrunsOfAsh, Looted;
         public int MaxPoints, MaxAshPoints;
         public bool RosterUnlocked;
-        public int InvariantChecks, TicksChecked;
+        public int InvariantChecks, TicksChecked, Rejoins;
         private string _key;
         private long _opened;
-        private bool _wentAway;
+        private bool _wentAway, _served;
         private readonly Custody[] _last = new Custody[4];
         private readonly HashSet<int> _resolvedIds = new HashSet<int>();
         private readonly HashSet<string> _dead = new HashSet<string>();
@@ -228,7 +234,7 @@ namespace World.Sim.Tests
             if (c.Phase != CampaignPhase.Running) return;
             var p = c.Party;
             var pol = Policy;
-            if (pol.Away && !_wentAway) { _wentAway = true; Send(new SetCompany { Present = false }); return; }
+            if ((pol.Away || pol.Wander) && !_wentAway) { _wentAway = true; Send(new SetCompany { Present = false }); return; }
             var top = CampaignApi.TopLead(S);
             string key = p.Mode + "|" + (top?.Id ?? 0) + "|" + p.ChoiceId + "|" + p.EncounterId + "|" + (c.Attempt?.Id ?? 0) + "|" + p.At;
             if (key != _key) { _key = key; _opened = S.Tick; }
@@ -238,14 +244,21 @@ namespace World.Sim.Tests
             if (!p.PlayerPresent)
             {
                 bool waiting = p.Mode == PartyMode.WaitingForPlayer || (p.Mode == PartyMode.AtThreshold && p.HoldAtThreshold);
-                if (pol.RejoinWhenWaiting && waiting && ready) Send(new SetCompany { Present = true });
+                // The player is called when she starts to wait and comes back Delay later (her queue may change meanwhile).
+                long since = p.Mode == PartyMode.AtThreshold ? p.WaitSinceTick : p.ModeSinceTick;
+                if ((pol.RejoinWhenWaiting || pol.Wander) && waiting && S.Tick - since >= pol.Delay) { Send(new SetCompany { Present = true }); Rejoins++; }
                 return;
             }
+            if (pol.Wander && _served && p.Mode == PartyMode.Travelling) { _served = false; Send(new SetCompany { Present = false }); return; }
+            if (pol.Wander) ready = true;   // back with her: prompt
             switch (p.Mode)
             {
                 case PartyMode.AtThreshold:
                     if (!pol.NeverFight && ready && Sim.Check(new CommitEncounter { EncounterId = p.EncounterId }).Ok)
+                    {
                         Send(new CommitEncounter { EncounterId = p.EncounterId });
+                        _served = true;
+                    }
                     return;
                 case PartyMode.AskingChoice:
                 {
@@ -262,7 +275,7 @@ namespace World.Sim.Tests
                         for (int i = 0; i < 4; i++)
                         {
                             var cr = new ConfirmRestore { Crystal = (Element)i };
-                            if (ready && Sim.Check(cr).Ok) { Send(cr); return; }
+                            if (ready && Sim.Check(cr).Ok) { Send(cr); _served = true; return; }
                         }
                     }
                     if (top == null) return;
@@ -342,6 +355,40 @@ namespace World.Sim.Tests
             var run = new ProofRun(sim, policy);
             foreach (var e in sim.DrainEvents()) if (e.GetType().Namespace == typeof(CampaignState).Namespace) run.Events.Add(e);
             return run;
+        }
+
+        /// <summary>
+        /// The proof's whole-campaign knob (section H): the skeleton made race-sized, on a copy only (the shipped skeleton is
+        /// not changed). It takes the authored pack's tuning and expedition timings (the first march with its spread, the
+        /// later ones, the carry), lets the expedition open with any of the four crystals, and gives every skeleton route
+        /// the shape of the Earth route: one more reading before the pedestal (a marker at the site's location that Mira
+        /// must read, a lead to it and an event that opens the way to the pedestal), so each route has the Earth route's
+        /// number of decisions and readings. The pedestal visit is padded by <paramref name="padTicks"/> for the Earth
+        /// route's stairs and underground walking that the skeleton's sites do not have.
+        /// </summary>
+        public static void RaceSkeleton(CampaignDefinition d, int padTicks)
+        {
+            var a = PackFiles.Load(PackFiles.Authored);
+            d.Tuning = Newtonsoft.Json.JsonConvert.DeserializeObject<CampaignTuning>(Newtonsoft.Json.JsonConvert.SerializeObject(a.Tuning));
+            d.Tuning.TakeTicks += padTicks;
+            for (int i = 0; i < d.Rival.Steps.Count && i < a.Rival.Steps.Count; i++)
+            {
+                d.Rival.Steps[i].MarchCost = a.Rival.Steps[i].MarchCost;
+                d.Rival.Steps[i].MarchSpread = a.Rival.Steps[i].MarchSpread;
+                d.Rival.Steps[i].CarryCost = a.Rival.Steps[i].CarryCost;
+            }
+            d.Rival.OpenWith = d.Crystals.Select(x => x.Id).ToList();
+            foreach (var cd in d.Crystals)
+            {
+                string loc = cd.Site.Location, id = cd.Id;
+                d.Location(loc).Markers.Add(new MarkerDef { Id = id + "_marks", Kind = MarkerKind.Inscription, Name = "the old marks", I = 0, J = -1 });
+                var at = MarkerRef.Surface(loc, id + "_marks");
+                var site = d.Leads.First(l => l.Id == id + "_site");
+                var known = site.Requires.ToList();
+                d.Leads.Add(new LeadDef { Id = id + "_marks", Title = "The old marks", Goal = new GoalDef { At = at, Action = QuestAction.Examine }, Requires = known, DoneWhen = id + ".way_known", ReasonLine = site.ReasonLine, Priority = site.Priority, Crystal = id });
+                d.Events.Add(new QuestEventDef { Id = id + "_read_marks", At = at, Action = QuestAction.Examine, Requires = known, Sets = new List<string> { id + ".way_known" } });
+                site.Requires = known.Concat(new[] { id + ".way_known" }).ToList();
+            }
         }
 
         /// <summary>A run continued from a save of another (same policy copy, its events so far kept).</summary>
