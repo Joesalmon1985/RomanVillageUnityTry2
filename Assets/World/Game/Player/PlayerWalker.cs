@@ -472,6 +472,8 @@ namespace World.Game
         /// <summary>Height of the walkable ground (hex tiles) under a point, else <see cref="BoardSpace.GroundY"/>.</summary>
         public static float GroundHeight(Vector3 p)
         {
+            // Interiors (package I5): an open region cell has its own floor height and no hex tile under it.
+            if (WalkGrid.TryRegionFloor(WalkLattice.ToCell(p), out float floorY)) return floorY;
             int n = Physics.RaycastNonAlloc(new Ray(new Vector3(p.x, 120f, p.z), Vector3.down), _hits, 200f, ~(1 << 2), QueryTriggerInteraction.Ignore);
             float best = float.NegativeInfinity;
             for (int i = 0; i < n; i++)

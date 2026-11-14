@@ -13,7 +13,9 @@ namespace World.Game
     /// terrain and numbers, camps of both peoples (cities larger, sites hollow), main roads and road sites, demons,
     /// your people's open proposals (the top one is where the prince wants you), the prince and the player. The world
     /// keeps running. Tapping a spot sets an auto-walk target that starts when the map closes (no teleport). Reads state
-    /// only and submits no command. Owner: package P.
+    /// only and submits no command. Owner: package P; from crystals I5 also the interior mode: inside an interior the map
+    /// opens on that interior (<see cref="MapMode.Interior"/>, drawn by <see cref="InteriorMapLayer"/>), and a line at
+    /// the top switches between the interior and the island. Other packages add content through <see cref="IMapLayer"/>.
     /// </summary>
     public static class MapScreen
     {
@@ -23,8 +25,13 @@ namespace World.Game
 
         public static event System.Action<bool> Toggled;
 
-        /// <summary>Island or interior (PRD_CRYSTALS I5; the island only until I5 lands).</summary>
+        /// <summary>
+        /// Island or interior (PRD_CRYSTALS I5). Set to the interior the player is in when the map opens; the line at the
+        /// top of the map switches it. Interior mode needs <see cref="Interiors.Current"/>.
+        /// </summary>
         public static MapMode Mode { get; set; } = MapMode.Island;
+        /// <summary>The interior the map shows in interior mode (the player's), or null.</summary>
+        public static string InteriorShown => Mode == MapMode.Interior ? Interiors.Current : null;
 
         private static readonly List<IMapLayer> s_layers = new List<IMapLayer>();
         /// <summary>The added layers, in drawing order.</summary>
@@ -41,6 +48,7 @@ namespace World.Game
             if (IsOpen) return;
             if (ViewSwitcher.Instance != null && ViewSwitcher.Instance.CurrentView == ViewMode.God) return;
             IsOpen = true;
+            Mode = Interiors.Current != null ? MapMode.Interior : MapMode.Island;
             Toggled?.Invoke(true);
         }
 
@@ -81,6 +89,9 @@ namespace World.Game
         private const int TexSize = 640;
         private Texture2D _base, _disc, _ring, _arrow;
         private float _extent; // half side of the mapped square, metres
+        private float _islandExtent;
+        private Vector2 _centre; // world x, z at the middle of the map
+        private Rect _switchRect;
         private Rect _rect;
         private GUIStyle _num, _label, _title, _small;
         private int _stylesFor = -1;
@@ -112,6 +123,12 @@ namespace World.Game
         {
             if (!MapScreen.IsOpen || _rect.width <= 0) return false;
             var gui = new Vector2(screen.x, Screen.height - screen.y);
+            if (_switchRect.width > 0 && _switchRect.Contains(gui) && Interiors.Current != null)
+            {
+                MapScreen.Mode = MapScreen.Mode == MapMode.Interior ? MapMode.Island : MapMode.Interior;
+                return true;
+            }
+            if (MapScreen.Mode == MapMode.Interior && InteriorMapLayer.Instance.TapSide(gui)) return true;
             if (!_rect.Contains(gui)) return false;
             var world = GuiToWorld(gui);
             foreach (var l in MapScreen.Layers)
@@ -125,12 +142,12 @@ namespace World.Game
         public Vector3 GuiToWorld(Vector2 gui)
         {
             float u = (gui.x - _rect.x) / _rect.width, v = 1f - (gui.y - _rect.y) / _rect.height;
-            return new Vector3((u * 2f - 1f) * _extent, BoardSpace.GroundY, (v * 2f - 1f) * _extent);
+            return new Vector3(_centre.x + (u * 2f - 1f) * _extent, BoardSpace.GroundY, _centre.y + (v * 2f - 1f) * _extent);
         }
 
         public Vector2 WorldToGui(Vector3 w)
         {
-            float u = (w.x / _extent + 1f) * 0.5f, v = (w.z / _extent + 1f) * 0.5f;
+            float u = ((w.x - _centre.x) / _extent + 1f) * 0.5f, v = ((w.z - _centre.y) / _extent + 1f) * 0.5f;
             return new Vector2(_rect.x + u * _rect.width, _rect.y + (1f - v) * _rect.height);
         }
 
@@ -141,7 +158,7 @@ namespace World.Game
             if (b == null || b.Sim == null) return;
             var board = b.Sim.State.Board;
             var t = board.Topology;
-            _extent = BoardSpace.BoardRadius + 45f;
+            _extent = _islandExtent = BoardSpace.BoardRadius + 45f;
             _base = new Texture2D(TexSize, TexSize, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave, name = "MapBase" };
             var ids = new int[TexSize * TexSize];
             for (int y = 0; y < TexSize; y++)
@@ -238,6 +255,10 @@ namespace World.Game
             float size = Mathf.Min(Screen.height - UiStyle.Px(110), Screen.width - UiStyle.Px(420));
             size = Mathf.Max(size, Mathf.Min(Screen.width, Screen.height) * 0.6f);
             _rect = new Rect(UiStyle.Px(30), (Screen.height - size) / 2 + UiStyle.Px(20), size, size);
+            // Interior mode: the interior's own map (InteriorMapLayer), the player and the walk target; nothing of the island.
+            var shown = Interiors.Get(MapScreen.InteriorShown);
+            if (shown != null) { OnGuiInterior(shown, size); return; }
+            _centre = Vector2.zero; _extent = _islandExtent;
             GUI.DrawTexture(_rect, _base);
             float mpp = size / (2f * _extent); // GUI px per metre
 
@@ -321,7 +342,21 @@ namespace World.Game
                 GUI.color = Color.white; GUI.DrawTexture(new Rect(p.x - d / 2, p.y - d / 2, d, d), _ring);
                 UiStyle.ShadowLabel(new Rect(p.x + d / 2 + 2, p.y - UiStyle.Px(12), UiStyle.Px(200), UiStyle.Px(24)), MapScreen.Target.HasValue ? "Walk here" : "Walking here", _label);
             }
-            if (w != null)
+            if (w != null && Interiors.Current != null)
+            {
+                // Underground: the player is shown at the place the interior lies under.
+                var under = Interiors.Get(Interiors.Current);
+                if (under != null && Interiors.TryWorld(new World.Sim.Campaign.MarkerRef(under.Location ?? "", "", ""), out var above))
+                {
+                    var p = WorldToGui(above);
+                    float d = UiStyle.Px(30);
+                    GUI.color = new Color(1f, 0.95f, 0.3f);
+                    GUI.DrawTexture(new Rect(p.x - d / 2, p.y - d / 2, d, d), _ring);
+                    GUI.color = Color.white;
+                    UiStyle.ShadowLabel(new Rect(p.x + d / 2, p.y + UiStyle.Px(2), UiStyle.Px(360), UiStyle.Px(24)), "You, below in " + under.Name, _label);
+                }
+            }
+            else if (w != null)
             {
                 var p = WorldToGui(w.Position);
                 float d = UiStyle.Px(30);
@@ -334,8 +369,81 @@ namespace World.Game
                 UiStyle.ShadowLabel(new Rect(p.x + d / 2, p.y + UiStyle.Px(2), UiStyle.Px(80), UiStyle.Px(24)), "You", _label);
             }
             GUI.color = Color.white;
+            DrawSwitch();
             DrawSide(s, new Rect(_rect.xMax + UiStyle.Px(30), _rect.y, Screen.width - _rect.xMax - UiStyle.Px(60), _rect.height), mpp);
         }
+
+        /// <summary>The interior map: the interior's square, its layer (cells, markers, party), the walk target and the player.</summary>
+        private void OnGuiInterior(InteriorModel m, float size)
+        {
+            InteriorMapLayer.Frame(m, out _centre, out _extent);
+            GUI.DrawTexture(_rect, UiStyle.SolidTexture(new Color(0.07f, 0.065f, 0.06f, 1f)));
+            foreach (var l in MapScreen.Layers)
+            {
+                try { l.Draw(this); }
+                catch (System.Exception e) { Debug.LogException(e); }
+                GUI.color = Color.white;
+            }
+            var w = PlayerWalker.Instance;
+            var target = MapScreen.Target ?? (w != null ? w.AutoGoal : null);
+            if (target.HasValue && m.Floor.Contains(target.Value))
+            {
+                var p = WorldToGui(WalkLattice.ToWorld(target.Value));
+                float d = UiStyle.Px(22);
+                GUI.color = Color.white; GUI.DrawTexture(new Rect(p.x - d / 2, p.y - d / 2, d, d), _ring);
+                UiStyle.ShadowLabel(new Rect(p.x + d / 2 + 2, p.y - UiStyle.Px(12), UiStyle.Px(200), UiStyle.Px(24)), MapScreen.Target.HasValue ? "Walk here" : "Walking here", _label);
+            }
+            if (w != null)
+            {
+                var p = WorldToGui(w.Position);
+                float d = UiStyle.Px(34);
+                var mtx = GUI.matrix;
+                GUIUtility.RotateAroundPivot(w.Yaw, p);
+                GUI.color = new Color(1f, 0.95f, 0.3f);
+                GUI.DrawTexture(new Rect(p.x - d / 2, p.y - d / 2, d, d), _arrow);
+                GUI.matrix = mtx;
+                GUI.color = Color.white;
+                UiStyle.ShadowLabel(new Rect(p.x + d / 2, p.y + UiStyle.Px(2), UiStyle.Px(80), UiStyle.Px(24)), "You", _label);
+            }
+            GUI.color = Color.white;
+            DrawSwitch();
+            InteriorMapLayer.Instance.DrawSide(this, m, new Rect(_rect.xMax + UiStyle.Px(30), _rect.y, Screen.width - _rect.xMax - UiStyle.Px(60), _rect.height));
+        }
+
+        /// <summary>The line at the top that switches between the interior and the island (only underground).</summary>
+        private void DrawSwitch()
+        {
+            _switchRect = Rect.zero;
+            var m = Interiors.Get(Interiors.Current);
+            if (m == null) return;
+            bool inside = MapScreen.Mode == MapMode.Interior;
+            string text = inside ? LandLook.Capitalise(m.Name) + "   \u25B8 tap here for the island" : "The island   \u25B8 tap here for " + m.Name;
+            _switchRect = new Rect(_rect.x, _rect.y - UiStyle.Px(40), _rect.width, UiStyle.Px(36));
+            GUI.DrawTexture(_switchRect, UiStyle.SolidTexture(new Color(0.12f, 0.11f, 0.10f, 0.9f)));
+            UiStyle.ShadowLabel(new Rect(_switchRect.x + UiStyle.Px(10), _switchRect.y + UiStyle.Px(4), _switchRect.width - UiStyle.Px(20), _switchRect.height), text, _label);
+        }
+
+        /// <summary>The rect of the switch line (tests), zero on the surface.</summary>
+        public Rect SwitchRect => _switchRect;
+
+        // ---------------- drawing helpers for map layers (IMapLayer) ----------------
+
+        /// <summary>GUI pixels per world metre on the map now.</summary>
+        public float PixelsPerMetre => _rect.width / Mathf.Max(1f, 2f * _extent);
+        /// <summary>A filled disc of a diameter in GUI pixels at a world point.</summary>
+        public void DrawDisc(Vector3 world, float diameter, Color c) { var p = WorldToGui(world); GUI.color = c; GUI.DrawTexture(new Rect(p.x - diameter / 2, p.y - diameter / 2, diameter, diameter), _disc); GUI.color = Color.white; }
+        /// <summary>A ring of a diameter in GUI pixels at a world point.</summary>
+        public void DrawRing(Vector3 world, float diameter, Color c) { var p = WorldToGui(world); GUI.color = c; GUI.DrawTexture(new Rect(p.x - diameter / 2, p.y - diameter / 2, diameter, diameter), _ring); GUI.color = Color.white; }
+        /// <summary>A label beside a world point (map text style).</summary>
+        public void DrawLabel(Vector3 world, string text, float offsetPx = 12f) { var p = WorldToGui(world); UiStyle.ShadowLabel(new Rect(p.x + offsetPx, p.y - UiStyle.Px(12), UiStyle.Px(360), UiStyle.Px(24)), text, _label); }
+        /// <summary>A straight line between two world points (GUI pixels wide).</summary>
+        public void DrawLine(Vector3 a, Vector3 b, float width, Color c) => Line(WorldToGui(a), WorldToGui(b), width, c);
+        /// <summary>The map's text styles for layers: a label, a title and small body text.</summary>
+        public GUIStyle LabelStyle => _label;
+        public GUIStyle TitleStyle => _title;
+        public GUIStyle SmallStyle => _small;
+        public Texture DiscTexture => _disc;
+        public Texture RingTexture => _ring;
 
         private void Marker(Vector3 world, Color c, string name)
         {
