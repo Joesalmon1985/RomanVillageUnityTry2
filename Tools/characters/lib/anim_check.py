@@ -4,7 +4,9 @@ Nothing here trusts the generator: the armature is posed by Blender from the act
 are read back from the posed bones. verify.py (WP-2) can call check_clips(arm, baked) and use the 'ok' flags.
 
 Foot planting: while a foot is marked planted, the point it stands on (heel edge after the strike, the sole
-centre while flat, the toe edge once the heel is up) must stay where it is on the ground. The ground of an in-place
+while flat, the toe edge once the heel is up) must stay where it is on the ground. One stance is measured as one
+piece: between two frames the movement is taken at a point that is on the ground in both (heel edge through the
+strike, toe edge once the heel is up) and the movements are added up over the stance. The ground of an in-place
 clip is the frame that moves with the game's root: forward by the clip's travel so far, turned by its yaw so far.
   speed_cm_s   largest frame-to-frame speed of the standing point against the ground (PRD 5.7 limit: 2 cm/s)
   drift_mm     largest distance of the standing point from where it was planted, on whole frames (limit 3 mm)
@@ -68,32 +70,62 @@ def foot_report(arm, baked, rig=None):
             world[s][t] = {c: Rz @ (M @ p) + Vector((0.0, -dist, 0.0)) for c, p in pts[s].items()}
     for s in "LR":
         con = baked.contact[s]
+        d_flat = (rig.foot[s].toe - rig.foot[s].heel).length
+
+        def xy(t, c):
+            w = world[s][t][c]
+            return Vector((w.x, w.y))
+
+        def heel_flat(t, c):
+            """Where the heel is (or would be with the foot flat): used only when a stance goes from heel to toe
+            between two frames with no flat frame in between (fast gaits)."""
+            if c != C_TOE:
+                return xy(t, C_HEEL)
+            h = xy(t, C_TOE) - xy(t, C_HEEL)
+            h = h.normalized() if h.length > 1e-6 else Vector((0.0, -1.0))
+            return xy(t, C_TOE) - h * d_flat
+
+        def step(t0, c0, t1, c1):
+            """Ground movement of the foot between two planted samples, measured at a point that stands on the
+            ground at both: the heel edge, the toe edge, or the sole."""
+            if c0 == c1:
+                return xy(t1, c1) - xy(t0, c0)
+            pair = {c0, c1}
+            if pair == {C_HEEL, C_FLAT}:
+                return xy(t1, C_HEEL) - xy(t0, C_HEEL)
+            if pair == {C_FLAT, C_TOE}:
+                return xy(t1, C_TOE) - xy(t0, C_TOE)
+            return heel_flat(t1, c1) - heel_flat(t0, c0)
+
         segs = []
         start = None
         for i in range(n + 1):
             c = int(con[i])
-            if start is not None and (c != con[start]):
-                segs.append((start, i - 1, int(con[start])))
+            if start is not None and c == C_NONE:
+                segs.append((start, i - 1))
                 start = None
             if start is None and c != C_NONE:
                 start = i
         if start is not None:
-            segs.append((start, n, int(con[start])))
+            segs.append((start, n))
         f_speed = f_drift = f_lift = f_sub = 0.0
         planted = 0
-        for a, b, c in segs:
+        for a, b in segs:
             planted += b - a + 1
-            p0 = world[s][float(a)][c]
-            prev = p0
+            acc = Vector((0.0, 0.0))
             for i in range(a, b + 1):
-                p = world[s][float(i)][c]
-                f_speed = max(f_speed, (Vector((p.x - prev.x, p.y - prev.y))).length * FPS * 100.0)
-                prev = p
-                f_drift = max(f_drift, Vector((p.x - p0.x, p.y - p0.y)).length * 1000.0)
-                f_lift = max(f_lift, abs(p.z) * 1000.0)
-                if i < b:
-                    ph = world[s][i + 0.5][c]
-                    f_sub = max(f_sub, Vector((ph.x - p0.x, ph.y - p0.y)).length * 1000.0)
+                c = int(con[i])
+                f_lift = max(f_lift, abs(world[s][float(i)][c].z) * 1000.0)
+                if i == b:
+                    break
+                c1 = int(con[i + 1])
+                if c == c1:                      # between the keys, where the player's clock may land
+                    half = step(float(i), c, i + 0.5, c)
+                    f_sub = max(f_sub, (acc + half).length * 1000.0)
+                d = step(float(i), c, float(i + 1), c1)
+                f_speed = max(f_speed, d.length * FPS * 100.0)
+                acc = acc + d
+                f_drift = max(f_drift, acc.length * 1000.0)
         out["feet"][s] = {"planted_frames": planted, "segments": len(segs), "speed_cm_s": round(f_speed, 3),
                           "drift_mm": round(f_drift, 3), "drift_halfframe_mm": round(max(f_sub, f_drift), 3),
                           "lift_mm": round(f_lift, 3)}
