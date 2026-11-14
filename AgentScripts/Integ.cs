@@ -88,6 +88,34 @@ public static class Integ
         B.Avatar.Teleport(camp.Spawn, camp.SpawnHeading);
         return "home";
     }
+    public static string LookAtMark()
+    {
+        var s = B.Sim.State;
+        var top = FactionApi.Top(s, 0);
+        if (top == null) return "no proposal";
+        FactionApi.ProposalTarget(s, top.Id, out double x, out double z, out _);
+        var target = new Vector3((float)x, 0, (float)z);
+        var cell = WalkLattice.ToCell(target);
+        for (int h = 0; h < 6; h++)
+        {
+            var c = cell + WalkLattice.Dir(h) * 2;
+            if (WalkGrid.IsBlocked(c)) continue;
+            B.Avatar.StopAuto();
+            B.Avatar.Teleport(c, (h + 3) % 6);
+            return "at " + c + " looking at " + FactionApi.ProposalTitle(s, top.Id);
+        }
+        return "blocked";
+    }
+    public static string CastTop()
+    {
+        var s = B.Sim.State;
+        var top = FactionApi.Top(s, 0);
+        if (top == null) return "no proposal";
+        FactionApi.ProposalTarget(s, top.Id, out double x, out double z, out _);
+        var cam = ViewSwitcher.Instance.ActiveCamera;
+        var sp = cam.WorldToScreenPoint(new Vector3((float)x, 0, (float)z));
+        return PointerInput.TapAt(sp).ToString();
+    }
     public static string MeasureFps() { B.AutoPlay.Run(new AutoPlayScript("fps").MeasureFps("late game first person", 5f)); return "measuring"; }
     public static string TurnRight() { B.Avatar.TurnRight(); return "h" + B.Avatar.Heading; }
     public static string TurnLeft() { B.Avatar.TurnLeft(); return "h" + B.Avatar.Heading; }

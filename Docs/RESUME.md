@@ -30,6 +30,8 @@ Owner-agreed change from the packaged MVP on `main` (`189466f`, still intact, ex
 
 Tag `pre-F0` marks the skeleton all packages started from.
 
+**Update 14 Nov 2026: step 1 below is done (tag `pre-integrated-1`): the joins are fixed, `dotnet` 201, EditMode 201 and PlayMode 51 pass, `walk_tour`, `duel_dance` and `cast_all` run. See the last entry of `Docs/PROGRESS.md` for what ran and what is still rough. Next is step 2.**
+
 ## What to do next, in order
 
 1. **Integration branch (`WorldMVP`).** Open Unity on it, get it compiling, run `dotnet test DotNet`, EditMode and PlayMode. Finish the join list:

@@ -100,7 +100,7 @@ namespace World.Game
                 DiscXY(dots, 0f, 0.055f, ink, -0.07f, false, new Vector3(x, -0.55f, 0));
             }
             if (pips > 0) LandLook.Part(_token, "Pips", dots.ToMesh("pips " + Number), LandLook.Unlit, false);
-            _halo = LandLook.Part(_token, "Halo", LandLook.Cached("token/halo", m => DiscXY(m, 0f, TokenRadius * 1.8f, new Color(1f, 0.75f, 0.25f), 0.05f, true)), LandLook.Additive, false);
+            _halo = LandLook.Part(_token, "Halo", LandLook.Cached("token/halo2", m => DiscXY(m, 0f, TokenRadius * 1.5f, new Color(0.40f, 0.30f, 0.10f), 0.05f, true)), LandLook.Additive, false);
             _halo.SetActive(false);
             _stopMark = LandLook.Part(_token, "Stopped", LandLook.Cached("token/stop", m =>
             {
@@ -119,14 +119,14 @@ namespace World.Game
 
             // Roll effects (hidden until a roll pays here).
             var wc = LandLook.WareColor(_ware.Value);
-            _beam = LandLook.Part(transform, "PaidBeam", LandLook.Cached("token/beam/" + (int)_ware.Value, m =>
+            _beam = LandLook.Part(transform, "PaidBeam", LandLook.Cached("token/beam2/" + (int)_ware.Value, m =>
             {
-                LandShapes.FadeBeam(m, Vector3.zero, 5.8f, 4.5f, 22f, 16, new Color(wc.r, wc.g, wc.b) * 0.6f);
-                LandShapes.FadeBeam(m, Vector3.zero, 2.2f, 1.0f, 34f, 12, new Color(1f, 0.9f, 0.6f) * 0.5f);
+                LandShapes.FadeBeam(m, Vector3.zero, 1.6f, 1.0f, 16f, 12, new Color(wc.r, wc.g, wc.b) * 0.20f); // soft: a roll must not white out the view
+                LandShapes.FadeBeam(m, Vector3.zero, 0.5f, 0.2f, 24f, 8, new Color(1f, 0.9f, 0.6f) * 0.18f);
             }), LandLook.Additive, false);
             _beam.SetActive(false);
-            _ring = LandLook.Part(transform, "PaidRing", LandLook.Cached("token/ring/" + (int)_ware.Value, m =>
-                LandShapes.Ring(m, new Vector3(0, 0.15f, 0), 6.2f, 0.7f, 32, new Color(wc.r, wc.g, wc.b))), LandLook.Additive, false);
+            _ring = LandLook.Part(transform, "PaidRing", LandLook.Cached("token/ring2/" + (int)_ware.Value, m =>
+                LandShapes.Ring(m, new Vector3(0, 0.15f, 0), 6.2f, 0.5f, 32, new Color(wc.r, wc.g, wc.b) * 0.5f)), LandLook.Additive, false);
             _ring.SetActive(false);
             _paidText = Signs.Text(transform, "+4", new Vector3(0, TokenHeight + 1.8f, 0), 1.5f, new Color(1f, 0.85f, 0.15f), 0f);
             _paidText.name = "PaidText";
@@ -329,7 +329,7 @@ namespace World.Game
                 float k = 1f - f / FlareSeconds;
                 float pulse = 0.5f + 0.5f * Mathf.Sin(f * 12f);
                 _token.localScale = Vector3.one * (1f + 0.45f * k * (0.6f + 0.4f * pulse));
-                _mpb.SetColor("_Color", Color.Lerp(Color.white, new Color(1.6f, 1.3f, 0.5f), k * pulse));
+                _mpb.SetColor("_Color", Color.Lerp(Color.white, new Color(1.25f, 1.1f, 0.6f), k * pulse));
                 _disc.SetPropertyBlock(_mpb);
             }
             else if (_halo.activeSelf)

@@ -340,3 +340,39 @@ Ran:
 - The proof (`Docs/ECONOMY_PROOF.md`): all criteria pass, including the new ones: 45 s player wins 11 of 11 (median 15.9 min); 60 s player wins 9 of 11 (3 by overrun, 6 at the time limit) and is never overrun; 90 s player: 7 draws, 4 overrun losses; ignored prince overrun 11 of 11 (median 14.7 min, earliest 11.3); prompt games 9.5-13.6 min. In the 45 s player's 11 wins: fed warriors in 10, a city in 9, all five worked goods made and used in 9, warriors made the margin in 5; 2.8 banishes per game; never banishing (paired run) turned a 15.9-minute win into a 12.1-minute defeat. Mean walk between casts 60-90 m (5-7 s at 12.5 m/s); 17-24 casts per game.
 
 Not run: Unity; nothing played by hand. Still weak: the 90 s player loses 4 of 11 by overrun (an idle player and a 90 s player differ by about one point of strength, and the rule that overruns every idle player also overruns some slow ones); prompt games end at 9.5-13.6 minutes, mostly right after the 8-minute warning grace, often before the first warrior; the rival is weak against an active player (final strength 1-2 against the 45 s player), partly because its camps are often demon-held.
+
+## Integration 1: sim, player, views and dance circle joined (13-14 Nov 2026, branch `refactor/prehistoric`, tag `pre-integrated-1`)
+
+Merged in order `refactor/sim` (4868ca0), `pre/p`, `pre/v`, `pre/d` (four merge commits; the only conflicts were the change logs and this file, all sides kept). The prince (`pre/n`) and lighting (`pre/l`) are not merged; `PrinceInstaller` is still the F-0 stub, so nobody leads the player yet.
+
+Joins fixed:
+
+- **Carriers and shipments against the real sim.** The carrier views needed no change: they already read `EconomyApi.CarrierPosition` and the carrier's fields. New test `IntegrationTests.CarrierViews_FollowTheRealSim_PositionsLoadsAndPorters` grows the people with their own proposals and checks one view per carrier, each moving carrier within 5 cm of the sim's position, loads shown, porter look on main-road legs.
+- **Terrain clearings.** `LandViews.SyncClearings` adds `CampLayout.Clearings`: no trees or crops in the dance circle, tents, Mira's duel ground or the spawn view. Checked by eye, no test. The city palisade (8 m) and store piles (2.2 m) were checked against the dressing by numbers (nearest prop edge 8.9 m from the corner) and by eye in a late-game capture of the home city; no change was needed. Plot 635 is reserved in the sim, so nothing is built on the circle.
+- **Pointer and casting.** P's raycast already takes the ground from the hex tile behind view triggers; the hover ring now prefers "press to cast" over a thing standing on a proposal's ground. `SpellCaster` ignores a second press on the same proposal before the next tick (found by `cast_all`, which cast one proposal 16 times in a row at first). Test `Cast_OnTheRealViews_ByScreenPress_SiteCarriersBuilding`: too far is refused, a screen press on the mark casts, the site appears, a carrier delivers, the hut is finished.
+- **Light.** The cast mark's beam is slim and soft and hidden within 9 m; the cast effect is a slim beam; the roll's pay beam and token halo (which also whited out the view in the late game) are toned down.
+- **No HUD in normal play.** The dance's score strip, key hints, judgement words, banners and choice bar show only with the HUD on (H). Sol calls the count-in, blocks kept and missed, the bass, the ending choice and the ending by speech bubble; the fire jumps on a kept block and sinks on a missed one. Villagers' nameplates show only with the HUD. The duel's key-hint line shows only with the HUD (it also still said Tab switches the camera). The top-left debug text was already gone with package P. The duel's own panels and the dance's result panel stay.
+- **Dance input** from P's touch strips was already wired (`TouchStrips.Pressed/Held`); now tested with `SimulatePress`. `duel_dance` and the encounter tests' `Accept` walk the lattice, tap the villager and answer by the bubble's reply.
+- **People** wear hides and furs (actor factory and land figures). **Map and HUD** show both strengths, the overrun margin from the state's tuning and the rival's current pace (`FactionApi.RivalCastDelay`).
+- F1 tools `AddWares` and `SpawnDemon` stay unavailable (the sim has no such commands). `Assets/World/Sim` was not edited.
+
+New: AutoPlay `cast_all` (`Assets/World/Game/Boot/CastAllScript.cs`), usable packaged as `-autoplay cast_all [-speed N]`.
+
+Ran (editor, 14 Nov):
+
+- `dotnet test DotNet`: 201 passed.
+- Unity EditMode: 201 passed. PlayMode: 51 passed (47 from the packages plus 4 new `IntegrationTests`, one of which plays `cast_all` to an ending at time scale 8). Console: 0 errors.
+- AutoPlay in Play Mode at 1920x1080: `walk_tour` OK (camp to the neighbouring corner in 4.43 s); `duel_dance` OK (duel won after 3 casts, dance 4 blocks passed, Spirit call, HUD off); `cast_all` OK twice at time scale 8 after the first casts at 1: Victory by overrun at game minute 14.8 with 36 casts, and Victory by overrun at minute 12.7 with 29 casts, 2570 m walked (about 90 m per cast), every cast by a screen press. The two runs differ because walking is in real frames, so the script is not deterministic.
+- Frame rate, editor, 1920x1080, late game after the ending (6 camps, 26 buildings, 38 carriers), time scale 1: average 283 to 315 fps, worst frame 25 ms. At time scale 8 the editor dropped to 32 to 45 fps (several ticks and view syncs per frame).
+- Captures looked at (`Evidence/screenshots`, not committed): spawn, the cast mark, a cast and its site and the hut rising, a road site with a porter walking to it, carriers on the home camp's local paths, the home city with palisade, the late game, the map, the HUD, the dance mid-phrase with the HUD off, Mira's duel.
+
+Not done, rough, or not verified:
+
+- Nothing was played by hand. No Windows build, no packaged run of `cast_all`.
+- The capture of a shipment on a main road shows the road and camps but the porter is too far away to judge; porters were seen close only walking to a road site.
+- A gatherer of the Gleaners' basket walks in a straight line to the stock patch and so crosses the dance circle; during the dance (clock held) one can stand frozen among the dancers.
+- Idle carriers wait 4 m from the storehouse, on the cells the player walks through; a figure within 1.1 m of the eye is now hidden, but one just beyond that fills the edge of the view.
+- Tents and other dressing do not block walking, so the player can walk through a tent.
+- From the spawn the first cast mark is behind the player's left shoulder; without the prince nothing points to it.
+- Late-game playability by hand at 1x (walking 50 to 90 m between casts) is unproven; the sim-side weaknesses listed under package S stand.
+- The clearings and the palisade check have no automated test.

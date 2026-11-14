@@ -304,7 +304,8 @@ namespace World.Game
                 EncounterUi.Label(tr, toast, EncounterUi.Body, EncounterUi.Text, TextAnchor.MiddleCenter);
             }
             var footer = new Rect(px(24), sh - px(40), sw - px(48), px(32));
-            EncounterUi.Shadow(footer, "Tab: switch camera (the duel keeps running)     Esc: pause / leave", EncounterUi.Hint, EncounterUi.Dim, TextAnchor.MiddleLeft);
+            // Key hints are HUD text: shown only with the HUD on (H). (Tab no longer switches the camera: it is the map.)
+            if (Hud.Visible) EncounterUi.Shadow(footer, "Esc: pause / leave", EncounterUi.Hint, EncounterUi.Dim, TextAnchor.MiddleLeft);
         }
 
         private void DrawSide(Rect r, bool player)
