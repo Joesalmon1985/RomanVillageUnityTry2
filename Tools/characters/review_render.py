@@ -637,7 +637,7 @@ def job_duel(a_key, b_key, costume):
     D = 5.5
     # A at the origin facing +Y (toward B); B at y = D facing -Y (toward A)
     sa, sb = Seq(A, (0, 0, 0), 180.0), Seq(B, (0, D, 0), 0.0)
-    fire = (1.6, D * 0.5, 0.35)
+    fire = (2.1, D * 0.3, 0.35)                                     # a camp fire beside the pair, nearer the caster
     setup_stage((960, 540), samples=12, fire_at=fire)
     bolt, blight = make_bolt()
     flight = 18                                                     # 0.6 s
@@ -701,15 +701,15 @@ def job_duel(a_key, b_key, costume):
 
     def cams(t):
         # behind and beside A, about 2 m up: A left of centre in three-quarter back view, B's face in the right half
-        eye = Vector((1.35, -2.6, 1.95))
-        tgt = Vector((-0.2, D * 0.62, 1.05))
-        return eye, tgt, 30
+        eye = Vector((1.25, -2.4, 1.95))
+        tgt = Vector((-0.15, D * 0.7, 1.0))
+        return eye, tgt, 40
 
     total = max(sa.total, sb.total)
     render_seq("duel_%s_%s_%s" % (a_key, b_key, costume), [sa, sb], cams, total, extra=extra)
 
     def cams_side(t):
-        return Vector((5.2, D * 0.5, 1.5)), Vector((0, D * 0.5, 0.95)), 32
+        return Vector((8.6, D * 0.5, 1.6)), Vector((0, D * 0.5, 0.95)), 32
     render_seq("duel_%s_%s_%s_side" % (a_key, b_key, costume), [sa, sb], cams_side, total, extra=extra)
     shot_log("duel_beats_%s_%s_%s" % (a_key, b_key, costume),
              {"beats": [{"release": r, "from": c.key, "to": o.key, "reaction": x} for r, c, o, x in beats],

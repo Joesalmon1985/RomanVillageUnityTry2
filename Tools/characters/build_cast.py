@@ -217,7 +217,10 @@ def main():
         common.log(k, "skipped: demon rig is WP-13")
     for k, s in summary.items():
         common.log("RESULT", k, s)
-    common.write_json(os.path.join(args.out, "build_summary.json"), summary)
+    sp = os.path.join(args.out, "build_summary.json")
+    merged = common.read_json(sp) if os.path.isfile(sp) else {}
+    merged.update(summary)                    # earlier runs of other characters stay listed
+    common.write_json(sp, merged)
     if any(not s.startswith(("PASS", "built")) for s in summary.values()):
         sys.exit(1)
 
