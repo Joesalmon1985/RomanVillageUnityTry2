@@ -76,16 +76,20 @@ namespace World.Game.Tests
             yield return null; yield return null;
             Assert.IsTrue(marker.IsTop && marker.PillarShown, "the beam is a beacon from afar");
             var target = marker.Target;
-            // Too far: a press on the mark is refused with "walk closer".
+            // Too far (from where the prince starts): a press on the mark is refused with "walk closer".
+            var campL = new CampLayout(S.Board);
+            Boot.Avatar.Teleport(campL.PrinceStart, campL.SpawnHeading);
+            yield return null;
+            Assert.IsTrue(marker.PillarShown, "the beam still shows from further off");
             Assert.Greater(SpellCaster.DistanceTo(top.Id), (float)FactionApi.CastRangeMetres(S));
             Assert.AreEqual(TapOutcome.CastRefused, PointerInput.TapGround(target));
             Assert.AreEqual(SpellCaster.TooFar, SpellCaster.LastResult.Reason);
-            // Stand two steps from the plot, turned to it, and click the mark on screen (through its trigger collider).
+            // Stand one step from the plot, turned to it, and click the mark on screen (through its trigger collider).
             var cell = WalkLattice.ToCell(target);
             Cell? stand = null; int heading = 0;
             for (int h = 0; h < 6 && !stand.HasValue; h++)
             {
-                var c = cell + WalkLattice.Dir(h) * 2;
+                var c = cell + WalkLattice.Dir(h);
                 if (!WalkGrid.IsBlocked(c)) { stand = c; heading = (h + 3) % 6; }
             }
             Assert.IsTrue(stand.HasValue, "a cell to cast from");

@@ -265,7 +265,9 @@ namespace World.Game
             var s = WorldBootstrap.Instance != null ? WorldBootstrap.Instance.Sim.State : null;
             var t = hit.Target;
             Vector3 centre; float radius; Color c;
-            if (t != null && !(t is HexView))
+            // The ground of an open proposal wins over a thing standing on it (a camp, a stock patch): a tap there casts.
+            bool castGround = hit.ProposalId >= 0 && !(t is IFollowable || t is IInteractable);
+            if (t != null && !(t is HexView) && !castGround)
             {
                 Bounds(t.transform, out centre, out radius);
                 bool person = t is IFollowable || t is IInteractable;

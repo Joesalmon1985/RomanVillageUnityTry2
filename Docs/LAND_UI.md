@@ -71,6 +71,6 @@ Views per state item for both peoples (camps, plots, buildings, roads, carriers,
 ## Integration notes (13 Nov 2026, `pre-integrated-1`)
 
 - The terrain honours `CampLayout.Clearings` (dance circle, tents and props, Mira's duel ground, the spawn view) through `LandViews.SyncClearings`.
-- The top proposal's beam is slim and soft and hidden within 22 m of the viewer (`ProposalMarkerView.PillarHideMetres`, `PillarShown`).
+- The top proposal's beam is slim and soft and hidden within 9 m of the viewer (`ProposalMarkerView.PillarHideMetres`, `PillarShown`).
 - Carriers, porters, gatherers, builders and warriors wear hides and furs in their people's colour; a figure the eye is inside of (within 1.1 m) is not drawn.
 - `IntegrationTests.CarrierViews_FollowTheRealSim_PositionsLoadsAndPorters` checks the carrier views against the real logistics (one view per carrier, on the sim's position within 5 cm, load shown, porter look on main-road legs).

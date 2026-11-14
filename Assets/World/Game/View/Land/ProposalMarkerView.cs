@@ -22,7 +22,7 @@ namespace World.Game
         public Vector3 Target { get; private set; }
 
         /// <summary>Within this distance of the viewer the top proposal's beam is hidden.</summary>
-        public const float PillarHideMetres = 22f;
+        public const float PillarHideMetres = 9f;
         public bool PillarShown => _pillar != null && _pillar.activeSelf;
         private bool _near;
         private Renderer[] _glow;
