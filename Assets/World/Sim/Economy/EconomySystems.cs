@@ -135,15 +135,17 @@ namespace World.Sim.Economy
                 var def = BuildingDefs.Get(b.Type);
                 if (def == null || !def.IsCollector) continue;
                 var ware = TerrainInfo.RawWare(def.Terrain).Value;
+                int cycle = GradeLogic.CycleTicks(e.Tuning, def, b.Grade);
+                int perUnit = GradeLogic.YieldPerUnit(def, b.Grade);
 
                 if (b.WorkProgress > 0)
                 {
                     b.WorkProgress++;
-                    if (b.WorkProgress < def.WorkTicks) continue;
+                    if (b.WorkProgress < cycle) continue;
                     b.WorkProgress = 0;
-                    b.Stock[(int)ware] += def.Yield;
-                    e.Ledger.Collected[(int)ware] += def.Yield;
-                    ev.Add(new Collected { BuildingId = b.Id, Hex = b.WorkHex, Ware = ware, Amount = def.Yield });
+                    b.Stock[(int)ware] += perUnit;
+                    e.Ledger.Collected[(int)ware] += perUnit;
+                    ev.Add(new Collected { BuildingId = b.Id, Hex = b.WorkHex, Ware = ware, Amount = perUnit });
                     b.WorkHex = -1;
                 }
 
@@ -159,23 +161,25 @@ namespace World.Sim.Economy
                 string reason = null;
                 int rw = -1;
                 var hs = b.Hex >= 0 && b.Hex < e.Hexes.Length ? e.Hexes[b.Hex] : null;
-                if (_hooks.SettlementHalted(s, b.Settlement)) reason = Reasons.DemonOnRoute;
-                else if (TotalStock(b) + def.Yield > e.Tuning.CollectorStore) { reason = Reasons.OutputFull; rw = (int)ware; }
+                if (b.Upgrading) reason = null; // being improved: no new cycle (the one running has finished above)
+                else if (_hooks.SettlementHalted(s, b.Settlement)) reason = Reasons.DemonOnRoute;
+                else if (TotalStock(b) + perUnit > e.Tuning.CollectorStore) { reason = Reasons.OutputFull; rw = (int)ware; }
                 else if (hs == null || hs.Mature <= 0) { reason = Reasons.NoBatch; rw = (int)ware; }
                 else
                 {
                     hs.Mature--;
                     e.Ledger.StockTaken[(int)ware]++;
                     e.Ledger.TakenByType[(int)b.Type]++;
+                    e.Ledger.GradeYield[(int)ware] += perUnit - def.Yield;
                     b.WorkProgress = 1;
                     b.WorkHex = b.Hex;
                     ev.Add(new CollectStarted { BuildingId = b.Id, Hex = b.Hex });
-                    if (def.WorkTicks <= 1)
+                    if (cycle <= 1)
                     {
                         b.WorkProgress = 0;
-                        b.Stock[(int)ware] += def.Yield;
-                        e.Ledger.Collected[(int)ware] += def.Yield;
-                        ev.Add(new Collected { BuildingId = b.Id, Hex = b.Hex, Ware = ware, Amount = def.Yield });
+                        b.Stock[(int)ware] += perUnit;
+                        e.Ledger.Collected[(int)ware] += perUnit;
+                        ev.Add(new Collected { BuildingId = b.Id, Hex = b.Hex, Ware = ware, Amount = perUnit });
                         b.WorkHex = -1;
                     }
                 }
@@ -218,10 +222,11 @@ namespace World.Sim.Economy
                 var st = EconomyLogic.GetSettlement(s, b.Settlement);
                 if (st == null) continue;
 
+                int cycle = GradeLogic.CycleTicks(e.Tuning, def, b.Grade);
                 if (b.WorkProgress > 0)
                 {
                     b.WorkProgress++;
-                    if (b.WorkProgress < def.WorkTicks) continue;
+                    if (b.WorkProgress < cycle) continue;
                     b.WorkProgress = 0;
                     if (def.Class == BuildingClass.Lodge) TrainWarrior(s, b, ev);
                     else
@@ -239,7 +244,8 @@ namespace World.Sim.Economy
 
                 string reason = null;
                 int rw = -1;
-                if (def.Class == BuildingClass.Lodge && WarriorsAt(s, b.Id) >= e.Tuning.WarriorsPerLodge) reason = Reasons.OutputFull;
+                if (b.Upgrading) reason = null; // being improved: no new cycle (the one running has finished above)
+                else if (def.Class == BuildingClass.Lodge && WarriorsAt(s, b.Id) >= GradeLogic.WarriorCap(e.Tuning, b.Grade)) reason = Reasons.OutputFull;
                 else if (def.Class == BuildingClass.Workshop && OutputFull(e, st, b, def, out rw)) reason = Reasons.OutputFull;
                 else if (!HasInputs(b, def, out rw)) reason = Reasons.InputMissing;
                 else
@@ -353,6 +359,7 @@ namespace World.Sim.Economy
                 var b = e.Buildings[i];
                 var def = BuildingDefs.Get(b.Type);
                 if (def == null) continue;
+                if (b.Upgrading) GradeLogic.TickBuildingUpgrade(s, b, ev);
                 if (b.State == BuildingState.Site && Covered(b.Delivered, def.Cost))
                 {
                     b.State = BuildingState.Constructing;
@@ -408,11 +415,12 @@ namespace World.Sim.Economy
                 }
 
                 if (st.State != SettlementState.Active || st.Upgrade == UpgradeState.None) continue;
+                var upCost = GradeLogic.SettlementUpgradeCost(tu, st);
                 if (st.Upgrade == UpgradeState.Site)
                 {
                     for (int w = 0; w < Wares.Count; w++)
                     {
-                        int need = tu.CityCost[w] - st.UpgradeDelivered[w];
+                        int need = upCost[w] - st.UpgradeDelivered[w];
                         int take = System.Math.Min(need, st.Stock[w] - st.Reserved[w]);
                         if (take <= 0) continue;
                         st.Stock[w] -= take;
@@ -420,16 +428,27 @@ namespace World.Sim.Economy
                         if (_hooks.OnConstructionDelivery.Count > 0)
                             _hooks.ConstructionDelivered(s, ev, st.Faction, SiteKind.City, st.Id, (Ware)w, take);
                     }
-                    if (Covered(st.UpgradeDelivered, tu.CityCost)) { st.Upgrade = UpgradeState.Constructing; st.UpgradeProgress = 0; }
+                    if (Covered(st.UpgradeDelivered, upCost)) { st.Upgrade = UpgradeState.Constructing; st.UpgradeProgress = 0; }
                 }
                 if (st.Upgrade != UpgradeState.Constructing) continue;
                 st.UpgradeProgress++;
-                if (st.UpgradeProgress < tu.CityBuildTicks) continue;
+                if (st.UpgradeProgress < GradeLogic.SettlementUpgradeTicks(tu, st)) continue;
                 st.Upgrade = UpgradeState.None;
-                st.IsCity = true;
                 Consume(e, st.UpgradeDelivered);
-                EconomyLogic.AddCarriers(s, st, tu.CarriersPerCity);
-                ev.Add(new CityUpgraded { SettlementId = st.Id, Corner = st.Corner, Faction = st.Faction });
+                if (st.IsCity)
+                {
+                    // City to Town (PRD_AGES 5.3): outer plots, more carriers, bigger shipments.
+                    st.IsTown = true;
+                    st.TownTick = s.Tick;
+                    EconomyLogic.AddCarriers(s, st, tu.CarriersPerTown);
+                    ev.Add(new TownUpgraded { SettlementId = st.Id, Corner = st.Corner, Faction = st.Faction });
+                }
+                else
+                {
+                    st.IsCity = true;
+                    EconomyLogic.AddCarriers(s, st, tu.CarriersPerCity);
+                    ev.Add(new CityUpgraded { SettlementId = st.Id, Corner = st.Corner, Faction = st.Faction });
+                }
                 ev.Add(new SiteCompleted { Kind = SiteKind.City, Id = st.Id, Faction = st.Faction });
                 _hooks.SiteCompleted(s, ev, SiteKind.City, st.Id);
             }

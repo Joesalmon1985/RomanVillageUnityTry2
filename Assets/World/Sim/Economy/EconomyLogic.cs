@@ -182,7 +182,12 @@ namespace World.Sim.Economy
             if (st.Faction != faction) return R(EconomyRefusals.NotOwner);
             if (st.State != SettlementState.Active) return R(EconomyRefusals.NoSettlement);
             if (System.Array.IndexOf(s.Board.ReservedPlots ?? new int[0], plot) >= 0) return R(EconomyRefusals.PlotReserved);
-            if (PlotLayout.SlotOf(plot) == PlotLayout.CitySlot && !st.IsCity) return R(EconomyRefusals.PlotLocked);
+            if (PlotLayoutOuter.IsOuter(plot))
+            {
+                if (!st.IsTown) return R(EconomyRefusals.PlotLocked, "town");
+                if (OuterBlocked(s, st, plot)) return R(EconomyRefusals.PlotBlockedByNeighbour);
+            }
+            else if (PlotLayout.SlotOf(plot) == PlotLayout.CitySlot && !st.IsCity) return R(EconomyRefusals.PlotLocked);
             if (BuildingOnPlot(s, plot) != null) return R(EconomyRefusals.PlotTaken);
             int hex = PlotLayout.PlotHex(t, plot);
             if (def.IsCollector && (hex < 0 || s.Board.HexTerrain[hex] != def.Terrain))
@@ -190,6 +195,22 @@ namespace World.Sim.Economy
             foreach (var b in s.Economy.Buildings)
                 if (b.Settlement == st.Id && b.Type == type && !IsGone(b)) return R(EconomyRefusals.AlreadyBuilt, def.Name.ToLowerInvariant());
             return CommandResult.Accept();
+        }
+
+        /// <summary>
+        /// True when another town keeps the ground of this outer plot: a town whose outer plot lies within
+        /// <see cref="PlotLayoutOuter.MinSpacing"/> and which became a town first (earlier TownTick, then lower settlement id).
+        /// </summary>
+        public static bool OuterBlocked(WorldState s, Settlement st, int plot)
+        {
+            var t = s.Board.Topology;
+            foreach (int o in PlotLayoutOuter.Rivals(t, plot))
+            {
+                var other = SettlementAt(s, PlotLayoutOuter.CornerOf(o));
+                if (other == null || other.Id == st.Id || other.State != SettlementState.Active || !other.IsTown) continue;
+                if (other.TownTick < st.TownTick || (other.TownTick == st.TownTick && other.Id < st.Id)) return true;
+            }
+            return false;
         }
 
         public static CommandResult CheckRoad(WorldState s, int faction, int hexEdge)
@@ -448,7 +469,7 @@ namespace World.Sim.Economy
             foreach (var st in e.Settlements)
                 for (int i = 0; i < Wares.Count; i++) w[i] += st.Stock[i] + st.Delivered[i] + st.UpgradeDelivered[i];
             foreach (var b in e.Buildings)
-                for (int i = 0; i < Wares.Count; i++) w[i] += b.Stock[i] + b.Delivered[i];
+                for (int i = 0; i < Wares.Count; i++) w[i] += b.Stock[i] + b.Delivered[i] + b.UpgradeDelivered[i];
             foreach (var r in e.Roads)
                 for (int i = 0; i < Wares.Count; i++) w[i] += r.Delivered[i];
             foreach (var c in e.Carriers)

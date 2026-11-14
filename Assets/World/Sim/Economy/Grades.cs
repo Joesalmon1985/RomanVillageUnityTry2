@@ -150,10 +150,8 @@ namespace World.Sim.Economy
     public sealed class DistrictUpgraded : SimEvent { public int SettlementId; public int Corner; public int Faction; }
 
     /// <summary>
-    /// Validation of the grade commands. H1-0 FIRST VERSION: every refusal that does not depend on the upgrade flow is
-    /// real (game over, ownership, state, grade, era); a command that passes them is refused with "disabled"
-    /// ("That action is not available.") until H1-2 (grade 1, City to Town) and M1-2 (grade 2, District) replace the tail
-    /// marked H1-0 STUB and the Apply bodies.
+    /// Validation and flow of the grade commands. Real from H1-2 for grade 1 (goods) and City to Town; a grade 2 upgrade
+    /// and Town to District still end in "disabled" ("That action is not available.") until M1-2 (credits).
     /// </summary>
     internal static class GradeLogic
     {
@@ -180,7 +178,11 @@ namespace World.Sim.Economy
             if (def?.Grades == null || next >= def.Grades.Length || next > (int)Grade.Modern) return EconomyRefusals.Reject(EconomyRefusals.MaxGrade);
             var era = next == (int)Grade.Historic ? Era.Historic : Era.Modern;
             if (!AgesApi.AtLeast(s, era)) return EconomyRefusals.Reject(EconomyRefusals.WrongEra, AgesApi.EraName(era));
-            return NotYet(); // H1-0 STUB: H1-2 checks the goods route (grade 1); M1-2 checks credits (grade 2, no_credits).
+            if (next == (int)Grade.Modern) return NotYet(); // M1-2 checks credits (grade 2, no_credits).
+            // Grade 1 is paid in goods the building's own carriers bring from its storehouse (no road): it needs a live camp.
+            var home = EconomyLogic.GetSettlement(s, b.Settlement);
+            if (home == null || home.State != SettlementState.Active) return EconomyRefusals.Reject(EconomyRefusals.NoSettlement);
+            return CommandResult.Accept();
         }
 
         public static CommandResult CheckCancelUpgrade(WorldState s, int faction, int buildingId)
@@ -191,7 +193,7 @@ namespace World.Sim.Economy
             if (b == null) return EconomyRefusals.Reject(EconomyRefusals.UnknownBuilding);
             if (b.Faction != faction) return EconomyRefusals.Reject(EconomyRefusals.NotOwner);
             if (!b.Upgrading) return EconomyRefusals.Reject(EconomyRefusals.NotUpgrading);
-            return NotYet(); // H1-0 STUB: nothing can be upgrading before H1-2.
+            return CommandResult.Accept();
         }
 
         public static CommandResult CheckUpgradeSettlement(WorldState s, int faction, int corner)
@@ -205,7 +207,152 @@ namespace World.Sim.Economy
             if (st.IsDistrict) return EconomyRefusals.Reject(EconomyRefusals.MaxGrade);
             var era = st.IsTown ? Era.Modern : Era.Historic;
             if (!AgesApi.AtLeast(s, era)) return EconomyRefusals.Reject(EconomyRefusals.WrongEra, AgesApi.EraName(era));
-            return NotYet(); // H1-0 STUB: H1-2 (City to Town), M1-2 (Town to District, no_credits).
+            if (st.IsTown) return NotYet(); // M1-2 (Town to District, no_credits).
+            return CommandResult.Accept();
+        }
+
+        // ---- applying (H1-2) ----
+
+        /// <summary>The GradeDef a building is heading for, or null.</summary>
+        public static GradeDef Target(Building b)
+        {
+            var def = BuildingDefs.Get(b.Type);
+            int next = (int)b.Grade + 1;
+            return def?.Grades != null && next < def.Grades.Length ? def.Grades[next] : null;
+        }
+
+        public static void StartBuildingUpgrade(WorldState s, Building b, EventBuffer ev)
+        {
+            b.Upgrading = true;
+            b.UpgradeProgress = 0;
+            System.Array.Clear(b.UpgradeDelivered, 0, b.UpgradeDelivered.Length);
+            ev?.Add(new UpgradeStarted { BuildingId = b.Id, Grade = (Grade)((int)b.Grade + 1) });
+        }
+
+        /// <summary>Ends an upgrade without finishing it: goods already delivered go back to the storehouse, goods on the way too (CancelUpgrade, or the building went away).</summary>
+        public static void AbortBuildingUpgrade(WorldState s, Building b, EventBuffer ev)
+        {
+            Logistics.OnSiteCancelled(s, PlaceKind.BuildingUpgrade, b.Id);
+            var home = EconomyLogic.GetSettlement(s, b.Settlement);
+            for (int w = 0; w < b.UpgradeDelivered.Length; w++)
+            {
+                if (home != null) home.Stock[w] += b.UpgradeDelivered[w];
+                else { s.Economy.Ledger.Consumed[w] += b.UpgradeDelivered[w]; s.Economy.Ledger.Looted[w] += b.UpgradeDelivered[w]; }
+                b.UpgradeDelivered[w] = 0;
+            }
+            b.Upgrading = false;
+            b.UpgradeProgress = 0;
+            b.UpgradeCredits = 0; // M1-2 releases the reserved credits here
+            ev?.Add(new UpgradeCancelled { BuildingId = b.Id });
+        }
+
+        /// <summary>One tick of a running upgrade (ConstructionSystem): waits for all goods, then for a running cycle to end, then builds for the grade's ticks.</summary>
+        public static void TickBuildingUpgrade(WorldState s, Building b, EventBuffer ev)
+        {
+            if (b.State != BuildingState.Active) { AbortBuildingUpgrade(s, b, ev); return; }
+            var g = Target(b);
+            if (g == null) { AbortBuildingUpgrade(s, b, ev); return; }
+            if (!ConstructionSystem.Covered(b.UpgradeDelivered, g.Goods)) return;
+            if (b.WorkProgress > 0) return; // the running cycle finishes first; none starts meanwhile
+            b.UpgradeProgress++;
+            if (b.UpgradeProgress < g.Ticks) return;
+            var e = s.Economy;
+            for (int w = 0; w < b.UpgradeDelivered.Length; w++)
+            {
+                int n = g.Goods[w];
+                if (n > 0) { e.Ledger.Consumed[w] += n; e.Ledger.Construction[w] += n; }
+                b.UpgradeDelivered[w] -= n;
+            }
+            b.Grade = g.To;
+            b.Upgrading = false;
+            b.UpgradeProgress = 0;
+            ev?.Add(new BuildingUpgraded { BuildingId = b.Id, Grade = b.Grade });
+        }
+
+        // ---- the grade's effect, as numbers every system reads (H1-2) ----
+
+        /// <summary>A grade field that is 0 means "as the grade below": the last non-zero value up to grade g, else the base.</summary>
+        private static int Walk(BuildingDef def, Grade g, int baseValue, System.Func<GradeDef, int> field)
+        {
+            int v = baseValue;
+            if (def.Grades == null) return v;
+            for (int i = 1; i <= (int)g && i < def.Grades.Length; i++)
+            {
+                int x = field(def.Grades[i]);
+                if (x > 0) v = x;
+            }
+            return v;
+        }
+
+        /// <summary>Ticks of one cycle of a building: its grade's, less the type's CycleBonusPermille (at least 1).</summary>
+        public static int CycleTicks(EconomyTuning tu, BuildingDef def, Grade g)
+        {
+            int ticks = Walk(def, g, def.WorkTicks, x => x.CycleTicks);
+            int type = (int)def.Type;
+            int bonus = tu?.CycleBonusPermille != null && type >= 0 && type < tu.CycleBonusPermille.Length ? tu.CycleBonusPermille[type] : 0;
+            if (bonus <= 0) return ticks;
+            if (bonus > 900) bonus = 900;
+            return System.Math.Max(1, (int)((long)ticks * (1000 - bonus) / 1000));
+        }
+
+        /// <summary>Wares a collector makes from one unit taken, at a grade.</summary>
+        public static int YieldPerUnit(BuildingDef def, Grade g) => Walk(def, g, def.Yield, x => x.YieldPerUnit);
+
+        /// <summary>Cycles of inputs a workshop keeps on hand (the tuning's InputBuffer unless the grade says otherwise).</summary>
+        public static int InputBufferCycles(EconomyTuning tu, BuildingDef def, Grade g) => Walk(def, g, tu.InputBuffer, x => x.InputBufferCycles);
+
+        /// <summary>Warriors a lodge may hold: WarriorsPerLodge, none above grade 0 (a barracks has no cap).</summary>
+        public static int WarriorCap(EconomyTuning tu, Grade g) => g >= Grade.Historic ? int.MaxValue : tu.WarriorsPerLodge;
+
+        // ---- settlements ----
+
+        public static int[] SettlementUpgradeCost(EconomyTuning tu, Settlement st) => st.IsCity ? tu.TownCost : tu.CityCost;
+
+        public static int SettlementUpgradeTicks(EconomyTuning tu, Settlement st) => st.IsCity ? tu.TownBuildTicks : tu.CityBuildTicks;
+
+        /// <summary>Largest shipment a storehouse sends: a town 6, a district 8, else ShipmentSize.</summary>
+        public static int ShipmentSize(EconomyTuning tu, Settlement st) =>
+            st.IsDistrict ? tu.DistrictShipmentSize : st.IsTown ? tu.TownShipmentSize : tu.ShipmentSize;
+    }
+
+    /// <summary>
+    /// The grade of a building and its effects for views and tests (PRD_AGES 5.6; H1-2): what a cycle takes now.
+    /// </summary>
+    public static class GradeApi
+    {
+        /// <summary>Ticks of one cycle of the building now (grade and CycleBonusPermille included); 0 for an unknown building.</summary>
+        public static int CycleTicks(WorldState s, int buildingId)
+        {
+            var b = s == null ? null : EconomyLogic.GetBuilding(s, buildingId);
+            var def = b == null ? null : BuildingDefs.Get(b.Type);
+            return def == null ? 0 : GradeLogic.CycleTicks(s.Economy.Tuning, def, b.Grade);
+        }
+
+        /// <summary>Wares one mature unit becomes in a collector now; 0 for a non-collector or unknown building.</summary>
+        public static int YieldPerUnit(WorldState s, int buildingId)
+        {
+            var b = s == null ? null : EconomyLogic.GetBuilding(s, buildingId);
+            var def = b == null ? null : BuildingDefs.Get(b.Type);
+            return def == null || !def.IsCollector ? 0 : GradeLogic.YieldPerUnit(def, b.Grade);
+        }
+
+        /// <summary>Cycles of inputs a workshop keeps on hand now.</summary>
+        public static int InputBufferCycles(WorldState s, int buildingId)
+        {
+            var b = s == null ? null : EconomyLogic.GetBuilding(s, buildingId);
+            var def = b == null ? null : BuildingDefs.Get(b.Type);
+            return def == null ? 0 : GradeLogic.InputBufferCycles(s.Economy.Tuning, def, b.Grade);
+        }
+
+        /// <summary>The goods a building's next grade still needs (cost less delivered), by ware; empty when it is not upgrading.</summary>
+        public static int[] UpgradeStillNeeded(WorldState s, int buildingId)
+        {
+            var b = s == null ? null : EconomyLogic.GetBuilding(s, buildingId);
+            var g = b == null || !b.Upgrading ? null : GradeLogic.Target(b);
+            var r = new int[Wares.Count];
+            if (g == null) return r;
+            for (int w = 0; w < r.Length; w++) r[w] = System.Math.Max(0, g.Goods[w] - b.UpgradeDelivered[w]);
+            return r;
         }
     }
 
@@ -213,23 +360,39 @@ namespace World.Sim.Economy
     {
         protected override CommandResult Validate(WorldState s, UpgradeBuilding c) => GradeLogic.CheckUpgradeBuilding(s, c.PlayerId, c.BuildingId);
 
-        // H1-0 STUB: unreachable while Validate refuses; H1-2 starts the upgrade here (UpgradeStarted).
-        protected override CommandResult Apply(WorldState s, UpgradeBuilding c, EventBuffer ev) => Validate(s, c);
+        protected override CommandResult Apply(WorldState s, UpgradeBuilding c, EventBuffer ev)
+        {
+            var r = Validate(s, c);
+            if (!r.Ok) return r;
+            GradeLogic.StartBuildingUpgrade(s, EconomyLogic.GetBuilding(s, c.BuildingId), ev);
+            return CommandResult.Accept();
+        }
     }
 
     internal sealed class CancelUpgradeHandler : CommandHandler<CancelUpgrade>
     {
         protected override CommandResult Validate(WorldState s, CancelUpgrade c) => GradeLogic.CheckCancelUpgrade(s, c.PlayerId, c.BuildingId);
 
-        // H1-0 STUB: H1-2 returns goods (and M1-2 credits) and raises UpgradeCancelled.
-        protected override CommandResult Apply(WorldState s, CancelUpgrade c, EventBuffer ev) => Validate(s, c);
+        protected override CommandResult Apply(WorldState s, CancelUpgrade c, EventBuffer ev)
+        {
+            var r = Validate(s, c);
+            if (!r.Ok) return r;
+            GradeLogic.AbortBuildingUpgrade(s, EconomyLogic.GetBuilding(s, c.BuildingId), ev);
+            return CommandResult.Accept();
+        }
     }
 
     internal sealed class UpgradeSettlementHandler : CommandHandler<UpgradeSettlement>
     {
         protected override CommandResult Validate(WorldState s, UpgradeSettlement c) => GradeLogic.CheckUpgradeSettlement(s, c.PlayerId, c.Corner);
 
-        // H1-0 STUB: H1-2 starts City to Town (SiteKind.City site, TownUpgraded on completion).
-        protected override CommandResult Apply(WorldState s, UpgradeSettlement c, EventBuffer ev) => Validate(s, c);
+        // City to Town: a SiteKind.City site on the settlement (TownUpgraded on completion); Town to District is M1-2.
+        protected override CommandResult Apply(WorldState s, UpgradeSettlement c, EventBuffer ev)
+        {
+            var r = Validate(s, c);
+            if (!r.Ok) return r;
+            EconomyLogic.PlaceCitySite(s, c.PlayerId, c.Corner, ev);
+            return CommandResult.Accept();
+        }
     }
 }

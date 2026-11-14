@@ -65,7 +65,7 @@ namespace World.Sim.Economy
                 case UnknownPlot: return "There is no plot there.";
                 case NoSettlement: return "None of your camps owns that plot.";
                 case PlotTaken: return "Something already stands on that plot.";
-                case PlotLocked: return "That plot opens when the camp becomes a city.";
+                case PlotLocked: return a0 == "town" ? "That plot opens when the city becomes a town." : "That plot opens when the camp becomes a city.";
                 case PlotReserved: return "That ground is kept for the dance circle.";
                 case WrongTerrain: return "A " + a0 + " must stand by " + a1 + ".";
                 case AlreadyBuilt: return "This camp already has a " + a0 + ".";
