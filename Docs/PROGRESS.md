@@ -453,3 +453,42 @@ Pace measured by `follow_prince` (the player answers each pitch after the delay,
 What a real walk costs: a typical pitch sends the player 60-200 m (median about 100 m); following the leading villager at 7 m/s that is about 14 s of walking, plus 2-3 s of turning and reaching range, so pitch to cast is about 17 s with a 3 s answer (12 s walking straight at the player's own 12.5 m/s). The headless model's "30-45 s per pitch" is therefore answer delay plus about 15 s of walking. Above a 15 s answer delay the question times out and comes back later (40/30/20 s escalation), which is why delays of 20-30 s cost far more than the delay itself. The 10 s and 20 s results (a draw, then a win) show the outcome is noisy around those delays (demons and the rival's pace); one game per setting only.
 
 Not done / caveats: package V's views are missing, so camps, buildings, carriers and the ground ring are N's plain placeholders (players stand among trees on plots until V clears them); one seed only; no packaged run (`-autoplay` is wired but no build was made, as asked); captures at time x2-x10 in the editor; screen taps sometimes land on a bubble or person and the script falls back to a ground press (counted as `groundFallbacks`).
+
+## Integration 3: the prince joined (14 Nov 2026, branch `refactor/prehistoric`, tag `pre-integrated-3`)
+
+Merged `pre/n` (abaece4). Conflicts: `Actors/Npc.cs` (name plates: now only with the HUD on, and never under a bubble), `WorldBootTests` (Sol and N's villagers both allowed), this file and the spec's change log (both sides kept).
+
+Joins:
+
+- N's placeholder views are deleted. Carriers ("Follow" on the first load) and the ground mark come from V's `LandViews`. On the first hut V's own site builder is hidden while Tam works there, so there is one builder, not two.
+- `cast_all` now runs with the prince present; `PrinceInstaller.Disabled` / `-noprince` keeps a world without him (one short test).
+- At night the prince (with his carried light), the sawyer, the merchant and the builder were looked at in captures: readable.
+
+N's rough items that were ours:
+
+- Trees at pitches: a proposed camp's corner (10 m) and a proposed road's middle (9 m) are cleared and stay cleared. Plots and paths of existing camps were already clear.
+- Inside the ring of a proposal in cast range the press now wins over a bubble's body and over a person standing on it; a reply line still answers.
+- A line said off screen is now drawn small at the screen edge with the speaker's name and an arrow.
+- The prince wears a fan of tall red and white feathers and carries a sun standard, so he reads from across the camp.
+
+Pace (changed in the game layer only; no sim number changed):
+
+- A question now stays open 25 s (was 15), and comes back after 12, 10, then 8 s while the player stands within 25 m (40, 30, 20 s only when they walked off). Walking 10 m nearer to the spot, or into cast range, counts as an answer: the villager goes ahead and waits there. This also works between questions and while he is resigned.
+- A deadlock was found with the new stall line in `follow_prince` and fixed: a villager standing on his pitch spot more than 10.5 m from the player never asked (it happened when the cells near the player were blocked, which the solid tents made more likely); twice it held a game up for two minutes. He now asks from up to 25 m.
+- `first_scene` failed twice on "the followed carrier is not in view" because the script's own sight check counted a villager standing in the line of sight as hiding the carrier; the check now ignores people.
+
+Pace table (editor, night start, time scale 8, `follow_prince` in follow mode, final code):
+
+| Answer delay | Result | Game minute | Casts | Pitch to cast, average (median) |
+|---|---|---|---|---|
+| 3 s | Victory by overrun | 14.3 | 27 | 19.2 s (18.1) |
+| 10 s | Victory by overrun | 14.8 | 26 | 23.3 s (22.5) |
+| 20 s | Victory by overrun | 15.0 | 19 | 33.1 s (34.4) |
+| 30 s | Victory at the time limit | 20.0 | 18 | 48.3 s (45.3) |
+| ignore | Defeat by overrun | 11.9 | 0 | - |
+
+Earlier runs of the same day, before the deadlock fix: 20 s gave one Draw at the time limit (2 v 2, no cast for the last 8 minutes; the cause was not captured, the stall line was added after it), then Victory by overrun at 16.2, 14.7, 14.8 and 15.0 minutes. So 20 s won 5 of 6 runs, and the one draw is not explained. The runs are not deterministic (walking is in real frames).
+
+Ran (editor, 14 Nov): `first_scene` OK at time scale 1 (the prince asks after 0.3 game seconds; the load is followed to the storehouse at 147 game seconds); PlayMode 75 passed on the tree that already held the F-1 save code (prince tests 13, lighting 5, integration 8, the rest as before); `dotnet` and EditMode were not rerun for this step (no sim change). The Unity editor crashed once between runs, right after an audio device change on the machine (`ADTM: Attempting to update control while a mix is ongoing`); it was reopened and nothing was lost.
+
+Rough: the left-pointing "calls you" box clips its last letter; at 30 s the win is only on the clock; a slower player than that was not tried.

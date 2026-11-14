@@ -235,8 +235,17 @@ namespace World.Game
             if (!OnScreen(p)) return false;
             var cam = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.ActiveCamera : Camera.main;
             var from = cam.transform.position;
-            if (!Physics.Raycast(from, p - from, out var hit, (p - from).magnitude + 1f, ~(1 << 2), QueryTriggerInteraction.Collide)) return true;
-            return hit.transform.IsChildOf(t) || t.IsChildOf(hit.transform);
+            // The first thing on the way that is not a person (a villager or another carrier standing in the line of
+            // sight does not hide it: people are narrow and move on).
+            var hits = Physics.RaycastAll(from, p - from, (p - from).magnitude + 1f, ~(1 << 2), QueryTriggerInteraction.Collide);
+            System.Array.Sort(hits, (x, y) => x.distance.CompareTo(y.distance));
+            foreach (var hit in hits)
+            {
+                if (hit.transform.IsChildOf(t) || t.IsChildOf(hit.transform)) return true;
+                if (hit.collider.GetComponentInParent<Npc>() != null || hit.collider.GetComponentInParent<LandFigure>() != null) continue;
+                return false;
+            }
+            return true;
         }
 
         private static bool OnScreen(Vector3 p)

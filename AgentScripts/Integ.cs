@@ -54,6 +54,45 @@ public static class Integ
         for (int i = Mathf.Max(0, d.Said.Count - 8); i < d.Said.Count; i++) sb.Append('[').Append(d.Said[i].Tick).Append(' ').Append(d.Said[i].Speaker).Append(d.Said[i].Ask ? "?" : "").Append("] ").Append(d.Said[i].Text).Append(" | ");
         return sb.ToString().Replace('"', '\'');
     }
+    public static string FollowInfo()
+    {
+        var w = B.Avatar; var s = B.Sim.State;
+        var sb = new StringBuilder();
+        sb.Append("walker ").Append(w.Position).Append(" cell ").Append(w.Cell).Append(" h").Append(w.Heading).Append(" auto ").Append(w.IsAutoWalking).Append(" following ").Append(w.Following != null ? w.Following.FollowName + " at " + w.Following.FollowTransform.position : "none");
+        var d = PrinceDirector.Instance;
+        sb.Append(" scene ").Append(d.FirstSceneStep).Append(" phase ").Append(d.CurrentPhase);
+        var cam = ViewSwitcher.Instance.ActiveCamera;
+        foreach (var c in s.Economy.Carriers)
+        {
+            if (c.Faction != 0 || !c.HasLoad) continue;
+            var t = LandViews.Instance.CarrierView(c.Id);
+            var p = t.position + Vector3.up * 1.2f;
+            var sp = cam.WorldToScreenPoint(p);
+            sb.Append(" | carrier ").Append(c.Id).Append(' ').Append(c.State).Append(" to ").Append(c.LegToKind).Append(c.LegToId).Append(" at ").Append(t.position).Append(" screen ").Append(sp);
+            var from = cam.transform.position;
+            if (Physics.Raycast(from, p - from, out var hit, (p - from).magnitude + 1f, ~(1 << 2), QueryTriggerInteraction.Collide)) sb.Append(" ray hits ").Append(hit.transform.name).Append(" of ").Append(hit.transform.root.name == hit.transform.name ? "-" : hit.transform.parent != null ? hit.transform.parent.name : "-").Append(" at ").Append(hit.distance.ToString("0.0"));
+            else sb.Append(" ray clear");
+        }
+        return sb.ToString();
+    }
+    public static string Blocked()
+    {
+        var s = B.Sim.State; var camp = new CampLayout(s.Board);
+        var c = WalkLattice.ToCell(camp.Hearth);
+        var st = EconomyApi.SettlementAt(s, camp.HomeCorner);
+        return "corner cell " + c + " why '" + WalkGrid.WhyBlocked(c) + "' settlement " + (st != null ? st.State + " id " + st.Id + " corner " + st.Corner : "null") + " hearth " + camp.Hearth + " cellpos " + WalkLattice.ToWorld(c) + " override " + (WalkGrid.StateOverride != null) + " solids " + WalkGrid.SolidCount + " statics " + WalkGrid.StaticBlockerCount;
+    }
+    static string ToNpc(string id)
+    {
+        var m = Npc.Find(id); if (m == null) return "no " + id;
+        var c = AutoPlay.ApproachCell(m.transform.position, 0.1f);
+        if (!c.HasValue) return "no cell";
+        B.Avatar.StopAuto();
+        B.Avatar.Teleport(c.Value, WalkLattice.HeadingOf(BoardSpace.YawOf(m.transform.position - WalkLattice.ToWorld(c.Value))));
+        return "by " + id + " " + BoardSpace.Flat(m.transform.position - B.Avatar.Position).ToString("0.0") + " m";
+    }
+    public static string ToSawyer() => ToNpc(NpcIds.Sawyer);
+    public static string ToMerchant() => ToNpc(NpcIds.Merchant);
     public static string WalkTour() => Run("walk_tour");
     public static string DuelDance() => Run("duel_dance");
     public static string CastAll1() { CastAll.Speed = 1f; return Run("cast_all"); }
