@@ -273,7 +273,7 @@ The rival is one party with an authored plan: an ordered list of steps, each `{ 
 | Carrying | Spends the carry cost, sets the crystal on the altar, then starts the next step. |
 | Plan finished | Waits. When three crystals are restored, Hesk Varr goes to the last tower. |
 
-Authored plan (starting values): Earth march 4800 (8 minutes from the campaign's start), then Fire, Water and Air at march 3600 each; carry 900 each. A party that goes straight for Earth arrives in about 5 minutes and finds it on its pedestal. A party that does another route first, loses duels, or keeps turning the Earth lead down finds it stolen. Later crystals are meant to be close races, because the party cannot be in two places at once. The proof (section 9.1) reports how many first arrivals each scripted player gets; the target is at least 2 for the direct player and 0 for the reluctant one.
+Authored plan (starting values): Earth march 4800 (8 minutes from the campaign's start), then Fire, Water and Air at march 3600 each; carry 900 each. A party that goes straight for Earth arrives in about 5 minutes and finds it on its pedestal. A party that does another route first, loses duels, or keeps turning the Earth lead down finds it stolen. Later crystals are meant to be close races, because the party cannot be in two places at once. The proof (section 9.1) reports how many first arrivals each scripted player gets; the target is at least 2 for the direct player and 0 for the reluctant one. *Tuned 14 Nov 2026 (A.6, the race tuning): the authored pack's opening march is drawn per seed in 2:45 to 4:45 and later marches in 4:00 to 6:00; the opening is known at once.*
 
 What the player may know of the rival is only what reports and scouts have said (`CampaignApi.RivalView`). The rival's true position and progress are in the state and are shown only by the F1 tools.
 
@@ -303,7 +303,7 @@ The Game side is an `ExpeditionDirector` modelled on the prince's director (`pre
 | InEncounter | An attempt is pending. | Resolved. |
 | WaitingForPlayer | At a tower with its crystal, or withdrawn from a threshold. | The player rejoins, or another open lead exists. |
 
-**How fast Mira looks.** A surface leg moves at about 7 m/s (5 m in 7 ticks). The Game animates her at the leg's speed with the `Run` clip of `PRD_CHARACTERS` (native 7 m/s). The player's own steps are faster (0.4 s per 5 m), so following works. Placeholder bodies simply slide, as they do now.
+**How fast Mira looks.** A surface leg moves at about 7 m/s (5 m in 7 ticks). The Game animates her at the leg's speed with the `Run` clip of `PRD_CHARACTERS` (native 7 m/s). The player's own steps are faster (0.4 s per 5 m), so following works. Placeholder bodies simply slide, as they do now. *Tuned 14 Nov 2026 (A.6, the race tuning): in the authored pack the party walks at 2.5 m/s on the surface and 1.7 m/s underground, runs at 7 m/s only when Ash runners are reported heading for the crystal it goes to (`PartySetOut.Running`), takes 12 s for a stair, and with the player near Mira waits at a lethal threshold with no time limit; the 90 s wait is for the player away.*
 
 **What the player says.** All in speech bubbles, at most three replies.
 
@@ -1016,6 +1016,45 @@ public static class CampaignOutline { string Write(CampaignDefinition d); }
 4. **The ending reaches the ages.** At `CampaignEnded{Won}` the Eras code copies the record into `HistoryState.CampaignRecord` and raises `ChapterReady{ch.modern.harbour}` in the same tick; advancing is refused with `chapter_not_built` until `PRD_AGES` M1-4 builds the chapter, so "Onward" (5.8) must read `AgesApi.IsReady`, which stays false until then.
 5. **Overrun link and points, confirmed against the real faction game.** A `CampOverrun` raised by `StrengthSystem` (via `CampaignRules`) on `dev.historic` reaches the campaign in the same tick: +1800 once (not again on later ticks or after a load), the party walks home; an Ash camp lost pauses the expedition for 900 of progress. Crystal points go through `LedgerLogic.Award` (1 per restoration to the player, 1 to the Ash Clan the first time a crystal reaches an altar); with H1's ledger they top out at 4 per people, so the 10-point roster unlock never fires during a campaign.
 6. **I4, the campaign proof.** `Tests/EditMode/Campaign/Proof/**` (`CampaignProofReport`, the scripted-player driver) writes `Docs/CAMPAIGN_PROOF.md` on `dev.historic` with the faction game running, built twice and byte-identical. Its sections follow the brief of this package (A Earth first arrival, B stolen and recovered with real `keeper_earth` duels, C loss and retry with saves around each resolution, D six losses then the seventh, E clash, stalemate, withdrawal, surrender, friendly and practice, F away play, G the 24 orders and both endings, H the race, I conservation, then known weaknesses) rather than the A to J lettering of 9.1. No rule or number was changed; its findings for the owner: the Earth race is not a race (a prompt party restores the Deepstone at 1:46, the expedition arrives at 8:00), the skeleton campaign lasts about 6 minutes against the 30 to 50 target, and a player who takes 90 s per decision never fights because `ThresholdWait` is also 90 s.
+
+**14 Nov 2026, the race tuning (branch `cry/i0`, tag `sim-H1-cry-S1-tuned`).** Campaign tuning only: the authored pack's timings, distances and expedition plan, party speeds, and small runtime rules where numbers were not enough. `Sim/Economy`, `Sim/Factions` and the Ward profiles are untouched. Additive only: every new field defaults to the earlier rule, so the I0 sample, the shipped skeleton and old saves play exactly as before; `CampaignSurfaceTests` (including the pinned `CampaignTuning` starting numbers) is unchanged. Targets and results are asserted in `Docs/CAMPAIGN_PROOF.md` section H (11 seeds per player type). Owner decision 6 ("the Ash expedition reaches its first crystal 8 minutes in and needs about 7 minutes for each one after") is replaced by the numbers below and needs the owner's confirmation.
+
+Numbers (the authored pack's `Tuning` and `Rival`; the C# starting values of `CampaignTuning` stay as in 5.1 to 5.5):
+
+| Field | Before | After | What it means |
+|---|---|---|---|
+| `PartyTicksPerStep` | 7 (7.1 m/s) | 20 (2.5 m/s) | Mira and the companions walk briskly on the surface; the party, not the player's glide, sets the clock |
+| `PartyRunTicksPerStep` (new) | - (never runs) | 7 (7.1 m/s) | she runs only when she says so (rule 1 below) |
+| `InteriorTicksPerStep` (new) | - (as the surface) | 30 (1.7 m/s) | underground by lamp light |
+| `StairTicks` (new) | one step at the leg's pace (0.7 s) | 120 (12 s) | a stair, an exit or a door: descend, climb, open |
+| `ReadTicks` | 50 | 200 | reading a marker, talking |
+| `SearchTicks` | 150 | 300 | searching (also the scout's search) |
+| `TakeTicks` | 50 | 150 | taking a crystal |
+| `RestoreTicks` | 100 | 300 | "Set it" |
+| `ScoutTicksPerStep` | 4 (12.5 m/s) | 7 (7.1 m/s) | Tansy runs at Mira's running pace |
+| `LeadPatience` | 450 | 1200 | with the player present she waits 2 minutes for "Lead the way" before going on (so a 90 s player is not overtaken by her) |
+| `ChoicePatience` | 300 | 1200 | the same for an answer |
+| `SoloDecide` | 100 | 900 | alone she waits 90 s before each lead (the player who stays with the prince is as slow as a 90 s player) |
+| `ThresholdWait` | 900, present or away | 900, away only | rule 2 |
+| `ThresholdWaitPresent` (new) | - (as `ThresholdWait`) | 0 (no limit) | rule 2 |
+| `OpeningReportDelay` (new) | - (`ReportDelay`, 30 s) | 0 | Mira knows at the opening where the Ash runners are heading |
+| `CampOverrunCharge` | 1800 | 600 | an overrun of your camps moves the expedition 1:00 |
+| `AshCampLostPause` | 900 | 300 | an Ash camp lost stops it 0:30 |
+| `RetreatOnLooting` (new) | 1 | 0 | rule 4 |
+| `OverrunRetreatCooldown` (new) | 0 | 12000 | rule 4 |
+| `Rival.Steps[earth].MarchCost` | 4800 (8:00) | 2250, `MarchSpread` 600 (drawn in 2:45 to 4:45) | rule 3 |
+| `Rival.Steps[fire, water, air].MarchCost` | 3600 (6:00) | 3000, `MarchSpread` 600 (drawn in 4:00 to 6:00) | with the 900 carry, 5:30 to 7:30 per stolen crystal (decision 6 said about 7) |
+| `Rival.OpenWith` (new) | - | `[ "earth" ]` | rule 3; the Partial pack's other routes are not written yet |
+| Tally Vault map (`earth.json`) | 12 x 11, 11 steps from the stair to Dolm | 16 x 13, 45 steps with five turnings (63 floor cells) | the theft trail takes real time |
+
+Rules (small runtime changes, `Runtime/CampaignRace.cs` and the I1 files):
+
+1. **When Mira runs.** A leg is walked at `PartyTicksPerStep` (surface) or `InteriorTicksPerStep` (inside an interior). She runs at `PartyRunTicksPerStep` only on a surface leg of at least 4 steps of a route following a lead whose crystal the party still believes on its pedestal (and does not carry), while the newest word about that crystal says Ash runners are heading there. The first running leg of a route writes "Ash runners are heading for <crystal>. Mira breaks into a run." `PartySetOut.Running` (new field) says which; the leg's speed is fixed when it starts.
+2. **Threshold wait.** With the player present (near, in company) Mira waits at a lethal threshold for "Fight" or "Not yet" with no time limit. The 90 s withdrawal applies only while the player is away, counted from her arrival or from the moment the player left (on "Go on without me" at a threshold the wait restarts).
+3. **The expedition's draw.** At the start of a run the plan is drawn from the campaign's seed (`CampaignState.RivalPlan`, new, saved): one crystal of `Rival.OpenWith` is moved to the front (the march costs and spreads stay with the plan's positions, so the opening march is always the first step's), and each position's march is drawn uniformly in `MarchCost` +- `MarchSpread`. The draw uses its own fork of the island's random stream, so attempt seeds are unchanged. Arriving first still means no lethal duel for that crystal.
+4. **Overruns.** A looting of the home camp only charges the clock (the party presses on); a camp lost turns the party home as before, unless an overrun did so within `OverrunRetreatCooldown` (then it only charges). `CampaignState.LastOverrunRetreatTick` (new).
+
+Validator: `rival_plan` also reports an `OpenWith` crystal with no plan step and a `MarchSpread` that is negative or not smaller than its `MarchCost`. Tests: new `Runtime/CampaignRaceTests.cs`; three tests that pinned the authored pack's old numbers now read them from the pack or hold the expedition back (`PackTests.Authored_Cast_IsSection4`: march 2250, spread 600, opens with Earth; `CampaignSeamTests` overrun tests: the charge and pause read from the pack's tuning; `CampaignPackRunTests` away test: the expedition held back and longer runs, since alone Mira now waits 90 s per lead). The shipped skeleton pack keeps its old numbers (it proves the state machine); the proof's whole-campaign section runs a race-sized copy of it (`ProofStarts.RaceSkeleton`). The campaign proof is regenerated with section H rewritten (`Docs/CAMPAIGN_PROOF.md`).
 
 ---
 

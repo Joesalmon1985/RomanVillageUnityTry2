@@ -135,13 +135,14 @@ A connection names a link (its two markers must lead to each other) so the game 
 "Crystals": [ { "Id": "earth", "Element": "Earth", "Name": "the Deepstone", "Site": "glade/quarry_upper/pedestal",
                 "Tower": "tower_earth", "Underground": true } ],
 "Towers": [ { "Id": "tower_earth", "Location": "tower_earth", "Element": "Earth", "Sign": "tower_earth_sign", "BeamColour": "#A8B83C" } ],
-"Rival": { "LeaderRole": "rival_leader", "StolenAtStart": [],
-           "Steps": [ { "Crystal": "earth", "MarchCost": 4800, "CarryCost": 900, "Altar": "ash_cut/tally_vault/altar" } ] }
+"Rival": { "LeaderRole": "rival_leader", "StolenAtStart": [], "OpenWith": [ "earth" ],
+           "Steps": [ { "Crystal": "earth", "MarchCost": 2250, "MarchSpread": 600, "CarryCost": 900, "Altar": "ash_cut/tally_vault/altar" } ] }
 ```
 
 - Four crystals, one per element. `Site` is a `Pedestal` marker. `Underground` is true exactly when the site is inside an interior; at least one crystal is.
 - Each crystal has its own tower of the same element. A tower's location (Kind `Tower`) has a `DuelCaster`, a `DuelOpponent` and a `SafePoint` marker, so any tower can stage the finale. `Sign` is the door-sign line.
 - The rival plan is an ordered list of steps; each names a crystal once, positive costs, and an `Altar` marker for that crystal. `StolenAtStart` crystals begin on their step's altar.
+- **The per-run draw (race tuning, 14 Nov 2026; both optional).** `MarchSpread` (default 0) makes a step's march vary by seed, drawn uniformly in `MarchCost` - `MarchSpread` to `MarchCost` + `MarchSpread`; it must be smaller than `MarchCost`. `OpenWith` (default empty = the plan's own order) lists crystals the expedition may open with: one is drawn per seed and its step moved to the front, while the march costs and spreads stay with the positions (the first position's march is always the opening march). Every `OpenWith` crystal needs a step. The authored pack: Earth 2250 +- 600 (2:45 to 4:45, was 4800), the others 3000 +- 600 (was 3600), carry 900, `OpenWith` `[ "earth" ]` (the other routes are not written yet).
 
 ## 7. The story: clues, leads, choices, events, encounters
 
@@ -232,6 +233,20 @@ A complete pack has an ending with `Outcome` `Won` (the restored island) and one
 
 `Tuning` holds every number of section 5 (`CampaignTuning`): leg and action times, patience and waits, queue and report numbers, the rival charges, the tide. A pack may change any of them; unset fields keep their starting values.
 
+Fields added by the race tuning (14 Nov 2026); each default keeps the earlier rule:
+
+| Field | Default | Authored pack | Meaning |
+|---|---|---|---|
+| `PartyRunTicksPerStep` | 0 (never runs) | 7 | ticks per 5 m step when Mira runs: a surface leg of 4 steps or more toward a crystal believed on its pedestal while the newest word says Ash runners are heading there |
+| `InteriorTicksPerStep` | 0 (= `PartyTicksPerStep`) | 30 | ticks per step inside an interior |
+| `StairTicks` | 0 (one step at the leg's pace) | 120 | ticks to cross a stair, exit or door |
+| `ThresholdWaitPresent` | -1 (= `ThresholdWait`) | 0 (no limit) | Mira's wait at a lethal threshold with the player present; `ThresholdWait` is then the away wait |
+| `OpeningReportDelay` | -1 (= `ReportDelay`) | 0 | delay of the report of the expedition's opening step |
+| `RetreatOnLooting` | 1 | 0 | 0: a looting of the home camp only charges the clock |
+| `OverrunRetreatCooldown` | 0 | 12000 | an overrun turns the party home at most once in this many ticks |
+
+The authored pack also changed these starting values (before, after): `PartyTicksPerStep` 7, 20; `ScoutTicksPerStep` 4, 7; `ReadTicks` 50, 200; `SearchTicks` 150, 300; `TakeTicks` 50, 150; `RestoreTicks` 100, 300; `LeadPatience` 450, 1200; `ChoicePatience` 300, 1200; `SoloDecide` 100, 900; `CampOverrunCharge` 1800, 600; `AshCampLostPause` 900, 300. Why, and what they do to the race, is in `PRD_CRYSTALS.md` A.6 and `Docs/CAMPAIGN_PROOF.md` section H. The skeleton pack keeps the starting values.
+
 ## 10. What the validator checks
 
 `CampaignValidator.Validate(definition[, options])` returns problems, each with a `Code`, a `Sentence`, the `Id` it is about and `IsError`. Errors block `StartCampaign` (`invalid_definition` with the first error's sentence). `ValidationOptions.KnownProfiles` also checks the Ward profile ids.
@@ -241,7 +256,7 @@ A complete pack has an ending with `Outcome` `Won` (the restored island) and one
 | Form | known version; parts present; unique ids; display names; every reference (markers, lines, crystals, choices, clues, events, speakers, services, guards' subjects, tokens' ids) exists; guards and tokens in the grammar; line lengths; one to three answers with exactly one correct; encounters have a profile, an opponent, and lethal ones a stage; one finale | `bad_version`, `missing`, `duplicate_id`, `no_name`, `dangling_reference`, `bad_guard`, `bad_token`, `line_too_long`, `bad_choice`, `bad_encounter` |
 | Roles | the five roles bound; six companions; volunteer orders 1 to 6 | `role_unbound`, `companion_count`, `volunteer_order` |
 | Crystals and towers | four crystals, one per element; each with its own tower of its element; every tower stages a duel and has a safe point; at least one underground, and the flag matches the site | `crystal_count`, `missing_tower`, `shared_tower`, `no_finale_stage`, `underground` |
-| Rival | real crystals and altars, each crystal once, positive costs, stolen-at-start crystals have a step, the leader is a role | `rival_plan` |
+| Rival | real crystals and altars, each crystal once, positive costs, stolen-at-start crystals have a step, the leader is a role, `OpenWith` crystals have a step, `MarchSpread` is 0 or more and smaller than `MarchCost` | `rival_plan` |
 | Places | legal anchors (Meadow hex with no number; rim corner; one home camp), not shared, not a start corner, not on a landmark of the ages; site markers within 9 m; no marker on a plot; tower markers on the island (warning) | `bad_anchor` |
 | Interiors | size and floor limits; legend use; all floor connected; links lead both ways; a way in from the surface; from every pedestal, altar, threshold and safe point a way back to the surface through doors whose facts can be known | `bad_interior`, `interior_disconnected`, `no_way_out` |
 | Essential clues | a companion-held essential clue has a non-companion fallback; no fallback is a companion's | `companion_only_clue` |
