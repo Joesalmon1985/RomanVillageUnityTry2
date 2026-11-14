@@ -158,12 +158,15 @@ namespace World.Sim.Economy
                 v.BuildingId = b.Id;
                 v.Use = b.State == BuildingState.Site || b.State == BuildingState.Constructing ? PlotUse.Site : PlotUse.Building;
             }
-            else if (v.Slot == PlotLayout.CitySlot && !st.IsCity) v.Use = PlotUse.Locked;
+            else if (PlotLayoutOuter.IsOuter(plot) ? (!st.IsTown || EconomyLogic.OuterBlocked(s, st, plot)) : (v.Slot == PlotLayout.CitySlot && !st.IsCity)) v.Use = PlotUse.Locked;
             else v.Use = PlotUse.Free;
             return v;
         }
 
-        /// <summary>The usable plots of a finished settlement (6, a city 9, minus reserved plots), ascending.</summary>
+        /// <summary>
+        /// The usable plots of a finished settlement (6, a city 9, minus reserved plots), ascending; a town adds the outer
+        /// plots (ids from 1350) that no earlier neighbouring town keeps, after the inner ones.
+        /// </summary>
         public static int[] PlotsOf(WorldState s, int settlementId)
         {
             var st = s == null ? null : EconomyLogic.GetSettlement(s, settlementId);
@@ -181,6 +184,15 @@ namespace World.Sim.Economy
                     list.Add(p);
                 }
             }
+            if (st.IsTown)
+                for (int sec = 0; sec < 3; sec++)
+                    for (int slot = PlotLayoutOuter.FirstOuterSlot; slot <= PlotLayoutOuter.LastOuterSlot; slot++)
+                    {
+                        int p = PlotLayoutOuter.OuterPlotId(st.Corner, sec, slot);
+                        if (!PlotLayoutOuter.IsValidOuterPlot(t, p) || PlotLayout.SectorHex(t, st.Corner, sec) < 0) continue;
+                        if (System.Array.IndexOf(s.Board.ReservedPlots ?? new int[0], p) >= 0 || EconomyLogic.OuterBlocked(s, st, p)) continue;
+                        list.Add(p);
+                    }
             return list.ToArray();
         }
 
@@ -202,6 +214,14 @@ namespace World.Sim.Economy
             switch (b.State)
             {
                 case BuildingState.Site: info.Status = WaitingSentence(s, SiteKind.Building, b.Id) ?? "A building site."; break;
+                case BuildingState.Active when b.Upgrading:
+                {
+                    var g = GradeLogic.Target(b);
+                    string waiting = g == null ? null : Waiting(def.Name, b.UpgradeDelivered, g.Goods);
+                    info.Status = waiting != null ? "Being improved: " + char.ToLowerInvariant(waiting[0]) + waiting.Substring(1)
+                        : "Being improved (" + (g == null || g.Ticks <= 0 ? 100 : (int)(100 * b.UpgradeProgress / g.Ticks)) + "%).";
+                    break;
+                }
                 case BuildingState.Constructing: info.Status = "Being built (" + (100 * b.BuildProgress / System.Math.Max(1, def.BuildTicks)) + "%)."; break;
                 case BuildingState.Retiring: info.Status = "Being given up for the better collector."; break;
                 case BuildingState.Retired: info.Status = "Given up."; break;
@@ -259,7 +279,13 @@ namespace World.Sim.Economy
                 {
                     var st = EconomyLogic.GetSettlement(s, id);
                     if (st == null || st.Upgrade != UpgradeState.Site) return null;
-                    return Waiting("The city", st.UpgradeDelivered, tu.CityCost);
+                    return Waiting(st.IsCity ? "The town" : "The city", st.UpgradeDelivered, GradeLogic.SettlementUpgradeCost(tu, st));
+                }
+                case SiteKind.BuildingUpgrade:
+                {
+                    var b = EconomyLogic.GetBuilding(s, id);
+                    var g = b == null || !b.Upgrading ? null : GradeLogic.Target(b);
+                    return g == null ? null : Waiting(BuildingDefs.Get(b.Type).Name, b.UpgradeDelivered, g.Goods);
                 }
             }
             return null;
@@ -338,6 +364,11 @@ namespace World.Sim.Economy
                 }
                 case PlaceKind.RoadSite: return "a road site";
                 case PlaceKind.SettlementSite: return "a camp site";
+                case PlaceKind.BuildingUpgrade:
+                {
+                    var b = EconomyLogic.GetBuilding(s, id);
+                    return b == null ? "a building" : "the improvement of the " + BuildingDefs.Get(b.Type).Name.ToLowerInvariant();
+                }
             }
             return "somewhere";
         }

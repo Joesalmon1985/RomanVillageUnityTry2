@@ -25,6 +25,20 @@ namespace World.Sim.Economy
         /// <summary>After a site completes: (state, events, kind, id).</summary>
         public readonly List<Action<WorldState, EventBuffer, SiteKind, int>> OnSiteCompleted = new List<Action<WorldState, EventBuffer, SiteKind, int>>();
 
+        /// <summary>
+        /// Goods reached a construction (PRD_AGES 4.2; added by H1-0): (state, events, faction, site kind, site id, ware,
+        /// count). Raised when a carrier delivers to a building, road or settlement site or a building upgrade, and when a
+        /// settlement upgrade (city, town) moves goods from its storehouse into the upgrade. The handover detection
+        /// (H1-1) listens for worked wares (ids 5-9) here.
+        /// </summary>
+        public readonly List<Action<WorldState, EventBuffer, int, SiteKind, int, Ware, int>> OnConstructionDelivery =
+            new List<Action<WorldState, EventBuffer, int, SiteKind, int, Ware, int>>();
+
+        public void ConstructionDelivered(WorldState s, EventBuffer ev, int faction, SiteKind kind, int id, Ware ware, int count)
+        {
+            foreach (var a in OnConstructionDelivery) a(s, ev, faction, kind, id, ware, count);
+        }
+
         public bool CornerBlocked(WorldState s, int corner)
         {
             foreach (var f in IsCornerBlocked) if (f(s, corner)) return true;

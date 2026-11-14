@@ -1,0 +1,2 @@
+{ "Why": "A tower with no duel stage", "Base": "skeleton_v1", "Expect": "no_finale_stage",
+  "Patch": [ { "Op": "remove", "Path": "/Locations/tower_air/Markers/caster" } ] }

@@ -25,7 +25,7 @@ namespace World.Sim.Factions
     }
 
     /// <summary>Read helpers (REFACTOR_SPEC 5.4, A.3). Static, never mutate, null-safe.</summary>
-    public static class FactionApi
+    public static partial class FactionApi
     {
         /// <summary>Press areas (A.3): building plot radius, corner radius, road strip half width, road midpoint radius.</summary>
         public const double PlotPressRadius = 5, CornerPressRadius = 6, RoadStripHalfWidth = 3, RoadPressRadius = 30;
@@ -72,6 +72,16 @@ namespace World.Sim.Factions
                     return "Raise " + (st != null ? EconomyApi.SettlementName(s, st.Id) : "the camp") + " to a city";
                 }
                 case ProposalKind.Banish: return "Banish the demons from " + DemonApi.SiteName(s, p.DemonSiteKind, p.DemonSiteId);
+                case ProposalKind.Upgrade:
+                {
+                    var def = BuildingDefs.IsValid((BuildingType)p.BuildingType) ? BuildingDefs.Get((BuildingType)p.BuildingType) : null;
+                    return "Improve the " + (def != null ? def.Name : "building") + " at " + EconomyApi.SettlementName(s, p.Settlement);
+                }
+                case ProposalKind.Town:
+                {
+                    var st = EconomyLogic.SettlementAt(s, p.Corner);
+                    return "Raise " + (st != null ? EconomyApi.SettlementName(s, st.Id) : "the city") + " to a town";
+                }
             }
             return "";
         }
@@ -86,6 +96,7 @@ namespace World.Sim.Factions
             switch (p.Kind)
             {
                 case ProposalKind.Building:
+                case ProposalKind.Upgrade:
                     x = PlotLayout.PlotX(t, p.Plot);
                     z = PlotLayout.PlotZ(t, p.Plot);
                     pressRadius = PlotPressRadius;
@@ -94,6 +105,7 @@ namespace World.Sim.Factions
                     return EdgeTarget(t, p.HexEdge, out x, out z, out pressRadius);
                 case ProposalKind.Settlement:
                 case ProposalKind.City:
+                case ProposalKind.Town:
                     return CornerTarget(t, p.Corner, out x, out z, out pressRadius);
                 case ProposalKind.Banish:
                     return p.DemonSiteKind == DemonSiteKind.Corner

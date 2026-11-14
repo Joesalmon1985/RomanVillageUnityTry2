@@ -1,0 +1,51 @@
+{
+  "Lines": [
+    { "Id": "mira_open_1", "Speaker": "mira", "Topic": "opening", "Text": "Something sleeps under this island that undoes what is made. Knots slip. Walls slump. Fires forget to burn." },
+    { "Id": "mira_open_2", "Speaker": "mira", "Topic": "opening", "Text": "The first weavers couldn't kill it. They tied it down with four knots: stone, fire, tide and wind." },
+    { "Id": "mira_open_3", "Speaker": "mira", "Topic": "opening", "Text": "The knots are crystals. Four towers on the shore held them, until the old keepers carried them off and hid them." },
+    { "Id": "mira_open_4", "Speaker": "mira", "Topic": "opening", "Text": "{role.rival_leader.name} of the Ash Clan wants them for his altars. We bring them home first." },
+    { "Id": "mira_open_six", "Speaker": "mira", "Topic": "opening", "Text": "These six have said they'll come. I'd trust any of them with my back." },
+    { "Id": "mira_open_cost", "Speaker": "mira", "Topic": "opening", "Text": "If I lose a duel out there, one of them stays behind so the rest of us get out. I won't pretend otherwise." },
+    { "Id": "mira_open_practice", "Speaker": "mira", "Topic": "opening", "Text": "Want a practice duel first? Nobody gets hurt in practice." },
+    { "Id": "mira_open_ask", "Speaker": "mira", "Topic": "opening", "Text": "Come with me?" },
+    { "Id": "mira_open_more", "Speaker": "mira", "Topic": "opening", "Text": "Hidden, the crystals still hold, but loosely. What leaks out is what the camps call demons." },
+    { "Id": "mira_open_more_2", "Speaker": "mira", "Topic": "opening", "Text": "An altar isn't a tower. A crystal on an Ash altar is a knot half untied." },
+
+    { "Id": "reply_lead", "Speaker": "", "Topic": "reply", "Text": "Lead the way" },
+    { "Id": "reply_more", "Speaker": "", "Topic": "reply", "Text": "Tell me more" },
+    { "Id": "reply_ahead", "Speaker": "", "Topic": "reply", "Text": "Go on ahead, I'll find you" },
+    { "Id": "reply_why", "Speaker": "", "Topic": "reply", "Text": "Why there?" },
+    { "Id": "reply_not", "Speaker": "", "Topic": "reply", "Text": "Not that way" },
+    { "Id": "reply_know", "Speaker": "", "Topic": "reply", "Text": "What do we know?" },
+    { "Id": "reply_leave", "Speaker": "", "Topic": "reply", "Text": "Go on without me" },
+    { "Id": "reply_practice", "Speaker": "", "Topic": "reply", "Text": "Practice duel" },
+    { "Id": "reply_with", "Speaker": "", "Topic": "reply", "Text": "I'm with you" },
+    { "Id": "reply_fight", "Speaker": "", "Topic": "reply", "Text": "Fight" },
+    { "Id": "reply_not_yet", "Speaker": "", "Topic": "reply", "Text": "Not yet" },
+    { "Id": "reply_if_lose", "Speaker": "", "Topic": "reply", "Text": "What happens if we lose?" },
+    { "Id": "reply_set", "Speaker": "", "Topic": "reply", "Text": "Set it" },
+    { "Id": "reply_wait", "Speaker": "", "Topic": "reply", "Text": "Wait" },
+    { "Id": "reply_lead_out", "Speaker": "", "Topic": "reply", "Text": "Lead me out" },
+
+    { "Id": "mira_what", "Speaker": "mira", "Topic": "menu", "Text": "What is it?" },
+    { "Id": "mira_tower_ask", "Speaker": "mira", "Topic": "tower", "Text": "This is its tower. Shall I set it?" },
+    { "Id": "mira_if_lose", "Speaker": "mira", "Topic": "threshold", "Text": "Then {volunteer.name} holds the way out and doesn't come back. The rest of us live to try again." },
+    { "Id": "mira_nobody_left", "Speaker": "mira", "Topic": "threshold", "Text": "There's nobody left to hold the way out. If I lose this one, it's over." },
+    { "Id": "mira_status", "Speaker": "mira", "Topic": "status", "Text": "{count.restored} of four towers lit. {count.alive} of the six still with us." },
+
+    { "Id": "companion_garrick_line", "Speaker": "garrick", "Topic": "intro", "Guards": [ "alive: garrick" ], "Text": "Somebody has to be last out of a bad place. I've had the practice." },
+    { "Id": "companion_ivo_line", "Speaker": "ivo", "Topic": "intro", "Guards": [ "alive: ivo" ], "Text": "I draw the way in so I can find the way out. Mostly for me." },
+    { "Id": "companion_petra_line", "Speaker": "petra", "Topic": "intro", "Guards": [ "alive: petra" ], "Text": "Fire tells you what it wants. People are harder." },
+    { "Id": "companion_nell_line", "Speaker": "nell", "Topic": "intro", "Guards": [ "alive: nell" ], "Text": "The tide keeps its promises. It's the only thing that does." },
+    { "Id": "companion_odo_line", "Speaker": "odo", "Topic": "intro", "Guards": [ "alive: odo" ], "Text": "Every cut on a tree is somebody saying something. I just listen." },
+    { "Id": "companion_tansy_line", "Speaker": "tansy", "Topic": "intro", "Guards": [ "alive: tansy" ], "Text": "I'll be back before you've finished worrying." },
+
+    { "Id": "tower_earth_sign", "Speaker": "", "Topic": "sign", "Text": "Carved over the door: stone holds stone. This tower keeps {crystal.earth.name}." },
+    { "Id": "tower_fire_sign", "Speaker": "", "Topic": "sign", "Text": "Carved over the door: fire calls fire. This tower keeps {crystal.fire.name}." },
+    { "Id": "tower_water_sign", "Speaker": "", "Topic": "sign", "Text": "Carved over the door: the tide comes home. This tower keeps {crystal.water.name}." },
+    { "Id": "tower_air_sign", "Speaker": "", "Topic": "sign", "Text": "Carved over the door: wind finds its way. This tower keeps {crystal.air.name}." },
+
+    { "Id": "prince_none_lit", "Speaker": "prince", "Topic": "state", "Guards": [ "restored: 0" ], "Text": "The camps will keep. Go and find your crystals." },
+    { "Id": "prince_one_lit", "Speaker": "prince", "Topic": "state", "Guards": [ "restored: 1" ], "Text": "One tower burning again. The demons came less often this week." }
+  ]
+}

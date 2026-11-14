@@ -1,0 +1,2 @@
+{ "Why": "Two locations with one id", "Base": "skeleton_v1", "Expect": "duplicate_id",
+  "Patch": [ { "Op": "add", "Path": "/Locations/-", "Value": { "Id": "kiln", "Name": "a second kiln", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": 0, "R": -4 } } } ] }

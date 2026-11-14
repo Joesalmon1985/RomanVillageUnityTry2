@@ -1,0 +1,61 @@
+{
+  "FormatVersion": 1,
+  "Id": "authored_v1",
+  "Title": "The Four Knots of Oskerry",
+  "Status": "Partial",
+  "Template": "",
+  "Seed": 0,
+  "GeneratorVersion": "",
+  "Roles": [
+    { "Id": "mira", "ActorId": "mira", "Name": "Mira" },
+    { "Id": "prince", "ActorId": "prince", "Name": "the prince" },
+    { "Id": "rival_leader", "ActorId": "rival_leader", "Name": "Hesk Varr" },
+    { "Id": "final_enemy", "ActorId": "rival_leader", "Name": "the Unweaver, in Hesk Varr" },
+    { "Id": "wizard", "ActorId": "wizard", "Name": "Orrin the Watcher" },
+    { "Id": "sawyer", "ActorId": "sawyer", "Name": "the sawyer" },
+    { "Id": "smith", "ActorId": "smith", "Name": "Hod the smith" },
+    { "Id": "ferryman", "ActorId": "ferryman", "Name": "Old Marl" },
+    { "Id": "keeper_earth", "ActorId": "keeper_earth", "Name": "Dolm the Tally-Keeper" },
+    { "Id": "keeper_fire", "ActorId": "keeper_fire", "Name": "Brask the Forge-Warden" },
+    { "Id": "keeper_water", "ActorId": "keeper_water", "Name": "Nual of the Cistern" },
+    { "Id": "keeper_air", "ActorId": "keeper_air", "Name": "Pike the Signal-Warden" }
+  ],
+  "Companions": [
+    { "Id": "garrick", "Name": "Garrick Holt", "Role": "Shield-bearer, an old road guard", "Line": "companion_garrick_line", "VolunteerOrder": 1, "Service": "shield", "ActorId": "companion_garrick" },
+    { "Id": "ivo", "Name": "Ivo Quill", "Role": "Lamp-bearer and map-keeper", "Line": "companion_ivo_line", "VolunteerOrder": 2, "Service": "lamp", "ActorId": "companion_ivo" },
+    { "Id": "petra", "Name": "Petra Coalhand", "Role": "The smith's daughter; reads fire", "Line": "companion_petra_line", "VolunteerOrder": 3, "Service": "fire", "ActorId": "companion_petra" },
+    { "Id": "nell", "Name": "Nell Farrow", "Role": "Ferry hand; reads water", "Line": "companion_nell_line", "VolunteerOrder": 4, "Service": "water", "ActorId": "companion_nell" },
+    { "Id": "odo", "Name": "Odo Birch", "Role": "Forester; reads marks on trees and stone", "Line": "companion_odo_line", "VolunteerOrder": 5, "Service": "earth", "ActorId": "companion_odo" },
+    { "Id": "tansy", "Name": "Tansy Reed", "Role": "Scout and runner", "Line": "companion_tansy_line", "VolunteerOrder": 6, "Service": "scout", "ActorId": "companion_tansy" }
+  ],
+  "Crystals": [
+    { "Id": "earth", "Element": "Earth", "Name": "the Deepstone", "Site": "glade/quarry_upper/pedestal", "Tower": "tower_earth", "Underground": true },
+    { "Id": "fire", "Element": "Fire", "Name": "the Kilnheart", "Site": "kiln/pedestal", "Tower": "tower_fire", "Underground": false },
+    { "Id": "water", "Element": "Water", "Name": "the Tideglass", "Site": "causeway/pedestal", "Tower": "tower_water", "Underground": false },
+    { "Id": "air", "Element": "Air", "Name": "the Skyshard", "Site": "shoulder/pedestal", "Tower": "tower_air", "Underground": false }
+  ],
+  "Towers": [
+    { "Id": "tower_earth", "Location": "tower_earth", "Element": "Earth", "Sign": "tower_earth_sign", "BeamColour": "#A8B83C" },
+    { "Id": "tower_fire", "Location": "tower_fire", "Element": "Fire", "Sign": "tower_fire_sign", "BeamColour": "#E8702A" },
+    { "Id": "tower_water", "Location": "tower_water", "Element": "Water", "Sign": "tower_water_sign", "BeamColour": "#3C8CD8" },
+    { "Id": "tower_air", "Location": "tower_air", "Element": "Air", "Sign": "tower_air_sign", "BeamColour": "#D8E8F4" }
+  ],
+  "Rival": {
+    "LeaderRole": "rival_leader",
+    "Steps": [
+      { "Crystal": "earth", "MarchCost": 4800, "CarryCost": 900, "Altar": "ash_cut/tally_vault/altar" },
+      { "Crystal": "fire", "MarchCost": 3600, "CarryCost": 900, "Altar": "forge/altar" },
+      { "Crystal": "water", "MarchCost": 3600, "CarryCost": 900, "Altar": "cistern/altar" },
+      { "Crystal": "air", "MarchCost": 3600, "CarryCost": 900, "Altar": "cliff/altar" }
+    ],
+    "StolenAtStart": []
+  },
+  "Tuning": {
+    "PartyTicksPerStep": 7, "ScoutTicksPerStep": 4, "ReadTicks": 50, "SearchTicks": 150, "TakeTicks": 50, "RestoreTicks": 100,
+    "LeadPatience": 450, "SoloDecide": 100, "ChoicePatience": 300, "SoloStudyTicks": 200, "ThresholdWait": 900,
+    "DeclineCooldown": 600, "PlanInterval": 20, "QueueLength": 3, "StaleTicks": 3000, "ReportDelay": 300, "SearchCost": 300,
+    "DefeatCharge": 900, "DrawCharge": 600, "DrawChargeWithShield": 300, "WrongAnswerCharge": 300,
+    "CampOverrunCharge": 1800, "AshCampLostPause": 900,
+    "TideCycle": 2400, "TideDry": 900, "BoonPercent": 20
+  }
+}

@@ -48,6 +48,29 @@ namespace World.Sim.Economy
         public int CarriersPerBuilding = 1;
         public int CarriersPerCity = 1;
 
+        // Settlement grades (PRD_AGES 5.3; added by H1-0, used by H1-2 and M1-2).
+        /// <summary>City to Town, paid in goods from the storehouse (like CityCost), plus a Hammer once that ware exists.</summary>
+        public int[] TownCost = Arr((Ware.Planks, 4), (Ware.Bricks, 4), (Ware.CutStone, 4), (Ware.Bread, 2));
+        /// <summary>The town upgrade's tool as a ware id (Hammer, 24), charged once that ware exists; -1 = none.</summary>
+        public int TownToolWare = 24;
+        public int TownBuildTicks = 600;
+        /// <summary>Carriers added when a city becomes a town.</summary>
+        public int CarriersPerTown = 2;
+        /// <summary>Shipment size from a town's storehouse (4 elsewhere).</summary>
+        public int TownShipmentSize = 6;
+        /// <summary>Town to District (Modern), in credits.</summary>
+        public int DistrictCredits = 400;
+        public int DistrictBuildTicks = 400;
+        public int CarriersPerDistrict = 2;
+        public int DistrictShipmentSize = 8;
+
+        /// <summary>
+        /// Per building type (index = <see cref="BuildingType"/>; a missing entry is 0): permille taken off the type's cycle
+        /// time on top of its grade, e.g. 200 = cycles take 80% as long. Default 0 everywhere; the crystal campaign's Fire
+        /// boon sets it (PRD_AGES 11.1, H1-2). Clamped to 0..900 when read. Saved with the state.
+        /// </summary>
+        public int[] CycleBonusPermille = new int[BuildingDefs.Count];
+
         /// <summary>
         /// The values a new game uses: the spec's starting values (the field initialisers, kept as written in
         /// REFACTOR_SPEC) with the changes S made in tuning (PROGRESS.md, tuning log): carriers walk 5 m in 10 ticks,

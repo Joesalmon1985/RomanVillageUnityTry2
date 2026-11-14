@@ -1,0 +1,2 @@
+{ "Why": "A line that gives a crystal's place as fixed text", "Base": "skeleton_v1", "Expect": "fixed_location_text",
+  "Patch": [ { "Op": "add", "Path": "/Lines/-", "Value": { "Id": "mira_fixed", "Speaker": "mira", "Text": "The Deepstone is on its pedestal.", "Topic": "earth" } } ] }

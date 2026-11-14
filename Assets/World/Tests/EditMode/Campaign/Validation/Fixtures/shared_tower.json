@@ -1,0 +1,2 @@
+{ "Why": "Two crystals sharing a tower", "Base": "skeleton_v1", "Expect": "shared_tower",
+  "Patch": [ { "Op": "replace", "Path": "/Crystals/water/Tower", "Value": "tower_fire" } ] }

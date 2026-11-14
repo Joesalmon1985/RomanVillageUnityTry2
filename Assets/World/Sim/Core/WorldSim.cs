@@ -37,6 +37,21 @@ namespace World.Sim
         public const int Demons = 1100;         // demons and blocking
         public const int Score = 1200;          // score and end checks
         public const int Diagnostics = 1300;
+
+        // Later ages (PRD_AGES appendix A.1; landed by H1-0). Older names Power 700, Barracks 800, Squads 900 and
+        // Combat 1000 are reused by the later ages for faction power, recruits and queues, marches and unit orders, combat.
+        /// <summary>AdvanceChapter, transfers, the CampaignMayStart signal (H1).</summary>
+        public const int Eras = 50;
+        /// <summary>Belts, blocks, district power (F1).</summary>
+        public const int Industry = 650;
+        /// <summary>The RTS AI, after the faction AI in Brain (M1).</summary>
+        public const int RtsAi = 1160;
+        /// <summary>The crystal campaign module (PRD_CRYSTALS), after Strength.</summary>
+        public const int Campaign = 1250;
+        /// <summary>Fog of war (H2).</summary>
+        public const int Vision = 1270;
+        /// <summary>Objectives and waves (M1, F1).</summary>
+        public const int Scenario = 1280;
     }
 
     /// <summary>

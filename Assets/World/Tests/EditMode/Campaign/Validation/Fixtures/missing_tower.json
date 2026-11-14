@@ -1,0 +1,2 @@
+{ "Why": "A crystal with no tower", "Base": "skeleton_v1", "Expect": "missing_tower",
+  "Patch": [ { "Op": "replace", "Path": "/Crystals/fire/Tower", "Value": "" } ] }

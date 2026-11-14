@@ -83,4 +83,7 @@ namespace World.Sim.Economy
     public sealed class WarriorFed : SimEvent { public int WarriorId; public Ware Ware; }
 
     public sealed class WarriorHungry : SimEvent { public int WarriorId; }
+
+    /// <summary>A settlement changed owner (campaign overrun capture, PRD_AGES 4.3; <see cref="EconomySeams.TransferSettlement"/>).</summary>
+    public sealed class SettlementTransferred : SimEvent { public int SettlementId; public int Corner; public int FromFaction; public int ToFaction; }
 }

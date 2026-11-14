@@ -2,7 +2,8 @@ namespace World.Sim
 {
     /// <summary>
     /// Builds a new game. Order is fixed: core state and board, then every module's InitState,
-    /// then every module's Register, in the order Economy, Factions, Demons (REFACTOR_SPEC A.4).
+    /// then every module's Register, in the order Economy, Factions, Demons (REFACTOR_SPEC A.4), then Eras and
+    /// Ledger (PRD_AGES A.2, A.3).
     /// </summary>
     public static class WorldSimFactory
     {
@@ -30,8 +31,14 @@ namespace World.Sim
             Economy.EconomyModule.InitState(s);
             Factions.FactionsModule.InitState(s);
             Demons.DemonsModule.InitState(s);
+            // Later ages (PRD_AGES A.2, A.3; H1-0): appended after the refactor's modules so the earlier modules'
+            // starting state, random streams and first plans are exactly as before.
+            Eras.ErasModule.InitState(s);
+            Ledger.LedgerModule.InitState(s);
 
-            return Save.SaveCodec.CreateSim(s);
+            var sim = Save.SaveCodec.CreateSim(s);
+            Campaign.CampaignModule.Register(sim);   // PRD_CRYSTALS I0 (idempotent; loaded saves need the same line in SaveCodec.CreateSim)
+            return sim;
         }
     }
 }

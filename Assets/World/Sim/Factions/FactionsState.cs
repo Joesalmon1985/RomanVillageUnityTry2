@@ -13,7 +13,11 @@ namespace World.Sim
 
 namespace World.Sim.Factions
 {
-    public enum ProposalKind { Building = 0, Road = 1, Settlement = 2, City = 3, Banish = 4 }
+    /// <summary>
+    /// What a proposal does. Upgrade (a building to its next grade, H1-1) and Town (a city raised to a town) are
+    /// proposed only from the Historic age on, and only once the economy accepts the grade commands (H1-2).
+    /// </summary>
+    public enum ProposalKind { Building = 0, Road = 1, Settlement = 2, City = 3, Banish = 4, Upgrade = 5, Town = 6 }
 
     /// <summary>The ending from the player's side.</summary>
     public enum GameOutcome { None = 0, Victory = 1, Defeat = 2, Draw = 3 }
@@ -101,6 +105,43 @@ namespace World.Sim.Factions
         public int WorkshopSurplusPerUnit = 0;
         public int WorkshopSurplusFloor = 4;
         public int WorkshopSurplusCap = 15;
+
+        // Later ages (PRD_AGES 4.3, 8.4; added by H1-0 with the PRD's starting values).
+        /// <summary>An autonomous leader executes its top proposal this long after announcing it (15 s), unless the player answers.</summary>
+        public int AnnounceTicks = 150;
+        /// <summary>
+        /// An autonomous leader announces its next action no sooner than this long after its own last one (H1-1; 45 s,
+        /// so about one action a minute with the announce window). The player's casts come on top and do not delay it.
+        /// </summary>
+        public int AutoPaceTicks = 450;
+        /// <summary>Campaign: after an overrun, no new overrun warning against that people for this long (5 minutes).</summary>
+        public int SetbackGraceTicks = 3000;
+        /// <summary>Campaign: a looted home camp's buildings stop for this long.</summary>
+        public int LootHaltTicks = 1800;
+        /// <summary>Advice "priority": bonus to that class of candidates, and how long it lasts.</summary>
+        public int AdvicePriorityBonus = 40;
+        public int AdvicePriorityTicks = 3000;
+        /// <summary>Advice "focus on a ware": bonus to producers and inputs of that ware, and how long it lasts.</summary>
+        public int AdviceFocusBonus = 30;
+        public int AdviceFocusTicks = 3000;
+        /// <summary>Advice "not this": the proposal is declined for this long.</summary>
+        public int AdviceVetoTicks = 600;
+        /// <summary>Advice "hold there": how long it lasts (H2).</summary>
+        public int AdviceHoldTicks = 3000;
+        /// <summary>Strength of a town (5.4; H1-1 counts towns once H1-2 makes them).</summary>
+        public int StrengthPerTown = 3;
+        /// <summary>Brain score of a grade 1 building upgrade candidate (Historic on; H1-1, PRD_AGES 8.2 gives 30 + need). 0 or less: none proposed.</summary>
+        public int UpgradeScore = 60;
+        /// <summary>Brain score of a City to Town candidate (Historic on; H1-1). 0 or less: none proposed.</summary>
+        public int TownScore = 70;
+    }
+
+    /// <summary>AI personalities (PRD_AGES 8.2). The rival's default is Balanced.</summary>
+    public static class Personalities
+    {
+        public const string Passive = "passive";
+        public const string Balanced = "balanced";
+        public const string Aggressive = "aggressive";
     }
 
     public static class FactionTunings
@@ -145,6 +186,15 @@ namespace World.Sim.Factions
         public int[] Casts = new int[PlayerIds.Count];
         /// <summary>Per people: the opening proposal (woodcutter's hut) has been cast.</summary>
         public bool[] OpeningDone = new bool[PlayerIds.Count];
+        /// <summary>Settlements stopped after a campaign loot (PRD_AGES 4.3), ascending settlement id; expired entries are pruned.</summary>
+        public List<SettlementHalt> Halts = new List<SettlementHalt>();
+    }
+
+    /// <summary>A settlement whose buildings stop until UntilTick (a looted home camp, 4.3). Read through EconomyHooks.IsSettlementHalted.</summary>
+    public sealed class SettlementHalt
+    {
+        public int SettlementId;
+        public long UntilTick;
     }
 
     public sealed class Faction
@@ -170,6 +220,30 @@ namespace World.Sim.Factions
         public bool HasLastCast;
         public int LastCastX;
         public int LastCastZ;
+
+        // Later ages (PRD_AGES A.5; added by H1-0).
+        /// <summary>Tick of the handover milestone (4.2), -1 before. Set once by H1-1.</summary>
+        public long HandoverTick = -1;
+        /// <summary>The announce window of this leader (8.4), from FactionTuning.AnnounceTicks.</summary>
+        public int AnnounceTicks = 150;
+        /// <summary>AI personality (<see cref="Personalities"/>).</summary>
+        public string Personality = Personalities.Balanced;
+        /// <summary>Advice in force (Priority, FocusWare, HoldTarget), oldest first; expired records are pruned.</summary>
+        public List<AdviceRecord> Advice = new List<AdviceRecord>();
+        /// <summary>Campaign: no overrun warning against this people before this tick (4.3), -1 = none.</summary>
+        public long SetbackUntilTick = -1;
+        /// <summary>Towns counted in Strength (StrengthPerTown each; a town is not also counted as a city). H1-1.</summary>
+        public int Towns;
+        /// <summary>
+        /// The autonomous leader's announced action (8.4; H1-1): the proposal it will execute at AnnounceExecuteTick unless
+        /// the player answers first (cast, favour or veto). -1 when nothing is announced.
+        /// </summary>
+        public int AnnouncedProposalId = -1;
+        public long AnnounceExecuteTick = -1;
+        /// <summary>Actions the leader executed on its own (after the announce window), for the record and the proof.</summary>
+        public int AutoCasts;
+        /// <summary>Tick of the leader's last own action (AutoPaceTicks counts from it), -1 before the first.</summary>
+        public long LastAutoCastTick = -1;
     }
 
     /// <summary>An open proposal of a faction's brain: what, where, why, and who pitches it.</summary>
@@ -234,6 +308,11 @@ namespace World.Sim.Factions
         public const string GameOver = "game_over";
         public const string UnknownProposal = "unknown_proposal";
         public const string NoLongerLegal = "no_longer_legal";
+        // Advice (PRD_AGES 8.4; added by H1-0).
+        public const string NotOwner = "not_owner";
+        public const string UnknownAdvice = "unknown_advice";
+        public const string UnknownWare = "unknown_ware";
+        public const string AdviceNotYet = "advice_not_yet";
 
         public static string Sentence(string code, string underlying = null)
         {
@@ -242,6 +321,10 @@ namespace World.Sim.Factions
                 case GameOver: return "The game is over.";
                 case UnknownProposal: return "That proposal is gone.";
                 case NoLongerLegal: return "That can no longer be done: " + (underlying ?? "");
+                case NotOwner: return "That belongs to another people.";
+                case UnknownAdvice: return "I do not understand that advice.";
+                case UnknownWare: return "There is no such ware.";
+                case AdviceNotYet: return "We cannot do that yet.";
                 default: return code;
             }
         }

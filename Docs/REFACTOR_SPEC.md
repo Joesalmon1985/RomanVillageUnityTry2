@@ -816,6 +816,8 @@ Proposal target points and press areas: Building: plot centre, radius 5. Road: h
 22. New state: `Faction.HeldCamps`, `Faction.LastCastTick`, `Faction.HasLastCast`, `Faction.LastCastX`, `Faction.LastCastZ` (whole metres). New read helper: `FactionApi.RivalCastDelay(s)` (ticks the rival now waits between spells).
 23. Brain: a banish on a road edge ranks like a camp's (`BanishCornerScore`) while a carrier waits on that edge or a road or camp site of the people is held up by demons.
 24. The first pass's `PressAdvantageBonus` (reading how long the other people's strength had been unchanged) is no longer used (0 in `Tuned()`); the fields stay.
+
+**14 Nov 2026, PRD_AGES H1-0 (later ages, slice H1).** Additions only, except one value: `SaveCodec.CurrentVersion` is 5 (`OldestVersion` stays 4; a v4 save loads by migration, `SaveMigrations`). New enum members `SiteKind.BuildingUpgrade` = 4 and `PlaceKind.BuildingUpgrade` = 4; new hook `EconomyHooks.OnConstructionDelivery`; new fields on `Board`, `Building`, `Settlement`, `WareLedger`, `Faction`, `FactionsState`, `EconomyTuning`, `FactionTuning`, `BuildingDef`; `FactionApi` is `partial`; new commands `UpgradeBuilding`, `CancelUpgrade`, `UpgradeSettlement`, `Advise`, `AdvanceChapter`. Full list and reasons: `PRD_AGES.md` appendix A.9. With the new features off (Prehistoric skirmish, the default), behaviour and `ECONOMY_PROOF.md` are unchanged.
 ---
 
 ## Appendix B. Unity-side interface between packages (namespace `World.Game`)

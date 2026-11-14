@@ -1,0 +1,2 @@
+{ "Why": "A site anchored on a numbered hex", "Base": "skeleton_v1", "Expect": "bad_anchor",
+  "Patch": [ { "Op": "replace", "Path": "/Locations/kiln/Anchor", "Value": { "Kind": "MeadowHexCentre", "Q": 3, "R": -1 } } ] }

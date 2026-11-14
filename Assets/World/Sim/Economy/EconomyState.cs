@@ -36,11 +36,18 @@ namespace World.Sim.Economy
         Cancelled = 3,
     }
 
-    /// <summary>Kinds of construction site (CancelSite, SitePlaced...). City: Id is the settlement id.</summary>
-    public enum SiteKind { Building = 0, Road = 1, Settlement = 2, City = 3 }
+    /// <summary>
+    /// Kinds of construction site (CancelSite, SitePlaced...). City: Id is the settlement id (also the City to Town and
+    /// Town to District upgrades, PRD_AGES 5.3). BuildingUpgrade (H1-0): a grade upgrade in progress, Id = building id
+    /// (cancelled with CancelUpgrade, not CancelSite).
+    /// </summary>
+    public enum SiteKind { Building = 0, Road = 1, Settlement = 2, City = 3, BuildingUpgrade = 4 }
 
-    /// <summary>Ends of a job or carrier leg. Storehouse: id = settlement; Building: building; RoadSite: road; SettlementSite: settlement.</summary>
-    public enum PlaceKind { Storehouse = 0, Building = 1, RoadSite = 2, SettlementSite = 3 }
+    /// <summary>
+    /// Ends of a job or carrier leg. Storehouse: id = settlement; Building: building; RoadSite: road; SettlementSite:
+    /// settlement; BuildingUpgrade (H1-0): the upgrade goods of a building (Building.UpgradeDelivered / UpgradeIncoming).
+    /// </summary>
+    public enum PlaceKind { Storehouse = 0, Building = 1, RoadSite = 2, SettlementSite = 3, BuildingUpgrade = 4 }
 
     public enum JobState
     {
@@ -130,6 +137,12 @@ namespace World.Sim.Economy
         /// <summary>Stall reason code (<see cref="Reasons"/>) or null.</summary>
         public string Reason;
         public int ReasonWare = -1;
+        /// <summary>A City raised to a Town (PRD_AGES 5.3, Historic; H1-2). Implies IsCity.</summary>
+        public bool IsTown;
+        /// <summary>A Town raised to a District (Modern; M1-2). Implies IsTown.</summary>
+        public bool IsDistrict;
+        /// <summary>The tick this settlement became a Town (-1 before): the first town keeps a contested outer plot (PRD_AGES 5.3).</summary>
+        public long TownTick = -1;
     }
 
     public sealed class Building
@@ -155,6 +168,20 @@ namespace World.Sim.Economy
         public int WorkHex = -1;
         public string Reason;
         public int ReasonWare = -1;
+
+        // Grades (PRD_AGES 5.6, A.4; shapes landed by H1-0, behaviour H1-2 and M1-2).
+        /// <summary>Prehistoric (0) for every building built before the Historic step; Historic-born types start at 1.</summary>
+        public Grade Grade;
+        /// <summary>An upgrade to Grade + 1 is under way: no new cycles; Stock, Reserved and Incoming are kept.</summary>
+        public bool Upgrading;
+        /// <summary>Upgrade goods delivered so far (by carriers, PlaceKind.BuildingUpgrade).</summary>
+        public int[] UpgradeDelivered = new int[Wares.Count];
+        /// <summary>Upgrade goods on the way (open jobs heading to PlaceKind.BuildingUpgrade).</summary>
+        public int[] UpgradeIncoming = new int[Wares.Count];
+        /// <summary>Build ticks of the upgrade, counted once everything has arrived.</summary>
+        public long UpgradeProgress;
+        /// <summary>Credits reserved for a grade 2 upgrade (spent on completion, released on cancel).</summary>
+        public long UpgradeCredits;
     }
 
     public sealed class Road
@@ -243,6 +270,13 @@ namespace World.Sim.Economy
         public int[] StockTaken = new int[Wares.Count];
         /// <summary>Mature units taken per collector building type (for the check Collected = taken x yield; added by S).</summary>
         public int[] TakenByType = new int[BuildingDefs.Count];
+        /// <summary>Lost to a campaign overrun (PRD_AGES 4.3, ledger line "Looted"). Also counted in Consumed, so 4.4 holds.</summary>
+        public int[] Looted = new int[Wares.Count];
+        /// <summary>
+        /// Wares above the type's base yield that upgraded collectors made, counted when the cycle starts (like TakenByType),
+        /// so Collected = taken x base yield + GradeYield still holds (H1-2).
+        /// </summary>
+        public int[] GradeYield = new int[Wares.Count];
 
         private static int[][] NewTable()
         {

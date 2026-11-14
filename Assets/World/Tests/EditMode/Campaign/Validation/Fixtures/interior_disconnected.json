@@ -1,0 +1,2 @@
+{ "Why": "An interior with a walled-off room", "Base": "skeleton_v1", "Expect": "interior_disconnected",
+  "Patch": [ { "Op": "replace", "Path": "/Interiors/skel_upper/Rows", "Value": [ "#######", "#E.P#.#", "#S.D#.#", "#######" ] } ] }

@@ -30,6 +30,13 @@ namespace World.Sim
         /// <summary>Plot ids never buildable: the dance circle (slot 2 of the home camp's Fields sector).</summary>
         public int[] ReservedPlots = new int[0];
 
+        /// <summary>
+        /// Named places kept through every era (PRD_AGES 4.1, A.2), sorted by id (ordinal). Read with
+        /// <see cref="Eras.LandmarkApi"/>. Seeded at a new game (hearths, dance circle, harbour); towers are placed by
+        /// the crystal campaign, the relay by M1, the district by F1.
+        /// </summary>
+        public System.Collections.Generic.List<Eras.Landmark> Landmarks = new System.Collections.Generic.List<Eras.Landmark>();
+
         [JsonIgnore]
         public BoardTopology Topology => BoardTopology.Get(Radius);
 

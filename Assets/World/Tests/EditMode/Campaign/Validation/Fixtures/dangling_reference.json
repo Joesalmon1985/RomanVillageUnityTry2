@@ -1,0 +1,2 @@
+{ "Why": "A lead that points to a missing marker", "Base": "skeleton_v1", "Expect": "dangling_reference",
+  "Patch": [ { "Op": "add", "Path": "/Leads/-", "Value": { "Id": "lost_lead", "Title": "Nowhere", "Goal": { "At": "kiln/nowhere", "Action": "Search" }, "DoneWhen": "lost.done", "ReasonLine": "reason_site", "Priority": 10 } } ] }

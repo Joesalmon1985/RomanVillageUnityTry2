@@ -114,6 +114,7 @@ namespace World.Sim.Economy
                 case PlaceKind.SettlementSite: return EconomyLogic.GetSettlement(s, id)?.Incoming;
                 case PlaceKind.Building: return EconomyLogic.GetBuilding(s, id)?.Incoming;
                 case PlaceKind.RoadSite: return EconomyLogic.GetRoad(s, id)?.Incoming;
+                case PlaceKind.BuildingUpgrade: return EconomyLogic.GetBuilding(s, id)?.UpgradeIncoming;
             }
             return null;
         }
@@ -126,6 +127,7 @@ namespace World.Sim.Economy
                 case PlaceKind.SettlementSite: return EconomyLogic.GetSettlement(s, id)?.Delivered;
                 case PlaceKind.Building: return EconomyLogic.GetBuilding(s, id)?.Delivered;
                 case PlaceKind.RoadSite: return EconomyLogic.GetRoad(s, id)?.Delivered;
+                case PlaceKind.BuildingUpgrade: return EconomyLogic.GetBuilding(s, id)?.UpgradeDelivered;
             }
             return null;
         }
@@ -179,6 +181,7 @@ namespace World.Sim.Economy
         {
             if (j.IsShipment) return 3;
             if (j.FromKind == PlaceKind.Building) return 2;
+            if (j.ToKind == PlaceKind.BuildingUpgrade) return 0; // a grade upgrade is construction
             if (j.ToKind == PlaceKind.RoadSite || j.ToKind == PlaceKind.SettlementSite) return 0;
             if (j.ToKind == PlaceKind.Building)
             {
@@ -200,8 +203,16 @@ namespace World.Sim.Economy
                 if (b.Settlement != st.Id) continue;
                 var def = BuildingDefs.Get(b.Type);
                 if (b.State == BuildingState.Site) n += Math.Max(0, def.Cost[w] - b.Delivered[w] - b.Incoming[w]);
-                else if (b.State == BuildingState.Active && def.Inputs[w] > 0 && InputsWanted(s, b, def))
-                    n += Math.Max(0, e.Tuning.InputBuffer * def.Inputs[w] - b.Delivered[w] - b.Incoming[w]);
+                else if (b.State == BuildingState.Active)
+                {
+                    if (def.Inputs[w] > 0 && InputsWanted(s, b, def))
+                        n += Math.Max(0, GradeLogic.InputBufferCycles(e.Tuning, def, b.Grade) * def.Inputs[w] - b.Delivered[w] - b.Incoming[w]);
+                    if (b.Upgrading)
+                    {
+                        var g = GradeLogic.Target(b);
+                        if (g != null) n += Math.Max(0, g.Goods[w] - b.UpgradeDelivered[w] - b.UpgradeIncoming[w]);
+                    }
+                }
             }
             foreach (var r in e.Roads)
                 if (r.State == RoadState.Site && r.SourceSettlement == st.Id)
@@ -209,12 +220,12 @@ namespace World.Sim.Economy
             foreach (var o in e.Settlements)
                 if (o.State == SettlementState.Site && o.SourceSettlement == st.Id)
                     n += Math.Max(0, e.Tuning.SettlementCost[w] - o.Delivered[w] - o.Incoming[w]);
-            if (st.Upgrade == UpgradeState.Site) n += Math.Max(0, e.Tuning.CityCost[w] - st.UpgradeDelivered[w]);
+            if (st.Upgrade == UpgradeState.Site) n += Math.Max(0, GradeLogic.SettlementUpgradeCost(e.Tuning, st)[w] - st.UpgradeDelivered[w]);
             return n;
         }
 
         private static bool InputsWanted(WorldState s, Building b, BuildingDef def) =>
-            def.Class != BuildingClass.Lodge || ProductionSystem.WarriorsAt(s, b.Id) < s.Economy.Tuning.WarriorsPerLodge;
+            !b.Upgrading && (def.Class != BuildingClass.Lodge || ProductionSystem.WarriorsAt(s, b.Id) < GradeLogic.WarriorCap(s.Economy.Tuning, b.Grade));
 
         public static void CreateDemand(WorldState s, EventBuffer ev, EconomyHooks h)
         {
@@ -242,6 +253,23 @@ namespace World.Sim.Economy
                     }
                     b.Reason = missing >= 0 ? Reasons.WaitingWare : null;
                     b.ReasonWare = missing;
+                }
+
+                // a2. grade upgrades of finished buildings: the goods come from the storehouse, one unit per local trip.
+                foreach (var b in e.Buildings)
+                {
+                    if (b.Settlement != st.Id || b.State != BuildingState.Active || !b.Upgrading) continue;
+                    var g = GradeLogic.Target(b);
+                    if (g == null) continue;
+                    for (int w = 0; w < Wares.Count; w++)
+                    {
+                        int need = g.Goods[w] - b.UpgradeDelivered[w] - b.UpgradeIncoming[w];
+                        while (need > 0 && Avail(st, w) > 0)
+                        {
+                            CreateJob(s, ev, st.Faction, st.Id, (Ware)w, 1, PlaceKind.Storehouse, st.Id, PlaceKind.BuildingUpgrade, b.Id, false);
+                            need--;
+                        }
+                    }
                 }
                 bool halted = Halted(s, h, st.Id);
                 foreach (var r in e.Roads)
@@ -284,7 +312,7 @@ namespace World.Sim.Economy
                     for (int w = 0; w < Wares.Count; w++)
                     {
                         if (def.Inputs[w] <= 0) continue;
-                        int need = tu.InputBuffer * def.Inputs[w] - b.Delivered[w] - b.Incoming[w];
+                        int need = GradeLogic.InputBufferCycles(tu, def, b.Grade) * def.Inputs[w] - b.Delivered[w] - b.Incoming[w];
                         while (need > 0 && Avail(st, w) > 0)
                         {
                             CreateJob(s, ev, st.Faction, st.Id, (Ware)w, 1, PlaceKind.Storehouse, st.Id, PlaceKind.Building, b.Id, false);
@@ -328,7 +356,7 @@ namespace World.Sim.Economy
                         }
                     }
                     if (best == null) continue;
-                    int n = Math.Min(tu.ShipmentSize, Math.Min(need, bestSpare));
+                    int n = Math.Min(GradeLogic.ShipmentSize(tu, best), Math.Min(need, bestSpare));
                     CreateJob(s, ev, best.Faction, best.Id, (Ware)w, n, PlaceKind.Storehouse, best.Id, PlaceKind.Storehouse, dst.Id, true);
                 }
             }
@@ -350,7 +378,7 @@ namespace World.Sim.Economy
                 int need = cost[w] - delivered[w] - incoming[w];
                 while (need > 0 && Avail(src, w) > 0)
                 {
-                    int n = Math.Min(need, Math.Min(Avail(src, w), s.Economy.Tuning.ShipmentSize));
+                    int n = Math.Min(need, Math.Min(Avail(src, w), GradeLogic.ShipmentSize(s.Economy.Tuning, src)));
                     CreateJob(s, ev, src.Faction, src.Id, (Ware)w, n, PlaceKind.Storehouse, src.Id, kind, id, false);
                     need -= n;
                 }
@@ -519,11 +547,11 @@ namespace World.Sim.Economy
                     continue; // waits on the road until the demons are banished
                 }
                 c.Progress++;
-                if (c.Progress >= c.LegTicks) Arrive(s, ev, c);
+                if (c.Progress >= c.LegTicks) Arrive(s, ev, c, h);
             }
         }
 
-        private static void Arrive(WorldState s, EventBuffer ev, Carrier c)
+        private static void Arrive(WorldState s, EventBuffer ev, Carrier c, EconomyHooks h)
         {
             var e = s.Economy;
             var j = c.JobId >= 0 ? FindJob(s, c.JobId) : null;
@@ -543,9 +571,9 @@ namespace World.Sim.Economy
                         else BeginLocal(s, ev, c, c.LegToKind, c.LegToId, PlaceKind.Storehouse, c.Home, CarrierState.Carrying);
                         return;
                     }
-                    Deliver(s, ev, c, j);
+                    Deliver(s, ev, c, j, h);
                     if (j.ToKind == PlaceKind.Storehouse && j.ToId == c.Home) { Idle(c); return; }
-                    if (j.ToKind == PlaceKind.Building)
+                    if (j.ToKind == PlaceKind.Building || j.ToKind == PlaceKind.BuildingUpgrade)
                     {
                         // Take an output of that building back, if one is waiting for this settlement's carriers.
                         Job back = null;
@@ -590,7 +618,28 @@ namespace World.Sim.Economy
             c.Progress = 0;
         }
 
-        private static void Deliver(WorldState s, EventBuffer ev, Carrier c, Job j)
+        private static void Deliver(WorldState s, EventBuffer ev, Carrier c, Job j, EconomyHooks h)
+        {
+            // Construction deliveries (PRD_AGES 4.2 handover detection; H1-0): which site, decided before the job goes.
+            SiteKind siteKind = (SiteKind)(-1);
+            if (h != null && h.OnConstructionDelivery.Count > 0)
+            {
+                switch (j.ToKind)
+                {
+                    case PlaceKind.Building:
+                        var b = EconomyLogic.GetBuilding(s, j.ToId);
+                        if (b != null && (b.State == BuildingState.Site || b.State == BuildingState.Constructing)) siteKind = SiteKind.Building;
+                        break;
+                    case PlaceKind.RoadSite: siteKind = SiteKind.Road; break;
+                    case PlaceKind.SettlementSite: siteKind = SiteKind.Settlement; break;
+                    case PlaceKind.BuildingUpgrade: siteKind = SiteKind.BuildingUpgrade; break;
+                }
+            }
+            DeliverGoods(s, ev, c, j);
+            if (siteKind >= 0) h.ConstructionDelivered(s, ev, j.Faction, siteKind, j.ToId, j.Ware, j.Count);
+        }
+
+        private static void DeliverGoods(WorldState s, EventBuffer ev, Carrier c, Job j)
         {
             var into = DeliveredArray(s, j.ToKind, j.ToId);
             into[(int)j.Ware] += j.Count;
@@ -650,7 +699,7 @@ namespace World.Sim.Economy
                 if (c.LegToKind == PlaceKind.RoadSite) AddMid(s, pts, c.LegToId);
                 return pts.ToArray();
             }
-            bool outward = c.LegToKind == PlaceKind.Building;
+            bool outward = c.LegToKind == PlaceKind.Building || c.LegToKind == PlaceKind.BuildingUpgrade;
             var b = EconomyLogic.GetBuilding(s, outward ? c.LegToId : c.LegFromId);
             if (b == null) return pts.ToArray();
             var path = PlotLayout.PathPoints(t, b.Plot);

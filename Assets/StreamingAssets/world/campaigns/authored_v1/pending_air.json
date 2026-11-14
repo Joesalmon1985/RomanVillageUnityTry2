@@ -1,0 +1,14 @@
+{
+  "Locations": [
+    { "Id": "shoulder", "Name": "the Bare Shoulder", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": 3, "R": 1 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "pedestal", "Kind": "Pedestal", "Name": "the wind-worn pedestal", "Crystal": "air" },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the lee of the rock", "I": -1, "J": 0 }
+      ] },
+    { "Id": "cliff", "Name": "the Cliff Stair", "Kind": "Site", "Anchor": { "Kind": "MeadowHexCentre", "Q": 1, "R": 3 }, "SafePoint": "safe",
+      "Markers": [
+        { "Id": "altar", "Kind": "Altar", "Name": "the signal altar", "Crystal": "air" },
+        { "Id": "safe", "Kind": "SafePoint", "Name": "the cliff path", "I": -1, "J": 0 }
+      ] }
+  ]
+}
