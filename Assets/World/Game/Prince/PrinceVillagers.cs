@@ -31,6 +31,13 @@ namespace World.Game
                     Signs.Prim(PrimitiveType.Cube, a.HeadPivot, "Point", new Vector3(Mathf.Sin(ang) * 0.15f, 0.32f, Mathf.Cos(ang) * 0.15f), new Vector3(0.04f, 0.09f, 0.04f), gold, new Vector3(0, i * 72f, 45f));
                 }
                 Signs.Prim(PrimitiveType.Cube, a.BodyPivot, "Cape", new Vector3(0, 1.0f, -0.2f), new Vector3(0.52f, 0.95f, 0.05f), MaterialFactory.Shared(new Color(0.55f, 0.10f, 0.16f)), new Vector3(8f, 0, 0));
+                // His rank must read from across the camp: a fan of tall feathers on the circlet and a sun standard on his back.
+                var red = MaterialFactory.Shared(new Color(0.80f, 0.16f, 0.12f)); var white = MaterialFactory.Shared(new Color(0.95f, 0.93f, 0.85f));
+                for (int i = -2; i <= 2; i++)
+                    Signs.Prim(PrimitiveType.Cube, a.HeadPivot, "Feather", new Vector3(i * 0.075f, 0.50f - Mathf.Abs(i) * 0.03f, -0.10f), new Vector3(0.06f, 0.46f - Mathf.Abs(i) * 0.06f, 0.02f), (i & 1) == 0 ? red : white, new Vector3(-12f, 0, -i * 11f));
+                Signs.Prim(PrimitiveType.Cylinder, a.BodyPivot, "StandardPole", new Vector3(-0.16f, 1.55f, -0.28f), new Vector3(0.045f, 1.05f, 0.045f), MaterialFactory.Shared(Wood));
+                Signs.Prim(PrimitiveType.Cylinder, a.BodyPivot, "StandardSun", new Vector3(-0.16f, 2.72f, -0.28f), new Vector3(0.46f, 0.025f, 0.46f), gold, new Vector3(90f, 0, 0));
+                Signs.Prim(PrimitiveType.Cube, a.BodyPivot, "StandardBar", new Vector3(-0.16f, 2.38f, -0.28f), new Vector3(0.5f, 0.05f, 0.04f), red);
             }
             return n;
         }

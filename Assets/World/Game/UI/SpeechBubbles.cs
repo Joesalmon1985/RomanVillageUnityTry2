@@ -220,6 +220,19 @@ namespace World.Game
             return false;
         }
 
+        /// <summary>True if a GUI point is over a drawn reply line (or an off-screen caller's box).</summary>
+        public static bool OverReply(Vector2 guiPoint)
+        {
+            int f = Time.frameCount;
+            foreach (var b in All)
+            {
+                if (b.DrawnFrame < f - 2) continue;
+                if (b.OffScreen && b.Kind == Kind.Ask && b.Body.Contains(guiPoint)) return true;
+                foreach (var r in b.ReplyRects) if (r.Contains(guiPoint)) return true;
+            }
+            return false;
+        }
+
         /// <summary>True if a GUI point is over a drawn bubble or reply.</summary>
         public static bool Contains(Vector2 guiPoint)
         {
@@ -421,7 +434,9 @@ namespace World.Game
             if (b.Kind == SpeechBubbles.Kind.Say && !b.HasPoint && dist > SpeechBubbles.SayRange) { b.DrawnFrame = -10; return; }
             if (!onScreen)
             {
-                if (b.Kind != SpeechBubbles.Kind.Ask || b.Who == null) { b.DrawnFrame = -10; return; }
+                // A question off screen: "<name> calls you" at the screen edge. A line said off screen (by a villager
+                // near enough to hear): the line itself at the edge, so what is said behind the player is not lost.
+                if (b.Who == null || b.Kind == SpeechBubbles.Kind.Inspect) { b.DrawnFrame = -10; return; }
                 b.Body = EdgePointerRect(cam, world, b);
                 b.DrawnFrame = Time.frameCount;
                 return;
@@ -512,6 +527,13 @@ namespace World.Game
             float w = UiStyle.Px(240), h = UiStyle.Px(52), m = UiStyle.Px(12);
             // Package N: wide enough for longer names ("Wenna the merchant calls you").
             if (_reply != null) w = Mathf.Max(w, _reply.CalcSize(new GUIContent((b.Name ?? "Someone") + " calls you   >")).x + UiStyle.Px(36));
+            if (b.Kind == SpeechBubbles.Kind.Say && _inspectText != null)
+            {
+                // The line itself, small, up to about four lines.
+                w = UiStyle.Px(400);
+                var st = EdgeSayStyle();
+                h = Mathf.Min(UiStyle.Px(132), st.CalcHeight(new GUIContent(EdgeSayText(b, Vector2.right)), w - UiStyle.Px(24)) + UiStyle.Px(18));
+            }
             var c = new Vector2(Screen.width / 2f, Screen.height / 2f);
             float kx = (Screen.width / 2f - w / 2 - m) / Mathf.Max(1e-4f, Mathf.Abs(dir.x));
             float ky = (Screen.height / 2f - h / 2 - m) / Mathf.Max(1e-4f, Mathf.Abs(dir.y));
@@ -522,6 +544,23 @@ namespace World.Game
         }
 
         private readonly Dictionary<int, Vector2> _edgeDir = new Dictionary<int, Vector2>();
+        private GUIStyle _edgeSay;
+
+        private GUIStyle EdgeSayStyle()
+        {
+            if (_edgeSay == null || _edgeSay.fontSize != UiStyle.Px(18))
+            {
+                _edgeSay = new GUIStyle(_text) { fontSize = UiStyle.Px(18), wordWrap = true, alignment = TextAnchor.MiddleLeft, richText = true };
+                _edgeSay.normal.textColor = Ink;
+            }
+            return _edgeSay;
+        }
+
+        private static string EdgeSayText(SpeechBubbles.Bubble b, Vector2 d)
+        {
+            string arrow = Mathf.Abs(d.x) > Mathf.Abs(d.y) ? (d.x > 0 ? "▶" : "◀") : (d.y > 0 ? "▼" : "▲");
+            return arrow + " <b>" + (b.Name ?? "Someone") + ":</b> " + b.Text;
+        }
 
         private void Draw(SpeechBubbles.Bubble b)
         {
@@ -529,8 +568,15 @@ namespace World.Game
             bool inspect = b.Kind == SpeechBubbles.Kind.Inspect;
             if (b.OffScreen)
             {
-                DrawRounded(b.Body, ReplyPaper, PaperEdge);
                 var d = _edgeDir.TryGetValue(b.Handle, out var v) ? v : Vector2.right;
+                if (b.Kind == SpeechBubbles.Kind.Say)
+                {
+                    DrawRounded(b.Body, Paper, PaperEdge);
+                    float ep = UiStyle.Px(12);
+                    GUI.Label(new Rect(b.Body.x + ep, b.Body.y, b.Body.width - 2 * ep, b.Body.height), EdgeSayText(b, d), EdgeSayStyle());
+                    return;
+                }
+                DrawRounded(b.Body, ReplyPaper, PaperEdge);
                 string arrow = Mathf.Abs(d.x) > Mathf.Abs(d.y) ? (d.x > 0 ? "▶" : "◀") : (d.y > 0 ? "▼" : "▲");
                 var st = new GUIStyle(_reply) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
                 GUI.Label(b.Body, (d.x < 0 || d.y < -0.7f ? arrow + "  " : "") + (b.Name ?? "Someone") + " calls you" + (d.x >= 0 && d.y >= -0.7f ? "  " + arrow : ""), st);

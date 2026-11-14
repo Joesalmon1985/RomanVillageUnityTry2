@@ -39,8 +39,15 @@ namespace World.Game
         public static float LeadSpeed = 7f;
         public static float TagAlongSpeed = 5f;
         public static float PitchDistance = 8f;
-        public static float AskTimeout = 15f;
+        /// <summary>A question stays open this long (a player who takes 10 to 20 s to answer still answers the first one).</summary>
+        public static float AskTimeout = 25f;
+        /// <summary>Seconds before an unanswered pitch comes back when the player walked off (first, second, later times).</summary>
         public static float[] RepitchAfter = { 40f, 30f, 20f };
+        /// <summary>Seconds before it comes back when the player stayed near (within <see cref="NearDistance"/>): they are idle, not gone.</summary>
+        public static float[] NearRepitchAfter = { 12f, 10f, 8f };
+        public static float NearDistance = 25f;
+        /// <summary>A player who has come this much nearer to the spot since the question is plainly walking there: the villager goes ahead and waits at the spot.</summary>
+        public static float HeadingMetres = 10f;
         public static float WarningRepitch = 15f;
         public static float ResignedSeconds = 90f, ResignedUnderWarning = 30f;
         public static float LaterSeconds = 60f;
@@ -282,6 +289,11 @@ namespace World.Game
                     {
                         CurrentPhase = Phase.Waiting; _nextPitchAt = Now; _resignedWho = null;
                     }
+                    else
+                    {
+                        var again = FactionApi.Top(S, PlayerIds.Human);
+                        if (again != null && again.Id != _declinedId) CameToSpotUnasked(again, false);
+                    }
                     return;
             }
             // Waiting: pitch the top proposal when it is new, or again when its interval is up.
@@ -290,10 +302,28 @@ namespace World.Game
             if (top == null) return;
             if (top.Id == _declinedId) return; // the brain has not re-planned yet
             if (top.Id == _laterId && Now < _laterUntil) return;
+            if (CameToSpotUnasked(top, false)) return;
             bool changed = top.Id != _lastPitchedId;
             float gap = Unanswered > 0 ? 15f : 2f;
             if (Now < _nextPitchAt && !(changed && Now - _lastPitchEnd >= gap)) return;
             StartPitch(top, false);
+        }
+
+        /// <summary>
+        /// Between questions (an unanswered pitch waiting to be repeated, or the villager resigned): a player who walks
+        /// to the pitched proposal's spot gets the villager there at once, as if they had said "I'll catch up".
+        /// </summary>
+        private bool CameToSpotUnasked(Proposal top, bool firstScene)
+        {
+            if (top == null || top.Id != _lastPitchedId || Unanswered <= 0) return false;
+            if (!PlayerHeadsForSpot(top.Id, _idleTargetDist)) return false;
+            StartPitch(top, firstScene);
+            if (firstScene) _p.Who = Prince;
+            _p.OnArrive = null;
+            Unanswered = 0; ImpliedAnswers++;
+            _resignedWho = null;
+            StartLead(true);
+            return true;
         }
 
         private void StartPitch(Proposal top, bool firstScene)
@@ -358,7 +388,7 @@ namespace World.Game
             var spot = PitchSpot(who);
             bool inView = Walker != null && Vector3.Angle(Flat(Walker.transform.forward), Flat(who.transform.position - me)) <= 40f;
             bool onSpot = !who.IsWalking && BoardSpace.Flat(who.transform.position - spot) < 3f;
-            if (d <= PitchDistance + 2.5f && (inView || onSpot))
+            if ((d <= PitchDistance + 2.5f && inView) || (onSpot && d <= NearDistance))
             {
                 who.StopWalking();
                 who.FaceTowards(me);
@@ -408,10 +438,33 @@ namespace World.Game
             Record(who, text, true);
             _askedAt = Now;
             _askShown = false;
+            _askTargetDist = _p != null ? TargetDistance(_p.ProposalId) : -1f;
             CurrentPhase = Phase.Asking;
             PitchCount++;
             if (_p != null && _p.ProposalId >= 0 && !_pitchedAt.ContainsKey(_p.ProposalId)) _pitchedAt[_p.ProposalId] = S.Tick;
             who.Actor?.PlayOneShot(_p != null && _p.Fetching ? ActorKeys.Beckon : ActorKeys.Greet);
+        }
+
+        private float _askTargetDist = -1f;
+
+        /// <summary>Metres from the player to a proposal's target point, or -1.</summary>
+        private float TargetDistance(int proposalId)
+        {
+            if (proposalId < 0 || !FactionApi.ProposalTarget(S, proposalId, out double x, out double z, out _)) return -1f;
+            return BoardSpace.Flat(new Vector3((float)x, 0, (float)z) - PlayerPos);
+        }
+
+        /// <summary>
+        /// True when the player, without answering, is plainly walking to the proposal's spot: they have come
+        /// <see cref="HeadingMetres"/> nearer to it since the question (or since the pitch ended), or walked into cast range.
+        /// </summary>
+        private bool PlayerHeadsForSpot(int proposalId, float distanceThen)
+        {
+            float d = TargetDistance(proposalId);
+            if (d < 0 || distanceThen < 0) return false;
+            if (distanceThen - d >= HeadingMetres) return true;
+            float range = (float)FactionApi.CastRangeMetres(S);
+            return d <= range && distanceThen > range + 2f;
         }
 
         private void UpdateAsking()
@@ -421,11 +474,19 @@ namespace World.Game
             if (_ask != 0 && SpeechBubbles.IsShowing(_ask)) _askShown = true;
             float d = BoardSpace.Flat(who.transform.position - PlayerPos);
             bool gone = _ask == 0 || !SpeechBubbles.IsOpen(_ask);
+            // Walking to the spot is an answer: he goes ahead and waits there (the pitch stays castable all along).
+            if (!gone && !_p.Fetching && PlayerHeadsForSpot(_p.ProposalId, _askTargetDist))
+            {
+                SpeechBubbles.Close(_ask); _ask = 0;
+                Unanswered = 0; ImpliedAnswers++;
+                StartLead(true);
+                return;
+            }
             if (gone || Now - _askedAt >= AskTimeout || d > 40f)
             {
                 if (!gone) SpeechBubbles.Close(_ask);
                 _ask = 0;
-                OnUnanswered();
+                OnUnanswered(d <= NearDistance);
                 return;
             }
             // The player walked a little away: keep within talking distance, but do not chase into their face.
@@ -438,11 +499,18 @@ namespace World.Game
             else if (who.IsWalking && d <= PitchDistance + 1f) who.StopWalking();
         }
 
-        private void OnUnanswered()
+        /// <summary>Pitches answered by walking to the spot instead of by a reply.</summary>
+        public int ImpliedAnswers { get; private set; }
+        private float _idleTargetDist = -1f;
+
+        private void OnUnanswered(bool near)
         {
             Unanswered++;
             var who = _p != null ? _p.Who : Prince;
-            EndPitch(Now + RepitchInterval());
+            int id = _p != null ? _p.ProposalId : -1;
+            // Near and idle: ask again soon. Walked off: the longer intervals.
+            EndPitch(Now + (near ? Mathf.Min(NearRepitchAfter[Mathf.Clamp(Unanswered - 1, 0, NearRepitchAfter.Length - 1)], RepitchInterval()) : RepitchInterval()));
+            _idleTargetDist = TargetDistance(id);
             if (Unanswered % UnansweredBeforeResigned == 0)
             {
                 Say(who, VoiceOf(who).Pick("resigned"));
@@ -716,11 +784,12 @@ namespace World.Game
                     case Phase.AtSpot: UpdateAtSpot(); return;
                     case Phase.Resigned:
                         if (Now >= _resignedUntil) { CurrentPhase = Phase.Waiting; _nextPitchAt = Now; }
-                        else TagAlongPrince(8f);
+                        else if (!CameToSpotUnasked(OpeningProposal(), true)) TagAlongPrince(8f);
                         return;
                 }
-                if (Now < _nextPitchAt) { TagAlongPrince(7f); return; }
                 var open = OpeningProposal();
+                if (open != null && CameToSpotUnasked(open, true)) return;
+                if (Now < _nextPitchAt) { TagAlongPrince(7f); return; }
                 if (open == null) return; // the brain has not planned yet
                 StartPitch(open, true);
                 _p.Who = Prince;
@@ -879,6 +948,12 @@ namespace World.Game
         private void UpdateBuilder()
         {
             if (Builder == null) return;
+            // Tam is the builder of the first hut: V's own site builder is not drawn there (no doubled figure).
+            if (_hutBuilding >= 0 && LandViews.Instance != null)
+            {
+                var hut = LandViews.Instance.Building(_hutBuilding);
+                if (hut != null && hut.Site != null) hut.Site.HideBuilder = true;
+            }
             var s = S;
             Building b = _hutBuilding >= 0 && _hutBuilding < s.Economy.Buildings.Count ? s.Economy.Buildings[_hutBuilding] : null;
             bool working = b != null && (b.State == BuildingState.Site || b.State == BuildingState.Constructing);
@@ -1280,8 +1355,7 @@ namespace World.Game
         public static IFollowable CarrierFollowable(int carrierId)
         {
             var t = LandViews.Instance != null ? LandViews.Instance.CarrierView(carrierId) : null;
-            if (t != null) { var f = t.GetComponentInParent<IFollowable>(); if (f != null) return f; }
-            return NPlaceholderViews.Instance != null ? NPlaceholderViews.Instance.Carrier(carrierId) : null;
+            return t != null ? t.GetComponentInParent<IFollowable>() : null;
         }
 
         public static Transform CarrierTransform(int carrierId)
@@ -1294,8 +1368,7 @@ namespace World.Game
         public static Transform ProposalMark(int proposalId)
         {
             var t = LandViews.Instance != null ? LandViews.Instance.ProposalMarker(proposalId) : null;
-            if (t != null) return t;
-            return NPlaceholderViews.Instance != null ? NPlaceholderViews.Instance.ProposalMark(proposalId) : null;
+            return t;
         }
 
         // ---------------- HUD (one line, H) ----------------

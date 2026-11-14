@@ -113,9 +113,16 @@ namespace World.Game
         public static TapOutcome TapAt(Vector2 screenPoint)
         {
             var gui = new Vector2(screenPoint.x, Screen.height - screenPoint.y);
-            if (SpeechBubbles.HandleTap(gui)) return Done(TapOutcome.Bubble, default);
-            return Tap(Raycast(screenPoint));
+            var hit = Raycast(screenPoint);
+            // Inside the ring of a proposal that can be cast from here, the press wins over a bubble's body or a
+            // person standing on it (a reply line under the pointer still answers).
+            bool ring = CastableAt(hit) && !SpeechBubbles.OverReply(gui);
+            if (!ring && SpeechBubbles.HandleTap(gui)) return Done(TapOutcome.Bubble, default);
+            return Tap(hit);
         }
+
+        /// <summary>True when the hit's ground lies in the press area of an open proposal of your people that is in cast range.</summary>
+        public static bool CastableAt(PointerHit hit) => hit.HasGround && hit.ProposalId >= 0 && SpellCaster.InRange(hit.ProposalId);
 
         /// <summary>A tap on an object (AutoPlay, tests): as if it were tapped where it stands.</summary>
         public static TapOutcome TapObject(Component target)
@@ -142,7 +149,12 @@ namespace World.Game
         {
             var outcome = TapOutcome.None;
             var t = hit.Target;
-            if (t != null && !(t is HexView) && (t is IInteractable || t is IFollowable))
+            if (CastableAt(hit))
+            {
+                var r = SpellCaster.TryCastAt(hit.Ground);
+                outcome = r.Ok ? TapOutcome.Cast : TapOutcome.CastRefused;
+            }
+            else if (t != null && !(t is HexView) && (t is IInteractable || t is IFollowable))
             {
                 if (t is IInteractable ia) { ia.Interact(); outcome = TapOutcome.Interact; }
                 else { OfferFollow((IFollowable)t, t); outcome = TapOutcome.Person; }
@@ -235,8 +247,9 @@ namespace World.Game
             }
             Vector2 mouse = Input.mousePosition;
             var gui = new Vector2(mouse.x, Screen.height - mouse.y);
-            bool overBubble = SpeechBubbles.Contains(gui);
-            var hit = overBubble ? new PointerHit { ProposalId = -1 } : PointerInput.Raycast(mouse);
+            var hit = PointerInput.Raycast(mouse);
+            bool overBubble = SpeechBubbles.Contains(gui) && !(PointerInput.CastableAt(hit) && !SpeechBubbles.OverReply(gui));
+            if (overBubble) hit = new PointerHit { ProposalId = -1 };
             PointerInput.SetHovered(hit);
             UpdateHighlight(hit);
 
@@ -266,7 +279,7 @@ namespace World.Game
             var t = hit.Target;
             Vector3 centre; float radius; Color c;
             // The ground of an open proposal wins over a thing standing on it (a camp, a stock patch): a tap there casts.
-            bool castGround = hit.ProposalId >= 0 && !(t is IFollowable || t is IInteractable);
+            bool castGround = hit.ProposalId >= 0 && (!(t is IFollowable || t is IInteractable) || PointerInput.CastableAt(hit));
             if (t != null && !(t is HexView) && !castGround)
             {
                 Bounds(t.transform, out centre, out radius);

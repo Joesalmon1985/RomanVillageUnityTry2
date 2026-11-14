@@ -102,6 +102,7 @@ namespace World.Game
             foreach (var s in _solids)
             {
                 var ac = s.Centre - a; ac.y = 0;
+                if (ac.sqrMagnitude < s.Radius * s.Radius) continue; // already inside (a villager who stood there): the way out is free
                 float u = len2 > 1e-6f ? Mathf.Clamp01(Vector3.Dot(ac, ab) / len2) : 0f;
                 if (BoardSpace.Flat(a + ab * u - s.Centre) < s.Radius) return s.Owner ?? "solid";
             }

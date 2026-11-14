@@ -39,6 +39,9 @@ namespace World.Game
 
         /// <summary>The last follow_prince / ignore_prince report (tests).</summary>
         public static string LastReport { get; private set; }
+        /// <summary>Times the last follow_prince run went two minutes without a cast (logged with what everyone was doing).</summary>
+        public static int Stalls => s_stalls;
+        private static int s_stalls;
         public static GameOutcome LastOutcome { get; private set; }
 
         private static bool s_registered;
@@ -318,6 +321,7 @@ namespace World.Game
             var walkPerCast = new List<float>();
             float walkedAtCast = 0f;
             int directFor = -1;
+            float lastCastAt = Now, stallLogAt = 0f; s_stalls = 0;
             while (!FactionApi.Outcome(S).GameOver && Now < maxMinutes * 60f)
             {
                 walked += BoardSpace.Flat(W.Position - last); last = W.Position;
@@ -325,6 +329,21 @@ namespace World.Game
                 {
                     castsBefore = d.Casts.Count;
                     walkPerCast.Add(walked - walkedAtCast); walkedAtCast = walked;
+                    lastCastAt = Now;
+                }
+                // Diagnostics: two minutes without a cast is worth a line in the log (what everyone is doing).
+                if (Now - lastCastAt >= 120f && Now >= stallLogAt)
+                {
+                    stallLogAt = Now + 120f; s_stalls++;
+                    int nh = SpeechBubbles.NearestAsk(1);
+                    var topNow = FactionApi.Top(S, PlayerIds.Human);
+                    Debug.Log("[AutoPlay] " + name + " stall at " + Now.ToString("0") + " s (last cast " + lastCastAt.ToString("0") + " s): phase " + d.CurrentPhase
+                        + ", pitched " + d.PitchedProposal + (d.PitchedProposal >= 0 ? " '" + FactionApi.ProposalTitle(S, d.PitchedProposal) + "' " + SpellCaster.DistanceTo(d.PitchedProposal).ToString("0") + " m away" : "")
+                        + ", top " + (topNow != null ? "'" + FactionApi.ProposalTitle(S, topNow.Id) + "'" : "none") + ", open proposals " + FactionApi.Proposals(S, PlayerIds.Human).Count
+                        + ", unanswered " + d.Unanswered + ", ask " + d.AskHandle + ", nearest ask " + nh + (nh != 0 ? " '" + SpeechBubbles.TextOf(nh) + "' [" + string.Join("/", SpeechBubbles.RepliesOf(nh)) + "]" : "")
+                        + ", walker auto " + W.IsAutoWalking + " following " + (W.Following != null) + " locked " + W.IsLocked + " at " + W.Cell
+                        + ", speaker " + (d.ActiveSpeaker != null ? d.ActiveSpeaker.Id + " " + BoardSpace.Flat(d.ActiveSpeaker.transform.position - W.Position).ToString("0") + " m away walking " + d.ActiveSpeaker.IsWalking : "none")
+                        + ", dialogue open " + DialoguePanel.IsOpen + ", encounter " + (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning));
                 }
                 // 1. Answer: a call ("Coming") at once; a pitch once the delay has passed since that proposal was
                 //    first pitched. If the question timed out meanwhile, the player taps the villager to hear it again.

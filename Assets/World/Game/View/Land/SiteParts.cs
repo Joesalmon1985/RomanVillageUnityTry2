@@ -16,6 +16,8 @@ namespace World.Game
         private GameObject _piles, _barBack, _barFill, _post;
         private string _sig;
         public LandFigure Builder { get; private set; }
+        /// <summary>True when someone else's figure builds here (the first scene's builder): the site's own builder is not drawn.</summary>
+        public bool HideBuilder;
         public int DeliveredShown { get; private set; }
         public int MissingShown { get; private set; }
         public float ProgressShown { get; private set; } = -1f;
@@ -95,7 +97,7 @@ namespace World.Game
             }
             if (Builder != null)
             {
-                Builder.gameObject.SetActive(building);
+                Builder.gameObject.SetActive(building && !HideBuilder);
                 Builder.transform.localPosition = origin - along.normalized * 1.3f + Vector3.Cross(Vector3.up, along.normalized) * 1.4f;
                 Builder.transform.localRotation = Quaternion.LookRotation(-Vector3.Cross(Vector3.up, along.normalized), Vector3.up);
             }

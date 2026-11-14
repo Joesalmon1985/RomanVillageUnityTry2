@@ -67,3 +67,12 @@ Scripts (editor or `-autoplay <name>`; options `-timescale <x>`, `-princeDelay <
 ## Placeholders (remove when package V lands)
 
 `NPlaceholderViews` is created only when `LandViews.Instance` is null and removes itself on the first tick after V's views exist. It draws camps, buildings by state, roads, carriers (`NPlaceholderCarrier`: `IFollowable`, `IInspectable`, a block in the ware colour) and a pulsing green ring (a strip for roads) on every open proposal of your people. The director only reaches carriers and marks through `CarrierFollowable` / `ProposalMark`, which ask `LandViews` first. V's views should give: a builder figure on sites (N's Tam only appears in the first scene), followable carriers from `LandViews.CarrierView`, and the ground mark from `LandViews.ProposalMarker`.
+
+## Integration notes (14 Nov 2026, `pre-integrated-3`)
+
+- The placeholder views are gone; carriers and ground marks come from `LandViews` only. V's site builder is hidden on the first hut while Tam works there (`SiteParts.HideBuilder`).
+- Pace changes (all in `PrinceDirector`, game seconds): `AskTimeout` 25; `NearRepitchAfter` {12, 10, 8} while the player stays within `NearDistance` 25 m, `RepitchAfter` {40, 30, 20} when they walked off; walking 10 m nearer to the spot (`HeadingMetres`) or into cast range counts as an answer (`ImpliedAnswers`), also between questions and while resigned; a villager on his pitch spot asks from up to 25 m.
+- `PrinceInstaller.Disabled` / `-noprince`: no director, no prince, sawyer or merchant.
+- The prince carries a fan of tall feathers and a sun standard on his back so that he reads from across the camp; at night the lighting package gives him a carried light.
+- The save keeps the first scene's step (`scene.first`); the pitch loop restarts from the open proposals.
+- `follow_prince` logs `[AutoPlay] follow_prince stall at ...` with what everyone is doing when two minutes pass without a cast (`PrinceScripts.Stalls`).

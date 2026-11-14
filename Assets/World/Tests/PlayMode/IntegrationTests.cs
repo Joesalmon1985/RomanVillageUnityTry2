@@ -300,11 +300,33 @@ namespace World.Game.Tests
             DayNight.DevOffsetHours = 0;
         }
 
+        [UnityTest, Timeout(60000)]
+        public IEnumerator NoPrince_Flag_RunsTheWorldWithoutHim_AndCastingStillWorks()
+        {
+            PrinceInstaller.Disabled = true;
+            try
+            {
+                yield return Load();
+                Assert.IsNull(PrinceDirector.Instance, "no director");
+                Assert.IsNull(Npc.Find(NpcIds.Prince), "no prince");
+                Assert.IsNotNull(Npc.Find(NpcIds.Mira), "Mira is still there");
+                yield return Until(() => FactionApi.Top(S, PlayerIds.Human) != null, 10f, "the opening proposal");
+                var ap = AutoPlay.Instance;
+                bool? ok = null;
+                ap.Finished += (s, pass) => ok = pass;
+                ap.Run(new AutoPlayScript("one_cast").CastAtProposal(0));
+                yield return Until(() => ok != null, 40f, "the cast script");
+                Assert.IsTrue(ok == true, "cast without a prince: " + ap.FailMessage);
+            }
+            finally { PrinceInstaller.Disabled = false; }
+        }
+
         [UnityTest, Timeout(600000)]
         public IEnumerator CastAll_AutoPlay_PlaysToAnEnding()
         {
             yield return Load();
-            Assert.IsNull(PrinceDirector.Instance != null ? PrinceDirector.Instance.Prince : null, "no prince present");
+            // The real game: the prince and his villagers are there and pitch while the script casts the queue itself.
+            Assert.IsNotNull(PrinceDirector.Instance != null ? PrinceDirector.Instance.Prince : null, "the prince is present");
             var ap = AutoPlay.Instance;
             Assert.IsTrue(AutoPlayScripts.TryCreate(CastAll.Name, out var script), "cast_all registered");
             CastAll.Speed = 8f;

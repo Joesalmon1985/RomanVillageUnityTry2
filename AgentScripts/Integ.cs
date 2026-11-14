@@ -23,6 +23,37 @@ public static class Integ
     }
     static bool? _ok;
 
+    public static string FirstScene() { PrinceScripts.TimeScale = 1f; return Run("first_scene"); }
+    static string Follow(float delay) { PrinceScripts.TimeScale = 8f; PrinceScripts.Delay = delay; PrinceScripts.Direct = false; return Run("follow_prince"); }
+    public static string Follow3() => Follow(3f);
+    public static string Follow10() => Follow(10f);
+    public static string Follow20() => Follow(20f);
+    public static string Follow30() => Follow(30f);
+    public static string Ignore() { PrinceScripts.TimeScale = 8f; return Run("ignore_prince"); }
+    public static string ToPrince()
+    {
+        var d = PrinceDirector.Instance; if (d == null) return "no director";
+        return "phase " + d.CurrentPhase + " scene " + d.FirstSceneStep + " unanswered " + d.Unanswered + " pitches " + d.PitchCount + " implied " + d.ImpliedAnswers + " prince " + d.Prince.transform.position;
+    }
+    public static string PrinceLog()
+    {
+        var d = PrinceDirector.Instance; if (d == null) return "no director";
+        var s = B.Sim.State;
+        var sb = new StringBuilder();
+        sb.Append("tick ").Append(s.Tick).Append(" phase ").Append(d.CurrentPhase).Append(" pitched ").Append(d.PitchedProposal).Append(" ask ").Append(d.AskHandle).Append(" unanswered ").Append(d.Unanswered).Append(" waiting ").Append(d.WaitingForPlayer);
+        if (d.PitchedProposal >= 0) sb.Append(" inRange ").Append(SpellCaster.InRange(d.PitchedProposal)).Append(" dist ").Append(SpellCaster.DistanceTo(d.PitchedProposal).ToString("0")).Append(" title ").Append(FactionApi.ProposalTitle(s, d.PitchedProposal));
+        sb.Append(" walker auto ").Append(B.Avatar.IsAutoWalking).Append(" following ").Append(B.Avatar.Following != null).Append(" locked ").Append(B.Avatar.IsLocked);
+        sb.Append(" speaker ").Append(d.ActiveSpeaker != null ? d.ActiveSpeaker.Id + " walking " + d.ActiveSpeaker.IsWalking + " at " + d.ActiveSpeaker.transform.position : "-");
+        sb.Append(" || proposals: ");
+        foreach (var p in FactionApi.Proposals(s, 0)) sb.Append(p.Id).Append(' ').Append(FactionApi.ProposalTitle(s, p.Id)).Append("; ");
+        int sites = 0; foreach (var b in s.Economy.Buildings) if (b.Faction == 0 && (b.State == BuildingState.Site || b.State == BuildingState.Constructing)) sites++;
+        foreach (var r in s.Economy.Roads) if (r.Faction == 0 && r.State != RoadState.Built && r.State != RoadState.Cancelled) sites++;
+        foreach (var st in s.Economy.Settlements) if (st.Faction == 0 && st.State == SettlementState.Site) sites++;
+        sb.Append(" open sites ").Append(sites).Append(" casts ").Append(d.Casts.Count);
+        sb.Append(" || said: ");
+        for (int i = Mathf.Max(0, d.Said.Count - 8); i < d.Said.Count; i++) sb.Append('[').Append(d.Said[i].Tick).Append(' ').Append(d.Said[i].Speaker).Append(d.Said[i].Ask ? "?" : "").Append("] ").Append(d.Said[i].Text).Append(" | ");
+        return sb.ToString().Replace('"', '\'');
+    }
     public static string WalkTour() => Run("walk_tour");
     public static string DuelDance() => Run("duel_dance");
     public static string CastAll1() { CastAll.Speed = 1f; return Run("cast_all"); }

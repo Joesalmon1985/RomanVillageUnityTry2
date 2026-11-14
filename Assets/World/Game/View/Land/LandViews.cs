@@ -403,11 +403,28 @@ namespace World.Game
             }
         }
 
+        /// <summary>Radius kept clear round a proposed camp's corner and round the middle of a proposed road.</summary>
+        public const float ProposedCampClearing = 10f, ProposedRoadClearing = 9f;
+        private readonly HashSet<Vector3> _proposedSpots = new HashSet<Vector3>();
+        private int _proposedSig;
+        /// <summary>Spots cleared because they were proposed to the player: (x, radius, z).</summary>
+        public IReadOnlyCollection<Vector3> ProposedClearings => _proposedSpots;
+
         /// <summary>Trees, rocks and crops are cleared round every camp: its corner, its plots and its local paths.</summary>
         private void SyncClearings(WorldState s)
         {
             var sb = new System.Text.StringBuilder();
             foreach (var st in s.Economy.Settlements) if (st.State != SettlementState.Cancelled) sb.Append(st.Corner).Append(',');
+            // Spots proposed to the player (a new camp's corner, a road's middle): cleared once and kept cleared, so
+            // the cast ring lies on open ground and nobody stands among trunks to cast.
+            foreach (var pr in FactionApi.Proposals(s, PlayerIds.Human))
+            {
+                if (pr.Kind != ProposalKind.Settlement && pr.Kind != ProposalKind.Road) continue;
+                if (!FactionApi.ProposalTarget(s, pr.Id, out double px, out double pz, out _)) continue;
+                var key = new Vector3(Mathf.Round((float)px * 10f) / 10f, pr.Kind == ProposalKind.Settlement ? ProposedCampClearing : ProposedRoadClearing, Mathf.Round((float)pz * 10f) / 10f);
+                if (_proposedSpots.Add(key)) _proposedSig++;
+            }
+            sb.Append('p').Append(_proposedSig);
             if (_warCamp != null) sb.Append("w").Append(_warCamp.transform.position.x.ToString("0"));
             string sig = sb.ToString();
             if (sig == _campSig) return;
@@ -449,6 +466,7 @@ namespace World.Game
             if (_warCamp != null) Add(_warCamp.transform.position, 8.5f);
             // Package D's home camp: the dance circle, tents and props, Mira's duel ground, the spawn view (x, z, radius).
             foreach (var c in new CampLayout(s.Board).Clearings) Add(new Vector3(c.x, 0, c.y), c.z);
+            foreach (var ps in _proposedSpots) Add(new Vector3(ps.x, 0, ps.z), ps.y);
             for (int h = 0; h < _hexes.Length; h++)
             {
                 byHex.TryGetValue(h, out var l);

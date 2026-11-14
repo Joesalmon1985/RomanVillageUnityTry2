@@ -69,3 +69,5 @@ The cursor is always free; there is no mouse look. Touch strips read real touche
 - `SpeechBubbles.ShowInEncounter`: set by an encounter that wants bubbles shown while it runs (the dance).
 
 - (14 Nov, `pre-integrated-2`) `WalkGrid.AddSolid(centre, radius, owner)`: a solid between cells; `IsStepBlocked(from, to)` is what the walker and `FindPath` now ask, so a step that would glide through a tent bumps. `DevTools.TimeOfDay(action)` and the Time tool's time-of-day row scrub the day-night cycle.
+
+- (14 Nov, `pre-integrated-3`) Inside the ring of a proposal in cast range the press casts even when a bubble's body or a person covers it (`PointerInput.CastableAt`, `SpeechBubbles.OverReply`); a reply line still answers. Lines said off screen are drawn small at the screen edge. Save extras: `walker.cell`, `walker.heading`, `walker.lattice`, `hud`, `scene.first`. AutoPlay `save_load`.

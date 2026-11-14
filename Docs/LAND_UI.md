@@ -76,3 +76,5 @@ Views per state item for both peoples (camps, plots, buildings, roads, carriers,
 - `IntegrationTests.CarrierViews_FollowTheRealSim_PositionsLoadsAndPorters` checks the carrier views against the real logistics (one view per carrier, on the sim's position within 5 cm, load shown, porter look on main-road legs).
 
 - (14 Nov, `pre-integrated-2`) Gatherers walk round the dance circle (`BuildingView.GathererRoute`). Idle carriers stand round the hearth, 1.5 m from the corner. `TerrainBuilder.PropPoints(hex)` backs the test that nothing grows in `CampLayout.Clearings`. The cast mark's beam stays V's at night (the lighting package adds only light and glow).
+
+- (14 Nov, `pre-integrated-3`) Proposed camp corners (10 m) and proposed road middles (9 m) are cleared of trees and crops and stay cleared for the session (`LandViews.ProposedClearings`). `SiteParts.HideBuilder` hides a site's builder figure (the first scene's builder stands there instead).
