@@ -1,0 +1,491 @@
+{
+ "schema": 1,
+ "key": "mira",
+ "identity_colour": "493052",
+ "merge": {
+  "hair": "leather"
+ },
+ "note": "Mira would use 9 slots; her hair (362B32) is within 5 RGB steps of her leather (392D31), so hair is folded into leather in both variants.",
+ "variants": {
+  "historic": {
+   "description": "Supplied look: purple hooded robe, cape pieces, brass fittings, amethyst staff."
+  },
+  "prehistoric": {
+   "description": "Plum-dyed long hide robe with a rough fringed hem, soft hide hood (cape pieces off), bone necklace, thong charms at the belt, hide cuff bindings, carved wooden staff with a glowing ember stone.",
+   "palette": {
+    "cloth_main": "70559A",
+    "cloth_trim": "4F3A63",
+    "leather": "4A3626",
+    "metal": "E6DBC0",
+    "emissive": "B070F0"
+   },
+   "slot_overrides": {
+    "Head.19": "cloth_trim",
+    "Head.20": "cloth_trim",
+    "Head.21": "cloth_trim",
+    "role:cuff": "leather"
+   },
+   "hidden": [
+    "part:Cloth",
+    "part:Prop",
+    "Legs.00"
+   ],
+   "overlays": [
+    {
+     "name": "Hem",
+     "type": "shell",
+     "slot": "cloth_trim",
+     "parts": [
+      {
+       "type": "shell",
+       "sides": 16,
+       "teeth": 8,
+       "tooth_depth": 0.05,
+       "jitter": 0.008,
+       "rings": [
+        {
+         "z": 0.62,
+         "fit": [
+          "role:robe_or_skirt"
+         ],
+         "margin": 0.012
+        },
+        {
+         "z": 0.36,
+         "fit": [
+          "role:robe_or_skirt"
+         ],
+         "margin": 0.022
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Hips",
+         "Skirt.F",
+         "Skirt.B",
+         "Skirt.L",
+         "Skirt.R"
+        ],
+        "falloff": 2.0
+       }
+      },
+      {
+       "type": "shell",
+       "sides": 16,
+       "teeth": 8,
+       "tooth_depth": 0.07,
+       "jitter": 0.01,
+       "rings": [
+        {
+         "z": 0.4,
+         "fit": [
+          "role:robe_or_skirt"
+         ],
+         "margin": 0.015
+        },
+        {
+         "z": 0.14,
+         "fit": [
+          "role:robe_or_skirt"
+         ],
+         "margin": 0.048
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Hips",
+         "Skirt.F",
+         "Skirt.B",
+         "Skirt.L",
+         "Skirt.R"
+        ],
+        "falloff": 2.0
+       }
+      }
+     ]
+    },
+    {
+     "name": "Charms",
+     "type": "box",
+     "slot": "leather",
+     "parts": [
+      {
+       "type": "box",
+       "slot": "leather",
+       "centre": [
+        0,
+        0,
+        0.84
+       ],
+       "size": [
+        0.02,
+        0.01,
+        0.26
+       ],
+       "top_scale": [
+        0.6,
+        1.0
+       ],
+       "on": {
+        "fit": [
+         "role:robe_or_skirt"
+        ],
+        "theta": 14,
+        "margin": 0.012
+       }
+      },
+      {
+       "type": "box",
+       "slot": "leather",
+       "centre": [
+        0,
+        0,
+        0.87
+       ],
+       "size": [
+        0.02,
+        0.01,
+        0.2
+       ],
+       "top_scale": [
+        0.6,
+        1.0
+       ],
+       "on": {
+        "fit": [
+         "role:robe_or_skirt"
+        ],
+        "theta": 28,
+        "margin": 0.012
+       }
+      },
+      {
+       "type": "box",
+       "slot": "metal",
+       "centre": [
+        0,
+        0,
+        0.705
+       ],
+       "size": [
+        0.034,
+        0.02,
+        0.04
+       ],
+       "on": {
+        "fit": [
+         "role:robe_or_skirt"
+        ],
+        "theta": 14,
+        "margin": 0.016
+       }
+      },
+      {
+       "type": "box",
+       "slot": "metal",
+       "centre": [
+        0,
+        0,
+        0.775
+       ],
+       "size": [
+        0.03,
+        0.018,
+        0.034
+       ],
+       "on": {
+        "fit": [
+         "role:robe_or_skirt"
+        ],
+        "theta": 28,
+        "margin": 0.016
+       }
+      }
+     ],
+     "weights": {
+      "bones": [
+       "Hips",
+       "Skirt.F",
+       "Skirt.L"
+      ],
+      "falloff": 2.0
+     }
+    },
+    {
+     "name": "Necklace",
+     "type": "necklace",
+     "slot": "metal",
+     "count": 14,
+     "z": "neck_z+0.02",
+     "rx": 0.105,
+     "ry": 0.1,
+     "cy": 0.0,
+     "drop": 0.1,
+     "push": 0.055,
+     "weights": {
+      "bones": [
+       "Chest",
+       "Neck"
+      ],
+      "falloff": 2.0
+     }
+    },
+    {
+     "name": "Staff",
+     "type": "lathe",
+     "slot": "leather",
+     "prop": {
+      "socket": "Sock.Hand.L",
+      "key": "carved_staff"
+     },
+     "parts": [
+      {
+       "type": "lathe",
+       "slot": "leather",
+       "p0": [
+        0.432,
+        -0.04,
+        0.035
+       ],
+       "p1": [
+        0.432,
+        -0.04,
+        1.8
+       ],
+       "sides": 6,
+       "twist": 160,
+       "profile": [
+        [
+         0,
+         0.018
+        ],
+        [
+         0.2,
+         0.022
+        ],
+        [
+         0.5,
+         0.024
+        ],
+        [
+         0.505,
+         0.034
+        ],
+        [
+         0.585,
+         0.034
+        ],
+        [
+         0.59,
+         0.024
+        ],
+        [
+         0.8,
+         0.026
+        ],
+        [
+         0.94,
+         0.028
+        ],
+        [
+         0.97,
+         0.036
+        ],
+        [
+         1.0,
+         0.03
+        ]
+       ]
+      },
+      {
+       "type": "lathe",
+       "slot": "metal",
+       "p0": [
+        0.432,
+        -0.04,
+        0.035
+       ],
+       "p1": [
+        0.432,
+        -0.04,
+        0.075
+       ],
+       "sides": 6,
+       "profile": [
+        [
+         0,
+         0.016
+        ],
+        [
+         1,
+         0.03
+        ]
+       ]
+      },
+      {
+       "type": "prongs",
+       "slot": "metal",
+       "centre": [
+        0.432,
+        -0.04,
+        1.805
+       ],
+       "size": [
+        0.024,
+        0.016,
+        0.17
+       ],
+       "count": 4,
+       "radius": 0.032,
+       "tilt": 12,
+       "top_scale": [
+        0.35,
+        0.35
+       ]
+      },
+      {
+       "type": "lathe",
+       "slot": "emissive",
+       "p0": [
+        0.432,
+        -0.04,
+        1.76
+       ],
+       "p1": [
+        0.432,
+        -0.04,
+        1.97
+       ],
+       "sides": 6,
+       "squash": [
+        1.0,
+        0.85
+       ],
+       "profile": [
+        [
+         0,
+         0.0
+        ],
+        [
+         0.25,
+         0.052
+        ],
+        [
+         0.62,
+         0.058
+        ],
+        [
+         1.0,
+         0.0
+        ]
+       ]
+      }
+     ],
+     "weights": {
+      "bones": [
+       "Hand.L"
+      ],
+      "rigid": true
+     }
+    },
+    {
+     "name": "Patches",
+     "type": "patches",
+     "slot": "leather",
+     "parts": [
+      {
+       "type": "patches",
+       "slot": "leather",
+       "fit": [
+        "role:robe_or_skirt",
+        "role:torso"
+       ],
+       "margin": 0.007,
+       "count": 4,
+       "theta": [
+        -72,
+        -8
+       ],
+       "z0": 1.05,
+       "z1": 1.3,
+       "w": [
+        0.05,
+        0.09
+       ],
+       "h": [
+        0.07,
+        0.12
+       ],
+       "tag": "f"
+      },
+      {
+       "type": "patches",
+       "slot": "leather",
+       "fit": [
+        "role:robe_or_skirt",
+        "role:torso"
+       ],
+       "margin": 0.007,
+       "count": 4,
+       "theta": [
+        125,
+        235
+       ],
+       "z0": 0.55,
+       "z1": 1.3,
+       "w": [
+        0.05,
+        0.1
+       ],
+       "h": [
+        0.07,
+        0.14
+       ],
+       "tag": "b"
+      }
+     ],
+     "weights": {
+      "bones": [
+       "Chest",
+       "Spine",
+       "Hips",
+       "Skirt.F",
+       "Skirt.B",
+       "Skirt.L",
+       "Skirt.R"
+      ],
+      "falloff": 3.0
+     }
+    },
+    {
+     "name": "Ruffs",
+     "type": "band",
+     "bone": "LowerArm.L",
+     "slot": "cloth_trim",
+     "sides": 8,
+     "teeth": 4,
+     "tooth_depth": 0.035,
+     "teeth_at": "last",
+     "rings": [
+      {
+       "t": 0.66,
+       "r": 0.086
+      },
+      {
+       "t": 0.84,
+       "r": 0.08
+      }
+     ],
+     "weights": {
+      "bones": [
+       "LowerArm.L",
+       "LowerArm.R"
+      ],
+      "falloff": 6.0,
+      "eps": 0.01
+     }
+    }
+   ]
+  }
+ }
+}
