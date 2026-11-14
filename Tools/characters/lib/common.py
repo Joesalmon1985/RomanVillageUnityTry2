@@ -150,8 +150,15 @@ class BuildContext:
                                       "rig": self.info["rig"], "source_fbx": self.info["fbx"],
                                       "contract_version": contract.CONTRACT_VERSION}}
         self.islands = load_islands(key)
+        self.costume = None      # set by build_cast.py: outputs then go to the per-costume folder (contract v2)
+
+    _COSTUME_PATHS = {"character_blend": "character_costume_blend", "character_fbx": "character_costume_fbx",
+                      "character_manifest": "character_costume_manifest", "character_reports": "character_costume_reports"}
 
     def path(self, layout_key, **kw):
+        if self.costume and layout_key in self._COSTUME_PATHS:
+            layout_key = self._COSTUME_PATHS[layout_key]
+            kw.setdefault("costume", self.costume)
         rel = contract.LAYOUT[layout_key].replace("<key>", self.key)
         for k, v in kw.items():
             rel = rel.replace("<%s>" % k, v)

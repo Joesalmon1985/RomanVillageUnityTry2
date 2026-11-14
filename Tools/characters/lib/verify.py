@@ -51,6 +51,8 @@ STRAY_WIDE_M = 0.40         # cape / skirt / hood chains run down the middle of 
                             # Chest carry aprons and waist boxes that hang 0.3 m below the short Hips bone, and
                             # an apron's far corner takes a share of the far thigh
 WIDE_BONES = ("Cape", "Skirt", "Hood", "Hips", "Spine", "Chest", "UpperLeg")
+STRAY_OVERLAY_M = 0.46      # costume overlays (cloaks, robes, kilts) stand off the body by design: their sides hang
+                            # up to 0.45 m from the short centre bones that carry them
 MIN_WEIGHT = 0.001
 SEAL_MIN = 0.97             # fraction of joint-tube samples that must be inside some piece
 LOOP_TOL_DEG = 0.5
@@ -245,9 +247,12 @@ def check_weights(ctx, rows):
                 used.add(n)
                 if w < MIN_WEIGHT:
                     tiny += 1
-                if pn != "Prop" and n in bones and w > 0.05:
+                if pn != "Prop" and "costume_prop" not in o.keys() and n in bones and w > 0.05:
                     d = _seg_dist(o.matrix_world @ v.co, bones[n].head_local, bones[n].tail_local)
-                    if d > (STRAY_WIDE_M if n.split(".")[0] in WIDE_BONES else STRAY_M):
+                    lim = STRAY_WIDE_M if n.split(".")[0] in WIDE_BONES else STRAY_M
+                    if pn.startswith(contract.OVERLAY_PREFIX):
+                        lim = max(lim, STRAY_OVERLAY_M, float(o.get("stray_m", 0.0)))
+                    if d > lim:
                         stray.append("%s v%d->%s %.2fm" % (pn, v.index, n, d))
         empty += ["%s:%s" % (pn, n) for n in names.values() if n not in used]
     _row(rows, "weights.all_weighted", unweighted == 0, "%d unweighted vertices" % unweighted)
@@ -606,6 +611,9 @@ def check_clips(ctx, rows):
     clips = ctx.manifest.get("clips")
     if not clips:
         return
+    baked = getattr(ctx, "baked_clips", None)
+    if baked:
+        return check_clips_baked(ctx, rows, clips, baked)
     arm = ctx.armature
     sc = bpy.context.scene
     prev = arm.animation_data.action if arm.animation_data else None
@@ -658,6 +666,46 @@ def check_clips(ctx, rows):
     _row(rows, "clips.foot_plant", not slide, "stance foot speed over limit: %s" % "; ".join(slide))
     _assign_action(arm, prev) if prev else (arm.animation_data and setattr(arm.animation_data, "action", None))
     sc.frame_set(1)
+
+
+def check_clips_baked(ctx, rows, clips, baked):
+    """Clip checks on the real rig with WP-5's own measuring (integration fix): the old check assumed every clip with
+    a native speed moves the ground at that speed for the whole clip, which is false for StartL/R and StopL/R (the
+    ground accelerates and decelerates; travel_m) and found 1.3 m/s 'slides' that were not there. anim_check reads the
+    clip's real ground profile (distance and yaw per frame) and follows each stance through heel, flat and toe."""
+    import anim_check
+    import anim_core
+    arm = ctx.armature
+    prev = arm.animation_data.action if arm.animation_data else None
+    missing = [c["name"] for c in clips if c["name"] not in bpy.data.actions]
+    _row(rows, "clips.actions_present", not missing, "missing actions %s" % missing)
+    rig = anim_core.Rig(arm)
+    bad_loop, slide, reports = [], [], {"foot": [], "loop": []}
+    for c in clips:
+        b = baked.get(c["name"])
+        if b is None:
+            continue
+        f = anim_check.foot_report(arm, b, rig)
+        reports["foot"].append(f)
+        if not f["ok"]:
+            slide.append("%s %.2f cm/s %.1f mm" % (c["name"], f["speed_cm_s"], f["drift_mm"]))
+        if b.loop:
+            lr = anim_check.loop_report(arm, b)
+            reports["loop"].append(lr)
+            if not lr["ok"]:
+                bad_loop.append("%s %.3fdeg %.5fm" % (c["name"], lr["rot_deg"], lr["pos_m"]))
+    worst = max(reports["foot"], key=lambda f: f["speed_cm_s"]) if reports["foot"] else None
+    _row(rows, "clips.loops_close", not bad_loop, "; ".join(bad_loop) or "%d loops close (pos <= %.4f m, rot <= %.2f deg)" % (
+        len(reports["loop"]), anim_check.LOOP_POS_TOL_M, anim_check.LOOP_ROT_TOL_DEG))
+    _row(rows, "clips.foot_plant", not slide, "; ".join(slide) or "%d clips; worst stance %.2f cm/s (%s), limit %.1f cm/s and %.0f mm" % (
+        len(reports["foot"]), worst["speed_cm_s"] if worst else 0, worst["clip"] if worst else "-",
+        anim_check.FOOT_SPEED_LIMIT_CM_S, anim_check.FOOT_DRIFT_LIMIT_MM))
+    common.write_json(os.path.join(ctx.path("character_reports"), "clip_report.json"), reports)
+    if prev is not None:
+        _assign_action(arm, prev)
+    elif arm.animation_data:
+        arm.animation_data.action = None
+    bpy.context.scene.frame_set(0)
 
 
 def check_export(ctx, rows):
