@@ -2,7 +2,7 @@
 
 Tooling for `Docs/PRD_CHARACTERS.md`. This folder holds scripts, contracts and geometry-free data only. The supplied meshes, every generated .blend, FBX with a mesh, render or capture stays local (see `Docs/PROVENANCE_CHARACTERS.md`).
 
-Status: WP-1 (intake, island maps, contract) and WP-17 (provenance note) are done. WP-2 to WP-5 start from section 2 below.
+Status: WP-1 to WP-5 and WP-17 are done and integrated (contract v2, 14 Nov 2026): `build_cast.py` runs rig, skin, face, costume, clips, verify and export for every human in both costumes. Section 1.1 is the one command; section 7 lists what the integration pass changed.
 
 ## 1. Running things
 
@@ -17,6 +17,32 @@ All scripts take paths as arguments, run with Blender 4.5 headless, and never ex
 | `Tools/characters/inspect_cast.py` | `--src <extracted zip folder> --out <dir outside the repo> [--only k1,k2] [--islands-dir <dir>] [--no-blend]` | Re-runs the PRD section 2 inspection for all 16 characters, writes `<out>/inspect/inspection.json`, `summary.txt`, `index.json`, `islands/<key>.json`. Exits 1 if any number differs from PRD 2.3. `--islands-dir Tools/characters/cast/islands` also refreshes the committed island maps (and `cast/index.json` when all 16 run). |
 | `Tools/characters/check_contract.py` | `--src ... --out ... [--only ...] [--save-blend]` | Builds the development stub armature for every human and checks it against the contract. Exits 1 on failure. |
 | `python -I Tools/characters/lib/contract.py` | none | Re-generates `Tools/characters/contract.json` from `lib/contract.py`. Plain python, no Blender. |
+
+### 1.1 One command: build characters in a costume
+
+```
+"C:\Program Files\Blender Foundation\Blender 4.5\blender.exe" --background --factory-startup --disable-autoexec ^
+    --python Tools/characters/build_cast.py -- ^
+    --src WorldMVP\NEWSTUFF\characters_extracted\RomanVillage_DarkFantasy_Characters ^
+    --out WorldMVP\NEWSTUFF\characters_work\integrated ^
+    --only prince,mira,champion --costume prehistoric,historic
+```
+
+`--only` is any list of cast keys (empty = all 14 humans; demons are skipped, WP-13). `--costume` is `prehistoric`, `historic`, a list, or `all`. Per character and costume it loads the supplied FBX and runs rig, skin, face, costume, clips (base clips plus the character's own `<Clip>@<key>` variants, baked on this character's real rig), verify (contract, sockets, symmetry, weights, bend seals, face, slots, clips, loops, foot plant, forward axis) and export. Options: `--steps` (subset, contract order), `--no-render` (skip the bend-test stills), `--no-blend` (do not keep the .blend), `--no-anim` (no animation files). It writes:
+
+| File | What |
+|---|---|
+| `characters/<key>/<costume>/<key>@<costume>.fbx` | mesh and rig of that costume, no clips (Unity: `Assets/Characters/Resources/Characters/Models/<key>@<costume>.fbx`) |
+| `characters/<key>/<costume>/<key>@<costume>.blend`, `manifest.json`, `reports/` | edited source, per-build manifest, `verify.json`, `clip_report.json` (foot and loop numbers), bend renders |
+| `characters/<key>/manifest.json` | the default (prehistoric) manifest plus a `builds` summary per costume |
+| `anim/anim_<set>.fbx`, `anim/anim_manifest.json` | base clips (armature and actions only), exported from Mira's build (she has every optional chain) |
+| `anim/anim_<set>@<key>.fbx`, `anim/anim_variants_<key>.json` | the `<Clip>@<key>` variants, baked on that character's rig (prehistoric build) |
+| `cast_manifest.json` | merged index for the Unity import step: per character bones, sockets, skin, face (shape keys, expressions, tuning), clips (events, loop, additive, native speed, root curves), costume variants (slots with colours, overlays, hidden islands, props) and per-costume builds (FBX, verify, export) |
+| `build_summary.json` | PASS or FAIL per character and costume |
+
+Exit code 1 when any build fails a verify check. All 14 humans in both costumes take about seven minutes on this machine (14 Nov 2026: 28 builds, all PASS).
+
+Review renders (local only): `review_render.py -- --out <out> --only k1,k2 --costume all --what poses,faces,strips,pen,videos [--duel mira,champion]` renders the BUILT characters in a dim warm firelight set-up (EEVEE), and `python -I Tools/characters/review_sheets.py --out <out>` composes labelled contact sheets (`review/sheets/`) and encodes mp4 files (`review/video/`, ffmpeg). `pen` writes how deep each overlay sinks into the visible body in walk, run, kneel, cast and raised-arm frames (`review/pen/`).
 
 `--src` is the folder that holds `Models/*.fbx` and the `.blend` (on this machine `WorldMVP\NEWSTUFF\characters_extracted\RomanVillage_DarkFantasy_Characters`). `--out` must be outside the repository (`inspect_cast.py` refuses otherwise). Local work folder: `WorldMVP\NEWSTUFF\characters_work\`.
 
@@ -99,14 +125,16 @@ Demons: a separate Generic armature (names in `contract.DEMON_BONES`, root `Root
 
 ### 2.5 Material slots (WP-4)
 
-Role slots (material names `Role_<slot>` in the exported FBX and the manifest): `skin, hair, cloth_main, cloth_trim, leather, metal, eye_white, eye_dark, emissive`. Mapping: sclera to `eye_white`; iris, pupil and eye outline to `eye_dark`; brows and beard to `hair`; glow pieces to `emissive`. A character uses only the slots it needs and at most 8 (`verify.py` checks the count, `hidden` excluded). Pieces a costume hides are not deleted: they are assigned to an extra slot `Role_hidden`, which the Unity importer maps to a no-draw material, so a live costume swap can show and hide them. Until WP-4 remaps, materials keep their supplied `RV_xxxxxx` names; emissive ones carry the suffix `_Ember` (`RV_A05BE4_Ember` Mira, `RV_F0B350_Ember` carrier lantern, `RV_FF832F_Ember` demon eyes). The island maps flag emissive islands.
+Role slots (material names `Role_<slot>` in the exported FBX and the manifest): `skin, hair, cloth_main, cloth_trim, leather, metal, eye_white, eye_dark, emissive, iris`. Mapping: sclera to `eye_white`; iris to `iris` (contract v2: each character keeps its eye colour, Mira lilac `8789AE`, the Prince green `677A62`, the others grey-green); pupil, eye outline and mouth to `eye_dark`; brows and beard to `hair`; glow pieces to `emissive`. A character uses only the slots it needs and at most 9 (contract v2; `verify.py` checks the count, `hidden` excluded); a costume that needs more names a merge in its data (`"merge": {"metal": "eye_white"}` per variant), and overlays that ask for a merged slot draw with its target. Pieces wholly inside a closed robe (dress family legs) are `hidden` in every variant (`_defaults.json` `always_hidden`). Pieces a costume hides are not deleted: they are assigned to an extra slot `Role_hidden`, which the Unity importer maps to a no-draw material, so a live costume swap can show and hide them. Until WP-4 remaps, materials keep their supplied `RV_xxxxxx` names; emissive ones carry the suffix `_Ember` (`RV_A05BE4_Ember` Mira, `RV_F0B350_Ember` carrier lantern, `RV_FF832F_Ember` demon eyes). The island maps flag emissive islands.
 
 ### 2.6 Clips and animation files (WP-5)
 
 - 30 fps, in place, no root motion. One action per clip; action name = clip name = Unity clip name (the importer strips any `Armature|` prefix, up to the last `|`).
 - Clip names and sets (`contract.CLIP_SETS`): `idle` (Idle_A, Idle_B, Idle_Look, Idle_Staff), `locomotion` (Walk, WalkBrisk, Jog, StartL, StartR, StopL, StopR, Turn60L, Turn60R, TurnSmallL, TurnSmallR), `social` (Greet, Nod, ShakeHead, Talk_A, Talk_B, Talk_Emphasis, Listen), `prince` (Beckon, LeadLook, PointGround), `duel` (CastAnticipate, CastRelease, CastRecover, CastWeave_Loop, Block, RecoilLight, RecoilHeavy, WardBreak, Victory, Defeat, Surprise). Role clips (PRD 6.2) are added to new sets by WP-12/WP-13 in the same file.
 - Per-character style variants are extra actions in the same file named `<Clip>@<key>` (for example `CastAnticipate@mira`, `CastAnticipate@champion`, `Idle_Staff@mira`). The Unity override controller maps them; characters without a variant use the base clip.
-- Files: `<out>/anim/anim_<set>.fbx` (armature and actions, no mesh), plus `<out>/anim/anim_manifest.json`. Copied by WP-6 to `Assets/Characters/Animation/anim_<set>.fbx`.
+- Files: `<out>/anim/anim_<set>.fbx` (armature and base actions, no mesh), plus `<out>/anim/anim_manifest.json`; contract v2: `<out>/anim/anim_<set>@<key>.fbx` holds the `<Clip>@<key>` variants baked on that character's own rig (prop aims and stance are measured on it). Copied by WP-6 to `Assets/Characters/Animation/`.
+- A style may differ per costume (`clips/style/<key>.json` `"costumes": {"historic": {...}}`) and a clip variant may be written for one costume only (`"variants": {"<key>:<costume>": {...}}`); neither is needed yet (the champion's club and sword share one grip and axis). `"mirror_clips"` in a style bakes the listed clips left for right (the champion greets, talks and points with his free left hand).
+- Clips that move the root unevenly (Start, Stop) or turn it (Turn60, TurnSmall) carry `root_curve` (`dist_m` and/or `yaw_deg` per frame) in their record: the game moves the actor along it so the feet stay planted.
 - Clip record in the manifest: `{name, set, length_s, frames, fps, loop, additive, native_speed_mps, events:[{name, frame}]}`. Loop clips: `contract.LOOP_CLIPS`; additive clips: `contract.ADDITIVE_CLIPS`. Event names: `Release, Impact, FootL, FootR, PropHit, BeatHit`. Events live in the manifest only (FBX cannot carry them from Blender); WP-6 writes them onto the imported clips.
 - Rotations in clip data are Euler degrees, bone rotation mode XYZ, in the bone-local axes of the roll rule in 2.1.
 
@@ -116,15 +144,16 @@ All under `--out` (outside the repo until the owner confirms rights):
 
 ```
 <out>/inspect/...                         WP-1 outputs
-<out>/characters/<key>/<key>.blend        edited source
-<out>/characters/<key>/<key>.fbx          mesh + rig, no clips
-<out>/characters/<key>/manifest.json      per-character manifest
-<out>/characters/<key>/reports/           verify output, foot report, renders
-<out>/anim/anim_<set>.fbx, anim_manifest.json
+<out>/characters/<key>/<costume>/<key>@<costume>.blend   edited source (contract v2: one build per costume)
+<out>/characters/<key>/<costume>/<key>@<costume>.fbx     mesh + rig, no clips
+<out>/characters/<key>/<costume>/manifest.json           per-build manifest
+<out>/characters/<key>/<costume>/reports/                verify output, clip (foot, loop) report, renders
+<out>/characters/<key>/manifest.json                     default-costume manifest + builds summary
+<out>/anim/anim_<set>.fbx, anim_<set>@<key>.fbx, anim_manifest.json, anim_variants_<key>.json
 <out>/cast_manifest.json                  merged index of all manifests (build_cast.py rewrites it)
 ```
 
-Unity targets (WP-6): `Assets/Characters/Resources/Characters/Models/<key>.fbx`, prefab `Assets/Characters/Resources/Characters/<key>.prefab` (loaded with `Resources.Load("Characters/<key>")`), `Assets/Characters/Animation/anim_<set>.fbx`.
+Unity targets (WP-6): `Assets/Characters/Resources/Characters/Models/<key>@<costume>.fbx` (contract v2), prefab `Assets/Characters/Resources/Characters/<key>.prefab` (loaded with `Resources.Load("Characters/<key>")`), `Assets/Characters/Animation/anim_<set>.fbx`.
 
 Per-character manifest sections (`contract.MANIFEST_SECTIONS`); each step writes only its own section via `ctx.set_section(name, data)`:
 `identity` (common), `meshes`, `bones`, `sockets`, `skin`, `verify`, `export` (WP-2/WP-6), `face` (WP-3), `costumes` (WP-4), `clips` (WP-5). Manifests contain names and numbers only, no geometry.
@@ -200,3 +229,16 @@ Not resolved here: whether the FBX normals survive Unity import as faceted (WP-6
 2. Run `inspect_cast.py ... --only <key> --islands-dir Tools/characters/cast/islands`; read `face.found`, `joint_gaps.not_covered`, `landmarks.prop` in the new map.
 3. Run `check_contract.py --only <key>`.
 4. Add `cast/<key>.json` (face tuning, WP-3), a costume file (WP-4) and a style file (WP-5), then run `build_cast.py --only <key>` (WP-2 driver).
+
+## 7. Integration pass (contract v2, 14 Nov 2026)
+
+The four packages (WP-2 rig and skin, WP-3 faces, WP-4 costumes, WP-5 clips) were run together for the first time. What changed:
+
+| Area | Change |
+|---|---|
+| Driver | `build_cast.py` builds each character per costume (`--costume prehistoric,historic` or `all`), bakes the clips on that character's real rig (base clips plus its own `<Clip>@<key>` variants), verifies, exports `<key>@<costume>.fbx` and the animation sets, and merges `cast_manifest.json`. `lib/export_unity.py` is new (the forward axis is checked by the exporter matrix and by importing the file back). |
+| Verify | Clip checks use WP-5's `anim_check` (ground distance and yaw per frame): the old check assumed constant ground speed and failed every start and stop clip. Held prop overlays are exempt from the reach check; wide overlays (cloaks, mantles) may declare `stray_m`. |
+| Costumes | Overlays are weighted with `skin.Fields` (`costume.skin_field_for`): kilts and wraps take the skin's thigh share, robe hems the skirt chain, cloaks the cape chain behind and the body at the sides, necklaces sit rigidly on the chest, mantles blend chest to shoulder cap. Necklace beads are laid on the torso's own section (the champion's front beads sank 9 cm into his chest; now 1.5 cm at worst). Leg pieces inside a closed robe are hidden in every variant (`always_hidden`). |
+| Slots | Tenth role slot `iris` (budget 9). Mira: prehistoric hair and brows on their own `hair` slot, bone charms on `eye_white`; historic hair shares leather (same colour). |
+| Faces | `face.BROW_MIN_HEIGHT`: no brow is thinner than 22 mm on the reference head; Mira's `brow_thickness` 1.3. |
+| Clips | Weapon carry in the gait (`style.prop.walk = "carry"`): about a quarter of the arm swing, held out, weapon locked low and a little out from the leg. `style.mirror_clips`: the champion greets, talks and points with his free left hand. Per-costume styles and `<key>:<costume>` clip variants are possible (not needed: the club and the sword share a grip and axis). Characteristic talk (prince Talk_B, Mira Talk_B, champion Talk_Emphasis), larger idle weight shifts and breathing, stronger RecoilLight and Surprise, Mira's free arm bent through the cast, skirt follows further forward (68 degrees) but less sideways (26). Start, stop and turn records carry `root_curve`. |
