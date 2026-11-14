@@ -1,10 +1,8 @@
 # WorldMVP: shared village world (Unity 6000.3.28f1)
 
-One Unity game that joins four of the owner's games: a first-person village with a Tab God View, a Ward duel with Mira, a 174 BPM rhythm party in the warehouse, and one connected road, hex, draft and military economy.
+One Unity game that joins four of the owner's games. On `main`: a first-person village with a Tab God View, a Ward duel with Mira, a 174 BPM rhythm party in the warehouse, and one connected road, hex, draft and military economy. On `refactor/prehistoric`: the same games recast as a prehistoric island (see the status below).
 
-**Status: MVP built and packaged on `main` (13 Nov 2026, `189466f`). Branch `refactor/prehistoric`: the owner-agreed prehistoric refactor (Catan dice and growing stock, camps with plots, main roads, the prince and spells, Dungeon Master movement, dance circle) is specified in `Docs/REFACTOR_SPEC.md`, which is binding for all work on that branch; S-0 (sim surface) and F-0 (Unity skeleton, tag `pre-F0`) have landed, packages P, D, V, N and the rest of S are next (see `Docs/PROGRESS.md`). On that branch the spec overrides `CONTRACTS.md`, `ECONOMY_DESIGN.md` and the API docs where they differ. Do not change the plan without the owner.**
-
-**Paused mid-run on 13 Nov 2026: on this branch read `Docs/RESUME.md` first. It lists every branch, what is finished, what is unfinished WIP, and the next steps in order.**
+**Status: on branch `refactor/prehistoric` the prehistoric refactor is finished and packaged (14 Nov 2026, tag `refactor-done`): a small island with dice on a clock, growing stock, camps with plots, main roads, the prince and spells, Dungeon Master movement, a dance circle, Mira's duel, a night start with a day-night cycle, save and load. `Docs/REFACTOR_SPEC.md` is binding on that branch and overrides `CONTRACTS.md`, `ECONOMY_DESIGN.md` and the older API notes where they differ. `main` still holds the older MVP (`189466f`); merging the refactor into it is the owner's decision. Nobody has played either by hand yet. What comes next is in `Docs/NEXT_START_HERE.md`; do not start it or change the plan without the owner.**
 
 Before doing anything, read `Docs/HANDOFF.md`. It gives the state, reading order, machine paths, Unity commands, source file map and rules.
 

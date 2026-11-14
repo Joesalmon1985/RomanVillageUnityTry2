@@ -1,14 +1,17 @@
 # WorldMVP (RomanVillageUnityTry2)
 
-A single-player Unity game (Unity 6000.3.28f1) that joins four of the owner's games in one 3D village: walk around in first person, switch to a top-down God View with Tab, duel the wizard Mira, play a 174 BPM rhythm party in the warehouse, and run one connected road economy that grows into a strategy game with a card draft, cities, demons, a hero and soldiers, up to a win or a loss.
+A single-player Unity game (Unity 6000.3.28f1) that joins four of the owner's games.
 
-**Status: MVP built (13 Nov 2026).** The whole game plays from the first step to an ending, with save and load (F5 / F9) and an in-game guide (Esc). What ran and what did not: `Docs/PROGRESS.md`.
+- **Branch `refactor/prehistoric` (tag `refactor-done`, 14 Nov 2026): the prehistoric island.** Two peoples, each with a camp on a hex corner. Dice roll on a clock and grow stock on the hexes; camps gather it, carriers walk it home, main roads join camps. You command nothing: you walk the island step by step (Dungeon Master style, with a free mouse pointer) and the prince and his villagers come to you with what they want built. Nothing is built until you walk to the spot and press the ground, which is a free spell. Ignore the prince and the rival Ash Clan overruns you. Mira's Ward duel and a dance at a fire with four drums (the owner's 174 BPM loops) are part of the camp. The game starts at night and has a day-night cycle, one save slot and an in-game guide (Esc).
+- **Branch `main` (13 Nov 2026): the older MVP**, a first-person village with a top-down God View, the Ward duel, a rhythm party in a warehouse, and a road economy that grows into a card and city game.
+
+Nobody has played either by hand yet. What ran and what did not: `Docs/PROGRESS.md`.
 
 ## How to run
 
 - **Windows exe:** build it (below), then double-click `Builds/Windows/WorldMVP.exe`. It opens full screen; Alt+Enter gives a window. The build is not committed.
 - **In the editor:** open the project in Unity 6000.3.28f1, open `Assets/Scenes/World.unity`, press Play.
-- How to play, controls and a first-15-minutes walkthrough: `Docs/PLAY_GUIDE.md`. The owner's test script: `Docs/TEST_PLAN.md` Part B.
+- How to play and the controls: `Docs/PLAY_GUIDE.md`.
 
 ## How to build and test
 
@@ -17,15 +20,15 @@ From the project root, with the editor open on the project (`unity` is `C:\Users
 ```bash
 unity command script run --file AgentScripts/BuildWindows.cs --entry BuildWindows.Run --timeout 900
 dotnet test DotNet
-unity command test run --mode editor
+unity command test run --mode editor --async-tests     # then: unity command test status
 unity command test run --mode playmode --async-tests   # then: unity command test status
 ```
 
-Packaged smoke runs: `Builds/Windows/WorldMVP.exe -autoplay boot_tour` (also `first_five`, `commission`, `full_game`, `save_load`); each logs `[AutoPlay] <name> OK` and exits 0, or logs `FAILED` and exits 1. Details in `Docs/HANDOFF.md`.
+Packaged smoke runs: `Builds/Windows/WorldMVP.exe -autoplay walk_tour` (also `first_scene`, `duel_dance`, `follow_prince`, `ignore_prince`, `cast_all`, `save_load`, `capture_tour`); each logs `[AutoPlay] <name> OK` and exits 0, or logs `FAILED` and exits 1. Options and details in `Docs/HANDOFF.md`.
 
 ## Docs
 
-Start with `Docs/HANDOFF.md`. Then `Docs/PRD.md` (requirements), `Docs/BUILD_PLAN.md` (architecture), `Docs/TEST_PLAN.md` (gates and the owner playtest), `Docs/SOURCES.md` (source repos and licences), and the API notes (`CONTRACTS.md`, `GAME_API.md`, `ECONOMY_UI.md`, `STRATEGY_UI.md`, `ENCOUNTERS_UI.md`).
+Start with `Docs/HANDOFF.md`. On `refactor/prehistoric`: `Docs/REFACTOR_SPEC.md` (the binding rules and every change made while building), `Docs/PLAY_GUIDE.md`, the package notes (`ECONOMY_API.md`, `ECONOMY_PROOF.md`, `PLAYER_API.md`, `LAND_UI.md`, `DANCE_UI.md`, `PRINCE_API.md`, `LIGHTING.md`) and `Docs/NEXT_START_HERE.md` (what comes next). The older documents (`PRD.md`, `BUILD_PLAN.md`, `TEST_PLAN.md`, `CONTRACTS.md` and the old API notes) describe the MVP on `main`. `Docs/SOURCES.md` lists the source repos and licences.
 
 ## Licensing: read before committing
 

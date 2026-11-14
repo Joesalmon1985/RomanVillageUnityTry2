@@ -82,6 +82,21 @@ namespace World.Game
             Debug.Log("[World] ready: " + (loaded != null ? "loaded save at tick " + Sim.State.Tick : "new game") + ", seed " + Seed + ", " + Screen.width + "x" + Screen.height);
         }
 
+        /// <summary>
+        /// One log line once the scene has run for two seconds (packaged launch checks read it): the tick, the time of
+        /// day and the screen. "-quitAfterReady" quits the player then (a plain launch smoke run).
+        /// </summary>
+        private System.Collections.IEnumerator Start()
+        {
+            float t0 = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - t0 < 2f) yield return null;
+            var dn = DayNight.Instance;
+            Debug.Log("[Boot] playable: tick " + Sim.State.Tick + ", hour " + (dn != null ? dn.Hour.ToString("0.0") : "?") + ", night " + (dn != null ? dn.Night.ToString("0.00") : "?")
+                + ", screen " + Screen.width + "x" + Screen.height + " " + Screen.fullScreenMode + ", fps " + (1f / Mathf.Max(1e-4f, Time.smoothDeltaTime)).ToString("0")
+                + ", prince " + (PrinceDirector.Instance != null && PrinceDirector.Instance.Prince != null) + ", villagers " + Npc.All.Count);
+            if (!Application.isEditor && System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-quitAfterReady") >= 0) Application.Quit(0);
+        }
+
         /// <summary>The save slot (F5 save, F9 load).</summary>
         public SaveSystem Saves { get; private set; }
 

@@ -77,6 +77,79 @@ namespace World.Game.Tests
         }
 
         [UnityTest]
+        public IEnumerator Save_Load_WalkerOnTheLattice_FirstScene_Hud_AndTimeOfDay()
+        {
+            yield return Load();
+            // Run the opening on: the prince asks (first scene step 1 or later) and some game time passes.
+            _boot.Clock.Resume(TestPause);
+            float until = Time.realtimeSinceStartup + 20f;
+            while (Time.realtimeSinceStartup < until && (PrinceDirector.Instance.FirstSceneStep < PrinceDirector.SceneAsked || S.Tick < 60)) yield return null;
+            _boot.Clock.Pause(TestPause);
+            Assert.GreaterOrEqual(PrinceDirector.Instance.FirstSceneStep, PrinceDirector.SceneAsked, "the prince asked");
+            int step = PrinceDirector.Instance.FirstSceneStep;
+            var cell = new CampLayout(S.Board).Spawn + WalkLattice.Dir(2) * 2;
+            _boot.Avatar.StopAuto();
+            _boot.Avatar.Teleport(cell, 4);
+            Hud.Visible = true;
+            yield return null;
+            long tick = S.Tick;
+            double hour = DayNight.HourAtTick(tick);
+            Assert.IsTrue(_boot.Saves.Save(), SaveSystem.LastMessage);
+            StringAssert.Contains("\"Version\":" + SaveCodec.CurrentVersion, File.ReadAllText(_path), "the current save version");
+            Hud.Visible = false;
+            var old = _boot;
+            Assert.IsTrue(_boot.Saves.Load(), SaveSystem.LastMessage);
+            yield return WaitForReload(old);
+            yield return null;
+            Assert.AreEqual(tick, S.Tick, "tick restored (the loaded clock is held)");
+            Assert.AreEqual(cell, _boot.Avatar.Cell, "walker cell restored");
+            Assert.AreEqual(4, _boot.Avatar.Heading, "walker heading restored");
+            Assert.IsFalse(_boot.Avatar.IsOffLattice, "walker on the lattice");
+            Assert.IsTrue(Hud.Visible, "HUD state restored");
+            Hud.Visible = false;
+            Assert.AreEqual(step, PrinceDirector.Instance.FirstSceneStep, "first scene step restored");
+            Assert.AreEqual(hour, DayNight.Instance.Hour, 0.02, "the time of day follows the loaded tick");
+            Assert.Greater(DayNight.Instance.Night, 0.9f, "still night");
+            // The prince picks the scene up again: he asks once more.
+            _boot.Clock.Resume(TestPause);
+            int said = PrinceDirector.Instance.Said.Count;
+            until = Time.realtimeSinceStartup + 25f;
+            while (Time.realtimeSinceStartup < until && PrinceDirector.Instance.Said.Count == said) yield return null;
+            Assert.Greater(PrinceDirector.Instance.Said.Count, said, "the prince speaks again after the load");
+        }
+
+        [UnityTest]
+        public IEnumerator Save_WithACarrierMidPath_ItsLoadArrivesExactlyOnceAfterTheLoad()
+        {
+            yield return Load();
+            World.Sim.Economy.Carrier carrier = null;
+            for (int i = 0; i < 1500 && carrier == null; i++)
+            {
+                _boot.Clock.StepOnce();
+                foreach (var c in S.Economy.Carriers)
+                    if (c.Faction == PlayerIds.Human && c.HasLoad && c.JobId >= 0 && c.State == World.Sim.Economy.CarrierState.Carrying && c.Progress >= 10 && c.LegTicks - c.Progress >= 20) { carrier = c; break; }
+            }
+            Assert.IsNotNull(carrier, "a carrier of your people mid-path with a load");
+            int job = carrier.JobId, id = carrier.Id, progress = carrier.Progress;
+            yield return null;
+            Assert.IsTrue(_boot.Saves.Save(), SaveSystem.LastMessage);
+            var old = _boot;
+            Assert.IsTrue(_boot.Saves.Load(), SaveSystem.LastMessage);
+            yield return WaitForReload(old);
+            var after = S.Economy.Carriers[id];
+            Assert.IsTrue(after.HasLoad && after.JobId == job && after.Progress == progress, "the carrier is mid-path with its load after the load");
+            yield return null; yield return null;
+            Assert.IsNotNull(LandViews.Instance.Carrier(id), "its view was rebuilt from the loaded state");
+            Assert.IsTrue(LandViews.Instance.Carrier(id).Figure.HasLoad, "the view shows the load");
+            int delivered = 0;
+            void Count(System.Collections.Generic.IReadOnlyList<SimEvent> evs) { foreach (var e in evs) if (e is World.Sim.Economy.WareDelivered d && d.JobId == job) delivered++; }
+            _boot.Clock.Ticked += Count;
+            for (int i = 0; i < 600; i++) _boot.Clock.StepOnce();
+            _boot.Clock.Ticked -= Count;
+            Assert.AreEqual(1, delivered, "the load carried at the save is delivered exactly once");
+        }
+
+        [UnityTest]
         public IEnumerator Load_CorruptOldOrMissingSave_IsRefused_AndTheGameGoesOn()
         {
             yield return Load();

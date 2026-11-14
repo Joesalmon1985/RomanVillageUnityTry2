@@ -1,86 +1,88 @@
 # Play guide
 
-WorldMVP is one small game made from four of your games. You walk round a village, duel a wizard, play a rhythm party, build a road economy and then grow it into a strategy game with cards, cities, demons and soldiers. A full game takes about 15 to 25 minutes.
+WorldMVP is now a small prehistoric island. Two peoples, yours and the Ash Clan, each start with one camp. You do not command anything: you are a viewpoint that walks the island, and the prince and his villagers come to you with what they want to build. Nothing is built for your people until you walk to the spot and press the ground there. That press is a spell. It is free. If you ignore the prince, the Ash Clan outgrows you and overruns your camp. A game takes about 13 to 20 minutes and starts at night.
 
 ## How to start
 
 1. Open the folder `C:\Users\joesa\Documents\Cursor\RhytmDrama\WorldMVP\Builds\Windows`.
 2. Double-click `WorldMVP.exe`.
-3. The game opens full screen at your desktop size. Press Alt+Enter to switch to a window and back.
+3. The game opens full screen at your desktop size. Alt+Enter switches to a window and back.
 
 If there is no exe, open the project in Unity 6000.3.28f1, open `Assets/Scenes/World.unity` and press Play.
 
-Use headphones or speakers for the rhythm party.
+Use headphones or speakers for the dance.
 
 ## Controls
 
 The same list is in the game: press Esc, then "Controls" or "How to play".
 
-**On foot (first person)**
-- W A S D walk, Shift run, mouse to look.
-- E talks to people and uses things (a yellow prompt shows what).
-- Left click inspects what is under the crosshair.
-- Tab switches to God View and back. You stay exactly where you stood.
+**Walking** (Dungeon Master style: you move one 5 m step at a time and turn in sixths of a circle)
 
-**God View (overhead map)**
-- W A S D or hold the middle mouse button and drag to move the map. Mouse wheel zooms.
-- H goes back to the village. M shows the whole island.
-- Left click selects. Right click puts the tool back to Inspect.
-- Tools on the bottom bar, with their keys: B Build, R Road (X switches to removing roads), V Inspect, P Problems, G Wares, T Market, C Cards, F City, J Hero, N Army, O Wonder, L Go here, and End Round.
-- **Go here (L)** is fast travel: click open ground and you are standing there, back on foot. The island is about 950 m across, so use it.
+| Action | Keys |
+|---|---|
+| Step forward | W, Up arrow, Numpad 8 |
+| Step back | S, Down arrow, Numpad 2 or 5 |
+| Turn left | A, Left arrow, Numpad 4 or 7 |
+| Turn right | D, Right arrow, Numpad 6 or 9 |
 
-**Anywhere**
-- F5 saves. F9 loads. There is one save slot.
-- Esc opens the pause menu (or closes a dialogue or panel). The pause menu has Save, Load, New game and Quit. Load, New game and Quit ask you to click twice.
+Hold a key to keep going. You cannot walk into a camp's hearth, a building, a tent, the dance fire or a mountain crag; you bump and stay. There is no mouse look.
 
-**Ward duel with Mira**
-- 1 2 3 4 add essences to your guess. Backspace removes one.
-- Enter locks your own Ward at the start. Then Enter or Space casts a guess.
-- At the end: R for a rematch, Enter or Esc to go back.
+**Pointer.** The mouse cursor is always free.
 
-**Rhythm party with DJ Sol**
-- D F J K are the four pads. Press when a note reaches the line. Hold the long notes.
-- In the last block, Left arrow picks the bar and Right arrow picks the balcony.
-- [ and ] move the timing by 10 ms if the notes feel early or late.
-- At the end: R to try again, Enter or Esc to go back.
-- The music cannot pause. During the song, Esc once shows a warning; Esc again leaves the party.
+- Click a person to talk to them, or to get "Follow" (carriers, a villager who is walking).
+- Click a thing (a hex, a building, a carrier, a camp) and a small label says what it is.
+- Click the glowing ring on the ground to cast, when you stand within 15 m of it. Further away a bubble says "Walk closer to cast."
+- Right click stops following or auto-walking. So does any movement key.
 
-**The bell**
-- The bell in the square starts the next round, like the End Round button. It only works after the harvest season: 60 seconds after the round began. The button shows the seconds left.
+**Speech bubbles.** People talk in bubbles over their heads. Replies are the lines under a bubble: click one, or press 1, 2 or 3. If someone asks you something from outside your view, a box at the screen edge says who is calling and which way to turn.
 
-## Your first 15 minutes
+**Other keys**
 
-1. **Look around.** You start in the village square. Mira stands to your left. The warehouse door glows ahead and you can hear music.
-2. **Duel Mira (2 to 4 minutes).** Walk up to her and press E, then pick the duel. First set your own Ward: three essences with keys 1 to 4, then Enter. Then guess hers. After each guess you see three numbers: fractures (right essence in the right place), echoes (right essence, wrong place) and fades (wrong). She guesses yours at the same time. Break her Ward first to win. Win or lose, you return to where you stood. After three finished duels a fourth essence (Light) joins.
-3. **The warehouse party (2 minutes).** Walk into the warehouse and talk to DJ Sol behind the decks. A count-in plays, then notes fall on four lanes. Hit them with D F J K. There are four blocks. Pass three to win the crowd. In the last block pick the bar (Left) or the balcony (Right); if you pass that block, that area opens. Walk into it.
-4. **Bram's commission (4 to 6 minutes).** Walk back to the square and find Quartermaster Bram by the storehouse. He wants six buildings: forester, woodcutter, sawmill, clay pit, charcoal kiln and brick kiln, all joined to the storehouse by roads, then 18 planks and 18 bricks in the storehouse. Press Tab. Use Build (B) to place a building on a glowing spot and Road (R) to join it up. Carriers walk materials along your roads; follow one on foot if you like. The line under the top bar tells you the next step. When the goods are in, talk to Bram again.
-5. **Rounds.** Ring the bell or press End Round. Each round draws numbers; hexes with those numbers give a batch of goods for your buildings to harvest. The first round that starts after the commission is done begins Age I (after six rounds it begins anyway). There are 3 ages of 3 rounds.
-6. **The draft.** Every round of an age starts with one card pick. The game pauses and the draft opens (in God View; on foot, talk to Scribe Pell or press Tab). Take one card. Build it later at one of your cities from the Cards tool, or discard it for coin.
-7. **Cities.** Use City (F). Glowing corners are legal: green means you can afford it now. A city needs a road to its corner and cannot sit next to another city.
-8. **Demons and the hero.** Demons appear on flags at the start of each round. They block roads and buildings next to them. Too many on one place breaks out: that is a breach. Use Hero (J) to walk the hero onto them; it clears demons on the way.
-9. **Soldiers.** Build a barracks, give it power and supplies, and queue soldiers in Army (N). Send a squad to attack the rival outpost to the north-west, or keep it home to stop raids. At the end of each age your shields are compared with the rival's.
-10. **How it ends.** First to 18 points wins. 5 breaches lose. Otherwise, after the last age, the most points wins. The end screen says why and shows both scores. New game starts a fresh island.
+| Key | What |
+|---|---|
+| Tab | The map of the island. Click a spot, close the map, and you walk there. |
+| H | The HUD: game time, the last roll, both peoples' strength, the stock of your nearest camp, what your people want built. Off at the start. |
+| Esc | Pause menu: guide, save, load, new game, quit. |
+| F5 / F9 | Save / load (one slot). |
+| F1 | Developer tools (an overhead camera and build tools for testing). Not needed to play. |
 
-The top bar always shows the age, the round, the points (you against the rival), breaches, coin and power. The line under it says what to do next.
+## What happens
+
+**The dice.** Two dice roll by themselves every 10 seconds. Every hex has a number. When its number comes up and a camp stands on one of its corners, young stock appears there: saplings in forest, seedlings in fields, lambs on pasture, clay in the hills, stone in the mountains. Young stock takes about 75 seconds to grow. Only a collecting building of a camp next to that hex can gather it. 6 and 8 come up most often (they are red on the map).
+
+**Camps.** A camp sits on a hex corner and has its own store. Carriers walk goods between its buildings and its store on short paths. Main roads run along hex edges and join camps; porters carry loads along them. A camp can later become a city.
+
+**The prince.** He walks up to you at the start and asks you to come and see a woodcutter's hut. After that he, Holt the sawyer and Wenna the merchant come to you with one proposal at a time, the best first. Your answers:
+
+- **Show me** (or "Lead the way"): the villager walks to the spot and you follow automatically. At the spot they say why, and a gold ring glows on the ground. Click inside the ring to cast.
+- **Not this**: that proposal is dropped for a minute and the next best is offered.
+- **Later**: they come back to it in a minute.
+- You can also just walk to the ring yourself. The villager sees you going and meets you there.
+- If you do not answer, they ask again after about 10 seconds while you stand near, and less often if you walk off. After three unanswered questions they go quiet for a while. Click the villager to hear the proposal again at once.
+
+Casting only starts the work. Carriers still have to bring the goods, and the building takes time to go up.
+
+**Demons.** After the first few minutes a roll of 7 can put a demon on one of your camps or roads. A camp with a demon stops gathering; a road with a demon is closed. The prince proposes a banish; walk there and press the blue ring.
+
+**Winning and losing.** Each camp counts 1, each city 2, each fed warrior 1. If one people is 3 or more stronger than the other, a war camp appears and a 90 second warning runs; if the lead still holds at the end, that people overruns the other and the game ends. No warning starts in the first 8 minutes. At 20 minutes the stronger people wins. Press H to see both strengths.
+
+## Mira's duel
+
+Mira stands by the home camp. Click her and choose "Practice duel". You each hide a Ward of three essences and take turns guessing the other's. After each guess you learn how many parts are right and in the right place (fractures), right but in the wrong place (echoes), and wrong (fades). Break her Ward before she breaks yours. Keys are shown on the duel's own panels: 1 to 4 pick essences, Backspace removes one, Enter locks your Ward and casts a guess. The world waits while you duel.
+
+## The dance
+
+Sol the drummer stands at the dance circle (the fire with four drums, in the fields beside the home camp). Click him and choose "Dance at the fire". You stand facing the fire with four drums in front of you: D, F, J and K from left to right. An ember flies from the fire to a drum, and a ring closes on its skin; strike the drum as the ember lands. Hold when a stream of embers keeps coming. There are four blocks. Sol calls each block as kept or missed in his bubble; the fire jumps when you keep one and sinks when you miss. In the last block, choose an ending: Left arrow (or click left of the fire) for the fire leap, Right arrow (or click right of it) for the spirit call. Press H during the dance if you want the score strip and key hints. The world waits while you dance.
+
+## Saving
+
+F5 saves and F9 loads, or use the pause menu. There is one slot. You cannot save during the duel or the dance. A loaded game comes back at the same game time, so the time of day is the same too.
 
 ## What is rough
 
-- Nobody has played it by hand yet. Expect places where you do not know what to do next.
-- The characters are simple placeholder figures.
-- Nobody has listened to the audio on this build. The rhythm timing may feel early or late on your machine; use [ and ].
-- The draft opens by itself only in God View.
-- Late in the game, demon labels can stack up round the village in God View.
-- Saving is not possible during the duel or the party. Loading takes you back to the saved moment; the duel or party you were in is not saved.
-- Go here only works on open ground inside the board; buildings, rocks and mountain peaks refuse it.
-- The window starts full screen. Alt+Enter gives a window.
-
-## Sending feedback
-
-Write down the time and what happened for anything that confused you. That is the most useful feedback. For each part (duel, party, commission, strategy, save) say:
-- what you expected and did not get,
-- where you stopped knowing what to do,
-- anything that felt mistimed (rhythm: early or late, and roughly by how much) or unfair (duel),
-- anything you could not read,
-- the three things you would change first.
-
-If something breaks, send the log file too: `C:\Users\joesa\AppData\LocalLow\Joe Salmon\WorldMVP\Player.log`. Your save is next to it (`worldmvp_save.json`).
+- Characters are simple block figures. There is no music outside the dance.
+- Nights are dark away from fires and your lantern; building sites are hard to read at night from a distance.
+- The first ring is behind you when the game starts. Answer the prince and he leads you to it.
+- Walking between spots is 50 to 100 m each time. The Tab map can walk you there.
+- The Ash Clan is weak against a player who answers quickly; a slow player can still lose.
+- The dance has no lanes: most notes are on the two outer drums.

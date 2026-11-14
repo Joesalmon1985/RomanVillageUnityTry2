@@ -1,3 +1,13 @@
+# The prehistoric refactor is finished (14 Nov 2026)
+
+This file was the resume note for a run that was paused mid-flight on 13 Nov 2026. That run has since been finished: every branch below is merged into `refactor/prehistoric`, the game is packaged, and the result is tagged `refactor-done`. Read `Docs/HANDOFF.md` for the state and `Docs/PROGRESS.md` (the last entries) for what ran and what did not. **What comes next is in `Docs/NEXT_START_HERE.md`.**
+
+Tags on `refactor/prehistoric`: `pre-F0` (skeleton), `pre-integrated-1` (sim, player, views, dance), `pre-integrated-2` (lighting, night start), `pre-integrated-3` (the prince), `refactor-done` (save and load, guide, Windows build).
+
+The rest of this file is the note as it was written at the pause, kept for the record.
+
+---
+
 # Resume here: prehistoric refactor, paused 13 Nov 2026 (late evening)
 
 The owner paused the run mid-flight. Three agents were stopped while working. Their unfinished edits are saved as commits marked `WIP (paused, untested)`. Nothing below has been played by hand.

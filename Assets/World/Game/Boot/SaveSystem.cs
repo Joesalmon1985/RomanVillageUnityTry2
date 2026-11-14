@@ -10,12 +10,14 @@ namespace World.Game
 {
     /// <summary>
     /// One save slot (F5 save, F9 load, and the pause menu). The file is the sim's <see cref="SaveCodec"/> JSON
-    /// (the whole WorldState, including Ward progress) plus the game-layer data that is not in WorldState: the
-    /// player's position and facing, the view mode and God View framing, the warehouse routes opened by the party,
-    /// Bram's acknowledgement and the objective line.
+    /// (the whole WorldState, including Ward progress; save version <see cref="SaveCodec.CurrentVersion"/>) plus the
+    /// game-layer data that is not in WorldState: the walker's lattice cell and heading (and its exact pose), the view
+    /// mode and God View framing, whether the HUD is on, the objective line and the step of the prince's first scene.
+    /// The time of day is not saved: it is a function of the tick. The prince's pitch loop is not saved either: it
+    /// starts again from the open proposals in the state.
     /// Loading is the sanctioned load path: the parsed state is handed to <see cref="WorldBootstrap"/> and the scene is
     /// reloaded, so every view, panel and NPC is rebuilt from the loaded state alone (like New game).
-    /// Saving is refused during an encounter (the duel and the party are not part of the state) and while an order
+    /// Saving is refused during an encounter (the duel and the dance are not part of the state) and while an order
     /// given this frame is still queued (it would be lost).
     /// </summary>
     public sealed class SaveSystem : MonoBehaviour
@@ -83,7 +85,7 @@ namespace World.Game
         public string WhyCannotSave()
         {
             if (_boot == null || _boot.Sim == null) return "The village is not running.";
-            if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return "You can't save during the duel or the party. Finish or leave it first.";
+            if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return "You can't save during the duel or the dance. Finish or leave it first.";
             if (_boot.Sim.PendingCommands.Count > 0) return "Your last order is still being carried out. Try again in a moment.";
             return null;
         }
@@ -125,7 +127,14 @@ namespace World.Game
                 ["god.size"] = F(_boot.GodCam.Size),
                 ["objective"] = Hud.Objective ?? "",
                 ["seed"] = _boot.Seed.ToString(CultureInfo.InvariantCulture),
+                // The walker's lattice pose (REFACTOR_SPEC 8.6); an exact pose off the lattice is in PlayerPose only.
+                ["walker.cell"] = a.Cell.I.ToString(CultureInfo.InvariantCulture) + "," + a.Cell.J.ToString(CultureInfo.InvariantCulture),
+                ["walker.heading"] = a.Heading.ToString(CultureInfo.InvariantCulture),
+                ["walker.lattice"] = a.IsOffLattice ? "0" : "1",
+                ["hud"] = Hud.Visible ? "1" : "0",
             };
+            // The prince's first scene (the pitch loop itself restarts from the sim's open proposals).
+            if (PrinceDirector.Instance != null) x[FirstSceneKey] = PrinceDirector.Instance.FirstSceneStep.ToString(CultureInfo.InvariantCulture);
             return SaveCodec.ToJson(_boot.Sim.State, pose, x);
         }
 
@@ -137,7 +146,7 @@ namespace World.Game
         public string WhyCannotLoad()
         {
             if (_boot == null) return "The village is not running.";
-            if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return "Leave the duel or the party before loading.";
+            if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return "Leave the duel or the dance before loading.";
             if (!HasSave) return "There is no save yet. Press F5 to save.";
             return null;
         }
@@ -177,8 +186,16 @@ namespace World.Game
         private void ApplyGameLayer(SaveModel m)
         {
             var x = m.Extras;
-            if (m.Player != null)
+            bool onLattice = x.TryGetValue("walker.lattice", out var wl) && wl == "1";
+            if (onLattice && x.TryGetValue("walker.cell", out var wc) && TryCell(wc, out var cell)
+                && x.TryGetValue("walker.heading", out var wh) && int.TryParse(wh, NumberStyles.Integer, CultureInfo.InvariantCulture, out int heading))
+                _boot.Avatar.Teleport(cell, ((heading % 6) + 6) % 6);
+            else if (m.Player != null)
                 _boot.Avatar.Teleport(new Vector3((float)m.Player.X, (float)m.Player.Y, (float)m.Player.Z), (float)m.Player.Yaw, (float)m.Player.Pitch);
+            if (x.TryGetValue("hud", out var hud)) Hud.Visible = hud == "1";
+            if (PrinceDirector.Instance != null && x.TryGetValue(FirstSceneKey, out var fs)
+                && int.TryParse(fs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int step))
+                PrinceDirector.Instance.RestoreFirstScene(step);
             if (x.TryGetValue("objective", out var obj) && !string.IsNullOrEmpty(obj)) Hud.SetObjective(obj);
             if (x.TryGetValue("view", out var view) && view == ViewMode.God.ToString()) _boot.Views.SetView(ViewMode.God);
             if (x.TryGetValue("god.focus", out var f) && TryV3(f, out var focus))
@@ -201,6 +218,19 @@ namespace World.Game
             LastMessage = text; LastWasError = error;
             Hud.Notice(text, error);
             if (error) Debug.Log("[Save] " + text);
+        }
+
+        /// <summary>Extras key of the first scene's step (<see cref="PrinceDirector.FirstSceneStep"/>).</summary>
+        public const string FirstSceneKey = "scene.first";
+
+        private static bool TryCell(string s, out WalkLattice.Cell c)
+        {
+            c = default;
+            var p = s.Split(',');
+            if (p.Length != 2) return false;
+            if (!int.TryParse(p[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int i) || !int.TryParse(p[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int j)) return false;
+            c = new WalkLattice.Cell(i, j);
+            return true;
         }
 
         private static string F(float v) => v.ToString("R", CultureInfo.InvariantCulture);

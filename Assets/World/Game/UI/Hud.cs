@@ -90,11 +90,11 @@ namespace World.Game
             {
                 _phraseEscAt = -10f;
                 EncounterHost.Instance.Abort();
-                Notice("You left the party. Talk to DJ Sol to try again.", false);
+                Notice("You left the dance. Talk to Sol to try again.", false);
                 return;
             }
             _phraseEscAt = Time.unscaledTime;
-            Notice("The music can't pause during the phrase. Press Esc again to leave the party.", true, PhraseEscWindow);
+            Notice("The music can't pause during the phrase. Press Esc again to leave the dance.", true, PhraseEscWindow);
         }
 
         private void Update()
@@ -258,7 +258,7 @@ namespace World.Game
             var save = _boot.Saves;
             string msg = _armed != null ? "<color=#F2B84D>" + ArmedText(_armed) + "</color>"
                        : !string.IsNullOrEmpty(SaveSystem.LastMessage) ? (SaveSystem.LastWasError ? "<color=#FF9A80>" : "<color=#9CF09C>") + SaveSystem.LastMessage + "</color>"
-                       : "<color=#BBB0A0>One save slot. F5 saves and F9 loads at any time outside the duel and the party.</color>";
+                       : "<color=#BBB0A0>One save slot. F5 saves and F9 loads at any time outside the duel and the dance.</color>";
             GUI.Label(new Rect(r.x + pad, my, w - 2 * pad, UiStyle.Px(36)), msg, new GUIStyle(UiStyle.Small) { alignment = TextAnchor.MiddleCenter, wordWrap = true });
 
             // Buttons.

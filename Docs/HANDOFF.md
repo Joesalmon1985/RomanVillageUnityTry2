@@ -1,13 +1,14 @@
 # Handoff: start here
 
-Written 12 Nov 2026 at the end of the planning session; updated 13 Nov 2026 after the packaging session. Nothing in this file needs a previous conversation.
+Written 12 Nov 2026; rewritten 14 Nov 2026 when the prehistoric refactor was finished (tag `refactor-done` on branch `refactor/prehistoric`). Nothing in this file needs a previous conversation.
 
 ## State
 
-- **Status: MVP built (13 Nov 2026).** The whole game plays in the editor and in the Windows exe, from the first step to an ending: first-person village with Tab God View, Ward duel with Mira, rhythm party in the warehouse, road economy with Bram's commission, then rounds, the draft, cities, demons and the hero, soldiers and the rival outpost. One save slot (F5 / F9 and the Esc menu), an in-game guide (Esc), fast travel in God View (Go here, L). What ran and what did not: `Docs/PROGRESS.md` (latest entry: packaging session).
-- **How to play:** `Docs/PLAY_GUIDE.md`. Owner playtest script: `Docs/TEST_PLAN.md` Part B.
-- **Not done:** nobody has played it by hand or listened to the audio; characters are placeholders; the Sims 2 character layer (`Assets/RomanVillage/Probe`, `Assets/Bedsit`, `Assets/ThirdParty/OpenTS2`, `Docs/M0_ANIMATION_FINDINGS.md`) is still optional and unused by the game.
-- **Next:** the owner's playtest (Part B) and fixes from its feedback. Do not revise the plan without the owner.
+- **Status: the prehistoric refactor is built and packaged (14 Nov 2026, branch `refactor/prehistoric`, tag `refactor-done`).** The game is a small prehistoric island: dice on a clock, growing stock, camps with plots, main roads, the prince and spells, Dungeon Master movement, a dance circle, Mira's duel, a day-night cycle that starts at night, save and load. The binding rules are `Docs/REFACTOR_SPEC.md`. What ran and what did not: the last entries of `Docs/PROGRESS.md`.
+- **`main` still holds the older MVP** (the village with the warehouse party and the card game, `189466f`). The refactor branch has not been merged into `main`; that is the owner's call.
+- **How to play:** `Docs/PLAY_GUIDE.md` (also in the game: Esc).
+- **Not done:** nobody has played it by hand or listened to the dance; characters are block figures; the fine graph is still in `BoardTopology` (unused by the rules); the Sims 2 character layer (`Assets/RomanVillage/Probe`, `Assets/Bedsit`, `Assets/ThirdParty/OpenTS2`) is still optional and unused by the game.
+- **Next:** `Docs/NEXT_START_HERE.md` (the ages, the crystals campaign, characters). Do not start it without the owner.
 
 ## Build and run
 
@@ -20,19 +21,32 @@ Builds `Assets/Scenes/World.unity` to `Builds/Windows/WorldMVP.exe` (release, no
 Packaged smoke runs (each logs `[AutoPlay] <name> OK` and exits 0, or `FAILED` and exits 1; `-novsync` uncaps the frame rate; `-logFile <path>` keeps one log per run; `-screen-fullscreen 0 -screen-width 1280 -screen-height 720` gives a window):
 
 ```bash
-Builds/Windows/WorldMVP.exe -autoplay boot_tour -novsync -logFile Builds/logs/boot_tour.log
+Builds/Windows/WorldMVP.exe -autoplay walk_tour -novsync -logFile Builds/logs/walk_tour.log
 ```
 
-Unity remembers the last window size and mode per user (registry `HKCU\Software\Joe Salmon\WorldMVP`, `Screenmanager *` values): after windowed smoke runs, delete that key (`reg delete "HKCU\Software\Joe Salmon\WorldMVP" /f`) so the owner's double-click opens full screen at the native resolution again, and delete the `worldmvp_*save.json` files you created.
+| Script | What | Options |
+|---|---|---|
+| `boot_tour`, `walk_tour` | spawn, lattice steps, map, HUD, Mira's bubble | |
+| `first_scene` | the prince's opening to the first load of wood | `-timescale 2` |
+| `duel_dance` | Mira's duel, then the dance with the HUD off | |
+| `follow_prince` | a whole game answering the prince after a delay | `-princeDelay 3 -timescale 8` |
+| `ignore_prince` | does nothing; must end in Defeat by overrun | `-timescale 8` |
+| `cast_all` | plays the proposal queue by itself to an ending | `-speed 8`, `-noprince` |
+| `save_load` | save with a carrier mid-path, refused bad files, load, delivered once | |
+| `capture_tour` | screenshots beside the exe in `Evidence/screenshots` | |
 
-Scripts: `boot_tour`, `first_five` (duel and party), `commission`, `full_game` (to an ending, about 13 game minutes), `save_load` (save with a carrier in flight, refused corrupt and old files, load, exactly-once delivery), `capture_tour` (screenshots beside the exe in `Evidence/screenshots`). AutoPlay saves use `worldmvp_autoplay_save.json`, never the player's `worldmvp_save.json` (both under `%USERPROFILE%\AppData\LocalLow\Joe Salmon\WorldMVP`, next to `Player.log`).
+A plain launch check: `WorldMVP.exe -quitAfterReady -logFile <path>` logs `[Boot] playable: tick, hour, night, screen, fps` after two seconds and quits 0.
+
+Unity remembers the last window size and mode per user (registry `HKCU\Software\Joe Salmon\WorldMVP`, `Screenmanager *` values): after windowed smoke runs, delete that key (`reg delete "HKCU\Software\Joe Salmon\WorldMVP" /f`) so the owner's double-click opens full screen at the native resolution again, and delete the `worldmvp_autoplay_save.json` you created. AutoPlay saves use `worldmvp_autoplay_save.json`, never the player's `worldmvp_save.json` (both under `%USERPROFILE%\AppData\LocalLow\Joe Salmon\WorldMVP`, next to `Player.log`).
 
 ## Read in this order
 
-1. `Docs/PRD.md`: what the game is, requirement IDs, decisions already made, MVP scope.
-2. `Docs/BUILD_PLAN.md`: architecture, folder layout, milestones, time budget, cut order, working method.
-3. `Docs/TEST_PLAN.md`: gates G1 to G5 with concrete test vectors, and the owner's play script.
-4. `Docs/SOURCES.md`: source repos, pinned revisions, what is carried forward, licence rules.
+1. `Docs/REFACTOR_SPEC.md`: the game as built (sections 1 to 3), the simulation contract (4 to 6), the Unity-side interface and every change made while building (appendices A and B with their change logs).
+2. `Docs/PLAY_GUIDE.md`: how it plays.
+3. The package notes: `ECONOMY_API.md` and `ECONOMY_PROOF.md` (simulation), `PLAYER_API.md` (walker, pointer, bubbles, casting, map, HUD, F1 tools, AutoPlay), `LAND_UI.md` (world views), `DANCE_UI.md`, `PRINCE_API.md`, `LIGHTING.md`.
+4. `Docs/PROGRESS.md`: what ran and what did not, session by session.
+5. `Docs/NEXT_START_HERE.md`: what comes next.
+6. The older documents (`PRD.md`, `BUILD_PLAN.md`, `TEST_PLAN.md`, `CONTRACTS.md`, `ECONOMY_DESIGN.md`, the old API notes) describe the MVP on `main`; on the refactor branch the spec overrides them.
 
 ## Decisions that are settled (do not reopen without the owner)
 
