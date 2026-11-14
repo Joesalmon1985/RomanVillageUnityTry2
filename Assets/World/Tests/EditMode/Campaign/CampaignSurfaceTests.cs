@@ -495,7 +495,8 @@ namespace World.Sim.Tests
             Assert.AreEqual(PartyMode.Idle, CampaignApi.Party(s).Mode);
             Assert.AreEqual(MarkerRef.Surface("home", "fire"), CampaignApi.Party(s).At);
             Assert.IsTrue(CampaignApi.Party(s).PlayerPresent);
-            CollectionAssert.AreEqual(new[] { "earth.marks_heard" }, c.Facts, "opening clue");
+            // The opening clue, and (I1) Odo's companion clue on the same tick: he reads the forest marks on sight.
+            CollectionAssert.AreEqual(new[] { "earth.glade_known", "earth.marks_heard" }, c.Facts, "opening clue, then Odo's");
             Assert.AreEqual(RivalPhase.Marching, c.Rival.Phase);
             Assert.AreEqual(s.Demons.Tuning.SevensPerDraw, c.BaseSevensPerDraw);
 
@@ -755,7 +756,13 @@ namespace World.Sim.Tests
         [Test]
         public void Belief_GoesStale_WithWhereToLook_RivalViewShowsOnlyDueReports()
         {
-            var sim = CampaignSamples.Started();
+            // Since I1 the runtime is real: Mira goes on after LeadPatience and the rival's own reports arrive after
+            // ReportDelay. This test is about stale beliefs and due reports, so it keeps her at camp and the expedition
+            // out of the field (I1 change, logged in Docs/CAMPAIGN_API.md).
+            var d = CampaignSamples.Skeleton();
+            d.Tuning.LeadPatience = int.MaxValue;
+            d.Rival.Steps.Clear();
+            var sim = CampaignSamples.Started(7, d);
             var s = sim.State;
             s.Campaign.Reports.Add(new RivalReport { Crystal = Element.Fire, Kind = RivalReportKind.Marching, At = MarkerRef.Surface("kiln", "pedestal"), Tick = s.Tick, DueTick = s.Tick + 300 });
             Assert.AreEqual(0, CampaignApi.RivalView(s).Reports.Count, "not yet reached the party");

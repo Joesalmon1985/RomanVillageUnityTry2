@@ -72,10 +72,11 @@ namespace World.Sim.Campaign
             if (c?.Leads == null) return list;
             foreach (var l in c.Leads)
             {
-                var d = c.Definition.Lead(l.DefId);
+                // I1 addition: a lead the runtime makes itself (DefId starting with '@') has no entry in the definition.
+                var d = c.Definition.Lead(l.DefId) ?? CampaignRuntime.ImplicitLead(c, l.DefId);
                 list.Add(new LeadView
                 {
-                    Id = l.Id, DefId = l.DefId, Title = d?.Title ?? "", Reason = d != null ? LineOf(c, d.ReasonLine) ?? "" : "",
+                    Id = l.Id, DefId = l.DefId, Title = d?.Title ?? "", Reason = d != null ? LineOf(c, d.ReasonLine) ?? d.ReasonText ?? "" : "",
                     Score = l.Score, Rank = l.Rank, Crystal = d?.Crystal ?? "", Goal = d?.Goal?.At ?? default,
                     Action = d?.Goal?.Action ?? QuestAction.Arrive,
                 });
@@ -310,7 +311,8 @@ namespace World.Sim.Campaign
             foreach (var k in fallen)
             {
                 var e = d.Encounter(k.FellAt);
-                string place = e != null ? CampaignTokens.PlaceName(d, e.Threshold) : "";
+                // I1 addition: the runtime keeps the place's name when they fall (the finale's tower is not in the definition).
+                string place = !string.IsNullOrEmpty(k.FellPlace) ? k.FellPlace : e != null ? CampaignTokens.PlaceName(d, e.Threshold) : "";
                 r.Fallen.Add(new FallenRecord
                 {
                     Id = k.Id, Name = d.Companion(k.Id)?.Name ?? k.Id, EncounterId = k.FellAt ?? "", Place = place, Tick = k.FellTick,
