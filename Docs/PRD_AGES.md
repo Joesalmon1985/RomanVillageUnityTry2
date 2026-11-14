@@ -122,7 +122,7 @@ Ids are stable. "Test" names the proof that closes each one (section 12).
 | AG-50 | Pure C# deterministic sim, integer state, commands in, events out. `World.Game` never writes state (grep test). | existing grep test, `DeterminismTests` |
 | AG-51 | Headless proof first (`dotnet test DotNet`), then views. | gate per slice |
 | AG-52 | Save versions 5 to 8, each reading every older version from 4 up by migration; version 3 still refused. | `SaveMigrationTests` |
-| AG-53 | Landscape phone layout is the design target; tested in a phone-sized Windows window (2532 x 1170 scaled to 1266 x 585, and 1334 x 750). | PlayMode `LayoutTests` |
+| AG-53 | Landscape phone layout is the design target; tested in phone-sized Windows windows of 844 x 390 and 932 x 430 (the sizes the other two PRDs use). | PlayMode `LayoutTests` |
 
 ---
 
@@ -146,8 +146,8 @@ Landmarks are stable string ids in `Board.Landmarks` (new), each with a corner, 
 | `lm.home_hearth` | corner 70 (the player's start camp) | the village square in Historic, the town hall in Modern, the district gate in Future |
 | `lm.ash_hearth` | corner 97 | the Ash Clan's seat in every era |
 | `lm.dance_circle` | plot 635 | the festival ground (Historic), a memorial square (Modern, Future) |
-| `lm.harbour` | a rim corner chosen by the generator: the rim corner nearest corner 70 by hex-edge distance, ties by lower id | quay in Historic, the blockaded harbour in Modern, the evacuation dock in Future |
-| `lm.tower.earth`, `.water`, `.air`, `.fire` | from `PRD_CRYSTALS.md` | ruins, then restored towers; power conduits in Modern (7.2, R2) |
+| `lm.harbour` | a rim corner chosen by the generator: the rim corner nearest corner 70 by hex-edge distance, ties by lower id, skipping the four rim corners that `PRD_CRYSTALS` Appendix C gives to the towers | quay in Historic, the blockaded harbour in Modern, the evacuation dock in Future |
+| `lm.tower.earth`, `.water`, `.air`, `.fire`, and `lm.altar.<element>` | placed by `PRD_CRYSTALS.md` (its Appendix C): the campaign module registers them with `LandmarkApi.Register` when a campaign starts, so they are absent in skirmish | ruins, then restored towers; power conduits in Modern (7.2, R2) |
 | `lm.relay` | an interior corner between the harbour and the Ash Clan seat (generator rule in 9.1) | a signal relay in Modern |
 | `lm.district` | the hex the Future mission converts (rule in 9.2) | the industrial district |
 
@@ -179,12 +179,13 @@ In the campaign (`Eras.Mode` = Campaign), the overrun rule of the refactor chang
 - If the defender has only its home settlement left, the people **retreat** into it: the home camp is kept (crystals PRD N-3), half of its stock is lost (looted, ledger `Looted`), and its plot buildings stop for 1800 ticks. Event `CampOverrun{..., Kind = Looted}`.
 - The crystal campaign uses `CampOverrun` to give the rival expedition time (its clock is owned by `PRD_CRYSTALS.md`).
 - After an overrun, no new overrun warning can start for `SetbackGraceTicks` = 3000 (5 minutes). While a campaign runs, neither overrun nor the time limit ends the game (`GameEnded` is not raised).
-- From H2 on, overrun is replaced by real attacks (5.4). In the campaign, the home settlement cannot be captured: an attack that empties its defences loots it as above.
+- From H2 on, overrun is replaced by real attacks (5.4). In the campaign, the home settlement cannot be captured: an attack that empties its defences loots it as above. A capture of a campaign settlement raises `CampOverrun` too (Kind `CampLost`, or `Looted` for a home settlement), whoever the attacker is, so the crystal campaign's hooks (its N-2) are unchanged by H2.
+- `StartCampaign` (crystals) switches `Eras.Mode` to Campaign through `Eras.EnterCampaign(WorldState)`; `AgesApi.IsCampaign` reads only that mode. The standalone `dev.historic` start has mode DevStart until a campaign starts.
 - Standalone skirmish keeps overrun fatal and the time limit as built.
 
 ### 4.4 Historic to Modern (a time jump)
 
-**Trigger.** The crystal campaign's ending (`PRD_CRYSTALS.md`: the fourth restoration after the final confrontation) raises `ChapterReady{ch.modern.harbour}`. Mira and the prince's heir invite the player to the harbour ("Thirty winters on..."). `AdvanceChapter` then applies the transfer. Until the crystal ending exists, a test fixture raises the same event (reported as fixture, not as integration).
+**Trigger.** The crystal campaign's ending (`PRD_CRYSTALS.md`: the fourth restoration after the final confrontation) raises `ChapterReady{ch.modern.harbour}` (the Eras code listens for `CampaignEnded{Won}`, copies `CampaignApi.Record` into `History` and raises it; the crystal campaign offers the step as its reply "Onward, thirty winters on"). Mira and the prince's heir invite the player to the harbour ("Thirty winters on..."). `AdvanceChapter` then applies the transfer. Until the crystal ending exists, a test fixture raises the same event (reported as fixture, not as integration).
 
 **Transfer table (authored, data in `Eras/TransferTables.cs`).**
 
@@ -199,7 +200,7 @@ In the campaign (`Eras.Mode` = Campaign), the overrun rule of the refactor chang
 | Soldiers | Historic soldiers do not carry. Their count and best levels go into `History` ("the old guard"). |
 | Victory points, credits, unlock | Carry unchanged. Credits above the Modern cap are kept (the cap only limits new income). |
 | Faction relations | Carry (`Relations[a,b]`: War, Truce). The Ash Clan stays at war in the default story. |
-| Crystal outcomes, companions | Carry as the `CampaignRecord` handed over by `PRD_CRYSTALS.md` (order of restoration, survivors, the fallen and where, seed, definition id), stored whole in `History`: restored towers enable the Ward conduit (R2) at those towers; a crystal carried to the Ash altar gives the Ash Clan one free Ward conduit at its altar. |
+| Crystal outcomes, companions | Carry as the `CampaignRecord` handed over by `PRD_CRYSTALS.md` (order of restoration, survivors, the fallen and where, seed, definition id), stored whole in `History`: restored towers enable the Ward conduit (R2) at those towers; each element in `CampaignRecord.EverOnAltar` gives the Ash Clan one free Ward conduit at that element's altar landmark (at the Won ending every crystal is restored, so the record, not the final custody, says which were stolen). |
 | Casualties | The named casualty list carries to `History.Casualties` and is shown on the memorial square. |
 | Mira | Recurs (the crystal connection keeps her out of time; open decision 14.6). |
 
@@ -219,7 +220,7 @@ In the campaign (`Eras.Mode` = Campaign), the overrun rule of the refactor chang
 
 ### 4.6 The saveable one-shot transition
 
-`AdvanceChapter{To}` is validated in `Eras` (slot 50, before dice). If valid, it runs the transfer in the same tick, in a fixed order (cancel sites and queues, settle carriers, move stock, apply kits, convert the district, set the era, write `History`), then emits `ChapterAdvanced{From, To, Tick}`. The game layer saves to the auto slot on that event. A save just before and just after loads correctly; replaying the same save and command gives byte-identical state JSON. A refused advance changes nothing.
+`AdvanceChapter{To}` is validated in `Eras` (slot 50, before dice). If valid, it runs the transfer in the same tick, in a fixed order (cancel sites and queues, settle carriers, move stock, apply kits, convert the district, set the era, write `History`), then emits `ChapterAdvanced{From, To, Tick}`. The game layer writes the slot `auto.chapter` on that event (slot names are owned by the `SaveSystem` of `PRD_CRYSTALS` I8: `main`, `auto.chapter`, `ckpt.<mission>.<n>`). A save just before and just after loads correctly; replaying the same save and command gives byte-identical state JSON. A refused advance changes nothing.
 
 ### 4.7 Standalone starts
 
@@ -815,7 +816,7 @@ The list is shuffled with the forked `Rng`; the first type under its share and l
 
 **Asking.** "What are you doing?" and "Why?" are read helpers (`FactionApi.Explain`) that return the current top three with reasons and the blocking reason, if any ("Waiting for iron: the smelter has no coal.").
 
-**Map as the command surface.** Tab opens the map (read-only today, with tap-to-walk). With a leader near the player (within 30 m) or in a mission, a tap on the map shows the leader's options as speech replies (Attack there, Hold there, Scout there, Walk there). With no leader near, a tap stays an auto-walk target. No new buttons.
+**Map as the command surface.** Tab opens the map (read-only today, with tap-to-walk). With a leader near the player (within 30 m) or in a mission, a tap on the map shows the leader's options as speech replies (Attack there, Hold there, Scout there, Walk there). With no leader near, a tap stays an auto-walk target. No new buttons. The map is `Game/UI/MapScreen.cs`, owned by `PRD_CRYSTALS` I5; the taps here are an `IMapLayer` of ours, not an edit to that file.
 
 **F1.** The God View tools keep direct build, cast, upgrade, place structure, queue unit, and direct unit orders for testing and AutoPlay.
 
@@ -856,7 +857,7 @@ Missions are scenario data (`Sim/Scenario/`): sites, objectives, enemy plans, ki
 
 **Rival pressure.** The Ash Clan's RTS AI plays the Turtle personality at the harbour, plus authored raids: from minute 8, every 4 minutes, a raid of 2-4 units against the supply road or the relay, announced 30 s before by the quartermaster ("Ash trucks on the coast road, two minutes out."). Raid size grows by one each time, capped at 4.
 
-**Defeat.** The player's Command post destroyed, or all convoy trucks destroyed (`MissionLost{Reason}`). Retry offers the last checkpoint: mission start, after step 5 (base running), after step 9 (approach chosen). Checkpoints are ordinary saves in reserved slots.
+**Defeat.** The player's Command post destroyed, or all convoy trucks destroyed (`MissionLost{Reason}`). Retry offers the last checkpoint: mission start, after step 5 (base running), after step 9 (approach chosen). Checkpoints are ordinary saves in the slots `ckpt.harbour.<n>` (`ckpt.core.<n>` in the Future).
 
 **Shortages are inspectable.** Every structure and queue answers "why is this waiting?" with the stall reason and the ware ("The motor works waits for 2 parts: the machine shop has no steel."), in the inspect bubble and from the commander.
 
@@ -868,7 +869,7 @@ Missions are scenario data (`Sim/Scenario/`): sites, objectives, enemy plans, ki
 
 **Setting.** Generations later. Machines left from the old wars hold the outer island. In the district, the surviving community keeps a dormant core. Engineer Rhea takes the player there: reconnect the core before the next assault and reopen the evacuation dock.
 
-**The district** (`lm.district`): the Meadow or Fields hex adjacent to `lm.home_hearth` with the most free area (rule in the generator, ties by lower id). It becomes a **local industrial tile area**: a 40 x 40 grid of 2.5 m tiles centred on the hex centre, clipped to the hex (tiles outside the hex are void). Tile coordinates are integers; the tile grid is aligned to the world X and Z axes.
+**The district** (`lm.district`): the Meadow or Fields hex adjacent to `lm.home_hearth` with the most free area, never a hex that holds a campaign site (`PRD_CRYSTALS` Appendix C) (rule in the generator, ties by lower id). It becomes a **local industrial tile area**: a 40 x 40 grid of 2.5 m tiles centred on the hex centre, clipped to the hex (tiles outside the hex are void). Tile coordinates are integers; the tile grid is aligned to the world X and Z axes.
 
 **Inventory boundary.** The **transfer station** stands on the district edge tile nearest the home corner. It is a storehouse place for the road side (`PlaceKind.Transfer`, served by carriers and shipments exactly like a storehouse) and the only belt port. Its inventory is one stock array. It has up to 4 belt ports: an export port feeds one chosen ware onto an adjacent belt when the belt's first slot is free; an import port takes any item arriving at it into the inventory. An item is in exactly one place at any tick: a storehouse, a carrier, the transfer station, a belt slot, a machine's buffer, a turret's magazine, or a unit's cargo. The ledger counts belt moves as transfers, never as production.
 
@@ -986,13 +987,13 @@ Small on purpose. It is needed before the crystal campaign's first slice.
 - `CampaignChainTests`: Prehistoric to Future end, 3 seeds, scripted player through ordinary commands; conservation across every transition (ledger lines `Settled`, `JumpLoss`, `JumpKit`, `Reclaimed` balance); casualty history identical on every side; no milestone paid twice; points and unlock flags consistent; a post-loss retry valid in each mission.
 - `ScenarioValidationTests`: 20 generated variations per mission pass reachability, first-chain and kit checks.
 - Existing smoke paths still green: Prehistoric proof, dance, Ward duel, save and load.
-- A Windows build; packaged AutoPlay `campaign_short` exits 0; `PROGRESS.md` says what ran.
+- A Windows build; packaged AutoPlay `chain_short` exits 0; `PROGRESS.md` says what ran.
 
 ---
 
 ## 11. Work packages
 
-Rules for all packages: each package owns its files and folders and no other package edits them. Interfaces land first in a small interface package per slice (appendix A); later name changes are additive and logged at the end of appendix A. One Unity editor per folder: every package marked "Unity" works in its own git worktree (named below) on its own branch. Sim packages run without Unity (`dotnet test DotNet`) and can share the integration checkout only if they own disjoint folders; the default is one worktree per package anyway.
+Rules for all packages: each package owns its files and folders and no other package edits them. Interfaces land first in a small interface package per slice (appendix A); later name changes are additive and logged at the end of appendix A. One Unity editor per folder: every package marked "Unity" works in its own git worktree (named below) on its own branch. Branches are `ages/<id>` (for example `ages/h1-0`); the slice lane `ages/h1` already exists and takes the merges. Interface packages tag their merge: `ages-H1-0`, `ages-H2-0`, `ages-M1-0`, `ages-F1-0`. Every package starts from tag `refactor-done` or a later tag of this lane. Sim packages run without Unity (`dotnet test DotNet`) and can share the integration checkout only if they own disjoint folders; the default is one worktree per package anyway.
 
 Model tiers: "sonnet" for mechanical or well-specified work, "opus" for substantial design-heavy implementation, "fable" for the hardest integration and judgement work.
 
@@ -1000,11 +1001,11 @@ Model tiers: "sonnet" for mechanical or well-specified work, "opus" for substant
 
 | Package | Purpose | Owns | Model | Unity | Worktree | Depends on |
 |---|---|---|---|---|---|---|
-| H1-0 | Interfaces: `Eras`, `History`, `Landmarks`, ledger skeleton, `AdvanceChapter`, `Advise`, `UpgradeBuilding`, grade fields, outer plot ids, save v5 and migration framework, `ApiSurfaceTests` additions | `Sim/Eras/**` (stubs), `Sim/Ledger/**` (stubs), `Sim/Save/**`, `Tests/EditMode/ApiSurfaceAgesTests.cs`, `Tests/EditMode/SaveMigrationTests.cs` | opus | no | `wt-h1-0` | - |
+| H1-0 | Interfaces: `Eras`, `History`, `Landmarks`, ledger skeleton, `AdvanceChapter`, `Advise`, `UpgradeBuilding`, grade fields, outer plot ids, save v5 and migration framework, `ApiSurfaceTests` additions | `Sim/Eras/**` (stubs), `Sim/Ledger/**` (stubs), `Sim/Save/**` (and the save version), `Sim/Core/WorldSim.cs` (`SystemOrder`), its lines in `Sim/Core/WorldSimFactory.cs` (a registration file), the shell `Sim/Campaign/CampaignState.cs` with `WorldState.Campaign` (handed to `PRD_CRYSTALS` I0 at tag `ages-H1-0`), `Tests/EditMode/ApiSurfaceAgesTests.cs`, `Tests/EditMode/SaveMigrationTests.cs` | opus | no | `wt-h1-0` | tag `refactor-done`; tags `ages-H1-0` when merged |
 | H1-1 | Handover, autonomy with announce window, advice and explain, campaign overrun and setback, the Historic step and smith's chest | `Sim/Factions/**`, `Sim/Eras/**` (after H1-0), `Tests/EditMode/HandoverTests.cs`, `AutonomyTests.cs`, `CampOverrunTests.cs`, `EraTests.cs` | opus | no | `wt-h1-1` | H1-0 |
-| H1-2 | Grade 1 upgrades of types 0-15, City to Town, outer plots | `Sim/Economy/**`, `Sim/Board/PlotLayout.cs`, `Sim/Board/Board.cs`, `Sim/Board/BoardGenerator.cs`, `Tests/EditMode/UpgradeTests.cs`, `UpgradeBenefitTests.cs`, `PlotLayoutTests.cs` | sonnet | no | `wt-h1-2` | H1-0 |
+| H1-2 | Grade 1 upgrades of types 0-15, City to Town, outer plots, `EconomyTuning.CycleBonusPermille` (per building type, default 0, for the crystal campaign's Fire boon) | `Sim/Economy/**`, `Sim/Board/PlotLayout.cs`, `Sim/Board/Board.cs`, `Sim/Board/BoardGenerator.cs`, `Tests/EditMode/UpgradeTests.cs`, `UpgradeBenefitTests.cs`, `PlotLayoutTests.cs` | sonnet | no | `wt-h1-2` | H1-0 |
 | H1-3 | Proof section H, `AGES_PROOF.md` generator scaffold | `Tests/EditMode/AgesProof*.cs`, `Docs/AGES_PROOF.md` | sonnet | no | `wt-h1-3` | H1-1, H1-2 |
-| H1-4 | Prince handover scene, invitation, advice and ask replies, map tap options | `Game/Prince/**`, `Tests/PlayMode/HandoverTests.cs` | opus | yes | `wt-h1-4` | H1-0 (code against stubs), H1-1 to finish |
+| H1-4 | Prince handover scene, invitation, advice and ask replies (map taps move to H2-7) | `Game/Prince/**` except `PrinceActorBinding.cs` (`PRD_CHARACTERS` WP-8) and, once H2-7 starts, `Advice/`; `Tests/PlayMode/HandoverPlayTests.cs` | opus | yes | `wt-h1-4` | H1-0 (code against stubs), H1-1 to finish |
 | H1-5 | Grade visuals for the 16 types and the town, outer plot rings, Historic dressing by grade | `Game/View/Land/Grades/**`, `Tests/PlayMode/GradeViewTests.cs` | sonnet | yes | `wt-h1-5` | H1-0, H1-2 to finish |
 
 Order: H1-0, then H1-1, H1-2, H1-4, H1-5 in parallel, then H1-3. Merge order: 0, 2, 1, 3, 5, 4.
@@ -1019,8 +1020,8 @@ Order: H1-0, then H1-1, H1-2, H1-4, H1-5 in parallel, then H1-3. Merge order: 0,
 | H2-3 | Points ledger: milestones, keys, caps, events | `Sim/Ledger/**`, `Tests/EditMode/LedgerTests.cs` | sonnet | no | `wt-h2-3` | H2-0 |
 | H2-4 | Faction AI: scheduler, needs, verdicts, scores, modes, upgrades, dismantle, soldiers, attacks, personalities; integration with `Brain` | `Sim/Factions/**`, `Tests/EditMode/FactionAiTests.cs` | fable | no | `wt-h2-4` | H2-0; behaviour of H2-1 and H2-2 to finish |
 | H2-5 | Proof sections A, F, V, D; `CoverageReport` | `Tests/EditMode/AgesProof*.cs`, `CoverageReport.cs`, `Docs/AGES_PROOF.md`, `Docs/COVERAGE.md` | opus | no | `wt-h2-5` | H2-1 to H2-4 |
-| H2-6 | Views: 24 new buildings by grade (original placeholder models), mines on veins, soldiers, duels, garrison flags, fog on the map | `Game/View/Land/Historic/**`, `Game/View/Military/**`, `Tests/PlayMode/HistoricViewTests.cs` | opus | yes | `wt-h2-6` | H2-0; H2-1 and H2-2 to finish |
-| H2-7 | Interaction: military advice, attack-there on the map, H HUD points and credits lines, inspect sentences for the new stalls | `Game/Prince/Advice/**`, `Game/UI/Hud/LedgerLines.cs`, `Tests/PlayMode/AdviceTests.cs` | sonnet | yes | `wt-h2-7` | H2-0, H1-4 |
+| H2-6 | Views: 24 new buildings by grade (original placeholder models), mines on veins, soldiers, duels, garrison flags, fog on the map through an `IMapLayer` (`MapScreen.cs` belongs to `PRD_CRYSTALS` I5) | `Game/View/Land/Historic/**`, `Game/View/Military/**`, `Tests/PlayMode/HistoricViewTests.cs` | opus | yes | `wt-h2-6` | H2-0; H2-1 and H2-2 to finish |
+| H2-7 | Interaction: military advice, attack-there and the other map taps (as an `IMapLayer`; `Game/UI/Hud.cs` hooks go in as registration lines), H HUD points and credits lines, inspect sentences for the new stalls | `Game/Prince/Advice/**`, `Game/UI/Hud/LedgerLines.cs`, `Tests/PlayMode/AdviceTests.cs` | sonnet | yes | `wt-h2-7` | H2-0, H1-4, `cry-I5` merged (for `IMapLayer`) |
 
 Order: H2-0; then H2-1, H2-2, H2-3, H2-6, H2-7 in parallel; H2-4 starts on the interfaces at the same time and integrates last; H2-5 last. H2-4 and H2-1 both touch the factions-economy seam only through `EconomyApi` read helpers (owned by H2-1); H2-4 never edits economy files.
 
@@ -1028,7 +1029,7 @@ Order: H2-0; then H2-1, H2-2, H2-3, H2-6, H2-7 in parallel; H2-4 starts on the i
 
 | Package | Purpose | Owns | Model | Unity | Worktree | Depends on |
 |---|---|---|---|---|---|---|
-| M1-0 | Interfaces: lattice, passability, unit and structure records, orders, queues, power, roster defs, scenario and objective shapes, transfer table shape | `Sim/Board/Lattice.cs`, `Sim/Rts/**` (stubs), `Sim/Scenario/**` (stubs), `Tests/EditMode/ApiSurfaceM1Tests.cs` | opus | no | `wt-m1-0` | H2 merged |
+| M1-0 | Interfaces: lattice, passability, unit and structure records, orders, queues, power, roster defs, scenario and objective shapes, transfer table shape | `Sim/Board/Lattice.cs` (created by `PRD_CRYSTALS` I0 with `CellOf` and `Distance`; from tag `cry-I0` it is this package's, extended additively), `Sim/Rts/**` (stubs), `Sim/Scenario/**` (stubs), `Tests/EditMode/ApiSurfaceM1Tests.cs` | opus | no | `wt-m1-0` | H2 merged |
 | M1-1 | Units: lattice pathing, movement, orders, stances, combat with armour classes, unit fog, engineer capture and repair | `Sim/Rts/Units/**`, `Sim/Board/Lattice.cs` (after M1-0), `Tests/EditMode/LatticeTests.cs`, `CombatTests.cs`, `UnitOrderTests.cs` | opus | no | `wt-m1-1` | M1-0 |
 | M1-2 | Base: unlock check, roster placement and supply corner, mixed costs and reservations, power, queues with physical inputs, harvester and refinery, Foundry and Machine shop, grade 2 upgrades and District | `Sim/Rts/Base/**`, `Sim/Ledger/**`, `Tests/EditMode/UnlockTests.cs`, `MixedCostTests.cs`, `QueueTests.cs`, `PowerTests.cs`, `HarvesterTests.cs` | opus | no | `wt-m1-2` | M1-0 |
 | M1-3 | RTS AI modules and personalities | `Sim/Rts/Ai/**`, `Tests/EditMode/RtsAiTests.cs` | fable | no | `wt-m1-3` | M1-0; M1-1 and M1-2 to finish |
@@ -1052,8 +1053,8 @@ Order: H2-0; then H2-1, H2-2, H2-3, H2-6, H2-7 in parallel; H2-4 starts on the i
 | Package | Purpose | Owns | Model | Unity | Worktree | Depends on |
 |---|---|---|---|---|---|---|
 | C1-1 | Campaign chain, save matrix across transitions, cross-transition conservation, seeded variations and validation | `Tests/EditMode/CampaignChainTests.cs`, `ScenarioValidationTests.cs`, `Sim/Scenario/Variation/**` | fable | no | `wt-c1-1` | F1 merged; crystal ending or fixture |
-| C1-2 | AutoPlay `campaign_short`, packaged runs, phone layout checks, Windows build | `Game/Boot/AutoPlayScripts/Campaign*.cs`, `AgentScripts/**` (campaign parts) | sonnet | yes | `wt-c1-2` | C1-1 |
-| C1-3 | Docs: start-here note for the ages, `COVERAGE.md` refresh, `PROGRESS.md` | `Docs/AGES_START_HERE.md`, `Docs/PROGRESS.md` (append) | sonnet | no | `wt-c1-3` | C1-1, C1-2 |
+| C1-2 | AutoPlay `chain_short`, packaged runs, phone layout checks, Windows build | `Game/Boot/AutoPlayScripts/Chain*.cs`, `AgentScripts/Chain*.cs` | sonnet | yes | `wt-c1-2` | C1-1 |
+| C1-3 | Docs: start-here note for the ages, `COVERAGE.md` refresh, `PROGRESS.md` | a refresh of `Docs/NEXT_START_HERE.md` (the one start-here page, instead of a separate ages note), `Docs/PROGRESS.md` (append-only) | sonnet | no | `wt-c1-3` | C1-1, C1-2 |
 
 ### 11.6 Summary table
 
@@ -1101,7 +1102,7 @@ Order: H2-0; then H2-1, H2-2, H2-3, H2-6, H2-7 in parallel; H2-4 starts on the i
 - **Ledger and unlock tests** exactly as listed in M1 acceptance (two factions, 9 against 10, goods without credits, credits without goods, retry, cancel, save and load without double spend).
 - **Save matrix.** v4 skirmish, v5 Historic, v7 Modern mid-mission with a queue item and a shipment in flight, v8 Future mid-wave with belt items: save, load, run 600 ticks, compare against a run without the save.
 - **PlayMode.** Each Unity package adds its own test file; AutoPlay scripts drive ordinary inputs (walking, replies, ground presses, map taps), never F1 tools, for the acceptance runs.
-- **Phone layout.** A PlayMode test sets the Game view to 1266 x 585 and 1334 x 750 and checks that speech bubbles and HUD lines stay inside the safe area and do not overlap; a capture is inspected by the agent. Device testing stays pending (owner decision 18).
+- **Phone layout.** A PlayMode test sets the Game view to 844 x 390 and 932 x 430 and checks that speech bubbles and HUD lines stay inside the safe area and do not overlap; a capture is inspected by the agent. Device testing stays pending (owner decision 18).
 - **Reporting.** Every package reports which tests and playthroughs ran and which did not (repo rule).
 
 ---
@@ -1177,6 +1178,8 @@ What this document still needs from it:
 5. Whether restoring a crystal pays the player's faction a point (`crystal:<element>`); this document assumes yes, and that a crystal set on an Ash altar pays the Ash Clan one.
 6. Confirmation that the crystal campaign can run from `dev.historic` once H1 lands, instead of its own test start.
 
+**Answered by `PRD_CRYSTALS.md` (reconciliation, 14 Nov 2026).** 1: its Appendix C now lists `lm.tower.*` and `lm.altar.*` with places; the campaign module registers them with `LandmarkApi.Register`. 2: `CampaignRecord` is defined in its A.5 (restored order, `EverOnAltar`, survivors, the fallen with place, tick and cause). 3: `CampaignEnded{Won}` is the event; the Eras code raises `ChapterReady{ch.modern.harbour}`; until the crystal ending exists a fixture raises it. 4: confirmed (+1800; a looted home camp counts too). 5: yes, its 5.2 awards `crystal:<element>` to the player on restoration and to the Ash Clan when a crystal first reaches an altar. 6: yes; after H1 its test starts are built on `dev.historic`.
+
 ### Given to `PRD_CHARACTERS.md`
 The age switch hook its WP-18 and gate C1 wait for: the game layer reads `AgesApi.Current(state)` at load and listens for `ChapterAdvanced{From, To}` to swap costumes. Building grades (`BuildingUpgraded`) are the hook for village dressing, not for characters.
 
@@ -1206,6 +1209,7 @@ public static class SystemOrder
     // Demons 1100, Brain 1150 (faction AI from H2)
     public const int RtsAi = 1160;       // (M1)
     // Strength 1200
+    public const int Campaign = 1250;    // crystal campaign module (PRD_CRYSTALS); H1-0 adds the constant
     public const int Vision = 1270;      // fog (H2)
     public const int Scenario = 1280;    // objectives, waves (M1, F1)
     // Diagnostics 1300
@@ -1260,11 +1264,15 @@ public static class AgesApi
     public static Landmark Landmark(WorldState s, string id);
     public static long HandoverTick(WorldState s, int faction); // -1 if not yet
     public static bool CampaignMayStart(WorldState s);           // crystals PRD N-1: Historic era and the player's handover done
-    public static bool IsCampaign(WorldState s);
+    public static bool IsCampaign(WorldState s);                 // Eras.Mode == Campaign
 }
 
+public static class Eras { public static void EnterCampaign(WorldState s); }                  // called by the crystals' StartCampaign handler only
+public static class LandmarkApi { public static void Register(WorldState s, Landmark lm); }   // campaign module only; keeps Board.Landmarks sorted by Id
+
 // Crystals PRD N-4: the campaign module may write these named modifiers (and nothing else in faction or economy tuning):
-// DemonTuning.SevensPerDraw, EconomyTuning.GrowTicks (per terrain). Any further one is added to this list first.
+// DemonTuning.SevensPerDraw, EconomyTuning.GrowTicks (per terrain), EconomyTuning.CarrierTicksPerStep,
+// EconomyTuning.CycleBonusPermille (new, per building type, default 0, added by H1-2). Any further one is added to this list first.
 
 public static class ScenarioStarts
 {
@@ -1427,3 +1435,26 @@ public static class IndustryApi { public static BlueprintView Blueprint(WorldSta
 ### A.9 API change log
 
 (Empty. Interface packages append here: date, package, change, old name kept.)
+
+
+---
+
+## Reconciliation, 14 Nov 2026
+
+Made after `PRD_CRYSTALS.md` and `PRD_CHARACTERS.md` were finished. Minimal edits; no owner decision changed.
+
+| Where | Change | Why |
+|---|---|---|
+| AG-53, section 12 | Phone windows are 844 x 390 and 932 x 430. | The other two PRDs and the owner's phone-window answer use those; this PRD had two other sizes. |
+| 4.1, 9.2 | Harbour skips the four tower corners; the district never takes a hex with a campaign site; tower and altar landmarks are registered by the campaign module. | Rim corners and Meadow hexes were claimed by both PRDs. |
+| 4.3 | H2 captures also raise `CampOverrun`; `StartCampaign` switches campaign mode through `Eras.EnterCampaign`. | The crystal hooks listen to `CampOverrun` only; "campaign" meant two different flags. |
+| 4.4 | The Eras code reacts to `CampaignEnded{Won}`; the Ash conduit uses `CampaignRecord.EverOnAltar`; the crystal ending offers the step as "Onward". | At the Won ending every crystal is restored, so the old rule could never fire; both PRDs had their own ending bubble. |
+| 4.6, 9.1 | Save slots named (`auto.chapter`, `ckpt.harbour.<n>`); names are owned by the crystal I8 `SaveSystem`. | The crystals PRD says one slot; this PRD wanted several. |
+| A.1, A.2 | `SystemOrder.Campaign` 1250; `Eras.EnterCampaign`; `LandmarkApi.Register`; the N-4 list adds `CarrierTicksPerStep` and `CycleBonusPermille`. | The crystals PRD uses all of them; two boons had no allowed field. |
+| 11 rules, H1-0 | H1-0 owns `Sim/Save/**`, the version, `SystemOrder`, and the `CampaignState` shell, handed to crystals I0 at `ages-H1-0`. Branch and tag naming added. | Both PRDs edited the save codec; branches were unnamed. |
+| H1-2 | Adds `EconomyTuning.CycleBonusPermille`. | Fire boon. |
+| H1-4, H2-6, H2-7 | `Game/Prince/**` carve-outs (WP-8's binding, `Advice/` for H2-7); map content through `IMapLayer`; map taps moved from H1-4 to H2-7; PlayMode test renamed `HandoverPlayTests`. | Overlapping folder claims; `MapScreen.cs` is the crystals I5 file. |
+| M1-0 | `Sim/Board/Lattice.cs` is created by crystals I0 and extended here. | Both PRDs created it. |
+| C1-2, C1-3, section 10 | AutoPlay renamed `chain_short`; start-here note refreshed in `NEXT_START_HERE.md`. | `campaign_short` looked like the crystals scripts; two start-here pages. |
+| Registration files | `Sim/Core/WorldSimFactory.cs`, `Boot/WorldBootstrap.cs` and `Game/UI/Hud.cs` take one-line additive registrations from any package; a merge conflict there is resolved by keeping both lines. Nobody rewrites them. | Ages packages need installer and module lines and no PRD listed them. |
+| Section 16 | Answers from the crystals PRD recorded. | Closes the loop. |

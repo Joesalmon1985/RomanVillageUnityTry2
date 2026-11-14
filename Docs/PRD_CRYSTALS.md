@@ -2,7 +2,7 @@
 
 Written 14 Nov 2026 on branch `docs/next-ages`, cut from the prehistoric refactor. It builds on the game described in `Docs/REFACTOR_SPEC.md` and follows the owner's answers of 14 Nov 2026. Two sister documents are written at the same time: `Docs/PRD_AGES.md` (Historic economy, later ages, faction and RTS AI) and `Docs/PRD_CHARACTERS.md` (rigged cast and animation). Where this document needs something from them it says so under "Needs from other PRDs" (section 3.9).
 
-When this was written `PRD_CHARACTERS.md` was already in the folder, and its cast numbering, duel staging and phone window sizes are followed here. `PRD_AGES.md` was not yet there, so everything about the ages is an assumption stated in 3.9.
+When this was written `PRD_CHARACTERS.md` was already in the folder, and its cast numbering, duel staging and phone window sizes are followed here. `PRD_AGES.md` was not yet there, so everything about the ages is an assumption stated in 3.9. That is now settled: `PRD_AGES.md` exists and its section 16 answers N-1 to N-6 (see "Answers" at the end of 3.9 and the changelog at the end of this file).
 
 Reading guide. The owner's read is about 20 minutes: section 1 (summary), section 4 (story and cast), sections 5.1 to 5.6 (the clock, custody, the rival, Mira, consequences), section 7 (what you will see in each slice), then sections 11 and 12 (decisions). The rest is for the builders: section 2 is what exists, 3 the numbered requirements, 5.7 to 5.12 the remaining rules, 6 the data format, generator and validator, 8 the work packages, 9 the tests and the Slice 1 play script, 10 the risks. Appendix A is the simulation interface, B the Unity-side interface, C the authored places, D the route steps.
 
@@ -159,9 +159,11 @@ From `PRD_CHARACTERS.md`:
 |---|---|---|
 | N-7 | Bodies for these actor ids through `ActorFactory.Create`: `mira`, `companion_garrick`, `companion_ivo`, `companion_petra`, `companion_nell`, `companion_odo`, `companion_tansy`, `keeper_earth`, `keeper_fire`, `keeper_water`, `keeper_air`, `rival_leader`, `wizard`, `ferryman`, `smith`. | Placeholder bodies in distinct colours, as every NPC has today. |
 | N-8 | The rival leader uses the Ash champion's body (their cast no. 14) so the first proven opponent and the campaign's leader are one face. | - |
-| N-9 | One definition of `DuelStageSpec` (caster actor id, opponent actor id, positions), used by their `DuelDirector` and by this PRD's `WardDuelRequest`. Whichever lands first creates `Game/Encounters/DuelStageSpec.cs`; the other uses it. | Interface package I0 creates it if it is not there. |
-| N-10 | File split in `Game/Encounters`: their package WP-9 owns `WardDuelStage.cs`, `DuelDirector.cs` and the result gate; this PRD's package I7 owns the rest of `WardDuelEncounter.cs`. The two do not run on that file at the same time. Their test id `ward_champion` becomes a preset of the campaign duel. | I7 runs first or after WP-9, never beside it. |
+| N-9 | One definition of `DuelStageSpec` (caster actor id, opponent actor id, positions), used by their `DuelDirector` and by this PRD's `WardDuelRequest`. Package I0 creates `Game/Encounters/DuelStageSpec.cs` (it lands first); `PRD_CHARACTERS` WP-9 uses it and changes it only through I0's change log. | I0 creates it. |
+| N-10 | One owner per file in `Game/Encounters`, handed over by tag. This PRD's I7 owns `WardDuelEncounter.cs`, `WardDuelStage.cs` and `EncounterInstaller.cs` until tag `cry-I7`; from that tag `PRD_CHARACTERS` WP-9 owns those three files, plus `DuelDirector.cs` (WP-9 only, always) and the result gate. I0 owns `EncounterRequest.cs`, `DuelStageSpec.cs` and the `Request` field in `EncounterHost.cs`. WP-9 starts only after `cry-I7`. Their test id `ward_champion` is a preset request of the campaign duel (mode Friendly), not a second encounter class. | I7 first; WP-9 after `cry-I7`. |
 | N-11 | Clips for: Mira's cast, an opponent's hit and break, a companion covering the retreat and falling, walking in a file, pointing, kneeling at a pedestal. Driven by the events of appendix A.4. | The placeholder's `cast`, `cheer`, `surprise` one-shots. |
+
+**Answers from `PRD_AGES.md` section 16 (reconciliation, 14 Nov 2026).** N-1: `AgesApi.CampaignMayStart(WorldState)` and the event `CampaignMayStart`; true from the Historic step on. N-2: event `CampOverrun { Attacker, Defender, SettlementId, Kind }` with Kind `CampLost` or `Looted`; no `GameEnded` from overrun or time while the island is in campaign mode, which `StartCampaign` switches on through `Eras.EnterCampaign(WorldState)`. From H2 on, real captures also raise `CampOverrun`, so this PRD's hooks do not change. N-3: the home camp is never captured in campaign mode; with only the home camp left it is looted, not lost. N-4: the writable fields are listed under 5.7. N-5: the world save version belongs to `PRD_AGES` H1-0 and its successors; this PRD's own state changes inside `CampaignState` are versioned by `CampaignState.FormatVersion`, not by the world save version. N-6: `CampaignRecord` (appendix A.5) is copied whole into `History` by the ages' transition code when `CampaignEnded { Won }` is raised. When `dev.historic` exists (after H1), `-campaignTest earth` and `earth_stolen` are built on it and the fallbacks in the right-hand column above are retired.
 
 ---
 
@@ -205,7 +207,7 @@ In the lean winters that followed, the two peoples fought over the towers. The l
 
 **Why now.** The valley people have grown, and the Ash Clan is losing ground. Its champion, Hesk Varr, has begun to dream of the hiding places. He believes that crystals set on altars cut by Ash hands will make the old power serve the Ash Clan. The dreams are sent by the Unweaver. An altar is not a tower: a crystal on an altar is a knot half untied.
 
-**Opening.** The night the prince first manages without you, Mira comes to the viewpoint at the home camp. She tells the story above in four short bubbles, shows you the six who have agreed to come, and says what it will cost: "If I lose a duel out there, one of them stays behind so the rest of us get out. I won't pretend otherwise." She offers a practice duel, then asks: "Come with me?" Replies: "Lead the way", "Tell me more", "Go on ahead, I'll find you".
+**Opening.** Once the prince runs the camp on his own and you have accepted the Historic age (`CampaignMayStart`), Mira comes to the viewpoint at the home camp. She tells the story above in four short bubbles, shows you the six who have agreed to come, and says what it will cost: "If I lose a duel out there, one of them stays behind so the rest of us get out. I won't pretend otherwise." She offers a practice duel, then asks: "Come with me?" Replies: "Lead the way", "Tell me more", "Go on ahead, I'll find you".
 
 **The four routes.** In any order. Earth: forest marks lead to a boundary stone in a glade, a hidden stair, and the old quarry below. Fire: a ruined kiln must be lit in the right order before it shows what it holds. Water: a ferryman's riddle and a flood marker tell when the low causeway can be crossed. Air: the old watcher on the ridge tests Mira before he teaches her to read the wind markers. Wherever the Ash expedition arrived first there is an empty pedestal, a trail, and an altar with a keeper.
 
@@ -233,7 +235,7 @@ The Ash expedition has one counter, `RivalProgress`. It rises by 1 every world t
 | Lethal defeat and retreat (also a confirmed surrender) | +900 |
 | Clash or stalemate and retreat | +600 (+300 while Garrick lives) |
 | Wrong answer to a riddle or a wrong puzzle step | +300 |
-| One of your camps is overrun by the Ash Clan | +1800 |
+| One of your camps is overrun by the Ash Clan, or your home camp is looted (`CampOverrun`, either Kind) | +1800 |
 | One of the Ash Clan's camps is overrun by your people | the expedition stops for 900 ticks |
 | Victory, practice, a friendly demonstration, withdrawing before committing | 0 |
 | Time inside a duel | 0 |
@@ -256,6 +258,8 @@ AtSite --rival seizes it--> RivalTransit --> AtRivalAltar --keeper beaten or alt
 | Wrong tower | Refused: "This is not its tower." The party learns which tower matches from the pedestal inscription, from the beaten keeper's altar, or by visiting the tower and reading its door sign. |
 
 Every custody change is one Sim step with one event, guarded by the state it starts from, so it cannot happen twice.
+
+Victory points (`PRD_AGES` 6.1): when a crystal becomes `Restored` the player's faction is awarded the key `crystal:<element>`; when it first becomes `AtRivalAltar` the Ash Clan is awarded the same key. Each key is paid once, through the ledger's `Ledger.Award`, in the same step as the custody change.
 
 ### 5.3 The rival expedition
 
@@ -299,6 +303,8 @@ The Game side is an `ExpeditionDirector` modelled on the prince's director (`pre
 | InEncounter | An attempt is pending. | Resolved. |
 | WaitingForPlayer | At a tower with its crystal, or withdrawn from a threshold. | The player rejoins, or another open lead exists. |
 
+**How fast Mira looks.** A surface leg moves at about 7 m/s (5 m in 7 ticks). The Game animates her at the leg's speed with the `Run` clip of `PRD_CHARACTERS` (native 7 m/s). The player's own steps are faster (0.4 s per 5 m), so following works. Placeholder bodies simply slide, as they do now.
+
 **What the player says.** All in speech bubbles, at most three replies.
 
 | Moment | Mira says | Replies |
@@ -333,7 +339,7 @@ Encounter kinds: **lethal** (the four keepers and the finale), **friendly** (Orr
 
 1. At the threshold the Sim names the volunteer: the first living companion in the authored order, or none.
 2. "Fight" sends `CommitEncounter`. The Sim creates the attempt `{ Id, EncounterId, Volunteer, Seed, Restarts }`, and the Game writes the checkpoint and starts the duel from the `EncounterCommitted` event.
-3. When the duel ends the Game sends `ResolveEncounter { AttemptId, Outcome }`, steps the clock one tick with `GameClock.StepOnce()` so it is applied at once, and writes the checkpoint again. All of this happens before the result screen can be left.
+3. When the duel ends the Game sends `ResolveEncounter { AttemptId, Outcome }`, steps the clock one tick with `GameClock.StepOnce()` so it is applied at once, and writes the checkpoint again. All of this happens before the result screen can be left, and it happens at the duel's end event, not when the screen closes: the presentation hold of `PRD_CHARACTERS` 7.4 (at least 1.5 s on a final break) delays only the screen.
 4. `ResolveEncounter` is accepted only for the pending attempt with that id. Anything else is refused with `already_resolved` or `unknown_attempt`. All effects below happen in that one application.
 
 **Outcome table.**
@@ -376,22 +382,22 @@ A player with zero companions can commit and win any encounter. The death is sho
 | Air (the Skyshard) | Carriers on main roads take one tick less per step. |
 | People | Every character's lines switch to the set for the new count of restored crystals. The journal records the restoration. |
 
-Slice 1 builds the demon rule and the Earth boon. The other three boons are Slice 2 and depend on N-4.
+Slice 1 builds the demon rule and the Earth boon. The other three boons are Slice 2. The only tuning fields this module may write are (`PRD_AGES` A.2): `DemonTuning.SevensPerDraw`; `EconomyTuning.GrowTicks` (per terrain); `EconomyTuning.CarrierTicksPerStep`; and `EconomyTuning.CycleBonusPermille` (per building type, added by `PRD_AGES` H1-2, default 0) for the Fire boon. Each boon is applied as a change on the saved base value and removed by recomputing from the base, so a boon can never stack twice.
 
 ### 5.8 Finale and endings
 
 The finale encounter is not tied to a place in the data. It is bound to "the tower of the fourth crystal". When `Restored` = 3 and the party arrives at the remaining crystal's tower with that crystal `Carried`, the party is at the finale's threshold. Every tower has duel stage markers, so any tower can host it. A survivable defeat retreats to that tower's safe point and the finale stays open. Victory restores the fourth crystal at once and ends the campaign.
 
-`CampaignEnded` carries the ending id and a `CampaignRecord`. After the restored ending the faction game goes on (N-6). After terminal defeat the whole game is over. Both endings finish with one bubble that hangs in front of the player with the replies "Begin again" (the same authored tale) and, once a generated campaign exists in the build, "A different telling".
+`CampaignEnded` carries the ending id and a `CampaignRecord`. After the restored ending the faction game goes on (N-6). After terminal defeat the whole game is over. Both endings finish with one bubble that hangs in front of the player. After terminal defeat the replies are "Begin again" (the same authored tale) and, once a generated campaign exists in the build, "A different telling". After the restored ending the first reply is "Onward, thirty winters on": it submits `AdvanceChapter{ch.modern.harbour}` once `PRD_AGES` has raised `ChapterReady` for it. The bubble keeps at most three replies (Onward, Begin again, and A different telling once it exists).
 
 ### 5.9 The faction game and the campaign together
 
 | Matter | Rule |
 |---|---|
-| When it starts | At the handover milestone in the Historic age (N-1). |
+| When it starts | When `AgesApi.CampaignMayStart` is true: the prince's handover has happened and the player has accepted the Historic age (N-1). `StartCampaign` also switches the island to campaign mode (`Eras.EnterCampaign`). |
 | The prince | He plans and builds alone. The player may still walk to him, ask what he is doing and advise him (those rules are in `PRD_AGES.md`). Doing so is "away" for Mira. |
 | The prince needs you | An overrun warning makes the prince call the player with the existing off-screen arrow. Going is the player's choice. |
-| Overrun of one of your camps | The camp is lost (N-2). The party drops what it is doing and retreats to the home camp on foot. An uncommitted threshold is abandoned. Rival +1800. Nobody dies. It cannot happen during a duel because the world clock is paused. |
+| Overrun of one of your camps | The camp is lost, or the home camp is looted when it is the only one left (N-2, `CampOverrun.Kind`). The party drops what it is doing and retreats to the home camp on foot. An uncommitted threshold is abandoned. Rival +1800. Nobody dies. It cannot happen during a duel because the world clock is paused. |
 | Your people overrun an Ash camp | The Ash expedition stops for 900 ticks. |
 | Demons | Rarer with each restoration, more frequent with each crystal on an altar (5.7). |
 | Skirmish | Standalone skirmish has no campaign state and keeps the fatal overrun and the time limit. |
@@ -439,7 +445,7 @@ Orrin's answer about the Skyshard is built from the true custody state when he i
 
 | Matter | Rule |
 |---|---|
-| Who stands where | Mira's own body stands on the `DuelCaster` marker. The opponent's body stands on `DuelOpponent`, 5.5 m away (the existing `DuelDistance`). The anonymous player wizard is not spawned. The volunteer stands at the way out, in frame. The viewpoint goes over Mira's shoulder with the existing camera rule. |
+| Who stands where | Mira's own body stands on the `DuelCaster` marker. The opponent's body stands on `DuelOpponent`, 5.5 m away (the existing `DuelDistance`). The anonymous player wizard is not spawned. The volunteer stands at the way out, in frame. The viewpoint goes over Mira's shoulder with the existing camera rule, replaced by the narrower view of `PRD_CHARACTERS` 7.2 once its WP-9 lands. Staging reads `DuelStageSpec` (with `VolunteerActorId` and `VolunteerPos`); I7 edits `WardDuelStage.cs` for this until `cry-I7`, then the file is WP-9's. |
 | Whose spell | The setup title reads "Mira's Ward". As the player adds essences, orbs gather at Mira's hand. Mira animates each accepted cast; the opponent animates its own. |
 | Sim change | None to the rules. A new data class `WardOpponentProfile` and `WardTuning.For(profile)` fill the existing `Mira*` timing fields and the essence pool. `WardDuelSession` gets a factory that takes a `WardDuelSpec`. |
 | Host change | `EncounterContext` gains a `Request` object, and `EncounterDirectory.TryStart` gains an overload that passes it. With no request, `WardDuelEncounter` behaves exactly as today. |
@@ -637,23 +643,31 @@ Each definition has a **causal signature** of six parts: (1) the rival's target 
 
 Rules for parallel agents. Each package owns the files listed and edits no others. The interface package of each slice lands first and is tagged; the names in the appendices are binding from then on, and changes are additive and logged. Only one Unity editor may be open per folder, so every package that needs Unity gets its own git worktree unless the table says it runs in sequence in a shared one. Headless packages need no editor; they still use their own worktree when they run beside others. Model tiers: sonnet for mechanical or well-specified work, opus for substantial design-heavy implementation, fable for the hardest integration and judgement.
 
-All branches are cut from the finished refactor (`refactor/prehistoric` after F-1) into `feat/crystals`, one branch per package (`cry/i0`, `cry/i1`, ...).
+Package branches are cut from tag `ages-H1-0` (which itself sits on the finished refactor, tag `refactor-done`) into `feat/crystals`, one branch per package (`cry/i0`, `cry/i1`, ...). Worktrees are `wt-cry-<id>`.
 
 ### 8.1 Slice 1
 
 | Id | Package and purpose | Owns | May assume | Model | Unity | Depends on | Acceptance |
 |---|---|---|---|---|---|---|---|
-| I0 | **Interface.** The public surface of appendices A and B as compiling shells, so everyone else can code against it. | `Sim/Campaign/**` (types, commands, events, `CampaignApi`, module shell), `Sim/Board/Lattice.cs`, one registration line each in `Sim/Core/WorldSimFactory.cs` and `Sim/Save/SaveCodec.cs`, `Tests/EditMode/Campaign/CampaignSurfaceTests.cs`, stubs `Game/Expedition/ExpeditionInstaller.cs`, `Game/Interiors/InteriorsInstaller.cs`, `Game/Encounters/EncounterRequest.cs`, `DuelStageSpec.cs`, the `Request` field in `EncounterHost.cs`, two installer calls in `Boot/WorldBootstrap.cs`, `Docs/CAMPAIGN_API.md` | The finished refactor | opus | Yes, once, for a compile check (integration folder) | refactor F-1 | Reflection test pins every name in appendix A. Unity compiles with 0 errors. All existing tests green. A null campaign changes nothing (state JSON of a 20-minute run is identical to before, apart from the new null field). Tag `cry-I0`. |
+| I0 | **Interface.** The public surface of appendices A and B as compiling shells, so everyone else can code against it. | `Sim/Campaign/**` (types, commands, events, `CampaignApi`, module shell), `Sim/Board/Lattice.cs`, one registration line in `Sim/Core/WorldSimFactory.cs` (a registration file, see the changelog), one line in `Game/Encounters/EncounterInstaller.cs` registering `ward_campaign`, no edit to `Sim/Save/**` (`PRD_AGES` H1-0 owns it and the save version; `CampaignState.cs` and `WorldState.Campaign` are created by H1-0 and become this package's at tag `ages-H1-0`), `Tests/EditMode/Campaign/CampaignSurfaceTests.cs`, stubs `Game/Expedition/ExpeditionInstaller.cs`, `Game/Interiors/InteriorsInstaller.cs`, `Game/Encounters/EncounterRequest.cs`, `DuelStageSpec.cs`, the `Request` field in `EncounterHost.cs`, two installer calls in `Boot/WorldBootstrap.cs`, `Docs/CAMPAIGN_API.md` | The finished refactor | opus | Yes, once, for a compile check (integration folder) | refactor F-1, `ages-H1-0` | Reflection test pins every name in appendix A. Unity compiles with 0 errors. All existing tests green. A null campaign changes nothing (state JSON of a 20-minute run is identical to before, apart from the new null field). Tag `cry-I0`. |
 | I1 | **Campaign runtime.** Custody, the rival plan and clock, facts, leads, Mira's brain, party movement, choices, attempts and consequences, restoration, journal. | `Sim/Campaign/Runtime/**`, `Tests/EditMode/Campaign/Runtime/**` | I0 names; a sample definition from I0's tests | opus | No | I0 | Unit tests for every row of the tables in 5.1 to 5.7; determinism (two runs, identical state JSON); save and load mid-leg, mid-choice and with a pending attempt continue identically. |
 | I2 | **Format, loader, validator v1, packs.** The JSON format, the folder loader, the validator's form, role, crystal, place, interior, clue and rival checks; the authored Earth pack with its lines; the headless skeleton pack; the broken fixtures those checks cover. | `Sim/Campaign/Definition/**`, `Sim/Campaign/Validation/**`, `StreamingAssets/world/campaigns/authored_v1/**`, `Tests/EditMode/Campaign/Packs/**`, `Tests/EditMode/Campaign/Validation/**`, `Docs/CAMPAIGN_FORMAT.md` | I0 types | opus | No | I0 | Authored Earth pack loads and validates as `Partial`. Skeleton pack validates as `Complete`. Fourteen of the broken fixtures are rejected with their codes (all but the finale and narrative ones). Appendix C anchors are pinned by a test. |
 | I3 | **Opponent profiles.** `WardOpponentProfile`, `WardTuning.For`, `WardDuelSpec`, the profile file, balance measurements. | `Sim/Encounters/Ward/WardOpponentProfile.cs`, `WardDuelSpec.cs`, additive lines in `WardTuning.cs` and `WardDuelSession.cs`, `StreamingAssets/world/ward_opponents.json`, `Tests/EditMode/WardOpponentTests.cs` | Nothing | sonnet | No | none (can start with I0) | Existing `WardTests` and `WardBalanceTests` unchanged and green. Measured win rates for each profile over 300 seeds are written into `Docs/WARD_API.md`; keepers land in 65 to 75%. |
 | I4 | **Campaign proof.** Scripted players and the generated report. | `Tests/EditMode/Campaign/Proof/**`, `Docs/CAMPAIGN_PROOF.md` | I1 and I2 merged. It reports failures to their owners; it does not patch their files. | opus | No | I1, I2 | Section 9.1, sections A to D and F, byte-identical across two runs. |
 | I5 | **Interiors in the game.** Open regions in the walk grid, building an interior from its rows, stairs and fades, interior lighting, the interior map, "Lead me out". | `Game/Interiors/**`, the region edits in `Game/Player/WalkGrid.cs` and `PlayerWalker.cs`, the interior mode in `Game/UI/MapScreen.cs`, `Tests/PlayMode/InteriorTests.cs`, `Docs/INTERIORS_UI.md` | I0; a fixture interior until I2's quarry lands | opus | Yes, own worktree | I0 | Every floor cell is walkable and every other cell beyond the board is blocked. Walking down and up a stair returns to the same cell and heading. The map marks the exit; a tap walks there. Existing `PlayerTests` green. |
 | I6 | **Expedition director and views.** Mira's loop (offer, lead, act, ask, threshold, wait), the six companions walking in file, present and away, the journal, the map layer, surface site and tower views, the restoration effect, HUD lines. | `Game/Expedition/**`, `Tests/PlayMode/ExpeditionTests.cs`, `Docs/EXPEDITION_UI.md` | I0; `Interiors` API from appendix B; the duel is started through `EncounterDirectory` with a request | fable | Yes, own worktree | I0 (then I1, I2 to run for real) | With a scripted Sim feed: each party mode shows the right bubble and replies; "Go on without me" and "I'm with you" send `SetCompany`; views equal state after a load; no state writes. |
-| I7 | **Campaign duel.** `WardDuelEncounter` reads a request; lethal, friendly and practice modes; Mira staged as caster; the stakes and surrender prompts; commit and resolve glue; the phone layout of the duel panel. | `Game/Encounters/WardDuelEncounter.cs` (all but the result gate), `EncounterUi.cs`, `WardBot.cs`, new `Game/Encounters/CampaignDuel.cs`, `Tests/PlayMode/CampaignDuelTests.cs` | I0, I3. `WardDuelStage.cs` belongs to `PRD_CHARACTERS` WP-9 (N-10). | opus | Yes, own worktree | I0, I3 | With no request the practice duel and its tests are unchanged. A lethal request stages Mira and a keeper, has no rematch, and sends exactly one `ResolveEncounter`. The panel fits 844 x 390. |
+| I7 | **Campaign duel.** `WardDuelEncounter` reads a request; lethal, friendly and practice modes; Mira staged as caster; the stakes and surrender prompts; commit and resolve glue; the phone layout of the duel panel. | `Game/Encounters/WardDuelEncounter.cs`, `WardDuelStage.cs`, `EncounterInstaller.cs` (these three pass to WP-9 at `cry-I7`), `EncounterUi.cs`, `WardBot.cs`, new `Game/Encounters/CampaignDuel.cs`, `Tests/PlayMode/CampaignDuelTests.cs` | I0, I3. Owns `WardDuelStage.cs` and `EncounterInstaller.cs` until `cry-I7`, then they pass to `PRD_CHARACTERS` WP-9 (N-10). | opus | Yes, own worktree | I0, I3 | With no request the practice duel and its tests are unchanged. A lethal request stages Mira and a keeper, has no rematch, and sends exactly one `ResolveEncounter`. The panel fits 844 x 390. |
 | I8 | **Integration.** The campaign checkpoint, the developer start, the F1 campaign tool (rival step now, set custody, kill a companion), AutoPlay scripts, phone-size captures, guide pages. | `Game/Boot/SaveSystem.cs`, new `Boot/CampaignStart.cs`, `Boot/CampaignScripts.cs`, `Game/UI/God/CampaignDevTool.cs`, `Game/UI/GuideText.cs`, `Tests/PlayMode/CampaignIntegrationTests.cs`, campaign cases in `Tests/PlayMode/SaveLoadTests.cs`, `Docs/PLAY_GUIDE.md`, `Docs/PROGRESS.md` | Everything above merged | fable | Yes, integration folder | I1 to I7 | All of section 7, Slice 1. |
 
 **Order.** I0 first. Then I1, I2, I3, I5, I6 and I7 in parallel (I1 and I2 can share nothing but I0's types; I5, I6, I7 each in its own Unity worktree). I4 starts when I1 and I2 merge. I8 last. Merge order: I0, I3, I1, I2, I4, I5, I7, I6, I8.
+
+**Package notes added by the reconciliation.**
+
+- `Sim/Board/Lattice.cs` is created by I0 (`CellOf`, `Distance`). From tag `cry-I0`, `PRD_AGES` M1-0 and M1-1 own it and extend it additively. The surface cells here and in `Game/Player/WalkLattice.cs` are the same cells; an I0 test pins that.
+- I5 owns `Game/UI/MapScreen.cs` and `IMapLayer`. Other packages, including the ages ones, add map content through `IMapLayer` and never edit that file. I5's interior lights stay inside the light budget of `PRD_CHARACTERS` 5.8 and keep party faces readable.
+- I6 takes over Mira's dialogue at run time through the `Npc` API (it replaces her option list) and registers site clearings through the existing `CampLayout.Clearings` list from its own files. It edits nothing under `Game/View/Camp/**` (that is `PRD_CHARACTERS` WP-16's).
+- I8 owns `SaveSystem.cs` and names the slots: `main` (F5 and the campaign checkpoint), `auto.chapter` (written on `ChapterAdvanced`), `ckpt.<mission>.<n>` (mission retries in `PRD_AGES`). Each slot is separate.
+- Companion bodies, keepers and the wizard are placeholders in Slices 1 and 2 unless `PRD_CHARACTERS` has delivered them. The four keepers use the champion's body in a different palette when it exists (N-7, N-8).
 
 ### 8.2 Slice 2
 
@@ -783,6 +797,8 @@ Work proceeds on the recommended default unless you say otherwise.
 | 9 | May your people wipe out the Ash Clan while its expedition is still in the field? | No. In campaign mode an Ash camp can fall, which stops the expedition for 90 seconds, but the Ash home camp stands until the campaign ends. |
 | 10 | Are generated campaigns offered in normal play? | Yes, as "A different telling" after the first ending. Before that only through the developer start. |
 | 11 | Is "the Lord of Chaos" kept as a title? | Yes, as what the peoples call the Unweaver. His name on screen in the finale is "the Unweaver, in Hesk Varr". |
+| 12 | Do crystals pay victory points? | Yes: 1 to the player's side per restored crystal, 1 to the Ash Clan per crystal first set on its altar (`PRD_AGES` 6.1). Both count toward the roster unlock at 10. |
+| 13 | After the restored ending, is the step to the Modern age offered at once? | Yes, as the reply "Onward, thirty winters on"; the player may choose "Begin again" instead. |
 
 ---
 
@@ -897,7 +913,7 @@ namespace World.Sim { public sealed partial class WorldState { public CampaignSt
 StartCampaign   { CampaignDefinition Definition; }       // validated; refused if one is running
 SetCompany      { bool Present; }
 AcceptLead      { int LeadId; }       DeclineLead { int LeadId; }
-Advise          { string ChoiceId; int Answer; }
+AdviseMira      { string ChoiceId; int Answer; }     // named so it cannot clash with PRD_AGES `Advise`
 SuggestScout    { string LocationId; }
 CommitEncounter { string EncounterId; }                  WithdrawFromEncounter { string EncounterId; }
 ResolveEncounter{ int AttemptId; DuelResult Result; }    RestartAttempt { int AttemptId; }   // on Continue with a pending attempt
@@ -946,9 +962,9 @@ public static class CampaignApi {
   IReadOnlyList<string> LinesFor(WorldState s, string speaker, string topic);
   bool IsOpen(WorldState s, string connectionId);  bool CausewayDry(WorldState s);
   CommandResult Check(WorldState s, Command c);
-  CampaignRecord Record(WorldState s);                     // for later ages
+  CampaignRecord Record(WorldState s);                     // for later ages: { EndingId, DefinitionId, Seed, RestoredOrder, EverOnAltar[] (elements that were ever on an Ash altar), Survivors[] (ids), Fallen[] { Id, Name, EncounterId, Place, Tick, Cause (Defeat | Surrender) } }
 }
-public static class CampaignModule { void Register(WorldSim sim); }   // system order 1250, after Strength
+public static class CampaignModule { void Register(WorldSim sim); }   // system order 1250, after Strength (`SystemOrder.Campaign`, listed in PRD_AGES A.1)
 public static class CampaignLoader { CampaignDefinition LoadFolder(Func<string, string> readFile, IEnumerable<string> files); string Hash(CampaignDefinition d); }
 public static class CampaignValidator { IReadOnlyList<Problem> Validate(CampaignDefinition d); }   // Problem { Code, Sentence, Id, IsError }
 public static class InteriorMaps { bool IsFloor(InteriorDef m, int i, int j); int[] Path(InteriorDef m, int i0, int j0, int i1, int j1, Func<string, bool> factKnown); }
@@ -973,7 +989,7 @@ public static class CampaignOutline { string Write(CampaignDefinition d); }
 |---|---|---|
 | `EncounterContext.Request` | I0 | `object Request` set by `EncounterDirectory.TryStart(string id, Npc source, object request)`. Null = behaviour as today. |
 | `WardDuelRequest` | I0 | `EncounterKind Mode`; `int AttemptId`; `string EncounterId`; `string ProfileId`; `ulong Seed`; `string VolunteerName`; `string OpponentName`; `DuelStageSpec Stage`. |
-| `DuelStageSpec` | I0 or CH WP-9 (N-9) | `string CasterActorId` (null = the anonymous player wizard), `OpponentActorId`; `Vector3 CasterPos, OpponentPos`. |
+| `DuelStageSpec` | I0 (N-9) | `string CasterActorId` (null = the anonymous player wizard), `OpponentActorId`, `VolunteerActorId` (null = none); `Vector3 CasterPos, OpponentPos, VolunteerPos`. |
 | `CampaignDuel` (static) | I7 | `bool Start(EncounterCommitted ev)`; `event Action<int, DuelResult> Resolved`; registers the encounter id `ward_campaign`. |
 | `InteriorSpace` (static) | I5 | `Cell Origin(int interiorIndex)`; `Vector3 ToWorld(string interiorId, int i, int j)`; `bool TryLocal(Cell world, out string interiorId, out int i, out int j)`. |
 | `Interiors` (static) | I5 | `string Current` (null on the surface); `Enter(MarkerRef to)`; `Exit()`; `LeadOut()`; `event Action<string> Changed`; `Build(CampaignDefinition)`; `RebuildFromState()`. |
@@ -981,7 +997,7 @@ public static class CampaignOutline { string Write(CampaignDefinition d); }
 | `MapScreen` additions | I5 | `Mode` (`Island`, `Interior`); `AddLayer(IMapLayer layer)`; `IMapLayer { void Draw(MapScreenView view); bool Tap(Vector3 world); }`. |
 | `ExpeditionDirector` | I6 | `Instance`; `Npc Mira`; `IReadOnlyList<Npc> Companions`; `Phase`; `Said` (every line: tick, speaker, text); `RestoreScene(int step)`. |
 | `SiteViewRegistry` (static) | J0 | `Register(string viewKind, Func<LocationDef, Transform, ISiteView> factory)`; `ISiteView { void Sync(WorldState s); }`. |
-| `SaveSystem` additions | I8 | `bool WriteCheckpoint(string why)` (allowed during an encounter once its attempt is resolved); extras `interior`, `scene.expedition`. |
+| `SaveSystem` additions | I8 | `bool WriteCheckpoint(string why)` (allowed during an encounter once its attempt is resolved); extras `interior`, `scene.expedition`; named slots `main`, `auto.chapter`, `ckpt.<mission>.<n>`. |
 | `CampaignStart` (static) | I8 | `Begin(string packFolderOrSeed)`; command line `-campaign <folder>` or `-campaign seed:<n>`; test starts `-campaignTest earth` and `-campaignTest earth_stolen` (the rival's progress starts at its first seizure). |
 | Installers | I0 | `InteriorsInstaller.Install(boot)`, `ExpeditionInstaller.Install(boot)`, called after `PrinceInstaller` and before `DevToolsInstaller`. |
 
@@ -1009,6 +1025,18 @@ The island's terrain is fixed (`BoardGenerator.Rows`), so the authored campaign 
 | Old Marl's landing, Hod's smithy | Meadow hex (0, -4); the home camp | Witnesses near their routes. |
 
 Sites give the terrain builder a clearing, as the camp does through `CampLayout.Clearings`.
+
+**Landmark ids for `PRD_AGES`.** When a campaign starts, `StartCampaign` registers these through `LandmarkApi.Register`, from the places above. In skirmish they do not exist.
+
+| Landmark id | Place |
+|---|---|
+| `lm.tower.earth`, `.fire`, `.water`, `.air` | The Rooted, Beacon, Tide and Whistling Towers (rim corners) |
+| `lm.altar.earth` | The Ash cut hex, entrance to the Tally Vault |
+| `lm.altar.fire` | The Black Forge |
+| `lm.altar.water` | The Old Cistern |
+| `lm.altar.air` | The Cliff Stair |
+
+The location id of a tower is `tower_<element>`; the landmark id is `lm.tower.<element>`. Package I2 adds a test (`LandmarkCollisionTests`, run after `PRD_AGES` H1-2 has merged) that fails if the harbour, relay or district landmark of `PRD_AGES` lands on any of these corners or hexes.
 
 ---
 
@@ -1041,3 +1069,27 @@ Optional: with Tansy alive Mira may send her round the hill; she finds fresh spo
 | Fire | "A kiln is a throat. What do you give it first?" Three steps, asked one at a time: open the low draught door, lay the charcoal bed, light from the top. | Hod says it. The three draught doors are notched one, two, three. A wrong step smokes the party out (+300). |
 | Water | Old Marl: "I come twice a day and never stay. I take the road and give it back. When am I gone?" | "When the third ring is dry." The flood marker by the landing has three rings. |
 | Air | Orrin: "Three winds cross this ridge. Name the one the gannets ride home." | Carved over his own door: "Home on the Westerly." A right answer teaches that a wind marker's notch faces where the wind is going. |
+
+
+---
+
+## Reconciliation, 14 Nov 2026
+
+Made after `PRD_AGES.md` and `PRD_CHARACTERS.md` were written. Minimal edits; no owner decision changed.
+
+| Where | Change | Why |
+|---|---|---|
+| Header, 3.9 | N-1 to N-6 now carry the answers of `PRD_AGES` section 16; test starts move onto `dev.historic` after H1. | The ages PRD now exists. |
+| 3.9 N-9, N-10; 5.12; I0 and I7 rows; appendix B | One owner per file in `Game/Encounters`, handed over by tag `cry-I7` to `PRD_CHARACTERS` WP-9. I0 creates `DuelStageSpec.cs` (plus `VolunteerActorId`, `VolunteerPos`) and registers `ward_campaign`. `ward_champion` is a Friendly preset of the campaign duel. | Both PRDs claimed `WardDuelEncounter.cs`, `WardDuelStage.cs` and `EncounterInstaller.cs`. Mira as caster is stage work, so I7 needs the stage first. |
+| I0 row, section 8 intro | I0 no longer edits `Sim/Save/**`; the save version and the `Campaign` slot belong to `PRD_AGES` H1-0. I0 and all branches start from tag `ages-H1-0` on `refactor-done`. `CampaignState` is versioned inside itself. | Two packages owned the save codec and the version. |
+| Package notes after 8.1 | `Lattice.cs` hands over to `PRD_AGES` M1 at `cry-I0`; I5 owns `MapScreen.cs` and `IMapLayer`; I6 and Mira's dialogue, clearings; save slots named; keepers and companions are placeholders until the characters work delivers. | Two packages created `Sim/Board/Lattice.cs`; ages map taps and fog need `IMapLayer`; ages needs more than one save slot. |
+| A.3 | `Advise` renamed `AdviseMira`. | `PRD_AGES` has a different `Advise` command. |
+| 4.3, 5.9 | Mira's opening happens when `CampaignMayStart` is true (Historic accepted), not "the night the prince first manages". Start switches campaign mode on. | The handover (Prehistoric) and the Historic step are two moments. |
+| 5.1, 5.9 | A looted home camp costs the same +1800 as a lost camp. | `PRD_AGES` 4.3 loots the home camp instead of capturing it. |
+| 5.2 | Restoration pays the player 1 point; the first arrival at an Ash altar pays the Ash Clan 1 point. | `PRD_AGES` 6.1 assumed it; this PRD was silent. Added decision 12. |
+| 5.5 | Mira's leg speed (7 m/s) is shown with a `Run` clip. | `PRD_CHARACTERS` clips stopped at 3.2 m/s. |
+| 5.6 | Resolution is sent at the duel's end event; the 1.5 s presentation hold delays only the screen. | The two PRDs described the end of a duel differently. |
+| 5.7 | The writable tuning fields are listed (adds `CarrierTicksPerStep`, `CycleBonusPermille`) and boons apply from the saved base. | `PRD_AGES` allowed only two fields; the Fire and Air boons need two more. |
+| 5.8 | After the restored ending the first reply is "Onward, thirty winters on". | Both PRDs ended the campaign with their own bubble. Added decision 13. |
+| Registration files | `Sim/Core/WorldSimFactory.cs`, `Boot/WorldBootstrap.cs`, `Encounters/EncounterInstaller.cs` (until `cry-I7`) and `Game/UI/Hud.cs` take one-line additive registrations from any package; a merge conflict there is resolved by keeping both lines. Nobody rewrites them. | Several packages of all three PRDs need one line each in those files. |
+| A.5, appendix C | `CampaignRecord` fields fixed (including `EverOnAltar`); tower and altar landmark ids defined; a collision test with the ages landmarks. | `PRD_AGES` section 16 asked for both. |

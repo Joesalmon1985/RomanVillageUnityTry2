@@ -225,7 +225,7 @@ Priority: M = needed for Slice 1, S2 = Slice 2, S3 = Slice 3.
 |---|---|---|---|
 | 01 | Prince | The prince. Walks up, greets, leads, points at the ground, reacts to casts. Later runs the camp himself. | 1 |
 | 02 | Mira | Mira. Caster in Ward Break; the player casts through her. Practice opponent in the optional duel. Later leads the crystal expedition. | 1 |
-| 14 | Road Hero | The Ash champion: one original duel opponent. Later the rival expedition's leader, so his face is reused. Working title; the owner names him. | 1 |
+| 14 | Road Hero | The Ash champion: one original duel opponent. Later the rival expedition's leader, so his face is reused. Working title; `PRD_CRYSTALS` calls him Hesk Varr (the owner names him). | 1 |
 | 04 | DJ Sol | Sol the drummer at the dance circle (the host spawned by `CampInstaller`). | 2 |
 | 06 | Carpenter | The sawyer who pitches wood improvements. | 2 |
 | 08 | Village Merchant | The merchant who pitches main roads. | 2 |
@@ -246,6 +246,9 @@ Roles with no named model today, and how they are covered:
 | Six companions | New heads and hair on existing bodies, made with the same scripts, not copies of the named cast. | 3 |
 | Wizard | An old head built from the beard and bald variants, with a hood. | 3 |
 | Rival leader | The champion (14) in rival costume, or a new head if the owner prefers. | 3 |
+| Four altar keepers (actor ids `keeper_earth`, `keeper_fire`, `keeper_water`, `keeper_air`) | The champion's body and rig with a different palette and prop each (the second compatible opponent of CH-18), until new heads exist | 2 |
+| Smith Hod (`smith`), ferryman Old Marl (`ferryman`) | Existing adult bodies with new heads, made with the companion scripts | 3 |
+| Modern and Future cast (Commander Ilse Teague, Quartermaster Tobin Hale, Engineer Rhea Okonkwo-Dahl, from `PRD_AGES`) | Not scheduled in these three slices; placeholders until a Modern and Future costume package is planned after Slice 3 | later |
 
 ### 4.2 Costume per age
 
@@ -394,10 +397,10 @@ Current seams (read from the code):
 
 Plan:
 
-1. A `CastRegistry` (data) maps an actor id or id pattern to a cast entry: character key, costume set for the current age, crowd or hero tier. Examples: `mira` to Mira; the prince's id to the Prince; `host` to Sol; `camp_figure_*` to a villager pool chosen by hash; `dancer*` to the four dancers; `ward_player` to the role "apprentice" (Juno).
+1. A `CastRegistry` (data) maps an actor id or id pattern to a cast entry: character key, costume set for the current age, crowd or hero tier. Examples: `mira` to Mira; the prince's id to the Prince; `host` to Sol; `camp_figure_*` to a villager pool chosen by hash; `dancer*` to the four dancers; `ward_player` to the role "apprentice" (Juno). The crystals' ids (`PRD_CRYSTALS` N-7) are entries too: `mira`, `companion_*`, `keeper_*`, `rival_leader` (the champion), `wizard`, `ferryman`, `smith`; any entry without a prefab falls back to the placeholder.
 2. `ActorFactory.Create` asks the registry. If the entry exists and `Resources.Load` finds the prefab, it instantiates a `CastActor`. Otherwise it returns the `PlaceholderActor` exactly as today. Both signatures keep working. A command-line or AutoPlay flag `--placeholder-actors` forces the placeholder, which is how the "before" footage is made.
 3. `CastActor` implements `ICharacterActor` and a new `IExpressiveActor` in `World.Game`: `SetGaze(Transform or point)`, `SetExpression(name, weight)`, `SetSpeedHint`, `Attach(propKey, socket)`, `PlayBeat(name)`, `ForceIdle()`, `ResetPresentation()`, and events `BeatEvent(name, beatId)`. The logical keys map as: `idle` to Idle; `wave` and `greet` to Greet; `cheer` to Victory-lite; `clap`, `surprise`, `stretch` to their gesture clips; `cast` to the full anticipate, release, recover chain (so old callers still get a cast).
-4. Speed for walking is still inferred from root motion (as the placeholder does), so `Npc.UpdateWalk`, the player-follow code and the lattice code need no change. The `Npc` field `WalkSpeed` is 3 m/s today; the walk and jog clips cover 0 to about 3.2 m/s.
+4. Speed for walking is still inferred from root motion (as the placeholder does), so `Npc.UpdateWalk`, the player-follow code and the lattice code need no change. The `Npc` field `WalkSpeed` is 3 m/s today; the walk and jog clips cover 0 to about 3.2 m/s, and the `Run` clip (native 7 m/s) covers the expedition party's legs (`PRD_CRYSTALS` 5.5).
 5. `FaceTowards` uses a lead chain (eyes, head, chest, then feet with a turn clip beyond 40 degrees) so a turn does not snap.
 6. Crowd tier (Slice 2): `LandFigure.Create` gains an optional crowd prefab from the registry. If absent it builds the primitive person as today. `Animate(time)` becomes parameter writes (`Speed`, `Work`, `Slump`) on the crowd animator. `Place` keeps its eye-distance hide.
 
@@ -408,7 +411,7 @@ Performance budget (targets to be measured on this machine, not promises):
 | Hero tier | At most 3.2k triangles with overlays, at most 8 draw calls (one per role slot), at most 45 bones, at most 16 shape keys. |
 | Crowd tier | At most 1.4k triangles, 1 material, at most 18 bones, no face, no shape keys, no secondary-motion bones. |
 | Animator cost | Hero actors within 25 m update every frame. Crowd within 25 m every frame, 25 to 60 m every second or fourth frame, beyond 60 m culled (`CullCompletely`). Duel actors always animate. |
-| Lights | No per-actor lights. At night the camp fire and the existing duel light do the work. Only the cast flash and the bolt light (already in `WardDuelStage`) are added. Quality levels in `ProjectSettings/QualitySettings.asset` set `pixelLightCount` from 0 to 3, so firelight on characters must be tested at the shipped quality level. |
+| Lights | No per-actor lights. At night the camp fire and the existing duel light do the work. Only the cast flash and the bolt light (already in `WardDuelStage`) are added. The interiors of `PRD_CRYSTALS` light the party inside the same budget. Quality levels in `ProjectSettings/QualitySettings.asset` set `pixelLightCount` from 0 to 3, so firelight on characters must be tested at the shipped quality level. |
 | Frame rate | No regression below the existing target in `REFACTOR_SPEC.md` 8.4: above 120 fps at 1920 x 1080 in the editor, 20 minutes of prompt play. Report device performance only if a device is tested (not this milestone). |
 | Memory | Hero meshes read/write off, shared materials, shared controller. |
 
@@ -425,6 +428,7 @@ All at 30 fps, authored in place. Native speed is in the manifest. "Core" means 
 | Idle | Mira `Idle_Staff` (staff planted, off hand relaxed) | 6, loop | Style variant. |
 | Locomotion | `Walk` | native 1.4 m/s, cycle about 1.0 | Foot planted; hips sway, chest counter-rotates. |
 | Locomotion | `WalkBrisk`, `Jog` | native 2.2 and 3.0 m/s | Blend tree with `Walk`; `Npc.WalkSpeed` of 3 m/s plays `Jog`. |
+| Locomotion | `Run` | native 7 m/s | For people the Game moves at the crystal campaign's party speed (5 m per 7 ticks). Blends from `Jog`. |
 | Locomotion | `StartL`, `StartR` | 0.5 | Weight shift, then first step. |
 | Locomotion | `StopL`, `StopR` | 0.6 | Planted foot settles, small overshoot; chosen by foot phase. |
 | Locomotion | `Turn60L`, `Turn60R` | 0.5 | One lattice heading. `TurnSmallL/R` additive for less than 40 degrees. |
@@ -455,14 +459,15 @@ All at 30 fps, authored in place. Native speed is in the manifest. "Core" means 
 | Warrior | `Spear_Idle`, `Spear_Advance`, `Spear_Thrust`, `Guard`, `Hit_Light`, `Fall` | Warriors, Ash Clan |
 | Demon (Generic) | `Demon_Idle` (crouched sway), `Stalk`, `Lunge`, `Threat` (rear up, show fangs), `Banished` (collapse, eyes dim) | Stalker and Brute; Brute has a slower, heavier set from the same data with different parameters |
 | Dialogue | The first-three social clips above | All named cast |
+| Campaign beats (`PRD_CRYSTALS` N-11) | `KneelTake` (kneel at a pedestal and lift), `Cover` (a companion plants a shield stance, built from `Guard`), `Fall` (shared with the warrior set), `Point` (standing point, from `PointGround`); the walk in file reuses `Walk` and `Run` | Mira, companions |
 
 ## 7. Duel staging
 
 ### 7.1 Who is on stage
 
-- Campaign-style test duel (the test setup the owner's brief allows if the campaign duel is not on this branch): Mira is the caster, the player casts through her; the Ash champion is the opponent. Registered by `EncounterInstaller` as a new encounter id `ward_champion`, reusing `WardDuelSession`, `EncounterHost` and the Ward UI.
+- Campaign-style test duel (the test setup the owner's brief allows if the campaign duel is not on this branch): Mira is the caster, the player casts through her; the Ash champion is the opponent. Provided as a preset request (mode Friendly: non-lethal, no consequence) of the campaign duel `ward_campaign` (`PRD_CRYSTALS` I0 and I7), not as a second encounter class. It reuses `WardDuelSession`, `EncounterHost` and the Ward UI.
 - Practice duel (existing, kept): Mira is the opponent; Juno is the player's apprentice body in place of the generic `ward_player`. No penalty.
-- Both read the same `DuelStageSpec` (caster actor id, opponent actor id, positions). The second compatible opponent (swap test, CH-18) is the Woodcutter or the Merchant dressed as a clan fighter, with no encounter code change.
+- Both read the same `DuelStageSpec` (caster actor id, opponent actor id, volunteer actor id, positions), created by `PRD_CRYSTALS` I0. The second compatible opponent (swap test, CH-18) is the Woodcutter or the Merchant dressed as a clan fighter, with no encounter code change.
 
 ### 7.2 Camera and frame
 
@@ -491,7 +496,7 @@ The reaction uses only the aggregate fracture count that is already shown on scr
 | Rejected cast | No event from the session, so no beat. Refusal toast only (unchanged). |
 | Auto-cast (idle timer) | Same as an accepted cast. |
 | Two casts in flight (one each side, or a player cast during the opponent's recovery) | Each beat has its own id and its own actor. A second beat on the same actor queues behind the first; the player's recovery time and Mira's think time make this rare. Bolts and impacts never merge. |
-| Final break | The reaction hold is at least 1.5 s after the impact. The result screen waits for the director (a gate in `WardDuelEncounter`); the session has already resolved, so determinism is untouched. |
+| Final break | The reaction hold is at least 1.5 s after the impact. The result screen waits for the director (a gate in `WardDuelEncounter`); the session has already resolved, so determinism is untouched. A campaign's `ResolveEncounter` and checkpoint are sent at the duel's end event, before the hold; the hold delays only the screen (`PRD_CRYSTALS` 5.6). |
 | Presentation timing | Uses unscaled time like the existing stage, so it is independent of the simulation clock, and it freezes with the pause menu like the duel clock. |
 | Rematch | `ResetWards()` plus `DuelDirector.Reset()`: an epoch counter makes every pending callback ignore itself, destroys bolts and shards, calls `ResetPresentation()` and `ForceIdle()` on both actors. |
 | Interrupt or exit mid-animation | Forfeit or Return destroys the stage and director, which cancels all pending beats. The persistent Mira (a camp NPC) gets `ResetPresentation()` (gaze, expression, props, layers) and faces her home yaw. The opponent prefab is destroyed with the stage. |
@@ -552,7 +557,7 @@ What the owner will see: the same people and faces in the supplied dark-fantasy 
 
 Acceptance checks:
 
-- C1. The age switch (driven by the ages work, `PRD_AGES.md`) swaps palette and overlays on a live actor with no new rig and no hitch.
+- C1. The age switch (driven by the ages work, `PRD_AGES.md`) swaps palette and overlays on a live actor with no new rig and no hitch. The hook is `AgesApi.Current(state)` at load and the `ChapterAdvanced{From, To}` event (`PRD_AGES` section 16).
 - C2. Each Historic costume equals the supplied look within a stated colour tolerance (checked by capture).
 - C3. Six companions are visibly different from each other and from the cast (lineup image).
 - C4. Existing animation checks (A2, A3, A7) re-run on Historic costumes.
@@ -560,7 +565,7 @@ Acceptance checks:
 
 ## 9. Work packages
 
-Rules for parallel agents: each package owns the files listed and no other package edits them. One Unity editor per folder (per worktree). Blender packages need no editor and can run side by side. Model tiers: sonnet for mechanical or well-specified work, opus for substantial implementation, fable for the hardest judgement work (looking at captures and iterating on quality).
+Rules for parallel agents: each package owns the files listed and no other package edits them. One Unity editor per folder (per worktree). Blender-only packages (WP-1 to WP-5, WP-13, WP-17) may start from `docs/next-ages`; every package that touches game code starts from tag `refactor-done`. Branches are `char/wp<N>` with worktrees `wt-char<N>` (those already open keep their names); `char/main` takes the merges. Tag `char-gate-A10` marks the owner's approval of the first video. Blender packages need no editor and can run side by side. Model tiers: sonnet for mechanical or well-specified work, opus for substantial implementation, fable for the hardest judgement work (looking at captures and iterating on quality).
 
 | Id | Package | Model | Needs | Owns (files and folders) | Depends on | Purpose and acceptance |
 |---|---|---|---|---|---|---|
@@ -570,9 +575,9 @@ Rules for parallel agents: each package owns the files listed and no other packa
 | WP-4 | Prehistoric costume | opus | Blender | `lib/costume.py`, `cast/costumes/*.json` | WP-1; skinning calls into WP-2's `skin.py` (read-only use) | Role slots, hide or show pieces, overlay meshes (mantle, wrap, kilt, boots), prop swaps. Accept: three costumes per 4.2, rendered under a firelight setup. |
 | WP-5 | Core clips and walk generator | opus | Blender | `lib/anim_core.py`, `clips/*.py` | contract names (5.3); WP-2 to bake on real fits | Clips in 6.1 for Idle, Locomotion, Social, Prince, Duel. Accept: `verify.py` loop and foot-slide checks pass; manifest lists lengths, native speeds, events. |
 | WP-6 | Export and Unity import | opus | Unity (Blender for export test) | `lib/export_unity.py`, `Assets/Editor/Characters/**`, `Assets/Characters/Animation/**`, Animator controllers and masks | WP-2, WP-5 first outputs | Scripted import (5.6), prefab builder, controller with layers and events, avatar checks. Accept: A2 and the EditMode manifest test. |
-| WP-7 | Runtime actor and factory | opus | Unity (same editor as WP-6, run in sequence, or separate worktree) | `Assets/World/Game/Actors/**` (`CastActor`, `CastRegistry`, `FaceController`, `GazeController`, `IExpressiveActor`, `ActorFactory` moved out of `PlaceholderActor.cs`), `Tests/PlayMode/ActorTests.cs` | WP-6 prefab and controller | Implements 5.8 items 1 to 5; placeholder fallback; `--placeholder-actors` flag. Accept: all current call sites unchanged and passing; tests run with and without art. Coordinate with the owner of `Actors/**` on the prince branch (merge that first). |
-| WP-8 | Prince first scene binding | sonnet | Unity | `Assets/World/Game/Prince/PrinceActorBinding.cs` (new file only) | WP-7; prince branch merged | Greet, beckon, lead-look and point-ground triggered by the existing pitch loop events. Accept: A4. |
-| WP-9 | Duel director and stage | opus | Unity (own editor) | `Encounters/DuelDirector.cs`, `Encounters/WardDuelStage.cs`, `Encounters/WardDuelEncounter.cs` (gate and stage spec only), `EncounterInstaller.cs` (`ward_champion`), `Tests/PlayMode/WardPresentationTests.cs` | WP-7, WP-5 duel clips | Section 7. Accept: A5, A6; the tests in 10.2. |
+| WP-7 | Runtime actor and factory | opus | Unity (same editor as WP-6, run in sequence, or separate worktree) | `Assets/World/Game/Actors/**` except `CostumeSwitch.cs` (WP-18) and `Modern/**` (`PRD_AGES` M1-7) (`CastActor`, `CastRegistry`, `FaceController`, `GazeController`, `IExpressiveActor`, `ActorFactory` moved out of `PlaceholderActor.cs`), `Tests/PlayMode/ActorTests.cs` | WP-6 prefab and controller | Implements 5.8 items 1 to 5; placeholder fallback; `--placeholder-actors` flag. Accept: all current call sites unchanged and passing; tests run with and without art. Coordinate with the owner of `Actors/**` on the prince branch (merge that first). |
+| WP-8 | Prince first scene binding | sonnet | Unity | `Assets/World/Game/Prince/PrinceActorBinding.cs` (new file only; the one file there not owned by `PRD_AGES` H1-4, which owns the rest of `Game/Prince/**`) | WP-7; prince branch merged | Greet, beckon, lead-look and point-ground triggered by the existing pitch loop events. Accept: A4. |
+| WP-9 | Duel director and stage | opus | Unity (own editor) | `Encounters/DuelDirector.cs`; from tag `cry-I7` also `WardDuelStage.cs`, `WardDuelEncounter.cs` and `EncounterInstaller.cs` (handed over by `PRD_CRYSTALS` I7, which owns them until then; `ward_champion` is a preset request there), `Tests/PlayMode/WardPresentationTests.cs` | WP-7, WP-5 duel clips, tag `cry-I7` | Section 7. Accept: A5, A6; the tests in 10.2. |
 | WP-10 | Sims reference captures (local) | sonnet | Unity (own worktree copy with a local `config.json`) | Output only, in `Evidence/screenshots/characters/ref/`; no tracked files | none | Run `ClipViewer` or `ClipProbe` at fixed framing; capture neutral face, blinking, a walk into a stop, a greeting; audition a cast-like gesture and a hit clip and record clip ids. If it does not run, record why and stop. |
 | WP-11 | Capture, video and review | fable | Unity plus ffmpeg | `AgentScripts/CharacterCaptures.cs`, `Evidence/raw/characters/**` | WP-9 | Section 10: shots, video, score sheet, and the written list of what to fix. Iterates with WP-3, WP-5 and WP-9 owners on faces and weight shift until A7 and the quality table hold. |
 | WP-12 | Role clips | opus | Blender | `clips/roles/*.py` | WP-5, gate A10 | Clips in 6.2 for humans. Accept: B2, B4 (beat events). |
@@ -590,7 +595,7 @@ Order and parallelism:
 1. Start together: WP-1, WP-10, WP-17 (none depend on each other).
 2. After WP-1: WP-2, WP-3, WP-4 in parallel (they share only the naming contract in 5.3 and read each other's functions; none edits another's files). WP-5 starts as soon as the contract is fixed and bakes on real fits when WP-2 delivers.
 3. When WP-2 and WP-5 give first FBX: WP-6, then WP-7 (same editor in sequence). WP-8 once the prince branch is merged.
-4. WP-9 after WP-7 and the duel clips.
+4. WP-9 after WP-7, the duel clips and tag `cry-I7` of the crystals work (until then I7 owns the Ward files).
 5. WP-11 runs against WP-9, loops with the owners of WP-3, WP-5, WP-9 until the checks hold, then the owner watches the video (gate A10).
 6. After the gate: WP-12, WP-13, WP-14 in parallel; then WP-15 and WP-16 (Unity, separate folders; two editors on two worktrees, or in sequence).
 7. After the Slice 2 acceptance: WP-18, WP-19, then WP-20.
@@ -697,6 +702,7 @@ What level is realistic, plainly:
 | 6 | Quality gate at the first video: accept a stylised look, with the simpler face fallback if two iterations still fail? | Yes. |
 | 7 | Phone-sized test windows. | 844 x 390 and 932 x 430. |
 | 8 | Who are the six companions and the wizard? | New heads and hair on the existing bodies; you approve a lineup image at the start of Slice 3. |
+| 9 | The four altar keepers of the crystal campaign wear the champion's body in different palettes until new faces exist. Accept the repeat? | Yes. |
 
 ## 13. Choices I made that you might want to overrule
 
@@ -715,3 +721,21 @@ What level is realistic, plainly:
 13. The duel camera uses a narrower field of view than the walking view and a short push-in on a ward break, so faces are readable at phone size. This changes the look of the duel compared with today's wide over-the-shoulder shot.
 14. Video is a numbered PNG sequence at a fixed 30 fps, encoded with ffmpeg, rather than real-time screen capture. This is repeatable but needs a scripted run.
 15. Performance numbers in section 5.8 are targets I chose; they are not measured yet.
+
+
+---
+
+## Reconciliation, 14 Nov 2026
+
+Made after `PRD_CRYSTALS.md` and `PRD_AGES.md` were finished. Minimal edits; no owner decision changed.
+
+| Where | Change | Why |
+|---|---|---|
+| WP-9, 7.1, 9 order | WP-9 owns `DuelDirector.cs` always, and `WardDuelStage.cs`, `WardDuelEncounter.cs`, `EncounterInstaller.cs` from tag `cry-I7`. `ward_champion` is a Friendly preset of the campaign duel. `DuelStageSpec` is created by crystals I0 and gains a volunteer. | Both PRDs claimed those files; the crystals duel needs Mira as caster first. |
+| 7.4 | The campaign's result and checkpoint are sent at the duel's end event, before the 1.5 s hold. | The crystals PRD needs the outcome written before the screen can be left. |
+| 6.1, 5.8 | New `Run` clip (7 m/s) and a wider speed range. | Mira's party legs run at 7 m/s in the crystals PRD; clips stopped at 3.2. |
+| 6.2 | `KneelTake`, `Cover`, `Fall`, `Point` listed for the crystals' N-11. | The crystals PRD asked for them. |
+| 4.1, 5.8, 12 | Registry entries for the crystals' ids; keepers use the champion body in other palettes; smith and ferryman in Slice 3; Modern and Future cast marked not scheduled. Added decision 9. | The crystals PRD lists those ids; the ages PRD asks for leaders' bodies. |
+| WP-7, WP-8 | `Actors/**` excludes `CostumeSwitch.cs` and `Modern/**` (ages M1-7); WP-8's binding is the one file in `Game/Prince/**` not owned by ages H1-4. | Overlapping folder claims. |
+| Section 9 rules | Branch, worktree and tag names; Blender-only packages start from `docs/next-ages`, game packages from `refactor-done`. | Start points were not stated. |
+| 5.8 lights, C1 | Crystal interiors share the light budget; the age hook is named. | Closes the loop with both PRDs. |
