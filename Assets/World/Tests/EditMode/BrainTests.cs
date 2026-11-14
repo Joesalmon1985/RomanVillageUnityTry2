@@ -102,6 +102,7 @@ namespace World.Sim.Tests
             var sim = WorldSimFactory.CreateNew(K.DefaultSeed);
             var s = sim.State;
             s.Factions.Tuning.OverrunMargin = 0; // the player warns the rival at once: the rival defends
+            s.Factions.Tuning.WarningGraceTicks = 0;
             K.Step(sim, 30);
             Assert.IsTrue(s.Factions.Warning.Active);
             Assert.AreEqual(PlayerIds.Rival, s.Factions.Warning.Defender);

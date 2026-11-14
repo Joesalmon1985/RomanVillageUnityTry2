@@ -126,6 +126,9 @@ namespace World.Sim.Factions
             return -1;
         }
 
+        /// <summary>How long the rival waits now before it casts its top proposal (ticks); it may shrink over the game.</summary>
+        public static int RivalCastDelay(WorldState s) => s?.Factions == null ? 0 : FactionLogic.RivalDelay(s);
+
         public static double CastRangeMetres(WorldState s) => s?.Factions?.Tuning != null ? s.Factions.Tuning.CastRangeMetres : 15;
 
         public static StrengthView Strength(WorldState s, int faction)

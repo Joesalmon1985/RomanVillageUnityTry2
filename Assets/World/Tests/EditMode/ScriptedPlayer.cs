@@ -41,6 +41,10 @@ namespace World.Sim.Tests
         public int Casts, Declines;
         /// <summary>Tick of each successful cast submission.</summary>
         public readonly List<long> CastTicks = new List<long>();
+        /// <summary>Straight-line metres from the previous cast target (the home corner for the first) to each cast target.</summary>
+        public readonly List<double> CastDistances = new List<double>();
+        /// <summary>When set, banish proposals are never cast (paired runs: the cost of an unbanished demon).</summary>
+        public bool SkipBanish;
 
         public ScriptedPlayer(WorldSim sim, PlayerStyle style, double delaySeconds = 0, ulong seed = 1)
         {
@@ -92,10 +96,17 @@ namespace World.Sim.Tests
             else
             {
                 FactionApi.ProposalTarget(s, p.Id, out double tx, out double tz, out _);
+                if (SkipBanish && p.Kind == ProposalKind.Banish)
+                {
+                    // Pretends the pitch was not heard: waits for the next top proposal.
+                    _castTick = long.MaxValue;
+                    return;
+                }
                 if (_sim.Submit(new CastSpell { PlayerId = PlayerIds.Human, ProposalId = p.Id }).Ok)
                 {
                     Casts++;
                     CastTicks.Add(s.Tick);
+                    CastDistances.Add(Math.Sqrt((tx - _x) * (tx - _x) + (tz - _z) * (tz - _z)));
                     _x = tx;
                     _z = tz;
                 }

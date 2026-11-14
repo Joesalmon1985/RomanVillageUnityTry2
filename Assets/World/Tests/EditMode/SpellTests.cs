@@ -106,14 +106,24 @@ namespace World.Sim.Tests
         [Test]
         public void Rival_CastsItsTopProposal_45SecondsAfterItBecameTop()
         {
+            // Spec rule (6.4): the top proposal must have been top for the whole delay.
+            var spec = WorldSimFactory.CreateNew(K.DefaultSeed);
+            spec.State.Factions.Tuning = new FactionTuning();
+            var sev = K.Step(spec, 460);
+            Assert.AreEqual(460, sev.OfType<SpellCast>().Single().Tick, "planned at tick 10, cast 45 s later");
+
+            // Tuned rule: paced per cast (the delay counts from the last cast), the top settled for RivalSettleTicks.
             var sim = WorldSimFactory.CreateNew(K.DefaultSeed);
-            int delay = sim.State.Factions.Tuning.RivalCastDelayTicks;
-            var ev = K.Step(sim, 10 + delay - 1);
+            var tu = sim.State.Factions.Tuning;
+            Assert.IsTrue(tu.RivalPacePerCast);
+            int delay = FactionApi.RivalCastDelay(sim.State);
+            long expected = System.Math.Max(delay, 10 + tu.RivalSettleTicks);
+            var ev = K.Step(sim, (int)expected - 1);
             Assert.IsFalse(ev.OfType<SpellCast>().Any());
             ev = K.Step(sim, 1);
             var cast = ev.OfType<SpellCast>().Single();
             Assert.AreEqual(PlayerIds.Rival, cast.Faction);
-            Assert.AreEqual(10 + delay, cast.Tick, "planned at tick 10, cast RivalCastDelayTicks later");
+            Assert.AreEqual(expected, cast.Tick);
             Assert.AreEqual((int)BuildingType.WoodcutterHut, cast.BuildingType);
             Assert.IsTrue(sim.State.Factions.OpeningDone[PlayerIds.Rival]);
         }

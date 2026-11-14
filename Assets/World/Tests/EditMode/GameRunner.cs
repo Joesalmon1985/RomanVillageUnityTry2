@@ -36,6 +36,11 @@ namespace World.Sim.Tests
         public long LongestJobWait;
         /// <summary>Longest run (ticks, sampled every 100) in which a camp needed a ware that a connected camp of its people had spare, with no shipment on the way.</summary>
         public long LongestMissedImport;
+        /// <summary>The player's people: goods made (collected or produced) and used (construction, recipes, meals) per ware.</summary>
+        public int[] PlayerMade = new int[Wares.Count], PlayerUsed = new int[Wares.Count];
+        public int PlayerBanishes, MaxFedWarriors, PlayerWarriorsTrained;
+        public double MeanCastDistance;
+        public int CollectedByPlayer;
         public string StateJson;
 
         public double Minutes => EndTick / 600.0;
@@ -49,12 +54,12 @@ namespace World.Sim.Tests
         /// </summary>
         public static GameResult Play(ulong seed, PlayerStyle style, double delay = 0, Action<WorldSim> setup = null,
             Action<WorldSim> hook = null, int maxTicks = 12000, bool checkInvariants = false, bool keepJson = false,
-            Action<WorldSim, IReadOnlyList<SimEvent>> onEvents = null)
+            Action<WorldSim, IReadOnlyList<SimEvent>> onEvents = null, bool skipBanish = false)
         {
             var sim = WorldSimFactory.CreateNew(seed);
             setup?.Invoke(sim);
             var s = sim.State;
-            var player = new ScriptedPlayer(sim, style, delay, seed);
+            var player = new ScriptedPlayer(sim, style, delay, seed) { SkipBanish = skipBanish };
             var r = new GameResult { Seed = seed, Player = ScriptedPlayer.Name(style, delay) };
             long rivalEmptySince = -1;
             var missed = new Dictionary<long, long>();
@@ -66,6 +71,7 @@ namespace World.Sim.Tests
                 var ev = sim.DrainEvents();
                 onEvents?.Invoke(sim, ev);
                 foreach (var e in ev) Record(s, r, e);
+                r.MaxFedWarriors = Math.Max(r.MaxFedWarriors, FactionApi.Strength(s, 0).FedWarriors);
 
                 foreach (var b in s.Economy.Buildings)
                     if (b.Faction == 0 && b.State == BuildingState.Site && b.ReasonWare >= 0) r.SiteWaitTicks[b.ReasonWare]++;
@@ -95,6 +101,7 @@ namespace World.Sim.Tests
             r.PlayerCasts = s.Factions.Casts[0];
             r.RivalCasts = s.Factions.Casts[1];
             r.Declines = player.Declines;
+            r.MeanCastDistance = player.CastDistances.Count == 0 ? 0 : player.CastDistances.Average();
             var l = s.Economy.Ledger;
             for (int w = 0; w < Wares.Count; w++)
             {
@@ -171,6 +178,44 @@ namespace World.Sim.Tests
                     r.DiceSums[d.Sum]++;
                     break;
             }
+            // The player's goods made and used.
+            var ec = s.Economy;
+            switch (e)
+            {
+                case Collected c when ec.Buildings[c.BuildingId].Faction == 0:
+                    r.PlayerMade[(int)c.Ware] += c.Amount;
+                    r.CollectedByPlayer += c.Amount;
+                    break;
+                case ProductionCycle p when ec.Buildings[p.BuildingId].Faction == 0:
+                    r.PlayerMade[(int)p.Ware] += p.Amount;
+                    break;
+                case ProductionStarted ps when ec.Buildings[ps.BuildingId].Faction == 0:
+                    Add(r.PlayerUsed, BuildingDefs.Get(ec.Buildings[ps.BuildingId].Type).Inputs);
+                    break;
+                case WarriorFed wf when ec.Warriors[wf.WarriorId].Faction == 0:
+                    r.PlayerUsed[(int)wf.Ware]++;
+                    break;
+                case WarriorTrained wt2 when wt2.Faction == 0:
+                    r.PlayerWarriorsTrained++;
+                    break;
+                case SpellCast sc when sc.Faction == 0 && sc.Kind == ProposalKind.Banish:
+                    r.PlayerBanishes++;
+                    break;
+                case SiteCompleted done when done.Faction == 0:
+                    switch (done.Kind)
+                    {
+                        case SiteKind.Building: Add(r.PlayerUsed, BuildingDefs.Get(ec.Buildings[done.Id].Type).Cost); break;
+                        case SiteKind.Road: Add(r.PlayerUsed, ec.Tuning.RoadCost); break;
+                        case SiteKind.Settlement: Add(r.PlayerUsed, ec.Tuning.SettlementCost); break;
+                        case SiteKind.City: Add(r.PlayerUsed, ec.Tuning.CityCost); break;
+                    }
+                    break;
+            }
+        }
+
+        private static void Add(int[] into, int[] add)
+        {
+            for (int i = 0; i < into.Length && i < add.Length; i++) into[i] += add[i];
         }
 
         public static double Median(IEnumerable<double> xs)
