@@ -38,6 +38,9 @@ namespace World.Game
             ["prince/body/road"] = new[] { "We need {thing}.", "Let's lay {thing}.", "I want {thing}." },
             ["prince/body/camp"] = new[] { "Let's found a new camp {where}.", "The road reaches far enough: a camp {where} next.", "I've chosen a spot for a new camp, {where}.", "A new camp {where} would make us stronger." },
             ["prince/body/city"] = new[] { "Let's raise {camp} to a city.", "{Camp} is ready to become a city.", "Make {camp} a city and we count double against the Ash Clan." },
+            // Historic placeholders (H1-1 proposal kinds; H1-4 writes the real lines).
+            ["prince/body/upgrade"] = new[] { "Let's improve the {name} {where}.", "The {name} {where} could do more. Let's improve it." },
+            ["prince/body/town"] = new[] { "Let's raise {camp} to a town.", "{Camp} has outgrown its walls. Make it a town." },
             ["prince/body/banish"] = new[] { "Demons sit on {site}. Banish them!", "We have to drive the demons off {site}.", "{Site} is held by demons. Only your spell can clear it.", "Come and banish the demons from {site}." },
 
             ["prince/lead"] = new[] { "Follow me.", "This way.", "Come on, it isn't far.", "Stay close.", "Right behind me, then." },

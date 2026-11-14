@@ -29,7 +29,7 @@ namespace World.Sim.Tests
         private static string F1(double v) => v.ToString("0.0", Inv);
         private static string Pct(int a, int b) => b <= 0 ? "0%" : (100.0 * a / b).ToString("0.0", Inv) + "%";
 
-        [Test]
+        [Test, Timeout(1200000)] // Unity's EditMode runner stops a test at 180 s by default; this proof passes under .NET in under 2 minutes
         public void Proof_WritesEconomyProof_AndMeetsTheCriteria()
         {
             var failures = new List<string>();

@@ -410,11 +410,24 @@ namespace World.Game
         /// <summary>Spots cleared because they were proposed to the player: (x, radius, z).</summary>
         public IReadOnlyCollection<Vector3> ProposedClearings => _proposedSpots;
 
+        /// <summary>
+        /// Extra ground kept free of trees, rocks and crops, as (x, z, radius), for packages that place things off the
+        /// camps (the expedition's site clearings). Add through <see cref="AddClearing"/>; applied at the next tick.
+        /// </summary>
+        public static IReadOnlyList<Vector3> ExtraClearings => s_extraClearings;
+        private static readonly List<Vector3> s_extraClearings = new List<Vector3>();
+        private static int ExtraClearingsVersion;
+        public static void AddClearing(float x, float z, float radius) { s_extraClearings.Add(new Vector3(x, z, radius)); ExtraClearingsVersion++; }
+        public static void ClearExtraClearings() { if (s_extraClearings.Count == 0) return; s_extraClearings.Clear(); ExtraClearingsVersion++; }
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetExtraClearings() { s_extraClearings.Clear(); ExtraClearingsVersion = 0; }
+
         /// <summary>Trees, rocks and crops are cleared round every camp: its corner, its plots and its local paths.</summary>
         private void SyncClearings(WorldState s)
         {
             var sb = new System.Text.StringBuilder();
-            foreach (var st in s.Economy.Settlements) if (st.State != SettlementState.Cancelled) sb.Append(st.Corner).Append(',');
+            foreach (var st in s.Economy.Settlements) if (st.State != SettlementState.Cancelled) sb.Append(st.Corner).Append(st.IsTown ? "t," : ",");
+            sb.Append('x').Append(ExtraClearingsVersion);
             // Spots proposed to the player (a new camp's corner, a road's middle): cleared once and kept cleared, so
             // the cast ring lies on open ground and nobody stands among trunks to cast.
             foreach (var pr in FactionApi.Proposals(s, PlayerIds.Human))
@@ -463,6 +476,25 @@ namespace World.Game
                     }
                 }
             }
+            // A town's outer plots (PRD_AGES H1-2, slots 3 and 4) and their local paths.
+            foreach (var st in s.Economy.Settlements)
+            {
+                if (st.State != SettlementState.Active || !st.IsTown) continue;
+                foreach (int plot in EconomyApi.PlotsOf(s, st.Id))
+                {
+                    if (!PlotLayoutOuter.IsOuter(plot)) continue;
+                    Add(LandLook.Ground(PlotLayout.PlotX(t, plot), PlotLayout.PlotZ(t, plot)), 6.8f);
+                    var pts = PlotLayout.PathPoints(t, plot);
+                    for (int k = 0; k + 3 < pts.Length; k += 2)
+                    {
+                        var a = LandLook.Ground(pts[k], pts[k + 1]); var b = LandLook.Ground(pts[k + 2], pts[k + 3]);
+                        float len = (b - a).magnitude;
+                        for (float u = 4f; u < len; u += 4f) Add(Vector3.Lerp(a, b, u / len), 2.4f);
+                    }
+                }
+            }
+            // Clearings other packages add (the expedition's sites, PRD_CRYSTALS I6): (x, z, radius).
+            foreach (var c in ExtraClearings) Add(new Vector3(c.x, 0, c.y), c.z);
             if (_warCamp != null) Add(_warCamp.transform.position, 8.5f);
             // Package D's home camp: the dance circle, tents and props, Mira's duel ground, the spawn view (x, z, radius).
             foreach (var c in new CampLayout(s.Board).Clearings) Add(new Vector3(c.x, 0, c.y), c.z);

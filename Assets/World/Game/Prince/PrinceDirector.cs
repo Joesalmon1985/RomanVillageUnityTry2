@@ -1288,7 +1288,11 @@ namespace World.Game
                 case ProposalKind.Settlement: return "camp";
                 case ProposalKind.City: return "city";
                 case ProposalKind.Banish: return "banish";
+                // Historic (H1-1): placeholder lines until H1-4's prince scene.
+                case ProposalKind.Upgrade: return "upgrade";
+                case ProposalKind.Town: return "town";
             }
+            if (p.Kind != ProposalKind.Building) return "collector";
             var t = (BuildingType)p.BuildingType;
             if (t == BuildingType.WoodcutterHut) return "hut";
             if (t == BuildingType.Sawmill) return "sawmill";
@@ -1327,11 +1331,28 @@ namespace World.Game
                     a["where"] = "by the " + EconomyApi.CornerTerrains(s, p.Corner);
                     break;
                 case ProposalKind.City:
+                case ProposalKind.Town:
                 {
                     var st = EconomyApi.SettlementAt(s, p.Corner);
                     a["camp"] = st != null ? EconomyApi.SettlementName(s, st.Id) : "the camp";
                     break;
                 }
+                case ProposalKind.Upgrade:
+                {
+                    var def = BuildingDefs.Get((BuildingType)p.BuildingType);
+                    string name = def != null ? def.Name.ToLowerInvariant() : "building";
+                    a["name"] = name;
+                    a["thing"] = "the " + name;
+                    string camp = p.Settlement >= 0 ? EconomyApi.SettlementName(s, p.Settlement) : "the camp";
+                    a["camp"] = camp;
+                    a["where"] = "at " + camp;
+                    break;
+                }
+                default:
+                    // An unknown kind (a later age): the title stands in, so no placeholder is left unfilled.
+                    a["thing"] = LowerFirst(title);
+                    a["where"] = "";
+                    break;
                 case ProposalKind.Banish:
                     a["site"] = DemonApi.SiteName(s, p.DemonSiteKind, p.DemonSiteId);
                     break;

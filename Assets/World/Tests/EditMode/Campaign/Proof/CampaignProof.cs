@@ -25,7 +25,7 @@ namespace World.Sim.Tests
         private const string Authored = PackFiles.Authored, Skeleton = PackFiles.Skeleton;
         private static readonly Element[] All4 = { Element.Earth, Element.Fire, Element.Water, Element.Air };
 
-        [Test]
+        [Test, Timeout(1200000)] // Unity's EditMode runner stops a test at 180 s by default; this proof passes under .NET in under 2 minutes
         public void CampaignProof_WritesDocsCampaignProof_AndMeetsEveryCheck()
         {
             var failures = new List<string>();
