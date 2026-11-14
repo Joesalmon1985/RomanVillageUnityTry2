@@ -376,3 +376,20 @@ Not done, rough, or not verified:
 - From the spawn the first cast mark is behind the player's left shoulder; without the prince nothing points to it.
 - Late-game playability by hand at 1x (walking 50 to 90 m between casts) is unproven; the sim-side weaknesses listed under package S stand.
 - The clearings and the palisade check have no automated test.
+
+## Package L: lighting pass, day-night cycle, the game starts at night (14 Nov 2026, branch `pre/l` = `pre/v` + `pre/d`)
+
+Built (all new code in `Assets/World/Game/View/Light/`; how it works, tuning and hooks in `Docs/LIGHTING.md`):
+- `DayNight`: the hour is a pure function of the sim tick (12 real minutes per day, a new game starts at 22:30, about 3 minutes of full night before first light), sun and moon directional lights (one shadow caster at a time), V's sky dome repainted by the hour, stars, moon and sun discs, horizon glow at dawn and dusk, ambient and fog by the hour. F2 / Shift+F2 / F3 developer scrub.
+- `WorldLights` / `FireLight`: flickering point lights with ground glow, far halo and sparks, a budget of 6 per-pixel point lights (no per-vertex lights), the player's lantern.
+- `LightDecorator`: finds the other packages' views at runtime: hearth and entrance torches on every camp (warm for your people, green for the Ash Clan), door torches on finished buildings, war fire, overrun fire, demon glow, slim beam and light on the top cast mark, the dance fire (adopted), braziers by Mira and the spawn, a carried light for the prince when N lands; night variants of materials for people, loads, stock and number tokens.
+- Edits outside `View/Light`: one installer line in `Boot/WorldBootstrap.cs`; `Shaders/WorldLit.shader`, `WorldLitVertexColor.shader` (`_SelfLit`, `_Rim`, global `_WorldNight`) and `WorldUnlit.shader` (`_NightDim`, global `_WorldNightTint`), all default 0. New: `Tests/PlayMode/LightingTests.cs`, `AgentScripts/LightCaptures.cs`. No other package's C# was edited; `Assets/World/Sim` untouched.
+
+Ran:
+- `dotnet test DotNet`: 179 passed, 0 failed. `unity command test run --mode editor`: 179 passed, 0 failed.
+- `unity command test run --mode playmode --async-tests`: 36 tests; final full run 35 passed, 1 failed: the existing `RhythmPartyTests.Phrase_FailFinalBlock_NoEnding_RetryWorks_AbortStopsAudio` (avatar restored 3.3 mm off against a 0.1 mm limit); it passed in the previous full run of the same code path and the fixture passed 4 of 4 when rerun alone, so it is recorded as intermittent, not fixed. `LightingTests` (5): starts at night with lights on; time follows the game clock and holds while paused; lights fade at dawn and come back at dusk; late-game light budget; restore from a saved game time gives the same lighting.
+- Console after the runs: 0 errors (1 warning: Input Manager deprecation notice).
+- Editor frame rate at 1920x1080, night, clock running, late game (8 camps, 87 buildings, 90 carriers, 118 registered fires): 155 to 207 fps over six views (home camp 179, rival camp 207, a building 155, demons 205, war camp 194, God View 207); 7 lights enabled at once (moon + 6 per-pixel point lights), 0 per-vertex. Early game 393 fps at the spawn; 219 fps mid-dance (9 lights: 4 are D's short drum lights). These are editor figures from `Time.smoothDeltaTime` with the Game view at 1920x1080; the Windows player was not built or measured.
+- Captures inspected and iterated (git-ignored, `Evidence/screenshots/l_*.png`, rendered from the game camera at 1920x1080 without IMGUI): spawn, hearth and tents, cast mark, forest token, dance mid-phrase, Mira, rival camp, dawn, midday, dusk, overview at night, and late-game stock, demons, carriers, war camp, overview.
+
+Not run: no Windows build; nobody played it by hand; shadow shimmer and flicker were judged from stills and code, not from watching motion; speech bubbles, the HUD and P's Tab map do not exist on this branch (stubs), so their night legibility is unverified (the interim God View is checked).
