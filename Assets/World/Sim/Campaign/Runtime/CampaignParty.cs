@@ -123,6 +123,7 @@ namespace World.Sim.Campaign
             p.Pending.Clear();
             p.HoldAtThreshold = false;
             p.Studying = false;
+            p.Running = false;
             if (p.Mode == PartyMode.AtThreshold) p.EncounterId = "";
             if (purpose != RoutePurpose.Study && purpose != RoutePurpose.ChoiceReturn) p.ChoiceId = "";
             p.Route = route;
@@ -138,9 +139,22 @@ namespace World.Sim.Campaign
             var p = c.Party;
             var to = p.Route[0];
             p.Route.RemoveAt(0);
-            p.Leg = MakeLeg(s, c, p.At, to, c.Definition.Tuning.PartyTicksPerStep);
+            int perStep = LegTicksPerStep(s, c, p.At, to, out bool run);
+            p.Leg = MakeLeg(s, c, p.At, to, perStep);
+            if (run && p.Leg.Ticks < RunMinSteps * perStep)
+            {
+                // A few steps are not worth a run: she walks them.
+                run = false;
+                p.Leg = MakeLeg(s, c, p.At, to, c.Definition.Tuning.PartyTicksPerStep);
+            }
             p.BeganTick = s.Tick;
-            ev?.Add(new PartySetOut { LeadId = p.LeadId, From = p.At, To = to, LegTicks = p.Leg.Ticks });
+            if (run && !p.Running)
+            {
+                p.Running = true;
+                var cd = RaceCrystal(c);
+                Journal(s, c, "Ash runners are heading for " + (cd != null ? cd.Name : "the crystal") + ". Mira breaks into a run.", ev);
+            }
+            ev?.Add(new PartySetOut { LeadId = p.LeadId, From = p.At, To = to, LegTicks = p.Leg.Ticks, Running = run });
         }
 
         private static void TickParty(WorldState s, CampaignState c, EventBuffer ev)
@@ -441,7 +455,10 @@ namespace World.Sim.Campaign
                 GoOnWithTopLead(s, c, ev, p.WaitSinceTick);
                 return;
             }
-            if (s.Tick - p.WaitSinceTick >= c.Definition.Tuning.ThresholdWait) Withdraw(s, c, e, "threshold_wait", ev);
+            var t = c.Definition.Tuning;
+            long wait = p.PlayerPresent && t.ThresholdWaitPresent >= 0 ? t.ThresholdWaitPresent : t.ThresholdWait;
+            if (p.PlayerPresent && t.ThresholdWaitPresent == 0) return;   // with the player near she waits for "Fight" or "Not yet"
+            if (s.Tick - p.WaitSinceTick >= wait) Withdraw(s, c, e, "threshold_wait", ev);
         }
 
         /// <summary>Back from a threshold to the encounter's safe point, on foot, before committing: safe, no cost (5.6).</summary>
@@ -593,7 +610,12 @@ namespace World.Sim.Campaign
                 if (p.Mode == PartyMode.AskingChoice) p.WaitSinceTick = s.Tick;
                 Journal(s, c, "You rejoined Mira at " + place + ".", ev);
             }
-            else if (!present && was) Journal(s, c, "You left Mira at " + place + ". She goes on without you.", ev);
+            else if (!present && was)
+            {
+                // At a threshold the away wait (ThresholdWait) counts from the moment the player left.
+                if (p.Mode == PartyMode.AtThreshold && c.Definition.Tuning.ThresholdWaitPresent >= 0) p.WaitSinceTick = s.Tick;
+                Journal(s, c, "You left Mira at " + place + ". She goes on without you.", ev);
+            }
             c.ReplanNow = true;
         }
 
@@ -718,7 +740,7 @@ namespace World.Sim.Campaign
             int first = items.Count;
             while (first > 0 && items[first - 1].Tick == s.Tick) first--;
             for (int i = first; i < items.Count; i++)
-                if (items[i] is CampOverrun co) OnCampOverrun(s, c, co.Attacker, co.Defender, ev);
+                if (items[i] is CampOverrun co) OnCampOverrun(s, c, co.Attacker, co.Defender, ev, co.Kind == CampOverrunKind.Looted);
         }
 
         /// <summary>
@@ -726,7 +748,7 @@ namespace World.Sim.Campaign
         /// party drops what it is doing and retreats to the home camp on foot (an uncommitted threshold is abandoned; an
         /// open choice stays open). Nobody dies. An Ash camp taken by the player's people pauses the expedition.
         /// </summary>
-        internal static void OnCampOverrun(WorldState s, CampaignState c, int attacker, int defender, EventBuffer ev)
+        internal static void OnCampOverrun(WorldState s, CampaignState c, int attacker, int defender, EventBuffer ev, bool looted = false)
         {
             if (c.Phase != CampaignPhase.Running) return;
             var p = c.Party;
@@ -734,6 +756,18 @@ namespace World.Sim.Campaign
             {
                 Charge(s, c, c.Definition.Tuning.CampOverrunCharge, RivalCharges.CampOverrun, ev);
                 if (c.Attempt != null || p.Mode == PartyMode.InEncounter) return;
+                var tu = c.Definition.Tuning;
+                if (looted && tu.RetreatOnLooting == 0)
+                {
+                    Journal(s, c, "The Ash Clan looted the home camp. Mira pressed on.", ev);
+                    return;
+                }
+                if (tu.OverrunRetreatCooldown > 0 && c.LastOverrunRetreatTick >= 0 && s.Tick - c.LastOverrunRetreatTick < tu.OverrunRetreatCooldown)
+                {
+                    Journal(s, c, "The Ash Clan overran another of your camps. Mira pressed on.", ev);
+                    return;
+                }
+                c.LastOverrunRetreatTick = s.Tick;
                 var home = Home(c.Definition);
                 p.WithdrawnFrom = "";
                 p.EncounterId = "";

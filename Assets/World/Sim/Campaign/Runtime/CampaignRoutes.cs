@@ -230,7 +230,8 @@ namespace World.Sim.Campaign
         /// <summary>One leg between two consecutive waypoints: a walk within a space, or a portal crossing (one step).</summary>
         private static LegState MakeLeg(WorldState s, CampaignState c, MarkerRef from, MarkerRef to, int ticksPerStep)
         {
-            var leg = new LegState { From = from, To = to, Ticks = Math.Max(1, ticksPerStep), Progress = 0, Cells = new int[0] };
+            int stair = c.Definition.Tuning.StairTicks;
+            var leg = new LegState { From = from, To = to, Ticks = Math.Max(1, stair > 0 ? stair : ticksPerStep), Progress = 0, Cells = new int[0] };
             var d = c.Definition;
             if (!NodeOf(s, d, from, out var a) || !NodeOf(s, d, to, out var b)) return leg;
             int steps = WalkSteps(c, a, b, out var cells);

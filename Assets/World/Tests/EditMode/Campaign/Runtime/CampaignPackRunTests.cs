@@ -140,9 +140,11 @@ namespace World.Sim.Tests
         [Test]
         public void AuthoredEarth_Away_TakesItAlone_OrWaitsAtDolm_NeverFightsOrRestores()
         {
-            var first = StartPack(PackFiles.Authored);
+            // Alone she waits SoloDecide (90 s since the race tuning) before each lead, so the expedition is held back here
+            // for her to find the Deepstone on its pedestal.
+            var first = StartPack(PackFiles.Authored, d => d.Rival.Steps[0].MarchCost = 60000);
             Do(first, new SetCompany { Present = false });
-            var ev = SimTestKit.Step(first, 4000);
+            var ev = SimTestKit.Step(first, 9000);
             Assert.AreEqual(Custody.Carried, Held(first, Element.Earth), "she takes it by herself");
             Assert.AreEqual(PartyMode.WaitingForPlayer, Mode(first), "and waits at the tower");
             Assert.AreEqual("tower_earth", CampaignApi.Party(first.State).At.Location);
@@ -152,7 +154,7 @@ namespace World.Sim.Tests
             var stolen = StartPack(PackFiles.Authored);
             Do(stolen, new SetCompany { Present = false });
             Do(stolen, new DevRivalNextStep());
-            ev = SimTestKit.Step(stolen, 8000);
+            ev = SimTestKit.Step(stolen, 16000);   // 8000 before the race tuning (SoloDecide 90 s a lead, walking pace)
             var th = ev.OfType<EncounterThreshold>().First();
             var back = ev.OfType<PartyRetreated>().First(r => r.Why == "threshold_wait");
             Assert.AreEqual(900, back.Tick - th.Tick, "90 seconds, then she withdraws");

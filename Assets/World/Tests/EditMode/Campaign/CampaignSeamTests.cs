@@ -249,8 +249,9 @@ namespace World.Sim.Tests
             Assert.AreEqual(CampOverrunKind.CampLost, co.Kind, "dev.historic: a camp other than the home is taken");
             var charge = ev.OfType<RivalAdvanced>().Single(x => x.Why == RivalCharges.CampOverrun);
             Assert.AreEqual(co.Tick, charge.Tick, "the same tick");
-            Assert.AreEqual(1800, charge.Amount);
-            Assert.AreEqual(p + 1 + 1800, c.RivalProgress);
+            int amount = c.Definition.Tuning.CampOverrunCharge;   // the pack's number (1800 before the race tuning, 600 since)
+            Assert.AreEqual(amount, charge.Amount);
+            Assert.AreEqual(p + 1 + amount, c.RivalProgress);
             Assert.AreEqual("camp_overrun", ev.OfType<PartyRetreated>().Single().Why);
             Assert.IsFalse(s.Factions.GameOver);
             Assert.AreEqual(6, CampaignApi.Companions(s).Count(k => k.Alive), "nobody dies");
@@ -280,8 +281,9 @@ namespace World.Sim.Tests
             Assert.AreEqual(co.Tick, paused.Tick);
             Assert.AreEqual(RivalPhase.Paused, c.Rival.Phase);
             Assert.AreEqual(0, ev.OfType<RivalAdvanced>().Count());
-            sim.Step(850);
-            Assert.AreEqual(stepProgress, c.Rival.StepProgress, "the expedition stands still for 900 ticks of progress");
+            int pause = c.Definition.Tuning.AshCampLostPause;   // the pack's number (900 before the race tuning, 300 since)
+            sim.Step(pause - 50);
+            Assert.AreEqual(stepProgress, c.Rival.StepProgress, "the expedition stands still for AshCampLostPause ticks of progress");
             sim.Step(100);
             Assert.AreEqual(RivalPhase.Marching, c.Rival.Phase);
             Assert.Greater(c.Rival.StepProgress, stepProgress);

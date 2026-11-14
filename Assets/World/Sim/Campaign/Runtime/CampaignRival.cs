@@ -36,20 +36,20 @@ namespace World.Sim.Campaign
         internal static RivalStepDef RivalStepFor(CampaignState c, Element e)
         {
             var cd = c.Definition.Crystal(e);
-            return cd == null ? null : c.Definition.Rival?.Steps?.Find(x => x.Crystal == cd.Id);
+            return cd == null ? null : RunPlan(c).Find(x => x != null && x.Crystal == cd.Id);
         }
 
         private static RivalStepDef CurrentStep(CampaignState c)
         {
-            var plan = c.Definition.Rival?.Steps;
-            return plan != null && c.Rival.Step >= 0 && c.Rival.Step < plan.Count ? plan[c.Rival.Step] : null;
+            var plan = RunPlan(c);
+            return c.Rival.Step >= 0 && c.Rival.Step < plan.Count ? plan[c.Rival.Step] : null;
         }
 
         /// <summary>Starts plan step k (or the first later one whose crystal is not on an altar or restored).</summary>
         private static void StartRivalStep(WorldState s, CampaignState c, int k, EventBuffer ev)
         {
             var d = c.Definition;
-            var plan = d.Rival?.Steps ?? new List<RivalStepDef>();
+            var plan = RunPlan(c);
             var r = c.Rival;
             CrystalDef cd = null;
             while (k < plan.Count)
@@ -98,7 +98,6 @@ namespace World.Sim.Campaign
         private static void TickRival(WorldState s, CampaignState c, EventBuffer ev)
         {
             var r = c.Rival;
-            var plan = c.Definition.Rival?.Steps ?? new List<RivalStepDef>();
             var t = c.Definition.Tuning;
             long budget = c.RivalProgress - c.RivalSpent;
             int guard = 0;
