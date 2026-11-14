@@ -77,6 +77,8 @@ namespace World.Game
         public bool Directed;
         /// <summary>While true the villager stands still where it is (a director holds it while the clock is paused).</summary>
         public bool Hold;
+        /// <summary>False hides the name plate above the head (crowds in scenes).</summary>
+        public bool ShowNamePlate = true;
         /// <summary>Optional tap handler: replaces the dialogue when the player taps this villager.</summary>
         public Action<Npc> OnTapped;
         /// <summary>Optional: what this villager is doing, said in a bubble when tapped (used when it has no Lines or Options).</summary>
@@ -313,7 +315,7 @@ namespace World.Game
             float dist = (views.Avatar.Position - transform.position).magnitude;
             if (dist > 32f) return;
             // A bubble already carries the speaker's name: no plate then (it sat on the bubble's tail).
-            if (HasShownBubble()) return;
+            if (HasShownBubble() || !ShowNamePlate) return;
             var nameStyle = new GUIStyle(UiStyle.Label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
             nameStyle.normal.textColor = UiStyle.AccentColor;
             UiStyle.ShadowLabel(new Rect(x - UiStyle.Px(250), y - UiStyle.Px(40), UiStyle.Px(500), UiStyle.Px(36)), DisplayName, nameStyle);

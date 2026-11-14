@@ -354,7 +354,11 @@ namespace World.Game
                 }
             }
             float d = BoardSpace.Flat(who.transform.position - me);
-            if (d <= PitchDistance + 2.5f)
+            // Ask only from in front of the player (in view), or once standing on the pitch spot.
+            var spot = PitchSpot(who);
+            bool inView = Walker != null && Vector3.Angle(Flat(Walker.transform.forward), Flat(who.transform.position - me)) <= 40f;
+            bool onSpot = !who.IsWalking && BoardSpace.Flat(who.transform.position - spot) < 3f;
+            if (d <= PitchDistance + 2.5f && (inView || onSpot))
             {
                 who.StopWalking();
                 who.FaceTowards(me);
@@ -363,10 +367,11 @@ namespace World.Game
                 then?.Invoke();
                 return;
             }
-            var spot = PitchSpot(who);
             who.WalkSpeed = HurrySpeed;
             if (!who.IsWalking || !who.Goal.HasValue || BoardSpace.Flat(who.Goal.Value - spot) > 4f) who.WalkTo(spot);
         }
+
+        private static Vector3 Flat(Vector3 v) { v.y = 0; return v; }
 
         /// <summary>A point a few metres from the player, 30 degrees to the side of the view nearer the villager.</summary>
         private Vector3 PitchSpot(Npc who)
@@ -567,8 +572,9 @@ namespace World.Game
         private void Call(Npc who)
         {
             _p.LastCall = Now;
+            // A call still open is not replaced (one call bubble; it keeps its off-screen pointer): he only beckons again.
+            if (_callAsk != 0 && SpeechBubbles.IsOpen(_callAsk)) { who.Actor?.PlayOneShot(ActorKeys.Beckon); return; }
             Calls++;
-            if (_callAsk != 0) SpeechBubbles.Close(_callAsk);
             string text = VoiceOf(who).Pick(CurrentPhase == Phase.AtSpot ? "far" : "wait");
             ClearQueue(who);
             _callAsk = SpeechBubbles.Ask(who, text, new[] { PrinceLines.Coming }, i =>
@@ -1054,9 +1060,13 @@ namespace World.Game
                 var chief = PrinceVillagers.SpawnAsh(NpcIds.RivalChief, "Ash Clan war leader", true, me + fwd * 30f + right * 4f, BoardSpace.YawOf(-fwd));
                 _ashParty.Add(chief);
                 for (int i = 0; i < 2; i++)
-                    _ashParty.Add(PrinceVillagers.SpawnAsh("ash_warrior" + i, "Ash Clan warrior", false, me + fwd * 33f + right * (i == 0 ? 8f : 0f), BoardSpace.YawOf(-fwd)));
-                chief.WalkSpeed = 4f; chief.WalkTo(me + fwd * 9f + right * 4f);
-                _ashParty[1].WalkSpeed = 4f; _ashParty[1].WalkTo(me + fwd * 11f + right * 7f);
+                {
+                    var w = PrinceVillagers.SpawnAsh("ash_warrior" + i, "Ash Clan warrior", false, me + fwd * 33f + right * (i == 0 ? 8f : 0f), BoardSpace.YawOf(-fwd));
+                    w.ShowNamePlate = false; // only the war leader is named: the plates would pile up
+                    _ashParty.Add(w);
+                }
+                chief.WalkSpeed = 4f; chief.WalkTo(me + fwd * 9f + right * 5f);
+                _ashParty[1].WalkSpeed = 4f; _ashParty[1].WalkTo(me + fwd * 12f + right * 9f);
                 _ashParty[2].WalkSpeed = 4f; _ashParty[2].WalkTo(me + fwd * 11f + right * 1.5f);
                 var rv = PrinceLines.Bank("rival", "end.loss");
                 _script.Add((0.5f, Prince, lines[0], 6f));

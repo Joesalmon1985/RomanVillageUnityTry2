@@ -313,7 +313,7 @@ namespace World.Game
             var d = D;
             Vector3 last = W.Position;
             float walked = 0f;
-            int seenAsk = 0; float seenAt = 0f;
+            int seenAsk = -1; float seenAt = 0f; float tapAt = 0f;
             int castsBefore = 0;
             var walkPerCast = new List<float>();
             float walkedAtCast = 0f;
@@ -326,13 +326,24 @@ namespace World.Game
                     castsBefore = d.Casts.Count;
                     walkPerCast.Add(walked - walkedAtCast); walkedAtCast = walked;
                 }
-                // 1. Answer the open question after the delay.
+                // 1. Answer: a call ("Coming") at once; a pitch once the delay has passed since that proposal was
+                //    first pitched. If the question timed out meanwhile, the player taps the villager to hear it again.
                 int h = SpeechBubbles.NearestAsk(1);
-                if (h != 0 && h != seenAsk) { seenAsk = h; seenAt = Now; }
-                if (h != 0 && Now - seenAt >= delay)
+                int pitchedNow = d.PitchedProposal;
+                if (pitchedNow >= 0 && pitchedNow != seenAsk && d.AskHandle != 0) { seenAsk = pitchedNow; seenAt = Now; }
+                if (h != 0)
                 {
-                    int i = ReplyIndex(h, PrinceLines.ReplyLead, PrinceLines.ShowMe, PrinceLines.Coming, PrinceLines.NotNow, DialoguePanel.FollowLabel);
-                    if (i >= 0) { SpeechBubbles.Choose(h, i); yield return null; continue; }
+                    int ci = ReplyIndex(h, PrinceLines.Coming, PrinceLines.NotNow, DialoguePanel.FollowLabel);
+                    bool pitch = ReplyIndex(h, PrinceLines.ReplyLead, PrinceLines.ShowMe) >= 0;
+                    if (!pitch && ci >= 0) { SpeechBubbles.Choose(h, ci); yield return null; continue; }
+                    if (pitch && Now - seenAt >= delay) { SpeechBubbles.Choose(h, ReplyIndex(h, PrinceLines.ReplyLead, PrinceLines.ShowMe)); yield return null; continue; }
+                }
+                else if (seenAsk >= 0 && Now - seenAt >= delay && d.CurrentPhase == PrinceDirector.Phase.Waiting && FactionApi.Top(S, PlayerIds.Human) != null && Now >= tapAt)
+                {
+                    var top = FactionApi.Top(S, PlayerIds.Human);
+                    var who = d.SpeakerFor(top);
+                    tapAt = Now + 3f;
+                    if (BoardSpace.Flat(who.transform.position - W.Position) < 40f) PointerInput.TapObject(who);
                 }
                 // 2. Walk: follow the speaker (the reply did it) or go straight to the spot.
                 int pid = d.PitchedProposal;
@@ -477,7 +488,8 @@ namespace World.Game
              .Wait(0.3f).Capture("n_cast")
              // Skip ahead with the F1 tools until the merchant pitches a road.
              .Step(a => MerchantRoad(a))
-             .Wait(0.5f).Capture("n_merchant")
+             .Step(a => a.DoFace(() => D.Merchant.transform.position))
+             .Wait(0.6f).Capture("n_merchant")
              .Log("[AutoPlay] prince_captures OK")
              .Quit(0);
             return s;
