@@ -1,0 +1,37 @@
+{
+ "summary": "Template style: neutral villager. Every character file overrides only what differs.",
+ "amplitude": 1.0,
+ "tempo": 1.0,
+ "variants": [],
+ "stand": {
+  "stance_width": 0.0,
+  "toe_out": 6.0,
+  "stagger": 0.0,
+  "pelvis": [0.0, 0.0, -0.006],
+  "weight": 0.5,
+  "head_level": 0.6,
+  "bones": {"Spine": [1.0, 0.0, 0.0], "Chest": [-1.5, 0.0, 0.0], "Neck": [2.0, 0.0, 0.0], "Head": [-1.0, 0.0, 0.0]},
+  "shoulders": [0.0, 0.0],
+  "arms": {
+   "L": {"fk": {"UpperArm": [3.0, 8.0, 14.0], "LowerArm": [-13.0, 0.0, 0.0], "Hand": [0.0, 0.0, 0.0]}},
+   "R": {"fk": {"UpperArm": [3.0, -8.0, -14.0], "LowerArm": [-11.0, 0.0, 0.0], "Hand": [0.0, 0.0, 0.0]}}
+  },
+  "lock": {},
+  "aim": {}
+ },
+ "layers": {
+  "shift_lat": 0.7, "shift_fwd": 0.85, "hip_drop": 4.0, "hip_yaw": 1.5, "free_heel": 5.0,
+  "drag": 0.07, "breath": 1.0, "breath_period": 3.3, "noise": 1.0, "overlap": 1.0
+ },
+ "springs": {
+  "Chest": [24.0, 0.75], "Neck": [22.0, 0.7], "Head": [20.0, 0.6],
+  "UpperArm": [22.0, 0.7], "LowerArm": [18.0, 0.55], "Hand": [15.0, 0.45]
+ },
+ "chains": {
+  "cape": {"drag": 11.0, "wind": 0.55, "lift": 6.0, "side": 9.0, "max": 48.0, "spring": [9.0, 0.32], "share": [0.5, 0.3, 0.3]},
+  "hood": {"drag": 0.035, "spring": [12.0, 0.4]},
+  "skirt": {"follow": 0.92, "max": 55.0, "spring": [16.0, 0.55]}
+ },
+ "leg_ext": 0.996,
+ "gait": {}
+}
