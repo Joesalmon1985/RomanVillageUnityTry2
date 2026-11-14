@@ -302,6 +302,7 @@ namespace World.Sim.Factions
             var tu = s.Factions.Tuning;
             foreach (var b in e.Buildings)
             {
+                if (tu.UpgradeScore <= 0) break;
                 if (b.Faction != faction || b.State != BuildingState.Active || b.Upgrading) continue;
                 var def = BuildingDefs.Get(b.Type);
                 int next = (int)b.Grade + 1;
@@ -315,6 +316,7 @@ namespace World.Sim.Factions
             }
             foreach (var st in e.Settlements)
             {
+                if (tu.TownScore <= 0) break;
                 if (st.Faction != faction || st.State != SettlementState.Active || !st.IsCity || st.IsTown || st.Upgrade != UpgradeState.None) continue;
                 if (!CheckTown(s, faction, st.Corner).Ok || !Affordable(s, st.Id, e.Tuning.TownCost)) continue;
                 string reason = "A town gives us more plots and counts for more against " + Enemy(faction) + ".";

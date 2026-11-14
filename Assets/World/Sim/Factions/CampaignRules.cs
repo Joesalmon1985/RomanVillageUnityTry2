@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using World.Sim.Economy;
 using World.Sim.Eras;
 
@@ -23,6 +24,7 @@ namespace World.Sim.Factions
             if (captured)
             {
                 ev.Add(new CampOverrun { Attacker = attacker, Defender = defender, SettlementId = target, Kind = CampOverrunKind.CampLost });
+                DropStaleProposals(s, ev);
             }
             else if (home >= 0)
             {
@@ -33,6 +35,17 @@ namespace World.Sim.Factions
                 ev.Add(new CampOverrun { Attacker = attacker, Defender = defender, SettlementId = home, Kind = CampOverrunKind.Looted });
             }
             f.Factions[defender].SetbackUntilTick = s.Tick + f.Tuning.SetbackGraceTicks;
+        }
+
+        /// <summary>
+        /// After a capture: open proposals of either people that the new map no longer allows (a building on a plot of the
+        /// lost camp, its city upgrade, a road through it) are removed at once ("expired"), not at the next plan.
+        /// </summary>
+        public static void DropStaleProposals(WorldState s, EventBuffer ev)
+        {
+            var stale = new List<Proposal>();
+            foreach (var p in s.Factions.Proposals) if (!FactionLogic.CheckAction(s, p).Ok) stale.Add(p);
+            foreach (var p in stale) FactionLogic.Remove(s, p, "expired", ev);
         }
 
         /// <summary>The defender's home settlement (on its start corner), or -1.</summary>

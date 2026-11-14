@@ -130,9 +130,9 @@ namespace World.Sim.Factions
         public int AdviceHoldTicks = 3000;
         /// <summary>Strength of a town (5.4; H1-1 counts towns once H1-2 makes them).</summary>
         public int StrengthPerTown = 3;
-        /// <summary>Brain score of a grade 1 building upgrade candidate (Historic on; H1-1, PRD_AGES 8.2 gives 30 + need).</summary>
-        public int UpgradeScore = 35;
-        /// <summary>Brain score of a City to Town candidate (Historic on; H1-1).</summary>
+        /// <summary>Brain score of a grade 1 building upgrade candidate (Historic on; H1-1, PRD_AGES 8.2 gives 30 + need). 0 or less: none proposed.</summary>
+        public int UpgradeScore = 60;
+        /// <summary>Brain score of a City to Town candidate (Historic on; H1-1). 0 or less: none proposed.</summary>
         public int TownScore = 70;
     }
 

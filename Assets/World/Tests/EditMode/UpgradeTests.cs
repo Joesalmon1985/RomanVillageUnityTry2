@@ -19,6 +19,9 @@ namespace World.Sim.Tests
             var sim = WorldSimFactory.CreateNew(seed);
             sim.State.Eras.Current = Era.Historic;
             sim.State.Demons.Tuning.GraceTicks = int.MaxValue;
+            // H1-1: worked goods moved into an upgrade are a handover (PRD_AGES 4.2), after which the prince builds on his own.
+            // These tests want the player's people quiet: mark the milestone as passed without autonomy.
+            sim.State.Factions.Factions[0].HandoverTick = 0;
             return sim;
         }
 

@@ -272,6 +272,7 @@ namespace World.Sim.Tests
             SectionH5(sb, failures);
             SectionH6(sb, failures);
             SectionH7(sb, failures);
+            SectionH8(sb, failures);
             sb.AppendLine("## Verdict");
             sb.AppendLine();
             sb.AppendLine(failures.Count == 0 ? "All pass criteria hold." : "FAILING: " + string.Join("; ", failures));
@@ -340,7 +341,7 @@ namespace World.Sim.Tests
 
             sb.AppendLine("## H2. The prince on his own (20 minutes after the handover, no player input)");
             sb.AppendLine();
-            sb.AppendLine("The prompt player plays until the handover, then never answers again. Campaign rules (overrun loots instead of ending the game, no time limit), so the 20 minutes can be watched to the end. Minutes are counted from the handover.");
+            sb.AppendLine("The prompt player plays until the handover, then never answers again (the island stays Prehistoric: nobody says \"Show me\"). Campaign rules (overrun loots instead of ending the game, no time limit), so the 20 minutes can be watched to the end. Minutes are counted from the handover.");
             sb.AppendLine();
             sb.AppendLine("| Seed | Handover | Finished constructions | Longest gap | 2nd camp | 3rd camp | City | All five workshops | First warrior | Most fed warriors | Camps at end | Strength (you - rival) | Overruns suffered / dealt | Prince's own actions |");
             sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
@@ -368,6 +369,8 @@ namespace World.Sim.Tests
             Row("the prince alone", idle);
             Row("the prince and a casting player", casting);
             Row("the prince, advised \"economy\" once", advised);
+            sb.AppendLine();
+            sb.AppendLine("A casting player roughly doubles what gets built. One piece of advice changes what the prince builds (section H3), not how much: \"economy\" moves his picks among the same number of actions.");
             sb.AppendLine();
             if (notOverrun < 8) failures.Add("H2: the prince alone is overrun in " + (11 - notOverrun) + " of 11 (need at most 3)");
             if (keepsBuilding < 8) failures.Add("H2: the prince alone keeps building in only " + keepsBuilding + " of 11 (need 8)");
@@ -601,7 +604,7 @@ namespace World.Sim.Tests
             var p90 = runs.Where(r => r.Spec.Style == PlayerStyle.FixedDelay && r.Spec.Delay == 90).ToArray();
             int lossOn = p90.Count(r => !r.Spec.NoHandover && r.Outcome == GameOutcome.Defeat), lossOff = p90.Count(r => r.Spec.NoHandover && r.Outcome == GameOutcome.Defeat);
             if (lossOn > lossOff) failures.Add("H6: the handover made the 90 s player lose more often (" + lossOff + " -> " + lossOn + ")");
-            sb.AppendLine("What moved: a slow player now gets the prince's help after the first workshop goods, so the 60 s and 90 s players win more often and sooner; the prompt player is barely changed (he already casts about as fast as the prince would act); the ignored prince is unchanged (he never hands over). The rival was not retuned: ECONOMY_PROOF.md keeps all its pass criteria.");
+            sb.AppendLine("What moved: a slow player now gets the prince's help (one action about every minute) after the first workshop goods, so the 60 s player turns time wins and a draw into overrun wins; the 90 s player hands over late (about 15 minutes, or not at all) and changes little; the prompt and 45 s players are barely changed (they already cast faster than the prince acts); the ignored prince is unchanged (he never hands over). The rival was not retuned: ECONOMY_PROOF.md keeps all its pass criteria.");
             sb.AppendLine();
             sb.AppendLine("Pass: the ignored prince's games are identical with and without the handover; the handover never makes the 90 s player lose more often.");
             sb.AppendLine();
@@ -657,6 +660,82 @@ namespace World.Sim.Tests
             int n = ok.Count(x => x);
             if (n < Seeds.Length) failures.Add("H7: dev.historic reached its contents in " + n + " of " + Seeds.Length);
             sb.AppendLine("Pass: both peoples reach the listed contents on every seed, both have handed over, the era is Historic, zero ware drift, the same seed gives the same start.");
+            sb.AppendLine();
+        }
+
+        // H8: in the Historic age the prince also improves buildings and raises towns, where it pays off (paired runs).
+        private sealed class GradeRun
+        {
+            public int Started, Upgraded, Towns, UpgradesProposed, Worked, Raw, Strength, RivalStrength, Completed;
+            public string Inv;
+        }
+
+        private static GradeRun PlayGrades(ulong seed, bool grades)
+        {
+            var sim = ScenarioStarts.Create(ScenarioStarts.DevHistoric, seed);
+            var s = sim.State;
+            if (!grades) { s.Factions.Tuning.UpgradeScore = 0; s.Factions.Tuning.TownScore = 0; }
+            var r = new GradeRun();
+            var seen = new HashSet<int>();
+            for (int t = 0; t < AfterTicks && !s.Factions.GameOver; t++)
+            {
+                sim.Step();
+                foreach (var e in sim.DrainEvents())
+                {
+                    switch (e)
+                    {
+                        case UpgradeStarted us when s.Economy.Buildings[us.BuildingId].Faction == 0: r.Started++; break;
+                        case BuildingUpgraded bu when s.Economy.Buildings[bu.BuildingId].Faction == 0: r.Upgraded++; break;
+                        case TownUpgraded tu when tu.Faction == 0: r.Towns++; break;
+                        case ProposalAdded pa when pa.Faction == 0:
+                        {
+                            var p = FactionApi.GetProposal(s, pa.ProposalId);
+                            if (p != null && (p.Kind == ProposalKind.Upgrade || p.Kind == ProposalKind.Town) && seen.Add(p.Id)) r.UpgradesProposed++;
+                            break;
+                        }
+                        case ProductionCycle pc when s.Economy.Buildings[pc.BuildingId].Faction == 0 && AutonomyLogic.IsWorked(pc.Ware): r.Worked += pc.Amount; break;
+                        case Collected c when s.Economy.Buildings[c.BuildingId].Faction == 0: r.Raw += c.Amount; break;
+                        case SiteCompleted sc when sc.Faction == 0: r.Completed++; break;
+                    }
+                }
+                if (r.Inv == null && s.Tick % 100 == 0) r.Inv = SimTestKit.CheckInvariants(s);
+            }
+            r.Strength = FactionApi.Strength(s, 0).Total;
+            r.RivalStrength = FactionApi.Strength(s, 1).Total;
+            return r;
+        }
+
+        private static void SectionH8(StringBuilder sb, List<string> failures)
+        {
+            var runs = new GradeRun[Seeds.Length * 2];
+            Parallel.For(0, runs.Length, i => runs[i] = PlayGrades(Seeds[i / 2], i % 2 == 0));
+            sb.AppendLine("## H8. Improvements and towns in the Historic age (`dev.historic`, 20 minutes, paired runs)");
+            sb.AppendLine();
+            sb.AppendLine("Both peoples autonomous, no player input. Control: the prince may propose grade 1 improvements (score " + new FactionTuning().UpgradeScore
+                + ", +5 for workshops) and City to Town (score " + new FactionTuning().TownScore + ") once the economy accepts them and the goods are in reach. Variant: both switched off (scores 0). Worked goods: planks, bricks, bread, meat and cut stone made by the player's people.");
+            sb.AppendLine();
+            sb.AppendLine("| Seed | Proposed (improve / town) | Improvements started | Improved | Towns | Worked goods made (with / without) | Raw goods collected (with / without) | Finished sites (with / without) | Strength at the end (with / without) |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|");
+            for (int i = 0; i < Seeds.Length; i++)
+            {
+                var on = runs[2 * i];
+                var off = runs[2 * i + 1];
+                sb.AppendLine("| " + Seeds[i] + " | " + on.UpgradesProposed + " | " + on.Started + " | " + on.Upgraded + " | " + on.Towns + " | " + on.Worked + " / " + off.Worked + " | " + on.Raw + " / " + off.Raw
+                    + " | " + on.Completed + " / " + off.Completed + " | " + on.Strength + "-" + on.RivalStrength + " / " + off.Strength + "-" + off.RivalStrength + " |");
+                if (on.Inv != null) failures.Add("H8: seed " + Seeds[i] + " " + on.Inv);
+                if (off.Upgraded + off.Towns > 0) failures.Add("H8: seed " + Seeds[i] + ": the switched-off prince still improved");
+            }
+            var ons = Enumerable.Range(0, Seeds.Length).Select(i => runs[2 * i]).ToArray();
+            var offs = Enumerable.Range(0, Seeds.Length).Select(i => runs[2 * i + 1]).ToArray();
+            int improved = ons.Count(r => r.Upgraded > 0);
+            int moreGoods = Enumerable.Range(0, Seeds.Length).Count(i => ons[i].Worked > offs[i].Worked);
+            sb.AppendLine();
+            sb.AppendLine("Means: worked goods " + F1(ons.Average(r => r.Worked)) + " with, " + F1(offs.Average(r => r.Worked)) + " without; raw goods " + F1(ons.Average(r => r.Raw)) + " with, "
+                + F1(offs.Average(r => r.Raw)) + " without; improvements " + F1(ons.Average(r => r.Upgraded)) + ", towns " + F1(ons.Average(r => r.Towns)) + " per game. More worked goods with improvements in " + moreGoods + " of 11 seeds. Raw goods fall a little: more of them are worked up, and a building stops while it is improved.");
+            sb.AppendLine();
+            if (improved < 8) failures.Add("H8: the prince improved a building in only " + improved + " of 11");
+            if (moreGoods < 8 || ons.Sum(r => r.Worked) <= offs.Sum(r => r.Worked)) failures.Add("H8: improvements raise the worked goods made in only " + moreGoods + " of 11");
+            sb.AppendLine("Pass: the prince improves at least one building in at least 8 of 11 games, never when switched off, and the people make more worked goods with improvements than without, in sum and in at least 8 of 11 seeds; zero ware drift.");
             sb.AppendLine();
         }
     }

@@ -21,21 +21,21 @@ Pass: an ignored prince never hands over; the prompt player hands over in every 
 
 ## H2. The prince on his own (20 minutes after the handover, no player input)
 
-The prompt player plays until the handover, then never answers again. Campaign rules (overrun loots instead of ending the game, no time limit), so the 20 minutes can be watched to the end. Minutes are counted from the handover.
+The prompt player plays until the handover, then never answers again (the island stays Prehistoric: nobody says "Show me"). Campaign rules (overrun loots instead of ending the game, no time limit), so the 20 minutes can be watched to the end. Minutes are counted from the handover.
 
 | Seed | Handover | Finished constructions | Longest gap | 2nd camp | 3rd camp | City | All five workshops | First warrior | Most fed warriors | Camps at end | Strength (you - rival) | Overruns suffered / dealt | Prince's own actions |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | 6.6 | 17 | 3.9 | before | before | 5.0 | 2.2 | 4.9 | 9 | 4 | 14 - 2 | 0 / 3 | 19 |
-| 2 | 6.9 | 16 | 3.3 | before | before | 4.4 | 2.2 | 7.7 | 9 | 4 | 14 - 2 | 0 / 2 | 20 |
-| 3 | 7.1 | 16 | 3.8 | before | before | 4.3 | 3.2 | 6.5 | 8 | 4 | 15 - 3 | 0 / 2 | 20 |
-| 4 | 6.5 | 14 | 3.4 | before | before | 4.3 | 3.1 | 7.1 | 9 | 4 | 15 - 5 | 0 / 3 | 20 |
-| 5 | 6.0 | 19 | 1.9 | before | before | 5.4 | 2.6 | 4.4 | 9 | 4 | 14 - 2 | 0 / 3 | 20 |
-| 6 | 6.0 | 19 | 3.2 | before | before | 6.6 | 2.0 | 4.6 | 9 | 4 | 14 - 2 | 0 / 3 | 20 |
-| 7 | 6.1 | 13 | 3.1 | before | before | 11.3 | 5.0 | 5.4 | 6 | 4 | 13 - 3 | 0 / 2 | 20 |
-| 8 | 6.7 | 19 | 2.4 | before | before | 6.3 | 2.1 | 5.3 | 3 | 6 | 10 - 3 | 0 / 3 | 20 |
-| 9 | 7.0 | 16 | 2.9 | before | before | 7.4 | 2.4 | 7.1 | 9 | 4 | 13 - 3 | 0 / 2 | 20 |
-| 10 | 6.0 | 18 | 2.4 | before | before | 4.4 | 3.1 | 7.0 | 9 | 4 | 14 - 2 | 0 / 3 | 20 |
-| 11 | 6.3 | 18 | 2.5 | before | before | 5.5 | 2.4 | 5.8 | 9 | 4 | 14 - 1 | 0 / 2 | 20 |
+| 1 | 6.6 | 15 | 3.5 | before | before | 5.0 | 2.2 | 4.9 | 9 | 6 | 16 - 1 | 0 / 3 | 20 |
+| 2 | 6.9 | 17 | 2.7 | before | before | 4.4 | 2.2 | 7.7 | 9 | 5 | 15 - 1 | 0 / 2 | 20 |
+| 3 | 7.1 | 16 | 3.8 | before | before | 4.3 | 3.2 | 6.5 | 8 | 6 | 17 - 1 | 0 / 2 | 20 |
+| 4 | 6.5 | 14 | 4.4 | before | before | 4.3 | 3.1 | 7.1 | 9 | 6 | 17 - 1 | 0 / 3 | 20 |
+| 5 | 6.0 | 19 | 1.9 | before | before | 5.4 | 2.6 | 4.4 | 9 | 5 | 15 - 1 | 0 / 3 | 20 |
+| 6 | 6.0 | 18 | 3.2 | before | before | 6.6 | 2.0 | 4.6 | 9 | 5 | 15 - 1 | 0 / 3 | 20 |
+| 7 | 6.1 | 14 | 3.1 | before | before | 9.3 | 5.0 | 5.4 | 6 | 5 | 12 - 2 | 0 / 2 | 20 |
+| 8 | 6.7 | 19 | 2.4 | before | before | 6.3 | 2.1 | 5.3 | 6 | 7 | 16 - 1 | 0 / 3 | 20 |
+| 9 | 7.0 | 16 | 2.8 | before | before | 7.4 | 2.4 | 7.1 | 9 | 4 | 13 - 1 | 0 / 2 | 20 |
+| 10 | 6.0 | 17 | 2.4 | before | before | 4.4 | 3.1 | 7.0 | 9 | 5 | 15 - 1 | 0 / 3 | 20 |
+| 11 | 6.3 | 18 | 2.5 | before | before | 5.5 | 2.4 | 5.8 | 6 | 5 | 15 - 2 | 0 / 2 | 20 |
 
 Milestones reached in the 11 games (by the end of the window): a third camp in 11, a city in 11, all five workshops in 11, a warrior in 11. Not overrun in 11 of 11; building all along (10+ constructions, no 10-minute gap) in 11 of 11.
 
@@ -43,9 +43,11 @@ Does the prince do better with the player? Same seeds and window: the player kee
 
 | Who plays after the handover | Mean finished constructions | Mean camps | Cities | Mean strength (you - rival) | Overruns suffered | Mean prince's own actions | Mean player casts after |
 |---|---|---|---|---|---|---|---|
-| the prince alone | 16.8 | 4.2 | 11 | 13.6 - 2.5 | 0 | 19.9 | 0.0 |
-| the prince and a casting player | 36.3 | 7.0 | 11 | 19.5 - 3.0 | 0 | 14.9 | 26.1 |
-| the prince, advised "economy" once | 17.0 | 4.0 | 11 | 14.8 - 2.1 | 0 | 20.0 | 0.0 |
+| the prince alone | 16.6 | 5.4 | 11 | 15.1 - 1.2 | 0 | 20.0 | 0.0 |
+| the prince and a casting player | 32.5 | 7.8 | 11 | 19.7 - 1.0 | 0 | 13.5 | 22.8 |
+| the prince, advised "economy" once | 16.7 | 5.2 | 11 | 15.1 - 1.3 | 0 | 20.0 | 0.0 |
+
+A casting player roughly doubles what gets built. One piece of advice changes what the prince builds (section H3), not how much: "economy" moves his picks among the same number of actions.
 
 Pass: with no input at all after the handover, the people are not overrun and keep building (10 or more finished constructions in the 20 minutes, never 10 minutes without one) in at least 8 of 11; a third camp in at least 8, a city and all five workshops in at least 6; a player who keeps casting adds constructions on average; zero ware drift; the game never ends in campaign mode.
 
@@ -121,7 +123,7 @@ Open decision 14.2, default taken: the handover also happens in the 20-minute sk
 | ignore | off (before H1-1) | 0 / 0 | 0 | 0 / 11 | 14.7 | 0.0 - 3.6 |
 | ignore | on | 0 / 0 | 0 | 0 / 11 | 14.7 | 0.0 - 3.6 |
 
-What moved: a slow player now gets the prince's help after the first workshop goods, so the 60 s and 90 s players win more often and sooner; the prompt player is barely changed (he already casts about as fast as the prince would act); the ignored prince is unchanged (he never hands over). The rival was not retuned: ECONOMY_PROOF.md keeps all its pass criteria.
+What moved: a slow player now gets the prince's help (one action about every minute) after the first workshop goods, so the 60 s player turns time wins and a draw into overrun wins; the 90 s player hands over late (about 15 minutes, or not at all) and changes little; the prompt and 45 s players are barely changed (they already cast faster than the prince acts); the ignored prince is unchanged (he never hands over). The rival was not retuned: ECONOMY_PROOF.md keeps all its pass criteria.
 
 Pass: the ignored prince's games are identical with and without the handover; the handover never makes the 90 s player lose more often.
 
@@ -131,21 +133,43 @@ The start is the end state of a scripted run: a director casts both peoples' top
 
 | Seed | Built in | Player reached | Rival reached | After 10 minutes | Invariants |
 |---|---|---|---|---|---|
-| 1 | 15.0 | yes (5 camps, 20 buildings) | yes (6 camps, 22 buildings) | plays on, 13-17 | zero drift |
-| 2 | 13.3 | yes (6 camps, 20 buildings) | yes (5 camps, 16 buildings) | plays on, 18-15 | zero drift |
-| 3 | 19.4 | yes (6 camps, 21 buildings) | yes (8 camps, 29 buildings) | plays on, 16-20 | zero drift |
-| 4 | 15.5 | yes (5 camps, 18 buildings) | yes (4 camps, 15 buildings) | plays on, 15-10 | zero drift |
-| 5 | 15.3 | yes (6 camps, 23 buildings) | yes (5 camps, 20 buildings) | plays on, 19-16 | zero drift |
-| 6 | 13.3 | yes (4 camps, 18 buildings) | yes (6 camps, 23 buildings) | plays on, 17-18 | zero drift |
-| 7 | 12.8 | yes (4 camps, 17 buildings) | yes (4 camps, 17 buildings) | plays on, 15-12 | zero drift |
-| 8 | 15.3 | yes (6 camps, 17 buildings) | yes (5 camps, 16 buildings) | plays on, 18-10 | zero drift |
-| 9 | 12.4 | yes (5 camps, 19 buildings) | yes (5 camps, 9 buildings) | plays on, 14-11 | zero drift |
-| 10 | 16.7 | yes (5 camps, 23 buildings) | yes (6 camps, 16 buildings) | plays on, 15-12 | zero drift |
-| 11 | 11.0 | yes (5 camps, 19 buildings) | yes (3 camps, 10 buildings) | plays on, 13-8 | zero drift |
+| 1 | 15.0 | yes (4 camps, 15 buildings) | yes (7 camps, 23 buildings) | plays on, 13-20 | zero drift |
+| 2 | 13.3 | yes (6 camps, 22 buildings) | yes (4 camps, 12 buildings) | plays on, 21-12 | zero drift |
+| 3 | 19.4 | yes (5 camps, 21 buildings) | yes (8 camps, 27 buildings) | plays on, 15-21 | zero drift |
+| 4 | 15.5 | yes (7 camps, 26 buildings) | yes (2 camps, 9 buildings) | plays on, 21-6 | zero drift |
+| 5 | 15.3 | yes (5 camps, 21 buildings) | yes (5 camps, 20 buildings) | plays on, 19-17 | zero drift |
+| 6 | 13.3 | yes (4 camps, 18 buildings) | yes (6 camps, 22 buildings) | plays on, 17-19 | zero drift |
+| 7 | 12.8 | yes (5 camps, 20 buildings) | yes (3 camps, 8 buildings) | plays on, 18-8 | zero drift |
+| 8 | 15.3 | yes (7 camps, 22 buildings) | yes (3 camps, 10 buildings) | plays on, 24-4 | zero drift |
+| 9 | 12.4 | yes (7 camps, 21 buildings) | yes (3 camps, 6 buildings) | plays on, 18-4 | zero drift |
+| 10 | 16.7 | yes (7 camps, 27 buildings) | yes (4 camps, 11 buildings) | plays on, 20-8 | zero drift |
+| 11 | 11.0 | yes (7 camps, 23 buildings) | yes (1 camps, 6 buildings) | plays on, 20-2 | zero drift |
 
 Same seed twice: identical state.
 
 Pass: both peoples reach the listed contents on every seed, both have handed over, the era is Historic, zero ware drift, the same seed gives the same start.
+
+## H8. Improvements and towns in the Historic age (`dev.historic`, 20 minutes, paired runs)
+
+Both peoples autonomous, no player input. Control: the prince may propose grade 1 improvements (score 60, +5 for workshops) and City to Town (score 70) once the economy accepts them and the goods are in reach. Variant: both switched off (scores 0). Worked goods: planks, bricks, bread, meat and cut stone made by the player's people.
+
+| Seed | Proposed (improve / town) | Improvements started | Improved | Towns | Worked goods made (with / without) | Raw goods collected (with / without) | Finished sites (with / without) | Strength at the end (with / without) |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 37 | 6 | 5 | 1 | 137 / 114 | 617 / 639 | 7 / 12 | 10-24 / 9-25 |
+| 2 | 67 | 4 | 4 | 3 | 203 / 171 | 850 / 962 | 13 / 17 | 24-6 / 25-7 |
+| 3 | 68 | 7 | 6 | 2 | 178 / 147 | 580 / 744 | 9 / 16 | 14-29 / 17-24 |
+| 4 | 77 | 1 | 1 | 4 | 172 / 112 | 1121 / 1169 | 13 / 15 | 23-5 / 20-5 |
+| 5 | 78 | 1 | 0 | 2 | 215 / 176 | 879 / 911 | 15 / 16 | 29-6 / 25-6 |
+| 6 | 56 | 4 | 3 | 2 | 168 / 144 | 603 / 599 | 12 / 17 | 9-31 / 10-30 |
+| 7 | 56 | 2 | 2 | 2 | 155 / 135 | 756 / 797 | 13 / 15 | 21-5 / 20-7 |
+| 8 | 43 | 2 | 2 | 3 | 247 / 190 | 981 / 1006 | 16 / 19 | 26-3 / 25-3 |
+| 9 | 38 | 7 | 6 | 3 | 164 / 100 | 843 / 909 | 12 / 17 | 20-3 / 19-3 |
+| 10 | 81 | 8 | 7 | 3 | 201 / 137 | 915 / 935 | 10 / 16 | 21-7 / 21-7 |
+| 11 | 47 | 9 | 8 | 2 | 162 / 110 | 1092 / 1146 | 11 / 18 | 17-2 / 17-2 |
+
+Means: worked goods 182.0 with, 139.6 without; raw goods 839.7 with, 892.5 without; improvements 4.0, towns 2.5 per game. More worked goods with improvements in 11 of 11 seeds. Raw goods fall a little: more of them are worked up, and a building stops while it is improved.
+
+Pass: the prince improves at least one building in at least 8 of 11 games, never when switched off, and the people make more worked goods with improvements than without, in sum and in at least 8 of 11 seeds; zero ware drift.
 
 ## Verdict
 
