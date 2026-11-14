@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.IO;
 using NUnit.Framework;
 using UnityEngine;
@@ -169,7 +169,8 @@ namespace World.Game.Tests
             yield return Frames(10);
             var dn = DayNight.Instance;
             var lit = LandViews.Instance.Settlement(0).GetComponent<LitBy>();
-            var torch = lit.Torches[0];
+            // Mira's brazier: a fixture no game event switches off (a camp's own fire goes out while demons hold it).
+            var torch = LightDecorator.Instance.MiraBrazier;
             Assert.Greater(torch.Level, 0.95f);
 
             StepTo(5.9); // first light: the sun is just under the horizon, the lights are part way down
@@ -188,7 +189,8 @@ namespace World.Game.Tests
             Assert.IsFalse(torch.Light.enabled, "torch light off");
             Assert.IsFalse(torch.Flame.gameObject.activeSelf, "torch flame hidden");
             Assert.IsFalse(WorldLights.Instance.Lantern.enabled, "lantern out");
-            Assert.AreEqual(lit.Main.DayLevel, lit.Main.Level, 0.01f, "the hearth keeps a low day glow");
+            Assert.AreEqual(lit.Main.On ? lit.Main.DayLevel : 0f, lit.Main.Level, 0.01f, "a burning hearth keeps a low day glow");
+            Assert.AreEqual(0.35f, lit.Main.DayLevel, 0.001f);
             Assert.AreEqual(0f, dn.State.Stars, 0.001f);
             Assert.AreEqual(1, Directionals());
 
@@ -246,13 +248,14 @@ namespace World.Game.Tests
             Assert.AreNotEqual(a.SunDir, DayNight.Evaluate(DayNight.HourAtTick(1934)).SunDir);
 
             yield return Load();
-            for (int i = 0; i < 2250; i++) _boot.Clock.StepOnce(); // into the dawn, where everything is changing fastest
+            for (int i = 0; i < 2190; i++) _boot.Clock.StepOnce(); // into the dawn, where everything is changing fastest
+            LightDecorator.Instance.ScanNow(); // the decorator scans twice a second; count the fires of the state as it is now
             yield return Frames(3);
             var dn = DayNight.Instance;
             var before = dn.State; double hour = dn.Hour;
             Assert.Greater(before.Night, 0.01f); Assert.Less(before.Night, 0.99f, "saved during the dawn");
             Color ambient = RenderSettings.ambientSkyColor, fog = RenderSettings.fogColor;
-            var moonRot = dn.Moon.transform.rotation; float moonInt = dn.Moon.intensity; bool sunOn = dn.Sun.enabled;
+            var moonRot = dn.Moon.transform.rotation; float moonInt = dn.Moon.intensity; bool sunOn = dn.Sun.enabled, moonOn = dn.Moon.enabled;
             int fires = WorldLights.Registered;
 
             Assert.IsTrue(_boot.Saves.Save(), SaveSystem.LastMessage);
@@ -262,6 +265,8 @@ namespace World.Game.Tests
             yield return Frames(3);
             _boot = WorldBootstrap.Instance;
             Assert.AreNotSame(old, _boot, "the scene reloaded");
+            LightDecorator.Instance.ScanNow();
+            yield return null;
             var dn2 = DayNight.Instance;
             Assert.AreNotSame(dn, dn2);
             Assert.AreEqual(hour, dn2.Hour, 1e-9, "the hour of the saved game time");
@@ -272,6 +277,8 @@ namespace World.Game.Tests
             Assert.AreEqual(before.Zenith, after.Zenith); Assert.AreEqual(before.Horizon, after.Horizon);
             Assert.AreEqual(ambient, RenderSettings.ambientSkyColor); Assert.AreEqual(fog, RenderSettings.fogColor);
             Assert.AreEqual(sunOn, dn2.Sun.enabled);
+            Assert.AreEqual(moonOn, dn2.Moon.enabled);
+            Assert.IsTrue(moonOn, "the moon is still up at the saved time");
             Assert.AreEqual(moonInt, dn2.Moon.intensity, 1e-6f);
             Assert.Less(Quaternion.Angle(moonRot, dn2.Moon.transform.rotation), 0.001f);
             Assert.AreEqual(fires, WorldLights.Registered, "the same fires are registered");

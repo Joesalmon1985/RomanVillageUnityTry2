@@ -263,9 +263,10 @@ namespace World.Game
             {
                 var f = All[i];
                 if (f == null) continue;
-                if (f.GroundRenderer == null && f.HaloRenderer == null && f.Level == 0f && f.SlotFade == 0f) Dress(f);
                 float want = f.On ? Mathf.Lerp(f.DayLevel, 1f, night) : 0f;
-                f.Level = Mathf.MoveTowards(f.Level, want, dt * 1.5f);
+                // A light that has just appeared starts at its level (no fade-in at boot or after a load).
+                if (!f.Dressed) { Dress(f); f.Dressed = true; f.Level = want; f.SlotFade = f.Slot != Slot.None ? 1f : 0f; }
+                else f.Level = Mathf.MoveTowards(f.Level, want, dt * 1.5f);
                 float lvl = f.Level;
                 bool lit = lvl > 0.004f;
 

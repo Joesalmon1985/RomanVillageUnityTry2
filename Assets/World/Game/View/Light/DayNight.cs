@@ -400,7 +400,7 @@ namespace World.Game
         {
             bool on = intensity > 0.001f;
             if (l.enabled != on) l.enabled = on;
-            if (!on) return;
+            if (!on) { l.intensity = 0f; return; }
             float minY = Mathf.Sin(MinLightElevation * Mathf.Deg2Rad);
             if (dir.y < minY)
             {
