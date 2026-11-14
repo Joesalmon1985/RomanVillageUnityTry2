@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "authoring": {
     "forward": "-Y",
     "up": "Z",
@@ -472,7 +472,7 @@
     "max_bones": 45,
     "max_shape_keys": 16,
     "max_influences": 4,
-    "max_slots": 8
+    "max_slots": 9
   },
   "shape_keys": {
     "basis": "Basis",
@@ -508,12 +508,17 @@
       "metal",
       "eye_white",
       "eye_dark",
-      "emissive"
+      "emissive",
+      "iris"
     ],
     "material_prefix": "Role_",
     "hidden": "hidden",
-    "max_per_character": 8
+    "max_per_character": 9
   },
+  "costumes": [
+    "prehistoric",
+    "historic"
+  ],
   "animation": {
     "fps": 30,
     "clip_sets": {
@@ -608,10 +613,16 @@
     "character_dir": "characters/<key>/",
     "character_blend": "characters/<key>/<key>.blend",
     "character_fbx": "characters/<key>/<key>.fbx",
+    "character_costume_dir": "characters/<key>/<costume>/",
+    "character_costume_fbx": "characters/<key>/<costume>/<key>@<costume>.fbx",
+    "character_costume_blend": "characters/<key>/<costume>/<key>@<costume>.blend",
+    "character_costume_manifest": "characters/<key>/<costume>/manifest.json",
+    "character_costume_reports": "characters/<key>/<costume>/reports/",
     "character_manifest": "characters/<key>/manifest.json",
     "character_reports": "characters/<key>/reports/",
     "anim_dir": "anim/",
     "anim_fbx": "anim/anim_<set>.fbx",
+    "anim_variant_fbx": "anim/anim_<set>@<key>.fbx",
     "anim_manifest": "anim/anim_manifest.json",
     "cast_manifest": "cast_manifest.json",
     "inspect_dir": "inspect/",
@@ -619,8 +630,10 @@
   },
   "unity_paths": {
     "character_fbx": "Assets/Characters/Resources/Characters/Models/<key>.fbx",
+    "character_costume_fbx": "Assets/Characters/Resources/Characters/Models/<key>@<costume>.fbx",
     "prefab": "Assets/Characters/Resources/Characters/<key>.prefab",
-    "anim_fbx": "Assets/Characters/Animation/anim_<set>.fbx"
+    "anim_fbx": "Assets/Characters/Animation/anim_<set>.fbx",
+    "anim_variant_fbx": "Assets/Characters/Animation/anim_<set>@<key>.fbx"
   },
   "manifest_sections": {
     "identity": "WP-1/common: key, number, display, rig, source fbx file name (no path)",

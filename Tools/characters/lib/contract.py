@@ -12,7 +12,11 @@ See Tools/characters/README.md, section "Contract", for the prose and the reason
 import json
 import os
 
-CONTRACT_VERSION = 1
+CONTRACT_VERSION = 2
+# Version history (every change so far is additive):
+#   1  WP-1 contract (14 Nov 2026)
+#   2  integration pass: a tenth role slot "iris" (budget 9 per character), Run and the campaign clip set (WP-5),
+#      one character FBX per costume, per-character animation variant files, cast_manifest sections (README 2.5, 2.7)
 
 # --------------------------------------------------------------------------------------
 # Side convention (measured, see README "Resolved unknowns"):
@@ -171,13 +175,16 @@ EXPRESSIONS = ["neutral", "attentive", "concentrating", "surprised", "pleased", 
 # The supplied RV_xxxxxx materials exist only until WP-4 remaps them. A character uses only the
 # slots it needs; at most 8 slots per hero character (budget: one draw call per slot).
 # --------------------------------------------------------------------------------------
-ROLE_SLOTS = ["skin", "hair", "cloth_main", "cloth_trim", "leather", "metal", "eye_white", "eye_dark", "emissive"]
+ROLE_SLOTS = ["skin", "hair", "cloth_main", "cloth_trim", "leather", "metal", "eye_white", "eye_dark", "emissive", "iris"]
 ROLE_MATERIAL_PREFIX = "Role_"   # Role_skin, Role_hair, ...
-# sclera -> eye_white; iris, pupil, eye outline -> eye_dark; brows and beard -> hair; glow -> emissive.
-MAX_SLOTS_PER_CHARACTER = 8
+# sclera -> eye_white; iris -> iris (contract v2: each character keeps its eye colour); pupil, eye outline and mouth ->
+# eye_dark; brows and beard -> hair; glow -> emissive.
+MAX_SLOTS_PER_CHARACTER = 9
 # Pieces a costume hides are not deleted: they are assigned to this extra material slot, which the Unity
-# importer maps to a no-draw material (so a live costume swap can show or hide them). Not counted in the 8.
+# importer maps to a no-draw material (so a live costume swap can show or hide them). Not counted in the 9.
 HIDDEN_SLOT = "hidden"
+# Costume variants every human is built in (one FBX each, contract v2). The first is the default.
+COSTUMES = ["prehistoric", "historic"]
 
 # --------------------------------------------------------------------------------------
 # Animation. Clip names are exactly the Blender action names and the Unity clip names (Unity
@@ -212,11 +219,17 @@ ANIM_FBX_PREFIX = "anim_"        # anim_idle.fbx, anim_locomotion.fbx ...
 LAYOUT = {
     "character_dir": "characters/<key>/",
     "character_blend": "characters/<key>/<key>.blend",
-    "character_fbx": "characters/<key>/<key>.fbx",               # mesh + rig, no clips
+    "character_fbx": "characters/<key>/<key>.fbx",               # mesh + rig, no clips (default costume copy)
+    "character_costume_dir": "characters/<key>/<costume>/",      # one build per costume (contract v2)
+    "character_costume_fbx": "characters/<key>/<costume>/<key>@<costume>.fbx",
+    "character_costume_blend": "characters/<key>/<costume>/<key>@<costume>.blend",
+    "character_costume_manifest": "characters/<key>/<costume>/manifest.json",
+    "character_costume_reports": "characters/<key>/<costume>/reports/",
     "character_manifest": "characters/<key>/manifest.json",
     "character_reports": "characters/<key>/reports/",             # verify output, foot report, renders
     "anim_dir": "anim/",
-    "anim_fbx": "anim/anim_<set>.fbx",                            # skeleton + actions, no mesh
+    "anim_fbx": "anim/anim_<set>.fbx",                            # skeleton + actions, no mesh (base clips)
+    "anim_variant_fbx": "anim/anim_<set>@<key>.fbx",              # <Clip>@<key> variants baked on <key>'s own rig
     "anim_manifest": "anim/anim_manifest.json",                   # clip name, set, length, loop, native_speed, events
     "cast_manifest": "cast_manifest.json",                        # merged index of all character + anim manifests
     "inspect_dir": "inspect/",
@@ -225,8 +238,10 @@ LAYOUT = {
 # Where WP-6 copies things in the Unity project:
 UNITY_PATHS = {
     "character_fbx": "Assets/Characters/Resources/Characters/Models/<key>.fbx",
+    "character_costume_fbx": "Assets/Characters/Resources/Characters/Models/<key>@<costume>.fbx",
     "prefab": "Assets/Characters/Resources/Characters/<key>.prefab",   # Resources.Load("Characters/<key>")
     "anim_fbx": "Assets/Characters/Animation/anim_<set>.fbx",
+    "anim_variant_fbx": "Assets/Characters/Animation/anim_<set>@<key>.fbx",
 }
 
 # --------------------------------------------------------------------------------------
@@ -271,6 +286,7 @@ def as_dict():
         "expressions": EXPRESSIONS,
         "role_slots": {"names": ROLE_SLOTS, "material_prefix": ROLE_MATERIAL_PREFIX, "hidden": HIDDEN_SLOT,
                        "max_per_character": MAX_SLOTS_PER_CHARACTER},
+        "costumes": COSTUMES,
         "animation": {"fps": FPS, "clip_sets": CLIP_SETS, "loop": LOOP_CLIPS, "additive": ADDITIVE_CLIPS,
                       "events": EVENT_NAMES, "fbx_prefix": ANIM_FBX_PREFIX, "variant_separator": "@"},
         "layout": LAYOUT,
