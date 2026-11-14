@@ -46,6 +46,12 @@ namespace World.Sim.Factions
                 case ProposalKind.Settlement: return EconomyLogic.CheckSettlement(s, p.Faction, p.Corner);
                 case ProposalKind.City: return EconomyLogic.CheckCity(s, p.Faction, p.Corner);
                 case ProposalKind.Banish: return DemonLogic.CheckBanish(s, p.Faction, p.DemonSiteKind, p.DemonSiteId);
+                case ProposalKind.Upgrade:
+                {
+                    var b = Brain.BuildingOnPlot(s, p.Faction, p.Plot);
+                    return b == null ? EconomyRefusals.Reject(EconomyRefusals.UnknownBuilding) : Brain.CheckUpgrade(s, p.Faction, b.Id);
+                }
+                case ProposalKind.Town: return Brain.CheckTown(s, p.Faction, p.Corner);
             }
             return FactionRefusals.Reject(FactionRefusals.UnknownProposal);
         }
@@ -80,6 +86,8 @@ namespace World.Sim.Factions
                 case ProposalKind.Settlement: EconomyLogic.PlaceSettlementSite(s, p.Faction, p.Corner, ev); break;
                 case ProposalKind.City: EconomyLogic.PlaceCitySite(s, p.Faction, p.Corner, ev); break;
                 case ProposalKind.Banish: DemonLogic.Banish(s, p.Faction, p.DemonSiteKind, p.DemonSiteId, ev); break;
+                case ProposalKind.Upgrade: Brain.StartUpgrade(s, p.Faction, Brain.BuildingOnPlot(s, p.Faction, p.Plot).Id, ev); break;
+                case ProposalKind.Town: Brain.StartTown(s, p.Faction, p.Corner, ev); break;
             }
             if (p.Key == Brain.OpeningKey(s, p.Faction)) f.OpeningDone[p.Faction] = true;
             f.Casts[p.Faction]++;
@@ -139,14 +147,15 @@ namespace World.Sim.Factions
         public static void ComputeStrength(WorldState s, Faction fa)
         {
             var tu = s.Factions.Tuning;
-            fa.Settlements = fa.Cities = fa.FedWarriors = fa.HungryWarriors = fa.HeldCamps = 0;
+            fa.Settlements = fa.Cities = fa.Towns = fa.FedWarriors = fa.HungryWarriors = fa.HeldCamps = 0;
             if (s.Economy != null)
             {
                 foreach (var st in s.Economy.Settlements)
                 {
                     if (st.Faction != fa.Id || st.State != SettlementState.Active) continue;
                     if (!tu.DemonHeldCampsCount && EconomyLogic.CornerDemons(s, st.Corner) > 0) { fa.HeldCamps++; continue; }
-                    if (st.IsCity) fa.Cities++;
+                    if (st.IsTown) fa.Towns++;
+                    else if (st.IsCity) fa.Cities++;
                     else fa.Settlements++;
                 }
                 foreach (var w in s.Economy.Warriors)
@@ -156,7 +165,8 @@ namespace World.Sim.Factions
                     else fa.HungryWarriors++;
                 }
             }
-            fa.Strength = fa.Settlements * tu.StrengthPerSettlement + fa.Cities * tu.StrengthPerCity + fa.FedWarriors * tu.StrengthPerFedWarrior;
+            fa.Strength = fa.Settlements * tu.StrengthPerSettlement + fa.Cities * tu.StrengthPerCity + fa.Towns * tu.StrengthPerTown
+                + fa.FedWarriors * tu.StrengthPerFedWarrior;
         }
 
         public static GameOutcome OutcomeFor(int winner) =>
@@ -170,7 +180,9 @@ namespace World.Sim.Factions
         {
             var f = s.Factions;
             if (f == null || f.GameOver || f.Factions.Count < PlayerIds.Count) return;
-            bool campaign = Eras.AgesApi.IsCampaign(s);
+            // Overrun ends only the 20-minute Prehistoric skirmish; everywhere else the setback rule of PRD_AGES 4.3 applies
+            // (campaign, a game that took the Historic step, dev starts; H1-1).
+            bool fatal = TimeLimited(s);
             if (f.Halts.Count > 0) f.Halts.RemoveAll(h => h.UntilTick <= s.Tick);
             foreach (var fa in f.Factions)
             {
@@ -198,7 +210,7 @@ namespace World.Sim.Factions
                 {
                     w.Active = false;
                     ev.Add(new FactionOverrun { Attacker = w.Attacker, Defender = w.Defender });
-                    if (!campaign)
+                    if (fatal)
                     {
                         End(s, FactionLogic.OutcomeFor(w.Attacker), OutcomeReasons.Overrun, ps, rs, ev);
                         return;
@@ -210,7 +222,7 @@ namespace World.Sim.Factions
             {
                 int attacker = s.Tick < tu.WarningGraceTicks ? -1
                     : ps >= rs + tu.OverrunMargin ? PlayerIds.Human : rs >= ps + tu.OverrunMargin ? PlayerIds.Rival : -1;
-                // Campaign setback grace (4.3): no new warning against a people just overrun. -1 (never set) outside the campaign.
+                // Setback grace (4.3): no new warning against a people just overrun. -1 (never set) in the Prehistoric skirmish.
                 if (attacker >= 0 && f.Factions[1 - attacker].SetbackUntilTick > s.Tick) attacker = -1;
                 if (attacker >= 0)
                 {
@@ -222,7 +234,9 @@ namespace World.Sim.Factions
                     ev.Add(new OverrunWarningStarted { Attacker = w.Attacker, Defender = w.Defender, EndTick = w.EndTick });
                 }
             }
-            if (!campaign && s.Tick >= tu.TimeLimitTicks)
+            // The time limit belongs to the 20-minute Prehistoric skirmish only (PRD_AGES 4.3; H1-1): a game that stepped
+            // to the Historic age, a dev start and the campaign play on.
+            if (TimeLimited(s) && s.Tick >= tu.TimeLimitTicks)
             {
                 if (w.Active)
                 {
@@ -232,6 +246,10 @@ namespace World.Sim.Factions
                 End(s, ps > rs ? GameOutcome.Victory : rs > ps ? GameOutcome.Defeat : GameOutcome.Draw, OutcomeReasons.Time, ps, rs, ev);
             }
         }
+
+        /// <summary>The skirmish time limit applies: Prehistoric era in skirmish mode.</summary>
+        public static bool TimeLimited(WorldState s) =>
+            Eras.AgesApi.Mode(s) == Eras.PlayMode.Skirmish && Eras.AgesApi.Current(s) == Eras.Era.Prehistoric;
 
         private static void End(WorldState s, GameOutcome outcome, string reason, int ps, int rs, EventBuffer ev)
         {
@@ -296,6 +314,8 @@ namespace World.Sim.Factions
             // Later ages (PRD_AGES A.5, 4.3; H1-0).
             sim.RegisterHandler(new AdviseHandler());
             EconomyApi.Hooks(sim).IsSettlementHalted.Add(CampaignRules.IsHalted);
+            // The handover (PRD_AGES 4.2; H1-1): the first worked ware delivered to a construction of a people.
+            EconomyApi.Hooks(sim).OnConstructionDelivery.Add(AutonomyLogic.OnConstructionDelivery);
         }
     }
 }

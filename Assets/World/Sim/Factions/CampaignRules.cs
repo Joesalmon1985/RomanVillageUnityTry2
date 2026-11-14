@@ -4,10 +4,13 @@ using World.Sim.Eras;
 namespace World.Sim.Factions
 {
     /// <summary>
-    /// The campaign overrun rule (PRD_AGES 4.3; crystals PRD N-2, N-3). Only reached when AgesApi.IsCampaign: in skirmish
-    /// the overrun stays fatal (StrengthSystem). H1-0 FIRST VERSION: target choice, the home-loot branch, the halt, the
-    /// setback grace and CampOverrun are real; the capture branch waits on EconomySeams.TransferSettlement (H1-0 STUB in
-    /// the economy, implemented by H1-2): until then a capture falls back to looting the home camp. H1-1 owns this file.
+    /// The campaign overrun rule, the "setback" (PRD_AGES 4.3; crystals PRD N-2, N-3). Applies to every game except the
+    /// 20-minute Prehistoric skirmish, where the overrun stays fatal (StrengthSystem; H1-1 widened it from campaign mode
+    /// to the Historic age and dev starts too, so a story game between "Show me" and StartCampaign, and dev.historic,
+    /// never end by overrun). The overrun captures the defender's camp nearest the attacker's home, never the home
+    /// (EconomySeams.TransferSettlement, H1-2); with no other camp, or until H1-2 lands (the seam returns false), it loots
+    /// the home: half its stock, its buildings stop LootHaltTicks. Then no new warning against the defender for
+    /// SetbackGraceTicks. CampOverrun is raised either way.
     /// </summary>
     internal static class CampaignRules
     {

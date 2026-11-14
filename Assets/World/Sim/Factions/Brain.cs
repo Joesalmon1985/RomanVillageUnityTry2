@@ -63,6 +63,7 @@ namespace World.Sim.Factions
 
             var cands = Candidates(s, faction);
             ClusterBonus(s, faction, cands);
+            AdviceBonus(s, faction, cands);
             var declined = new HashSet<string>();
             foreach (var d in f.Declined) if (d.Faction == faction && d.UntilTick > s.Tick) declined.Add(d.Key);
             var best = new Dictionary<string, Candidate>();
@@ -256,7 +257,85 @@ namespace World.Sim.Factions
             }
 
             AddExpansion(s, faction, list, collects, defending, press);
+            AddGrades(s, faction, list, defending, press);
             return list;
+        }
+
+        // ---- grades (PRD_AGES 5.6, 8.2; H1-1) ----
+
+        private static readonly UpgradeBuildingHandler UpgradeBuildingCheck = new UpgradeBuildingHandler();
+        private static readonly UpgradeSettlementHandler UpgradeSettlementCheck = new UpgradeSettlementHandler();
+
+        /// <summary>The economy's own validation of a building upgrade (UpgradeBuilding).</summary>
+        public static CommandResult CheckUpgrade(WorldState s, int faction, int buildingId) =>
+            UpgradeBuildingCheck.Validate(s, new UpgradeBuilding { PlayerId = faction, BuildingId = buildingId });
+
+        /// <summary>The economy's own validation of City to Town (UpgradeSettlement).</summary>
+        public static CommandResult CheckTown(WorldState s, int faction, int corner) =>
+            UpgradeSettlementCheck.Validate(s, new UpgradeSettlement { PlayerId = faction, Corner = corner });
+
+        /// <summary>Starts a validated building upgrade through the economy's handler (the grade logic is H1-2's).</summary>
+        public static void StartUpgrade(WorldState s, int faction, int buildingId, EventBuffer ev) =>
+            UpgradeBuildingCheck.Apply(s, new UpgradeBuilding { PlayerId = faction, BuildingId = buildingId }, ev ?? new EventBuffer());
+
+        /// <summary>Starts a validated City to Town through the economy's handler.</summary>
+        public static void StartTown(WorldState s, int faction, int corner, EventBuffer ev) =>
+            UpgradeSettlementCheck.Apply(s, new UpgradeSettlement { PlayerId = faction, Corner = corner }, ev ?? new EventBuffer());
+
+        /// <summary>The live building of a faction on a plot, or null.</summary>
+        public static Building BuildingOnPlot(WorldState s, int faction, int plot)
+        {
+            foreach (var b in s.Economy.Buildings)
+                if (b.Plot == plot && b.Faction == faction && !EconomyLogic.IsGone(b)) return b;
+            return null;
+        }
+
+        /// <summary>
+        /// From the Historic age on: grade 1 upgrades of finished buildings (score UpgradeScore, +5 for workshops, + the
+        /// basic-economy order) and City to Town (TownScore). Each only when the economy accepts the command and the goods
+        /// are in reach; in H1 the grade commands are H1-2's, so until that lands no such candidate appears.
+        /// </summary>
+        private static void AddGrades(WorldState s, int faction, List<Candidate> list, bool defending, int press)
+        {
+            if (!Eras.AgesApi.AtLeast(s, Eras.Era.Historic)) return;
+            var e = s.Economy;
+            var tu = s.Factions.Tuning;
+            foreach (var b in e.Buildings)
+            {
+                if (b.Faction != faction || b.State != BuildingState.Active || b.Upgrading) continue;
+                var def = BuildingDefs.Get(b.Type);
+                int next = (int)b.Grade + 1;
+                if (def?.Grades == null || next >= def.Grades.Length || def.Grades[next] == null) continue;
+                if (!CheckUpgrade(s, faction, b.Id).Ok) continue;
+                if (def.Grades[next].Goods != null && !Affordable(s, b.Settlement, def.Grades[next].Goods)) continue;
+                int score = tu.UpgradeScore + (def.Class == BuildingClass.Workshop ? 5 : 0) - (int)b.Type / 4;
+                string benefit = string.IsNullOrEmpty(def.Grades[next].Benefit) ? "it will work better" : def.Grades[next].Benefit;
+                list.Add(Make(ProposalKind.Upgrade, (int)b.Type, b.Settlement, b.Plot, -1, -1, DemonSiteKind.Corner, -1, score,
+                    "Improving the " + def.Name + ": " + benefit.TrimEnd('.') + ".", b.Type == BuildingType.Sawmill ? Speakers.Sawyer : Speakers.Prince));
+            }
+            foreach (var st in e.Settlements)
+            {
+                if (st.Faction != faction || st.State != SettlementState.Active || !st.IsCity || st.IsTown || st.Upgrade != UpgradeState.None) continue;
+                if (!CheckTown(s, faction, st.Corner).Ok || !Affordable(s, st.Id, e.Tuning.TownCost)) continue;
+                string reason = "A town gives us more plots and counts for more against " + Enemy(faction) + ".";
+                list.Add(Make(ProposalKind.Town, -1, st.Id, -1, -1, st.Corner, DemonSiteKind.Corner, -1, tu.TownScore + press + (defending ? 50 : 0),
+                    defending ? reason + Gathering(faction) : reason, Speakers.Prince));
+            }
+        }
+
+        /// <summary>Advice in force (8.4): Priority and FocusWare add their bonus to matching candidates.</summary>
+        private static void AdviceBonus(WorldState s, int faction, List<Candidate> cands)
+        {
+            var fs = s.Factions;
+            if (faction < 0 || faction >= fs.Factions.Count || fs.Factions[faction].Advice.Count == 0) return;
+            for (int i = 0; i < cands.Count; i++)
+            {
+                var c = cands[i];
+                int bonus = AutonomyLogic.AdviceBonus(s, faction, c.Kind, c.BuildingType, c.Corner);
+                if (bonus == 0) continue;
+                c.Score += bonus;
+                cands[i] = c;
+            }
         }
 
         /// <summary>
@@ -558,7 +637,7 @@ namespace World.Sim.Factions
             var e = s.Economy;
             int n = 0;
             foreach (var b in e.Buildings)
-                if (b.Faction == faction && (b.State == BuildingState.Site || b.State == BuildingState.Constructing)) n++;
+                if (b.Faction == faction && (b.State == BuildingState.Site || b.State == BuildingState.Constructing || (b.State == BuildingState.Active && b.Upgrading))) n++;
             foreach (var r in e.Roads)
                 if (r.Faction == faction && (r.State == RoadState.Site || r.State == RoadState.Constructing)) n++;
             foreach (var st in e.Settlements)
@@ -595,7 +674,7 @@ namespace World.Sim.Factions
             {
                 var c = cands[i];
                 double x, z;
-                if (c.Kind == ProposalKind.Building) { x = PlotLayout.PlotX(t, c.Plot); z = PlotLayout.PlotZ(t, c.Plot); }
+                if (c.Kind == ProposalKind.Building || c.Kind == ProposalKind.Upgrade) { x = PlotLayout.PlotX(t, c.Plot); z = PlotLayout.PlotZ(t, c.Plot); }
                 else if (c.Kind == ProposalKind.Road) { x = t.HexEdgeMidX(c.HexEdge); z = t.HexEdgeMidZ(c.HexEdge); }
                 else if (c.Kind == ProposalKind.Banish)
                 {
@@ -638,6 +717,8 @@ namespace World.Sim.Factions
             foreach (var fa in f.Factions)
             {
                 if (!fa.Auto) continue;
+                // The player's prince after the handover announces and executes (PRD_AGES 8.4, H1-1).
+                if (AutonomyLogic.IsLed(fa)) { AutonomyLogic.Tick(s, fa, ev); continue; }
                 var top = FactionLogic.Top(f, fa.Id);
                 if (top == null || top.TopSinceTick < 0) continue;
                 int delay = FactionLogic.RivalDelay(s);
