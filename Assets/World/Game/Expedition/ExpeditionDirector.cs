@@ -254,10 +254,6 @@ namespace World.Game
         {
             if (req == null || req.Mode == EncounterKind.Practice) return;
             ShowAfterDuel();
-            // A duel underground is fought with the player in that interior (its light, no sky), e.g. after a load or a dev jump.
-            var att = CampaignApi.Attempt(S);
-            var enc = att != null ? D.Encounter(att.EncounterId) : null;
-            if (enc != null && enc.Threshold.IsInterior && (Interiors.Current ?? "") != enc.Threshold.Interior) Interiors.Enter(enc.Threshold);
             foreach (var m in _mates) if (m.Npc != null && m.Npc.gameObject.activeSelf) { m.Npc.gameObject.SetActive(false); _hiddenForDuel.Add(m.Npc.gameObject); }
             foreach (var m in _mates) if (m.FallenMark != null && m.FallenMark.activeSelf) { m.FallenMark.SetActive(false); _hiddenForDuel.Add(m.FallenMark); }
             if (Sites != null)

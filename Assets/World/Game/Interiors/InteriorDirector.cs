@@ -376,7 +376,15 @@ namespace World.Game
         {
             var w = PlayerWalker.Instance;
             string now = null;
-            if (w != null && !w.IsOffLattice && WalkGrid.RegionOwner(w.Cell) == RegionOwner && InteriorSpace.TryLocal(w.Cell, out var id, out _, out _)) now = id;
+            if (w != null && w.IsOffLattice)
+            {
+                // Placed off the lattice (a duel's camera over Mira's shoulder, a cutscene): the cell under the viewpoint
+                // decides; over rock or off any interior the player stays where they were (a duel underground stays lit).
+                var c = WalkLattice.ToCell(w.Position);
+                if (WalkGrid.RegionOwner(c) == RegionOwner && InteriorSpace.TryLocal(c, out var oid, out _, out _)) now = oid;
+                else if (!force && Interiors.Current != null && EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return;
+            }
+            else if (w != null && WalkGrid.RegionOwner(w.Cell) == RegionOwner && InteriorSpace.TryLocal(w.Cell, out var id, out _, out _)) now = id;
             if (now != Interiors.Current || force) SetActiveInterior(now);
         }
 
