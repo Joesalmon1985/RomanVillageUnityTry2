@@ -480,16 +480,31 @@ namespace World.Game
             glow.Box(new Vector3(0, 3.2f, 3.38f), new Vector3(1.5f, 0.2f, 0.04f), Color.Lerp(colour, Color.white, 0.3f));
             glow.Box(new Vector3(0, 1.7f, 3.28f), new Vector3(1.3f, 2.4f, 0.04f), colour * 0.45f);
             glow.ToObject("Band glow", lit.transform, LandLook.Unlit).GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            // The ground round a lit tower: green ring of new growth and a ring of light.
+            // The ground round a lit tower: a ring of light and low new growth in mixed muted colours: flat moss patches,
+            // small ferns (a few thin leaves leaning out of one point) and tiny flowers. No tall green spikes.
             var bloom = new MeshBuilder();
             var rnd = new PropRandom(loc.Id.GetHashCode());
             LandShapes.Ring(bloom, new Vector3(0, 0.07f, 0), 8.5f, 0.5f, 40, colour * 0.6f);
-            for (int i = 0; i < 46; i++)
+            Color[] mosses = { new Color(0.34f, 0.43f, 0.27f), new Color(0.40f, 0.46f, 0.30f), new Color(0.29f, 0.38f, 0.28f), new Color(0.45f, 0.45f, 0.31f) };
+            Color[] flowers = { new Color(0.80f, 0.62f, 0.62f), new Color(0.86f, 0.78f, 0.52f), new Color(0.66f, 0.60f, 0.80f), new Color(0.90f, 0.86f, 0.76f), Color.Lerp(colour, Color.white, 0.5f) };
+            for (int i = 0; i < 70; i++)
             {
                 float a = rnd.Range(0f, Mathf.PI * 2f), r = rnd.Range(5.2f, 12.5f);
                 var c = new Vector3(Mathf.Sin(a) * r, 0, Mathf.Cos(a) * r);
-                bloom.Cone(c, rnd.Range(0.16f, 0.3f), rnd.Range(0.35f, 0.7f), 5, new Color(0.30f, 0.62f, 0.24f) * rnd.Range(0.85f, 1.1f));
-                if (i % 3 == 0) bloom.Cone(c + new Vector3(0.15f, 0.3f, 0.1f), 0.1f, 0.22f, 5, Color.Lerp(colour, Color.white, 0.4f));
+                var green = mosses[(int)(rnd.Range(0f, 3.99f))] * rnd.Range(0.85f, 1.1f);
+                int kind = i % 5;
+                if (kind < 3) bloom.Box(c + new Vector3(0, 0.04f, 0), new Vector3(rnd.Range(0.5f, 1.1f), 0.08f, rnd.Range(0.5f, 1.1f)), green, rnd.Range(0f, 90f)); // moss
+                else if (kind == 3)
+                {
+                    // fern: four flat leaves leaning out of one point
+                    for (int l = 0; l < 4; l++)
+                    {
+                        float ya = (l * 90f + rnd.Range(0f, 40f)) * Mathf.Deg2Rad;
+                        var tip = c + new Vector3(Mathf.Sin(ya), 0f, Mathf.Cos(ya)) * rnd.Range(0.28f, 0.42f) + new Vector3(0, rnd.Range(0.1f, 0.2f), 0);
+                        bloom.Strip(c + new Vector3(0, 0.03f, 0), tip, 0.1f, green * 0.9f);
+                    }
+                }
+                else bloom.Box(c + new Vector3(rnd.Range(-0.3f, 0.3f), 0.1f, rnd.Range(-0.3f, 0.3f)), new Vector3(0.09f, 0.09f, 0.09f), flowers[(int)(rnd.Range(0f, 4.99f))], rnd.Range(0f, 90f)); // flower
             }
             tv.Bloom = bloom.ToObject("Bloom", lit.transform, Lit);
             LightShapes.Apply(tv.Bloom.GetComponent<Renderer>(), LightShapes.Read.Stock);
