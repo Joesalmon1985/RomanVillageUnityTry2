@@ -467,6 +467,9 @@ namespace World.Game
             var w = PlayerWalker.Instance;
             var l = w != null ? LinkOn(w.Cell) : null;
             if (l == null) return;
+            // Following someone (Mira's file) never takes the player through a way by itself: the follow ends on her
+            // cell, which may be a way end. The expedition moves a following player through with Interiors.Enter.
+            if (w.Following != null && !LeadingOut) return;
             if (!l.IsOpen)
             {
                 LeadingOut = false;

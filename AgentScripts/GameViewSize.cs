@@ -7,6 +7,7 @@ using UnityEditor;
 public static class GameViewSize
 {
     public static string Set1080() => Set(1920, 1080);
+    public static string SetPhone() => Set(844, 390);
 
     public static string Set(int w, int h)
     {
