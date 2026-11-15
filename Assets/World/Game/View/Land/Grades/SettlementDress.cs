@@ -233,6 +233,6 @@ namespace World.Game
             }
         }
 
-        public string Describe() => "gradecamp " + _view.SettlementId + " owner " + OwnerShown + " town " + TownShown + " outer " + OuterOpenShown + " torches " + _torches.Count + " totem " + OwnTotemShown;
+        public string Describe() => "gradecamp " + _view.SettlementId + " owner " + OwnerShown + " town " + TownShown + " outer " + OuterOpenShown + " torches " + _torches.Count + " totem " + (OwnTotemShown ? OwnerShown : _view.Faction);
     }
 }

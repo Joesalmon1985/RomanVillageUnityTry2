@@ -39,11 +39,10 @@ namespace World.Game
                     LandShapes.Disc(mb, new Vector3(0.3f, 0.03f, 0.2f), 1.9f, 14, new Color(0.45f, 0.24f, 0.15f));
                     for (int i = 0; i < 14; i++) { float a = i * 360f / 14f; mb.Box(new Vector3(0.3f, 0.12f, 0.2f) + Quaternion.Euler(0, a, 0) * Vector3.forward * 2.05f, new Vector3(0.55f, 0.24f, 0.4f), Foot * (0.9f + 0.1f * (i % 2)), a); }
                     for (int i = 0; i < 5; i++) mb.Box(new Vector3(-1.0f + i * 0.5f, 0.07f, 0.2f), new Vector3(0.42f, 0.05f, 2.6f), wood * 0.9f);
-                    Hall(mb, new Vector3(-0.4f, 0, -3.1f), 0, 1.7f, 0.85f, 1.4f, 0.9f, Plank, Shingle, false);
-                    for (int i = 0; i < 4; i++) mb.Box(new Vector3(-1.4f + i * 0.9f, 0.3f, -3.0f), new Vector3(0.7f, 0.5f, 0.5f), LandLook.ClayRed * 1.1f);
+                    Hall(mb, new Vector3(0f, 0, -2.8f), 0, 1.5f, 0.8f, 1.4f, 0.9f, Plank, Shingle, true);
                     Bricks(mb, new Vector3(3.0f, 0, -0.9f), 3, 4, 0.34f, WareC(Ware.Bricks));
                     Barrow(mb, new Vector3(-2.9f, 0, 1.7f), 30f);
-                    LandShapes.Pennant(mb, new Vector3(3.0f, 0, -2.5f), 3.0f, faction);
+                    LandShapes.Pennant(mb, new Vector3(2.5f, 0, -2.2f), 3.0f, faction);
                     break;
                 case BuildingType.GrainBasket:
                     FenceRect(mb, -3.0f, 3.0f, -3.2f, 2.5f, 1.0f, 0.8f, 0f);
