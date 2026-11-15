@@ -72,6 +72,7 @@ namespace World.Game
             var dir = CouncilDirector.Instance;
             SettlementId = ctx.Request is int id ? id : (dir != null ? dir.HomeSettlement : 0);
             Scene = dir != null ? dir.EnsureScene(SettlementId) : CouncilScene.Current;
+            ctx.Clock.StepOnce(); // one tick so the land views clear crops and trees from the stage (the clock is paused for the encounter)
             var sc = Council;
             // Entering a council not yet answered counts as accepting the asker's request; entering after leaving resumes.
             if (sc != null && sc.Status == CouncilStatus.Offered) Do(new CouncilRespond { Settlement = SettlementId, PlayerId = PlayerIds.Human, Help = true });

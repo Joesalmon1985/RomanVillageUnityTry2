@@ -46,7 +46,7 @@ namespace World.Game
             go.transform.SetParent(scene.Root, false);
             var b = go.AddComponent<CouncilBench>();
             b.Scene = scene; b.Root = go.transform;
-            b.Origin = new Vector3(-(26f * Mathf.Max(0.6f, CouncilLayout.Scale) + 8f), 0f, 4f);
+            b.Origin = new Vector3(-(16f * CouncilLayout.Scale + 7f), 0f, 4f);
             b.BuildSet();
             return b;
         }
@@ -112,7 +112,7 @@ namespace World.Game
         {
             _aide = Person("aide", new Color(0.35f, 0.58f, 0.48f), 0.125f, 2.6f, 0.94f, 180f - 28f);
             _aide.name = "Bench aide";
-            _aideSpeech = _aide.gameObject.AddComponent<CouncilSpeaker>(); _aideSpeech.Id = "aide"; _aideSpeech.Head = _aide.HeadPivot;
+            _aideSpeech = _aide.gameObject.AddComponent<CouncilSpeaker>(); _aideSpeech.Id = "aide"; _aideSpeech.Name = "Aide"; _aideSpeech.Head = _aide.HeadPivot;
         }
 
         public void ShowSpeaker(string speaker, int ordinal)
@@ -129,7 +129,7 @@ namespace World.Game
             else _speaker = Person("sp" + speaker + ordinal, tun, 0.5f, 3f, 1.08f, 180f);
             if (_speakerSpeech != null) Destroy(_speakerSpeech);
             _speakerSpeech = _speaker.gameObject.GetComponent<CouncilSpeaker>() ?? _speaker.gameObject.AddComponent<CouncilSpeaker>();
-            _speakerSpeech.Id = "speaker"; _speakerSpeech.Head = _speaker.HeadPivot;
+            _speakerSpeech.Id = "speaker"; _speakerSpeech.Name = speaker; _speakerSpeech.Head = _speaker.HeadPivot;
             _count++;
         }
 

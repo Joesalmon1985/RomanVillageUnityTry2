@@ -8,10 +8,13 @@ using L = World.Game.CouncilLayout;
 namespace World.Game
 {
     /// <summary>A person in the council scene whose speech bubble hangs over their head.</summary>
-    public sealed class CouncilSpeaker : MonoBehaviour, ISpeaker
+    public sealed class CouncilSpeaker : MonoBehaviour, ISpeaker, IFollowable
     {
         public string Id = "council";
+        public string Name = "Someone";
         public string SpeakerId => Id;
+        public string FollowName => Name;
+        public Transform FollowTransform => transform;
         public Transform Head { get; set; }
     }
 
@@ -25,52 +28,48 @@ namespace World.Game
 
         public Vector3 ToWorld(Vector3 local) => Position + Quaternion.Euler(0, Yaw, 0) * local;
 
-        /// <summary>Finds the clear spot nearest the home camp's fire, the stage as large as the room allows (1 down to 0.45).</summary>
+        /// <summary>
+        /// Finds the clear spot for the stage with the camp layout's obstruction check: the largest clear disc near the
+        /// home camp's fire (grid search), the stage scaled to fit it (1 = full size, down to 0.3).
+        /// </summary>
         public static CouncilSite Find(WorldState s)
         {
             var board = s.Board;
             var layout = new CampLayout(board);
-            float[] scales = { 1f, 0.85f, 0.7f, 0.58f, 0.48f };
-            foreach (float sc in scales)
-            {
-                float prev = L.Scale;
-                L.Scale = sc;
-                var samples = L.FootprintSamples(1f);
-                // a ring of grid samples across the stage floor, each needing 1.4 m of clearance
-                var extra = new List<Vector3>(samples);
-                for (float x = -12f * sc; x <= 12f * sc; x += 4f * sc)
-                    for (float z = 4f * sc; z <= 19f * sc; z += 4f * sc) extra.Add(new Vector3(x, 0, z));
-                CouncilSite best = null; float bestScore = float.MaxValue;
-                for (float d = 12f; d <= 70f; d += 3f)
-                    for (int a = 0; a < 360; a += 10)
+            float prev = L.Scale;
+            L.Scale = 1f; L.Footprint(out var c1, out float r1);
+            L.Scale = prev;
+            Vector3 bestP = Vector3.zero; float bestR = 0f, bestScore = float.MinValue;
+            for (float x = -90f; x <= 90f; x += 2f)
+                for (float z = -90f; z <= 90f; z += 2f)
+                {
+                    var p = layout.Hearth + new Vector3(x, 0, z);
+                    if (CampLayout.Obstruction(board, p, 1f) != null) continue;
+                    float r = 1f;
+                    while (r < 11f && CampLayout.Obstruction(board, p, r + 1f) == null) r += 1f;
+                    float d = new Vector2(x, z).magnitude;
+                    // keep off hills and mountains (mounds and peaks tower over the stage) and prefer open meadow
+                    float pen = 0f; bool bad = false;
+                    for (int k = 0; k < 9 && !bad; k++)
                     {
-                        var dir = new Vector3(Mathf.Sin(a * Mathf.Deg2Rad), 0, Mathf.Cos(a * Mathf.Deg2Rad));
-                        var centre = layout.Hearth + dir * d;
-                        // the stage faces the hearth (the camp's fire behind the viewer) or away from it
-                        for (int face = 0; face < 2; face++)
-                        {
-                            float yaw = BoardSpace.YawOf(face == 0 ? dir : -dir);
-                            var q = Quaternion.Euler(0, yaw, 0);
-                            // the stage's local centre is the middle of its floor (z = 11 sc)
-                            var origin = centre - q * new Vector3(0, 0, 11f * sc);
-                            bool ok = true;
-                            foreach (var p in extra)
-                            {
-                                var w = origin + q * p;
-                                if (CampLayout.Obstruction(board, w, 1.4f) != null) { ok = false; break; }
-                            }
-                            if (!ok) continue;
-                            float score = d + face * 3f;
-                            if (score < bestScore) { bestScore = score; best = new CouncilSite { Position = origin, Yaw = yaw, Scale = sc, Why = "clear at " + d.ToString("0") + " m from the fire, scale " + sc }; }
-                        }
-                        if (best != null && d > bestScore + 6f) break;
+                        var q = k == 0 ? p : p + new Vector3(Mathf.Cos(k * 0.785f), 0, Mathf.Sin(k * 0.785f)) * (Mathf.Min(r, 9f) + 3f);
+                        int hx = BoardSpace.HexAt(q);
+                        if (hx < 0) { bad = true; break; }
+                        var tr = board.HexTerrain[hx];
+                        if (tr == World.Sim.Terrain.Hills || tr == World.Sim.Terrain.Mountain) bad = true;
+                        else if (tr == World.Sim.Terrain.Forest) pen += 6f;
                     }
-                L.Scale = prev;
-                if (best != null) return best;
-            }
-            // Last resort: beside the dance circle (never expected on the default board).
-            L.Scale = 0.48f;
-            return new CouncilSite { Position = layout.Hearth + new Vector3(0, 0, 30f), Yaw = 0f, Scale = 0.48f, Why = "fallback" };
+                    if (bad) continue;
+                    float score = Mathf.Min(r, 9f) * 5f - d * 0.15f - pen; // roomy first, then near the fire
+                    if (r >= 4f && score > bestScore) { bestScore = score; bestP = p; bestR = r; }
+                }
+            if (bestR < 4f) { bestP = layout.Hearth + new Vector3(0, 0, 30f); bestR = 6f; }
+            float sc = Mathf.Clamp((bestR + 0.5f) / r1, 0.3f, 1f);
+            var away = bestP - layout.Hearth; away.y = 0; if (away.sqrMagnitude < 1) away = Vector3.forward;
+            float yaw = BoardSpace.YawOf(away.normalized);
+            var origin = bestP - Quaternion.Euler(0, yaw, 0) * (c1 * sc);
+            origin.y = 0;
+            return new CouncilSite { Position = origin, Yaw = yaw, Scale = sc, Why = "clear disc of " + bestR.ToString("0") + " m at " + (bestP - layout.Hearth).magnitude.ToString("0") + " m from the fire, scale " + sc.ToString("0.00") };
         }
     }
 
@@ -183,7 +182,12 @@ namespace World.Game
             L.Scale = site.Scale;
             var go = new GameObject("CouncilScene");
             go.transform.SetParent(parent, false);
-            go.transform.SetPositionAndRotation(site.Position, Quaternion.Euler(0, site.Yaw, 0));
+            // the floor must clear the hex tiles' own surface everywhere under the stage
+            float groundY = 0f;
+            var rot = Quaternion.Euler(0, site.Yaw, 0);
+            foreach (var lp in L.FootprintSamples(1f)) groundY = Mathf.Max(groundY, PlayerWalker.GroundHeight(site.Position + rot * lp));
+            groundY = Mathf.Max(groundY, PlayerWalker.GroundHeight(site.Position));
+            go.transform.SetPositionAndRotation(new Vector3(site.Position.x, groundY + 0.05f, site.Position.z), rot);
             var sc = go.AddComponent<CouncilScene>();
             sc.SettlementId = settlement; sc.Site = site; sc.Root = go.transform;
             Current = sc;
@@ -275,9 +279,9 @@ namespace World.Game
             int n = 16;
             for (int i = 0; i < n; i++)
             {
-                float v0 = Mathf.Lerp(0.0f, 1.0f, i / (float)n), v1 = Mathf.Lerp(0.0f, 1.0f, (i + 1) / (float)n);
+                float v0 = Mathf.Lerp(0.08f, 1.0f, i / (float)n), v1 = Mathf.Lerp(0.08f, 1.0f, (i + 1) / (float)n);
                 var col = (i % 2 == 0) ? new Color(0.36f, 0.27f, 0.18f) : new Color(0.31f, 0.23f, 0.15f);
-                float u0 = -0.25f, u1 = 1.25f;
+                float u0 = -0.15f, u1 = 1.15f;
                 Vector3 P(float u, float v) { var p = L.OnFloor(u, Mathf.Clamp(v, 0f, 0.999f)); p.y = 0.03f; return p; }
                 mb.Quad(P(u0, v1), P(u0, v0), P(u1, v0), P(u1, v1), col);
             }
@@ -345,7 +349,7 @@ namespace World.Game
                 a.name = "Lead " + t;
                 _lead[i] = a;
                 var sp = a.gameObject.AddComponent<CouncilSpeaker>();
-                sp.Id = "lead" + t; sp.Head = a.HeadPivot != null ? a.HeadPivot : a.transform;
+                sp.Id = "lead" + t; sp.Name = sc != null && sc.Disputes.Count > i ? sc.Disputes[i].LeadName : "Lead"; sp.Head = a.HeadPivot != null ? a.HeadPivot : a.transform;
                 _leadSpeaker[i] = sp;
                 // the big identifying prop, right of the lead
                 float ph = h * 0.95f;
@@ -376,8 +380,9 @@ namespace World.Game
                     var uv = L.PlaceUV(t, p);
                     float lat = 0.026f;
                     var feet = L.OnFloor(uv.x + lat, uv.y);
-                    float h = FigureHeight(feet, uv.y - 0.042f);
+                    float h = FigureHeight(feet, uv.y - 0.05f);
                     var go = CouncilShapes.Make("Stander " + t + "." + p, Root, CouncilShapes.Stander(cloth[(int)(rnd.Next() * cloth.Length)], skin[(int)(rnd.Next() * skin.Length)]), feet, h / 0.96f);
+                    go.transform.localScale = new Vector3(go.transform.localScale.x * 1.35f, go.transform.localScale.y, go.transform.localScale.z * 1.35f);
                     go.transform.localRotation = Quaternion.Euler(0, rnd.Range(-25f, 25f), 0);
                     _stand[t - 2][p - 1] = go; _standHome[t - 2][p - 1] = feet;
                 }
@@ -433,15 +438,15 @@ namespace World.Game
         void BuildPeople(SettlementCouncil sc)
         {
             // Candidates take the same place at the left of the table, one seat at a time (the active one shows).
-            var feet = L.OnFloor(0.055f, 0.905f);
+            var feet = L.OnFloor(0.085f, 0.905f);
             float h = FigureHeight(feet, 0.585f);
             for (int s = 0; s < 4; s++)
             {
-                var a = Person("cand" + s, Color.Lerp(SeatColor(s), new Color(0.5f, 0.4f, 0.3f), 0.4f), feet, h, 180f - 24f);
+                var a = Person("cand" + s, Color.Lerp(SeatColor(s), new Color(0.5f, 0.4f, 0.3f), 0.4f), feet, h, 180f - 14f);
                 a.name = "Candidate " + s;
                 var emb = CouncilShapes.Make("Chest emblem", a.BodyPivot != null ? a.BodyPivot : a.transform, Emblem(s), new Vector3(0, 1.12f, 0.22f), 0.34f);
                 emb.transform.localRotation = Quaternion.Euler(0, 180, 0);
-                var sp = a.gameObject.AddComponent<CouncilSpeaker>(); sp.Id = "cand" + s; sp.Head = a.HeadPivot != null ? a.HeadPivot : a.transform;
+                var sp = a.gameObject.AddComponent<CouncilSpeaker>(); sp.Id = "cand" + s; sp.Name = sc != null && sc.Candidates.Count > s ? sc.Candidates[s].Name : "Candidate"; sp.Head = a.HeadPivot != null ? a.HeadPivot : a.transform;
                 _candSpeaker[s] = sp; _cand[s] = a;
                 a.gameObject.SetActive(false);
             }
@@ -563,7 +568,7 @@ namespace World.Game
         float MarkerHeight(Vector3 pos, bool paw)
         {
             var uv = L.Project(pos);
-            return L.HeightFor(pos, uv.y - (paw ? 0.072f : 0.078f));
+            return L.HeightFor(pos, uv.y - (paw ? 0.105f : 0.095f));
         }
 
         void SyncMarkers(SettlementCouncil sc)

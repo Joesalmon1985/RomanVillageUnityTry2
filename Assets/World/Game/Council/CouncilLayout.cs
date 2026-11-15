@@ -167,15 +167,23 @@ namespace World.Game
         /// <summary>The standing spot of a lead: feet at the foot of the lead band.</summary>
         public static Vector3 LeadFeet(int track) => OnFloor((6f + 8f * (track - 2) + 4f) / 100f, 0.22f);
 
-        /// <summary>Ground cover needed (local x, z) for the stage; used to look for a clear site.</summary>
+        /// <summary>Floor points of the stage (local), from the beam's foot to the near edge, across the width.</summary>
         public static List<Vector3> FootprintSamples(float step)
         {
             var l = new List<Vector3>();
-            float[] vs = { 0.0f, 0.2f, 0.4f, 0.6f, 0.8f, 1.0f };
+            float[] vs = { 0.09f, 0.25f, 0.45f, 0.65f, 0.85f, 0.999f };
             foreach (var v in vs)
-                for (float u = 0.0f; u <= 1.0001f; u += 0.25f)
-                    l.Add(OnFloor(u, Mathf.Min(v, 0.999f)));
+                for (float u = -0.1f; u <= 1.1001f; u += 0.3f)
+                    l.Add(OnFloor(u, v));
             return l;
+        }
+
+        /// <summary>Centre of the stage floor and the radius round it that covers it, at the current <see cref="Scale"/>.</summary>
+        public static void Footprint(out Vector3 centre, out float radius)
+        {
+            var pts = FootprintSamples(1f);
+            centre = Vector3.zero; foreach (var p in pts) centre += p; centre /= pts.Count;
+            radius = 0; foreach (var p in pts) radius = Mathf.Max(radius, (p - centre).magnitude);
         }
 
         /// <summary>The track colour tint a lead stands in (soft, so props read).</summary>
