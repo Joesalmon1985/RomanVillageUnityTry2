@@ -144,9 +144,13 @@ namespace World.Game
             }
         }
 
-        private static IEnumerator Do(Action action) { action(); yield return null; }
+        /// <summary>As <see cref="AutoPlayScript.Check"/> with the failure message built only when it fails (it may read state that does not exist yet).</summary>
+        public static AutoPlayScript Verify(this AutoPlayScript s, Func<bool> check, Func<string> message) =>
+            s.Step(a => a.DoCall(() => { if (!check()) a.Fail(message()); }));
 
-        private static AutoPlayScript Shot(AutoPlayScript s, string name) => Captures ? s.Capture(name) : s;
+        /// <summary>A capture named for the window size it was taken at (i7_stakes_844x390.png).</summary>
+        private static AutoPlayScript Shot(AutoPlayScript s, string name) =>
+            Captures ? s.Step(a => a.DoCapture(name + "_" + Screen.width + "x" + Screen.height)) : s;
 
         // ------------------------------------------------------------------ duel_keeper_win / duel_keeper_loss
 
@@ -162,8 +166,12 @@ namespace World.Game
             // F1 developer start "dev.historic": the scene reloads; the rest runs in the new scene.
             s.Wait(0.5f).Call(() =>
             {
-                AutoPlay.ContinueAfterLoad = KeeperAfterStart(name, win);
-                if (!DevStart.Begin(ScenarioStarts.DevHistoric)) Debug.LogWarning("[AutoPlay] " + name + ": " + DevStart.LastError);
+                try
+                {
+                    AutoPlay.ContinueAfterLoad = KeeperAfterStart(name, win);
+                    if (!DevStart.Begin(ScenarioStarts.DevHistoric)) Debug.LogWarning("[AutoPlay] " + name + ": " + DevStart.LastError);
+                }
+                catch (Exception e) { Debug.LogException(e); throw; }
             }).Wait(30f).Check(() => false, "dev.historic did not start");
             return s;
         }
@@ -184,7 +192,7 @@ namespace World.Game
                  _volunteer = vol?.Id; _alive = AliveCount(); _rival = S.Campaign.RivalProgress;
                  Debug.Log("[AutoPlay] " + name + ": at the Tally Vault threshold at tick " + S.Tick + ", volunteer " + _volunteer + ", " + _alive + " alive");
              })
-             .Call(() => { var bot = WardBot.Attach(B.gameObject); bot.CastInterval = win ? 2.1f : 2.4f; bot.MaxCastsPerDuel = -1; bot.FixedWard = null; bot.AutoReturn = false; bot.Passive = !win; bot.StakesReadSeconds = 2.5f; })
+             .Call(() => { var bot = WardBot.Attach(B.gameObject); bot.CastInterval = win ? 2.1f : 2.4f; bot.MaxCastsPerDuel = -1; bot.FixedWard = null; bot.AutoReturn = false; bot.Passive = !win; bot.WaitForRival = win; bot.StakesReadSeconds = 2.5f; })
              .Call(() => err = Commit(KeeperEncounter))
              .Check(() => err == null, "CommitEncounter refused")
              .Check(() => WardDuelEncounter.Current != null && WardDuelEncounter.Current.IsLethal, "the lethal duel was not staged from EncounterCommitted")
@@ -195,7 +203,8 @@ namespace World.Game
             s.Step(a => WaitFor(a, () => WardDuelEncounter.Current.Phase == WardDuelEncounter.Screen.Active, 15f, "Mira's Ward was not set"));
             if (win)
             {
-                s.Step(a => WaitFor(a, () => WardDuelEncounter.Current.Session.RivalHistory.Count >= 1 && WardDuelEncounter.Current.Session.PlayerHistory.Count >= 2 || WardDuelEncounter.Current.Phase == WardDuelEncounter.Screen.Result, 40f, "no casts"));
+                s.Step(a => WaitFor(a, () => WardDuelEncounter.Current.Session.RivalHistory.Count >= 1 || WardDuelEncounter.Current.Phase == WardDuelEncounter.Screen.Result, 40f, "no casts"))
+                 .Wait(0.35f);
                 Shot(s, "i7_mid_duel");
             }
             else
@@ -206,7 +215,7 @@ namespace World.Game
             s.Step(a => WaitFor(a, () => WardDuelEncounter.Current.Phase == WardDuelEncounter.Screen.Result, 240f, "the duel did not finish"))
              .Check(() => WardDuelEncounter.Current.ResolutionSent, "ResolveEncounter was not sent at the end event")
              .Check(() => CampaignApi.Attempt(S) == null, "the attempt is still pending after the end event")
-             .Wait(0.35f);
+             .Wait(win ? 0.45f : 1.7f);
             Shot(s, win ? "i7_ward_break" : "i7_loss_volunteer_holds");
             s.Call(() => Debug.Log("[AutoPlay] " + name + " duel " + WardDuelEncounter.Current.LastOutcome + " -> " + WardDuelEncounter.Current.Resolution + " after " + WardDuelEncounter.Current.Session.PlayerHistory.Count + " casts by Mira, " + WardDuelEncounter.Current.Session.RivalHistory.Count + " by Dolm"));
             if (win) s.Check(() => WardDuelEncounter.Current.LastOutcome == WardOutcome.Victory, "the scripted player did not win");
@@ -217,26 +226,26 @@ namespace World.Game
              .Call(() => WardDuelEncounter.Current.Return())
              .Step(a => WaitFor(a, () => !EncounterHost.Instance.IsRunning, 3f, "the duel did not end on Return"))
              .Check(() => !B.Clock.IsPausedFor(PauseReasons.Encounter), "the clock did not resume")
-             .Check(() => CampaignDuel.ResolvesSent == 1, "ResolveEncounter sent " + CampaignDuel.ResolvesSent + " times")
+             .Verify(() => CampaignDuel.ResolvesSent == 1, () => "ResolveEncounter sent " + CampaignDuel.ResolvesSent + " times")
              .Wait(1.0f)
              .Check(() => WardDuelEncounter.Current == null && CampaignApi.Attempt(S) == null, "a duel was staged again after the result");
             if (win)
             {
                 s.Check(() => AliveCount() == _alive, "somebody died after a victory")
                  .Check(() => CampaignApi.Crystal(S, Element.Earth).Custody == Custody.Carried, "the Deepstone is not carried after beating Dolm")
-                 .Check(() => S.Campaign.Resolved.Count == 1, "attempts recorded: " + S.Campaign.Resolved.Count)
+                 .Verify(() => S.Campaign.Resolved.Count == 1, () => "attempts recorded: " + S.Campaign.Resolved.Count)
                  .Log("[AutoPlay] " + KeeperWin + " OK")
                  .Quit(0);
             }
             else
             {
-                s.Check(() => !IsAlive(_volunteer), "the volunteer " + _volunteer + " is alive after the defeat")
-                 .Check(() => AliveCount() == _alive - 1, "alive " + AliveCount() + ", expected " + (_alive - 1))
+                Verify(s, () => !IsAlive(_volunteer), () => "the volunteer " + _volunteer + " is alive after the defeat")
+                 .Verify(() => AliveCount() == _alive - 1, () => "alive " + AliveCount() + ", expected " + (_alive - 1))
                  .Check(() => S.Campaign.RivalProgress >= _rival + 900, "the defeat did not charge the expedition")
                  .Call(() => { _rival = S.Campaign.RivalProgress; })
                  // Save and load at once: the death is applied once and survives the load.
                  .Call(() => SaveSystem.PathOverride = Path.Combine(Application.temporaryCachePath, "worldmvp_i7_autoplay_save.json"))
-                 .Check(() => B.Saves.Save(), "save after the loss refused: " + SaveSystem.LastMessage)
+                 .Verify(() => B.Saves.Save(), () => "save after the loss refused: " + SaveSystem.LastMessage)
                  .Call(() => { AutoPlay.ContinueAfterLoad = LossAfterLoad(); B.Saves.Load(); })
                  .Wait(20f).Check(() => false, "the save did not load");
             }
@@ -249,10 +258,10 @@ namespace World.Game
             s.Wait(1.5f)
              .Check(() => S.Campaign != null && S.Campaign.Phase == CampaignPhase.Running, "no running campaign after the load")
              .Check(() => !IsAlive(_volunteer), "the volunteer came back to life after the load")
-             .Check(() => AliveCount() == _alive - 1, "alive after the load " + AliveCount() + ", expected " + (_alive - 1))
-             .Check(() => S.Campaign.Resolved.Count == 1, "attempts recorded after the load: " + S.Campaign.Resolved.Count)
+             .Verify(() => AliveCount() == _alive - 1, () => "alive after the load " + AliveCount() + ", expected " + (_alive - 1))
+             .Verify(() => S.Campaign.Resolved.Count == 1, () => "attempts recorded after the load: " + S.Campaign.Resolved.Count)
              .Check(() => CampaignApi.Attempt(S) == null, "an attempt is pending after the load")
-             .Check(() => CampaignApi.Record(S).Fallen.Count == 1, "fallen " + CampaignApi.Record(S).Fallen.Count)
+             .Verify(() => CampaignApi.Record(S).Fallen.Count == 1, () => "fallen " + CampaignApi.Record(S).Fallen.Count)
              .Wait(1.5f)
              .Check(() => WardDuelEncounter.Current == null && CampaignDuel.RestartsSent == 0, "a duel was restarted after a resolved loss")
              .Check(() => S.Campaign.RivalProgress >= _rival, "rival progress went back")

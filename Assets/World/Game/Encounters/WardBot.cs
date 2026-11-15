@@ -23,12 +23,15 @@ namespace World.Game
         public float StakesReadSeconds = 1.5f;
         /// <summary>Never casts: lets the opponent (or the idle auto-cast) decide the duel (a scripted loss).</summary>
         public bool Passive;
+        /// <summary>After its first cast, waits for the opponent's first cast before casting again (captures see both sides cast).</summary>
+        public bool WaitForRival;
         public int CastsThisDuel { get; private set; }
 
         private WardDuelSession _session;
         private WardRival _solver;
         private int _observed;
         private float _nextCastAt;
+        private float _rivalSeenAt = -1f;
 
         public static WardBot Attach(GameObject host)
         {
@@ -71,6 +74,12 @@ namespace World.Game
                     while (_observed < hist.Count) { var h = hist[_observed++]; _solver.Observe(h.Weave, h.Fractures, h.Echoes); }
                     if (Time.unscaledTime < _nextCastAt || enc.Session.MsUntilPlayerMayCast > 0 || enc.Session.PlayerCastsLeft <= 0) return;
                     if (Passive || (MaxCastsPerDuel >= 0 && CastsThisDuel >= MaxCastsPerDuel)) return;
+                    if (WaitForRival && CastsThisDuel >= 1)
+                    {
+                        if (enc.Session.RivalHistory.Count == 0) { _rivalSeenAt = -1f; return; }
+                        if (_rivalSeenAt < 0f) _rivalSeenAt = Time.unscaledTime;
+                        if (Time.unscaledTime - _rivalSeenAt < 2.5f) return;
+                    }
                     var weave = _solver.NextCast();
                     while (enc.RemoveLast()) { }
                     foreach (var e in weave) enc.AddEssence((Essence)e);

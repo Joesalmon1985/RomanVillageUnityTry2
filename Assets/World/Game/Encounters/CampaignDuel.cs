@@ -235,7 +235,7 @@ namespace World.Game
         /// Sends ResolveEncounter for the attempt once (a second call, a second end event or a stale attempt is a no-op), steps
         /// the clock one tick so the outcome table applies now, then raises <see cref="Resolved"/>. True if it was sent.
         /// </summary>
-        internal static bool SendResolve(int attemptId, DuelResult result)
+        public static bool SendResolve(int attemptId, DuelResult result)
         {
             var b = B;
             if (attemptId < 0 || b == null || b.Sim == null) return false;
@@ -309,7 +309,7 @@ namespace World.Game
 
         /// <summary>The armed state of the surrender confirmation (tests).</summary>
         public static bool SurrenderArmed => Time.unscaledTime - s_armedAt < 6f;
-        internal static void ArmSurrender() => s_armedAt = Time.unscaledTime;
+        public static void ArmSurrender() => s_armedAt = Time.unscaledTime;
 
         // ------------------------------------------------------------------ data
 

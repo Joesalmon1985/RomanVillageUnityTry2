@@ -138,9 +138,12 @@ namespace World.Game
             s.MiraActor.Root.name = "Opponent " + spec.OpponentActorId;
             if (spec.HasVolunteer)
             {
+                // The request's volunteer point is the way out (often behind Mira, off camera); the volunteer stands by
+                // beside Mira on that side, a little forward, where the over-the-shoulder view sees them.
                 s.VolunteerPos = spec.VolunteerPos;
+                s.VolunteerStandBy = StandByPoint(spec.CasterPos, spec.OpponentPos, spec.VolunteerPos);
                 var mid = (spec.CasterPos + spec.OpponentPos) * 0.5f;
-                s.VolunteerActor = ActorFactory.Create(spec.VolunteerActorId, volunteerColour, spec.VolunteerPos, BoardSpace.YawOf(mid - spec.VolunteerPos), go.transform);
+                s.VolunteerActor = ActorFactory.Create(spec.VolunteerActorId, volunteerColour, s.VolunteerStandBy, BoardSpace.YawOf(mid - s.VolunteerStandBy), go.transform);
                 s.VolunteerActor.Root.name = "Volunteer " + spec.VolunteerActorId;
             }
             s.PlayerWard = WardShield.Build(go.transform, "CasterWard", spec.CasterPos + dir * 1.05f + Vector3.up * 1.25f, dir, PlayerWardColor);
@@ -152,6 +155,22 @@ namespace World.Game
             l.type = LightType.Point; l.range = 10f; l.intensity = 1.3f; l.color = new Color(0.85f, 0.75f, 1f);
             return s;
         }
+
+        /// <summary>Where the volunteer stands by: beside Mira on the way-out side (left when the way out is straight behind), 1.2 m towards the opponent.</summary>
+        public static Vector3 StandByPoint(Vector3 caster, Vector3 opponent, Vector3 wayOut)
+        {
+            var f = opponent - caster; f.y = 0; f = f.sqrMagnitude > 1e-4f ? f.normalized : Vector3.forward;
+            var right = Vector3.Cross(Vector3.up, f).normalized;
+            var w = wayOut - caster; w.y = 0;
+            float side = Vector3.Dot(w, right);
+            float sign = Mathf.Abs(side) < 0.5f ? -1f : Mathf.Sign(side);
+            var p = caster + right * sign * 2.1f + f * 1.2f;
+            p.y = caster.y;
+            return p;
+        }
+
+        /// <summary>The volunteer's place on stage (see <see cref="StandByPoint"/>).</summary>
+        public Vector3 VolunteerStandBy { get; private set; }
 
         /// <summary>Whole Wards again (rematch): bolts, wind-ups and shards gone, everyone idle.</summary>
         public void ResetWards()
@@ -284,7 +303,7 @@ namespace World.Game
             if (VolunteerHolding && VolunteerActor != null)
             {
                 var vr = VolunteerActor.Root;
-                vr.position = Vector3.MoveTowards(vr.position, _volunteerTarget, dt * 2.6f);
+                vr.position = Vector3.MoveTowards(vr.position, _volunteerTarget, dt * 3.4f);
                 if ((vr.position - _volunteerTarget).sqrMagnitude < 0.01f && !VolunteerActor.IsPlayingOneShot && VolunteerActor.CurrentKey != ActorKeys.Cheer)
                     VolunteerActor.PlayOneShot(ActorKeys.Cheer); // arms up across the way: holding it
                 if (_volunteerLight != null) _volunteerLight.intensity = 2.0f + 0.4f * Mathf.Sin(Time.unscaledTime * 6f);

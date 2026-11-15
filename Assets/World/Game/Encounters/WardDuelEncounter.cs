@@ -38,6 +38,8 @@ namespace World.Game
         public const float BreakHoldSeconds = 1.6f;
         /// <summary>The hold after any other ending (stalemate, surrender).</summary>
         public const float EndHoldSeconds = 0.8f;
+        /// <summary>The hold after a lethal loss: the volunteer steps into the gap before the result screen.</summary>
+        public const float VolunteerHoldSeconds = 3.0f;
         /// <summary>The duel's camera in campaign modes (narrower than the walking view so faces read on a phone).</summary>
         public const float CampaignFieldOfView = 48f;
 
@@ -214,33 +216,39 @@ namespace World.Game
             var cam = ctx.FirstPersonCamera;
             if (cam != null) { _prevFov = cam.fieldOfView; cam.fieldOfView = CampaignFieldOfView; }
             float aspect = cam != null && cam.aspect > 0.1f ? cam.aspect : UnityEngine.Screen.width / (float)Mathf.Max(1, UnityEngine.Screen.height);
-            float halfH = Mathf.Atan(Mathf.Tan(CampaignFieldOfView * 0.5f * Mathf.Deg2Rad) * aspect) * Mathf.Rad2Deg - 6f;
+            float halfH = Mathf.Atan(Mathf.Tan(CampaignFieldOfView * 0.5f * Mathf.Deg2Rad) * aspect) * Mathf.Rad2Deg - 5f;
             Vector3 caster = spec.CasterPos, opp = spec.OpponentPos;
             var f = opp - caster; f.y = 0; f = f.sqrMagnitude > 1e-4f ? f.normalized : Vector3.forward;
             var right = Vector3.Cross(Vector3.up, f).normalized;
-            Vector3 eye = default, target = default;
-            for (int pass = 0; pass < 6; pass++)
+            // Who must be in frame: Mira, the opponent, and the volunteer standing by.
+            var pts = new List<Vector3> { caster, opp };
+            if (_stage.VolunteerActor != null) pts.Add(_stage.VolunteerStandBy);
+            Vector3 eye = default; float lo = 0, hi = 0;
+            for (int pass = 0; pass < 8; pass++)
             {
-                float back = 3.0f + pass * 0.8f;
-                eye = caster - f * back + right * 1.1f + Vector3.up * 2.05f;
-                target = Vector3.Lerp(caster, opp, 0.6f) + Vector3.up * 1.15f;
-                if (!spec.HasVolunteer) break;
-                var dv = spec.VolunteerPos - eye; dv.y = 0;
-                var dt = target - eye; dt.y = 0;
-                float ang = Vector3.SignedAngle(dt, dv, Vector3.up);
-                if (Mathf.Abs(ang) <= halfH) break;
-                // Turn towards the volunteer as far as keeps the opponent in frame, then pull back.
-                var dOpp = opp - eye; dOpp.y = 0;
-                float oppAng = Vector3.SignedAngle(dt, dOpp, Vector3.up);
-                float turn = Mathf.Clamp(ang - Mathf.Sign(ang) * halfH, -(halfH - Mathf.Abs(oppAng)), halfH - Mathf.Abs(oppAng));
-                var rotated = Quaternion.Euler(0, turn, 0) * (target - eye);
-                target = eye + rotated;
-                dt = target - eye; dt.y = 0;
-                if (Mathf.Abs(Vector3.SignedAngle(dt, dv, Vector3.up)) <= halfH) break;
+                float back = 3.4f + pass * 0.6f;
+                eye = caster - f * back + right * 1.3f + Vector3.up * 2.2f;
+                lo = float.MaxValue; hi = float.MinValue;
+                foreach (var p in pts)
+                {
+                    var d = p - eye; d.y = 0;
+                    float a = Vector3.SignedAngle(f, d, Vector3.up);
+                    lo = Mathf.Min(lo, a); hi = Mathf.Max(hi, a);
+                }
+                if (hi - lo <= 2f * halfH) break;
             }
-            var d = target - eye;
-            float yaw = BoardSpace.YawOf(d);
-            float pitch = -Mathf.Atan2(d.y, new Vector2(d.x, d.z).magnitude) * Mathf.Rad2Deg;
+            // The rightmost figure (usually the opponent) a little right of centre, so Mira stands left of centre; but the
+            // leftmost figure stays in frame.
+            float yawOff = hi - 0.22f * halfH;
+            if (lo < yawOff - 0.95f * halfH) yawOff = (lo + hi) * 0.5f;
+            var look = Quaternion.Euler(0, yawOff, 0) * f;
+            var mid = Vector3.Lerp(caster, opp, 0.6f) + Vector3.up * 1.15f;
+            float dist = Vector3.Dot(mid - eye, look);
+            var target = eye + look * Mathf.Max(2f, dist);
+            target.y = mid.y;
+            var dd = target - eye;
+            float yaw = BoardSpace.YawOf(dd);
+            float pitch = -Mathf.Atan2(dd.y, new Vector2(dd.x, dd.z).magnitude) * Mathf.Rad2Deg;
             ctx.PlaceAvatar(eye - Vector3.up * WorldBootstrap.EyeHeight, yaw, pitch);
         }
 
@@ -484,6 +492,9 @@ namespace World.Game
             else { _stage.MiraActor?.PlayOneShot(ActorKeys.Clap); }
         }
 
+        /// <summary>Tests: a second (duplicate) end event for the current duel, as a stray event or a focus switch might raise.</summary>
+        public void SimulateEndEvent(WardOutcome o) => OnEnded(o);
+
         private void OnCampaignEnded(WardOutcome o)
         {
             bool broken = o == WardOutcome.Victory || o == WardOutcome.Defeat || o == WardOutcome.Clash;
@@ -493,7 +504,11 @@ namespace World.Game
                 Resolution = r;
                 // Sent now, at the end event, before the presentation hold (PRD_CRYSTALS 5.6 step 3).
                 ResolutionSent = CampaignDuel.SendResolve(Request.AttemptId, r);
-                if ((r == DuelResult.Defeat || r == DuelResult.Surrender) && _stage.VolunteerActor != null) _stage.VolunteerHolds();
+                if ((r == DuelResult.Defeat || r == DuelResult.Surrender) && _stage.VolunteerActor != null)
+                {
+                    _stage.VolunteerHolds();
+                    HoldUntil = Mathf.Max(HoldUntil, Time.unscaledTime + VolunteerHoldSeconds); // let the step into the gap be seen
+                }
             }
             if (o != WardOutcome.Forfeited) _firstTimer = false;
             if (o == WardOutcome.Victory) _stage.CasterActor.PlayOneShot(ActorKeys.Cheer);
@@ -853,6 +868,9 @@ namespace World.Game
         private void DrawCompact(DuelLayout L)
         {
             float u = L.U;
+            bool resultUp = Phase == Screen.Result && (!_campaign || HoldOver);
+            if (resultUp) { DrawResult(L); return; } // the result card covers the screen: nothing drawn under it
+
             EncounterUi.Panel(L.Title, new Color(0.07f, 0.06f, 0.08f, 0.80f));
             EncounterUi.Label(new Rect(L.Title.x, L.Title.y + 2 * u, L.Title.width, 22 * u), HeaderText(), EncounterUi.Header, null, TextAnchor.MiddleCenter);
             var sub = new GUIStyle(EncounterUi.Hint) { wordWrap = true, alignment = TextAnchor.MiddleCenter, clipping = TextClipping.Clip };
@@ -863,13 +881,13 @@ namespace World.Game
             DrawCard(L.CasterPanel, true, L);
             DrawCard(L.OpponentPanel, false, L);
 
-            if (Phase == Screen.Result) { if (!_campaign || HoldOver) DrawResult(L); }
+            if (Phase == Screen.Result) { }
             else if (HistoryExpanded) DrawHistoryOverlay(L);
             else DrawBuilder(L);
 
             DrawCue(L);
             var toast = Toast;
-            if (toast != null && !(Phase == Screen.Result && (!_campaign || HoldOver)))
+            if (toast != null)
             {
                 EncounterUi.Panel(L.Toast, new Color(0.25f, 0.08f, 0.06f, 0.92f));
                 EncounterUi.Label(L.Toast, toast, EncounterUi.Hint, EncounterUi.Text, TextAnchor.MiddleCenter);
