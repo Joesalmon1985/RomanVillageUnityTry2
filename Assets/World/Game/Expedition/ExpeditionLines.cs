@@ -80,11 +80,14 @@ namespace World.Game
         public static string Get(WorldState s, string id)
         {
             if (string.IsNullOrEmpty(id) || s?.Campaign == null) return null;
-            if (InPack(s, id)) return CampaignApi.Line(s, id);
+            if (InPack(s, id)) return Sentence(CampaignApi.Line(s, id));
             if (!Missing.TryGetValue(id, out var text)) return null;
             s_used.Add(id);
-            return CampaignTokens.Fill(s.Campaign, text);
+            return Sentence(CampaignTokens.Fill(s.Campaign, text));
         }
+
+        /// <summary>A line that begins with a token ("{crystal.earth.name} lies under...") begins with a capital when said.</summary>
+        public static string Sentence(string text) => string.IsNullOrEmpty(text) ? text : char.ToUpperInvariant(text[0]) + text.Substring(1);
 
         /// <summary>The line, or the fallback text when there is none (replies must never be empty).</summary>
         public static string Get(WorldState s, string id, string fallback) => Get(s, id) ?? fallback;
@@ -105,6 +108,6 @@ namespace World.Game
         }
 
         /// <summary>Seconds a line stays up: long enough to read, short enough to keep the party moving.</summary>
-        public static float Seconds(string text) => UnityEngine.Mathf.Clamp(2.4f + (text ?? "").Length * 0.05f, 2.8f, 7.5f);
+        public static float Seconds(string text) => UnityEngine.Mathf.Clamp(1.5f + (text ?? "").Length * 0.036f, 2.2f, 5.5f);
     }
 }

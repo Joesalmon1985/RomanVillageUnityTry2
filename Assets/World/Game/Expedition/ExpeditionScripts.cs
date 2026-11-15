@@ -188,14 +188,26 @@ namespace World.Game
 
         private static int CountAlive() { int n = 0; foreach (var k in C.Companions) if (k.Alive) n++; return n; }
         private static bool Knows(string fact) => C.Knows(fact);
-        private static string Text(string id) => ExpeditionLines.Get(S, id, id);
+        /// <summary>The text of a reply or line id as it is shown now.</summary>
+        public static string Text(string id) => ExpeditionLines.Get(S, id, id);
+
+        /// <summary>
+        /// For tests: plays as a willing player until the condition holds ("Lead the way", "Coming", "Fight", "Set it",
+        /// the right answer), settling each duel of the stand-in with the next of the given results.
+        /// </summary>
+        public static IEnumerator PlayUntil(AutoPlay a, Func<bool> until, float gameSeconds, string what, params DuelResult[] duels)
+        {
+            var plan = new Plan();
+            foreach (var r in duels) plan.Duels.Enqueue(r);
+            yield return Drive(a, plan, until, gameSeconds, what);
+        }
 
         /// <summary>
         /// Answers the open bubble with the reply of that text by a tap on the screen where the reply is drawn. A
         /// folded question is unfolded by a tap on its body first. Only when the bubble is not on screen is the reply
         /// given by the key path (keys 1 to 3), and counted as such.
         /// </summary>
-        private static IEnumerator TapReply(AutoPlay a, int handle, string replyText)
+        public static IEnumerator TapReply(AutoPlay a, int handle, string replyText)
         {
             var replies = SpeechBubbles.RepliesOf(handle);
             int index = -1;
@@ -319,7 +331,8 @@ namespace World.Game
                             break;
                         }
                     }
-                    if (reply != null)
+                    // A capture takes frames: the question may have been closed and asked again meanwhile.
+                    if (reply != null && d.AskHandle == h && SpeechBubbles.IsShowing(h))
                     {
                         yield return TapReply(a, h, reply);
                         if (a.Failed) yield break;
@@ -392,13 +405,12 @@ namespace World.Game
             // The dev command sends the Ash expedition ahead: it seizes the Deepstone and sets it on its altar.
             var r1 = ExpeditionDev.AshNextStep();
             if (!r1.Ok) { a.Fail("DevRivalNextStep refused: " + r1.Message); yield break; }
-            yield return WaitFor(a, () => C.Crystal(Element.Earth).Custody == Custody.RivalTransit, 5f, "the Ash expedition to seize the Deepstone");
+            yield return WaitFor(a, () => C.Crystal(Element.Earth).Custody != Custody.AtSite, 5f, "the Ash expedition to seize the Deepstone");
             if (a.Failed) yield break;
-            ExpeditionDev.AshNextStep();
+            if (C.Crystal(Element.Earth).Custody == Custody.RivalTransit) ExpeditionDev.AshNextStep();
             yield return WaitFor(a, () => C.Crystal(Element.Earth).Custody == Custody.AtRivalAltar, 5f, "the Deepstone on the Ash altar");
             if (a.Failed) yield break;
             Stamp("the Ash expedition sent ahead (dev)");
-            long rivalBefore = 0;
             var plan = new Plan { IfLose = true };
             if (loseFirst) plan.Duels.Enqueue(DuelResult.Defeat);
             plan.Duels.Enqueue(DuelResult.Victory);
@@ -407,7 +419,7 @@ namespace World.Game
             plan.On("tally followed", () => Knows("earth.vault_known"));
             plan.On("in the Tally Vault", () => Dir.MiraSpace == "tally_vault", "vault", 8f);
             plan.On("at Dolm's threshold", () => C.Party.Mode == PartyMode.AtThreshold);
-            plan.On("the retreat", () => Dir.RetreatPlaying, "retreat", 1.6f).When = () => { if (C.Party.Mode == PartyMode.InEncounter) rivalBefore = C.RivalProgress; return Dir.RetreatPlaying; };
+            plan.On("the retreat", () => Dir.RetreatPlaying, "retreat", 1.6f);
             plan.On("back in the survey gallery", () => Dir.RetreatsPlayed > 0 && !Dir.RetreatPlaying, "after_loss", 3f);
             plan.On("Dolm beaten, the Deepstone recovered", () => Knows("earth.recovered"), "recovered", 3f);
             plan.On("out by the Ash cut", () => Knows("earth.recovered") && Dir.MiraSpace.Length == 0, "ash_cut", 2f);

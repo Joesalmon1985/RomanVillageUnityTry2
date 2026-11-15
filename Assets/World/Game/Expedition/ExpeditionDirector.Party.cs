@@ -30,7 +30,8 @@ namespace World.Game
             /// <summary>Where they fell (world) and in which space; set when not alive.</summary>
             public Vector3 FellPos;
             public string FellSpace = "";
-            internal GameObject FallenMark;
+            /// <summary>The cairn beside a fallen companion (null while alive).</summary>
+            public GameObject FallenMark;
         }
 
         private readonly List<Mate> _mates = new List<Mate>();
@@ -326,7 +327,14 @@ namespace World.Game
             var pos = Mira.transform.position;
             _miraSpeed = dt > 1e-5f ? BoardSpace.Flat(pos - _lastMiraPos) / dt : 0f;
             _lastMiraPos = pos;
-            Drop(pos, MiraSpace);
+            var crumb = pos;
+            if (_leg != null && _leg.Link && C.Party.Mode == PartyMode.Travelling)
+            {
+                // On a stair she sinks out of sight; the way she came stays at floor level.
+                var end = MiraSpace == _leg.SpaceFrom ? _leg.Pts[0] : _leg.Pts[1];
+                crumb.y = MiraSpace.Length == 0 ? PlayerWalker.GroundHeight(end) : end.y;
+            }
+            Drop(crumb, MiraSpace);
             UpdateMates(dt, frozen);
             UpdateGestures();
             UpdateCarried();
@@ -483,13 +491,20 @@ namespace World.Game
         {
             var centre = _hasStand ? _stand : Mira.transform.position;
             var thing = ExpeditionSpace.World(S, C.Party.At);
+            var foe = EnemyHere();
+            if (foe.HasValue) thing = foe.Value; // at a threshold they stand to either side of her, facing the keeper
+            if (_approach.HasValue && Walker != null)
+            {
+                // The opening: the six come up behind her, facing the player.
+                centre = _approach.Value; thing = Walker.Position;
+            }
             var fwd = thing - centre; fwd.y = 0;
             if (fwd.sqrMagnitude < 0.2f) fwd = Mira.transform.forward;
             fwd.Normalize();
+            // Three to each side of her and the thing, never straight behind: whoever follows sees Mira and what she does.
             float back = Mathf.Atan2(-fwd.x, -fwd.z) * Mathf.Rad2Deg;
-            float spread = n <= 1 ? 0f : 150f;
-            float ang = (back - spread * 0.5f + (n <= 1 ? 0f : spread * k / (n - 1))) * Mathf.Deg2Rad;
-            float r = 2.6f + (k % 2) * 0.9f;
+            float ang = (back + (k % 2 == 0 ? -1f : 1f) * (58f + 26f * (k / 2))) * Mathf.Deg2Rad;
+            float r = 2.7f + (k / 2) * 0.35f;
             for (int tries = 0; tries < 4; tries++)
             {
                 var slot = centre + new Vector3(Mathf.Sin(ang), 0, Mathf.Cos(ang)) * r;
@@ -506,7 +521,14 @@ namespace World.Game
             float legSpeed = Mathf.Max(3.2f, _miraSpeed * 1.35f + 1.2f);
             foreach (var m in _mates)
             {
-                m.Npc.Hold = frozen;
+                m.Npc.Hold = frozen || !m.Alive;
+                // The roster is the state's: a companion killed or brought back by the developer tools follows it too.
+                var st = C.Companion(m.Id);
+                if (st != null && st.Alive != m.Alive)
+                {
+                    if (!st.Alive) LayFallen(m, m.Npc.transform.position, m.Space);
+                    else Revive(m);
+                }
                 if (!m.Alive) continue;
                 if (m.Out) { UpdateScoutBody(m, dt); continue; }
                 int slotIndex = k++;
@@ -526,7 +548,7 @@ namespace World.Game
                 else
                 {
                     want = GatherSlot(slotIndex, n); space = MiraSpace;
-                    face = _hasStand ? ExpeditionSpace.World(S, C.Party.At) : Mira.transform.position;
+                    face = _approach.HasValue && Walker != null ? Walker.Position : EnemyHere() ?? (_hasStand ? ExpeditionSpace.World(S, C.Party.At) : Mira.transform.position);
                     if (BoardSpace.Flat(face - want) < 1f) face = Mira.transform.position;
                 }
                 var pos = m.Npc.transform.position;
@@ -714,7 +736,7 @@ namespace World.Game
             scene.Enemy = enemy;
             // The gap: a pace towards the enemy from where the party stood (the mouth of the vault, the foot of the steps).
             var toEnemy = enemy - _preResolvePos; toEnemy.y = 0;
-            scene.Gap = _preResolvePos + (toEnemy.sqrMagnitude > 0.01f ? toEnemy.normalized : Vector3.forward) * 1.2f;
+            scene.Gap = _preResolvePos + (toEnemy.sqrMagnitude > 0.01f ? toEnemy.normalized : Vector3.forward) * 2.4f;
             _pendingFell = null;
             _retreat = scene;
             if (!string.IsNullOrEmpty(scene.Volunteer))
@@ -830,6 +852,15 @@ namespace World.Game
             m.FallenMark.transform.position = pos + new Vector3(0.9f, 0, 0.3f);
         }
 
+        private void Revive(Mate m)
+        {
+            m.Alive = true; m.Space = "?";
+            if (m.Npc.Actor is PlaceholderActor pa) { pa.enabled = true; pa.SetYaw(0f); }
+            m.Npc.transform.rotation = Quaternion.identity;
+            m.Npc.Role = m.Def.Role;
+            if (m.FallenMark != null) { Destroy(m.FallenMark); m.FallenMark = null; }
+        }
+
         // ---------------- the viewpoint underground while interiors are a stand-in ----------------
 
         public const string RailLock = "ExpeditionRail";
@@ -846,6 +877,18 @@ namespace World.Game
 
         /// <summary>The space the player is in: an interior id, or "" on the surface.</summary>
         public string PlayerSpace => StandInInteriors ? (Railed ? MiraSpace : "") : (Interiors.Current ?? "");
+
+        /// <summary>The keeper the party stands before (the opponent of the encounter whose threshold is the party's place), or null.</summary>
+        private Vector3? EnemyHere()
+        {
+            var p = C.Party;
+            foreach (var e in D.Encounters)
+            {
+                if (e == null || e.Threshold.IsEmpty || e.Threshold != p.At || e.Stage == null || e.Stage.Opponent.IsEmpty) continue;
+                return ExpeditionSpace.World(S, e.Stage.Opponent);
+            }
+            return null;
+        }
 
         private void StartRail()
         {
@@ -881,17 +924,39 @@ namespace World.Game
             if (!Railed) return;
             if (!under) { EndRail(Mira.transform.position); if (_following && Walker != null) Walker.Follow(Mira); return; }
             if (Walker == null) return;
-            // Behind the last of the file, on the way the party came, looking at Mira.
-            TrailAt(9.5f, out var pos, out _, out var space);
-            if (space != MiraSpace)
-                for (int i = 0; i < _trail.Count; i++)
-                    if (_trail[i].Space == MiraSpace) { pos = _trail[i].Pos; break; }
-            var look = Mira.transform.position;
-            if (_retreat != null) look = Vector3.Lerp(look, _retreat.Gap, 0.5f);
-            else if (C.Party.Mode != PartyMode.Travelling && _hasStand)
+            Vector3 pos, look;
+            var p = C.Party;
+            var enemy = EnemyHere();
+            if (_retreat != null && _retreat.Start >= 0f && Time.unscaledTime - _retreat.Start < 2.6f)
             {
-                var thing = ExpeditionSpace.World(S, C.Party.At);
-                look = Vector3.Lerp(look, thing, 0.35f);
+                // The retreat begins: the view holds where it was, on the one who steps into the gap, as the others run past.
+                pos = _railPos;
+                look = Vector3.Lerp(_retreat.Gap, _retreat.Enemy, 0.35f);
+            }
+            else if (enemy.HasValue && p.Mode != PartyMode.Travelling && _retreat == null)
+            {
+                // At a threshold: over Mira's shoulder, so the keeper and the altar are in view beyond her.
+                var mp = Mira.transform.position;
+                var dir = enemy.Value - mp; dir.y = 0; dir.Normalize();
+                var side = new Vector3(dir.z, 0, -dir.x);
+                pos = mp - dir * 2.0f;
+                foreach (float sgn in new[] { 1f, -1f })
+                {
+                    var cand = mp - dir * 2.9f + side * (1.7f * sgn);
+                    if (ExpeditionSpace.OnFloor(D, MiraSpace, cand) && ExpeditionSpace.OnFloor(D, MiraSpace, cand - dir * 1.2f)) { pos = cand; break; }
+                }
+                look = Vector3.Lerp(mp, enemy.Value, 0.6f);
+            }
+            else
+            {
+                // Behind the last of the file, on the way the party came, looking at Mira and what she is at.
+                TrailAt(p.Mode == PartyMode.Travelling ? 8.5f : 6.5f, out pos, out _, out var space);
+                if (space != MiraSpace)
+                    for (int i = 0; i < _trail.Count; i++)
+                        if (_trail[i].Space == MiraSpace) { pos = _trail[i].Pos; break; }
+                look = Mira.transform.position;
+                if (_retreat != null) look = Vector3.Lerp(look, _retreat.Gap, 0.5f);
+                else if (p.Mode != PartyMode.Travelling && _hasStand) look = Vector3.Lerp(look, ExpeditionSpace.World(S, p.At), 0.35f);
             }
             var d = look - pos; d.y = 0;
             float yaw = d.sqrMagnitude > 0.5f ? BoardSpace.YawOf(d) : _railYaw;

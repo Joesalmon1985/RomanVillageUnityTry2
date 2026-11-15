@@ -185,7 +185,7 @@ namespace World.Game
             bool paused = _boot.Clock.IsPaused;
             bool encounter = EncounterHost.Instance != null && EncounterHost.Instance.IsRunning;
             Mira.Hold = paused;
-            UpdateParty(paused || encounter);
+            UpdateParty(encounter); // positions come from state, so a paused clock only stops them where they are
             if (encounter) return;
             UpdateCompany();
             UpdateTalk();
@@ -254,6 +254,16 @@ namespace World.Game
                 m.Out = c.Scout != null && c.Scout.Out && c.Scout.CompanionId == m.Id;
             }
             PlaceFromState(true);
+            // Stand-in interiors: a player saved underground with the party is led again (the way back up is the interior's way in).
+            if (StandInInteriors && MiraSpace.Length > 0 && p.PlayerPresent && Walker != null)
+            {
+                StartRail();
+                if (ExpeditionSpace.TrySurfaceEntrance(S, MiraSpace, out var ent))
+                {
+                    var free = WalkGrid.NearestFree(WalkLattice.ToCell(ExpeditionSpace.World(S, ent)), 4);
+                    if (free.HasValue) { _railEntry = free.Value; _railEntryHeading = 0; }
+                }
+            }
         }
     }
 }

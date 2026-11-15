@@ -72,8 +72,12 @@ namespace World.Game
             return Sites != null ? Sites.SpaceOfPerson(n) : "";
         }
 
-        private bool Hears(Npc n) =>
-            n != null && Walker != null && SpaceOfSpeaker(n) == PlayerSpace && BoardSpace.Flat(n.transform.position - Walker.Position) <= 75f;
+        private bool Hears(Npc n)
+        {
+            if (n == null || Walker == null || SpaceOfSpeaker(n) != PlayerSpace) return false;
+            // A viewpoint led with the party is with the party, wherever the last frame left it.
+            return Railed || BoardSpace.Flat(n.transform.position - Walker.Position) <= 75f;
+        }
 
         private void Record(string speaker, string text) => _said.Add(new Line { Tick = S.Tick, Speaker = speaker ?? "", Text = text ?? "" });
 
@@ -368,6 +372,7 @@ namespace World.Game
                     if (_sceneRestored && SceneStep == SceneOpening) { _openingStep = 3; return; } // a load mid-opening: the question again
                     SceneStep = SceneOpening;
                     _openingStep = 1; _openingSince = Now;
+                    Debug.Log("[Expedition] opening: Mira comes to the player at tick " + S.Tick);
                     // To a point in front of the player, on Mira's side of them.
                     var to = Mira.transform.position - Walker.Position; to.y = 0;
                     if (to.magnitude > TalkDistance + 1f) _approach = ExpeditionSpace.Ground(Walker.Position + to.normalized * TalkDistance);
@@ -376,6 +381,7 @@ namespace World.Game
                     if (_approach.HasValue && BoardSpace.Flat(Mira.transform.position - _approach.Value) > 1.2f && Now - _openingSince < 12f) return;
                     Mira.FaceTowards(Walker.Position);
                     Mira.Actor?.PlayOneShot(ActorKeys.Wave);
+                    Debug.Log("[Expedition] opening: the story begins at tick " + S.Tick + ", Mira " + BoardSpace.Flat(Mira.transform.position - Walker.Position).ToString("0.0") + " m from the player");
                     foreach (var id in OpeningStory) SayLine(id);
                     // The routes' own opening lines (the Earth pack's: where the Deepstone lies).
                     foreach (var l in D.Lines)
@@ -443,13 +449,14 @@ namespace World.Game
         {
             var top = CampaignApi.TopLead(S);
             if (top == null || top.Id == _declinedLead || Now < _leadAskAfter) return;
+            if (top.Id == _acceptedLead && Now - _acceptedAt < 3f) return; // accepted: the sim sets out on its next tick
             _askLead = top.Id;
             var replies = new List<string> { Reply(ExpeditionLines.ReplyLead) };
             bool why = _whyAsked != top.Id;
             if (why) replies.Add(Reply(ExpeditionLines.ReplyWhy));
             replies.Add(Reply(ExpeditionLines.ReplyNot));
             int id = top.Id; string defId = top.DefId; string crystal = top.Crystal;
-            OpenAsk(AskLead, Mira, string.IsNullOrEmpty(top.Reason) ? top.Title : top.Reason, replies, i =>
+            OpenAsk(AskLead, Mira, ExpeditionLines.Sentence(string.IsNullOrEmpty(top.Reason) ? top.Title : top.Reason), replies, i =>
             {
                 if (i == 0) AcceptLead(id);
                 else if (why && i == 1)
@@ -470,7 +477,7 @@ namespace World.Game
         private void AcceptLead(int leadId)
         {
             if (!C.Party.PlayerPresent) Send(new SetCompany { Present = true });
-            _acceptedLead = leadId;
+            _acceptedLead = leadId; _acceptedAt = Now;
             var r = Send(new AcceptLead { LeadId = leadId });
             if (!r.Ok) { SayText("mira", r.Message); return; }
             FollowMira();
@@ -492,6 +499,7 @@ namespace World.Game
         }
 
         private int _goOnSaidFor = -1;
+        private float _acceptedAt = -100f;
 
         private void CallIfLagging()
         {
@@ -640,11 +648,13 @@ namespace World.Game
                 {
                     if (!C.Party.PlayerPresent) Send(new SetCompany { Present = true });
                     var r = Send(new CommitEncounter { EncounterId = encounterId });
+                    _thresholdAskAfter = Now + 2f;
                     if (!r.Ok) { SayText("mira", r.Message); _thresholdAskAfter = Now + 6f; }
                 }
                 else if (i == 1)
                 {
                     Send(new WithdrawFromEncounter { EncounterId = encounterId });
+                    _thresholdAskAfter = Now + 2f;
                 }
                 else
                 {
@@ -799,6 +809,7 @@ namespace World.Game
                     {
                         if (!C.Party.PlayerPresent) Send(new SetCompany { Present = true });
                         var r = Send(new ConfirmRestore { Crystal = element });
+                        _towerAskAfter = Now + 2f;
                         if (!r.Ok) { SayText("mira", r.Message); _towerAskAfter = Now + 8f; }
                     }
                     else

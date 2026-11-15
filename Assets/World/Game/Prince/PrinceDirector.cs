@@ -292,8 +292,9 @@ namespace World.Game
         {
             switch (CurrentPhase)
             {
-                case Phase.Approach: UpdateApproach(); return;
-                case Phase.Asking: UpdateAsking(); return;
+                // Crystals I6: a pitch that is not urgent is withdrawn when Mira takes the player's ear (her opening, her road).
+                case Phase.Approach: if (Hushed) { EndPitch(Now + 2f); return; } UpdateApproach(); return;
+                case Phase.Asking: if (Hushed) { EndPitch(Now + 2f); return; } UpdateAsking(); return;
                 case Phase.Leading: UpdateLeading(); return;
                 case Phase.AtSpot: UpdateAtSpot(); return;
                 case Phase.Celebrating:
