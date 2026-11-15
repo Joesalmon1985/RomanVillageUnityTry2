@@ -94,7 +94,15 @@ namespace World.Game
         {
             MarkerRef.TryParse(marker, out var r);
             var l = Interiors.LinkAt(r);
-            return l != null ? l.Cell + WalkLattice.Dir(l.OutHeading) : Beside(marker);
+            if (l == null) return Beside(marker);
+            // In front of the way; if a site prop of the expedition stands there, the nearest free side (I8).
+            for (int k = 0; k < 6; k++)
+            {
+                int h = l.OutHeading + ((k + 1) / 2) * (k % 2 == 0 ? 1 : -1);
+                var c = l.Cell + WalkLattice.Dir(((h % 6) + 6) % 6);
+                if (!WalkGrid.IsBlocked(c)) return c;
+            }
+            return l.Cell + WalkLattice.Dir(l.OutHeading);
         }
 
         private static IEnumerator WaitCrossed(AutoPlay a, string expectInterior, float timeout = 20f)
@@ -160,7 +168,10 @@ namespace World.Game
              .Call(() => { var r = B.Sim.Submit(new DevSetCustody { Crystal = Element.Earth, To = Custody.AtRivalAltar }); if (!r.Ok) throw new InvalidOperationException(r.ToString()); B.Clock.StepOnce(); })
              .Step(a => Drive(() => Knows("earth.vault_known"), 180f, 40, a.Fail))
              .Call(() => { Debug.Log("[AutoPlay] quarry_walk: the vault is known at tick " + S.Tick); DayNight.Instance?.SetHour(23.0); })
-             .Step(LatticeMove.Forward).Turn(3).Step(LatticeMove.Forward)
+             // Off the stair and back onto it (from whichever side is free of the expedition's props).
+             .WalkTo(() => Approach("glade/stair"), 30f)
+             .Step(a => Face(a, "glade/stair"))
+             .Step(LatticeMove.Forward)
              .Step(a => WaitCrossed(a, "quarry_upper"))
              .WalkTo(() => Beside("glade/quarry_upper/pedestal", "glade/quarry_upper/tally"), 60f)
              .Step(a => Face(a, "glade/quarry_upper/pedestal"))
@@ -180,9 +191,12 @@ namespace World.Game
              .Check(() => WalkGrid.IsBlocked(CellOf("ash_cut/tally_vault/bar")), "the barred door is open before Dolm is beaten")
              .OpenMap().Wait(0.5f).Capture("i5_vault_map").CloseMap()
              // The keeper's duel is the campaign duel's (another package): resolved here by commands as a victory.
-             .Step(a => Drive(() => CampaignApi.Party(S).Mode == PartyMode.AtThreshold, 120f, 40, a.Fail))
+             // (I8: the expedition's scout must be back before a fight; the duel itself is not staged here.)
+             .Step(a => Drive(() => CampaignApi.Party(S).Mode == PartyMode.AtThreshold && (S.Campaign.Scout == null || !S.Campaign.Scout.Out), 240f, 40, a.Fail))
              .Call(() =>
              {
+                 CampaignDuel.AutoStage = false;
+                 if (!S.Campaign.Party.PlayerPresent) { B.Sim.Submit(new SetCompany { Present = true }); B.Clock.StepOnce(); } // the expedition counts a player who walked off as away
                  var r = B.Sim.Submit(new CommitEncounter { EncounterId = "keeper_earth" });
                  if (!r.Ok) throw new InvalidOperationException("commit: " + r);
                  B.Clock.StepOnce();
@@ -190,6 +204,7 @@ namespace World.Game
                  r = B.Sim.Submit(new ResolveEncounter { AttemptId = at.Id, Result = DuelResult.Victory });
                  if (!r.Ok) throw new InvalidOperationException("resolve: " + r);
                  B.Clock.StepOnce();
+                 CampaignDuel.AutoStage = true;
              })
              .Check(() => Knows("earth.ash_cut_open"), "the Ash cut did not open")
              .Wait(2.0f)
