@@ -75,14 +75,13 @@ Three runners in the Ash Clan's red, drawn only when the player is on the surfac
 - **Journal.** While a campaign runs the map's side column shows "Mira's journal" under the map's key: where Mira is and whether you are with her, each crystal's belief with the age of that word (a stale belief with the sim's "where to look" sentence), the demons' pace after a restoration, where next (her best lead and its reason), the six (alive, or where they fell), and as many of the latest entries as fit. A tap on the title or J unfolds the whole journal over the legend. With the HUD on, J opens it from the world. "What do we know?" opens it.
 - **Map layer** (island mode): the towers (ringed once lit), believed crystal places with age and "?" when stale, Mira's leads (the best one named), the last Ash report with its age, the scout, Mira with her errand and the six as dots; "Mira is waiting for you here" when she waits. Underground she is shown at the way down, "(below)". A tap within 28 m of her marker sets the walk target there.
 
-## Interiors
+## Interiors (joined with I5 at integration, I8)
 
-Positions inside interiors come from `InteriorSpace.ToWorld`. `ExpeditionSpace.RealInteriors` is false while that is the I0 shell (it maps every interior onto the board centre). Then:
+The stand-in interiors and the led viewpoint are gone (`ExpeditionStandIn.cs` deleted). The party walks I5's interiors: positions from `InteriorSpace.ToWorld`, the player follows Mira down and up through `Interiors.Enter` when the party takes a way with the player in company, `Interiors.LeadOut()` answers "Lead me out" (offered on Mira and on every party member underground), `Interiors.Current` is the player's space. A follow never crosses a way by itself (I5's `OnStepped` ignores way cells while the walker follows someone). One owner per object: I5 draws the pedestal, altar, inscriptions, tally and both ends of every way (`SurfaceWayView` on the surface); this package draws the crystals (one body each, following custody: pedestal, altar, Mira's hands, the runners, the tower; I5's stands hide their own crystal while `CrystalStandView.DrawnElsewhere`) and the keepers. The interior map (I5) draws the party.
 
-- interior cells are laid out far east of the island (`StandInOrigin`), and `ExpeditionStandIn` builds a plain floor, rock, a roof, doors and lit stairs from the rows;
-- the walker cannot step there (open regions are package I5's), so a player in Mira's company is **led**: the viewpoint is locked (`ExpeditionRail`) and trails the party along the way it came, over Mira's shoulder at a threshold (the keeper and the altar in view), held still for the first seconds of a retreat (on the one who stays), and on a clear spot of floor when the party was placed somewhere without walking; "Go on without me" or "Lead me out" puts it back at the stair mouth; a tap on an open stair mouth offers "Go down" to join a party that is below. When the party comes up again the player stands at that place's safe point and takes up the file once the party walks on.
+## The duel (joined with I7)
 
-With package I5 merged none of that runs: the director calls `Interiors.Enter(marker)` when the party takes a stair with the player in company, `Interiors.LeadOut()` for "Lead me out", and reads `Interiors.Current` for the player's space.
+`EncounterCommitted` is staged by I7's driver alone (`CampaignDuel.Start`, at the encounter's `caster`, `keeper` and `threshold` markers through `Interiors.TryWorld`); the stand-in bubble is gone. On `CampaignDuel.Staged` the director hides the six, any cairn and the keeper (I7 stages its own bodies) and shows them on `EncounterHost.Ended`; then the retreat plays as before. The duel's off-lattice camera keeps the player's interior lit (I5). Mira's threshold bubble adds `CampaignDuel.StakesLine` when the pack's line does not name the volunteer. The AutoPlay scripts play the real duel with `WardBot` (passive for a planned loss).
 
 ## AutoPlay
 
@@ -99,9 +98,9 @@ All start from `dev.historic` plus `StartCampaign` on the authored pack (the scr
 
 Each logs `[AutoPlay] <name> timings (game m:ss since the campaign began): ...` and `[AutoPlay] <name> OK`.
 
-## Lines the authored pack lacks
+## Lines the authored pack lacked
 
-The game asks the pack for these ids; until a pack has them the text in `ExpeditionLines.Missing` is used (original, short). A pack writer adds a line with the id and the pack's text wins.
+These ids are in `authored_v1/lines.json` since the integration (I8), with the same text; `ExpeditionLines.Missing` keeps the text only as a fallback for other packs. The pack now also has a `volunteer` line for each of the six, a `memorial` line of Mira's for each, and prince `state` lines for two to four towers.
 
 | Id | Used for | Stand-in |
 |---|---|---|
@@ -121,9 +120,7 @@ The game asks the pack for these ids; until a pack has them the text in `Expedit
 | `mira_wait_scout` | a threshold while the scout is out | Wait for {companion.tansy.name}. I won't fight with one of us still out there. |
 | `cue_fell_behind`, `cue_rejoin` | cues | You fell behind. Mira has gone on without you. / The map (Tab) shows where Mira is. Find her and tap her to rejoin. |
 | `companion_fallen` | a tap on a fallen companion | fell here, holding the way out. |
-| `duel_stand_in`, `_win`, `_lose`, `_clash` | the duel stand-in only (gone with I7) | |
 
-Also missing in the pack (nothing is said): a `volunteer` line and a `memorial` line for each companion but Garrick; prince `state` lines for two, three and four towers.
 
 ## Files outside `Game/Expedition`
 

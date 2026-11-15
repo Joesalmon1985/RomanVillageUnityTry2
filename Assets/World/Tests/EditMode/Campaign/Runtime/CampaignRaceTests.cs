@@ -63,7 +63,7 @@ namespace World.Sim.Tests
                 var plan = sim.State.Campaign.RivalPlan;
                 Assert.IsNotNull(plan);
                 Assert.AreEqual("earth", plan[0].Crystal, "the authored pack always opens with the Deepstone");
-                Assert.That(plan[0].MarchCost, Is.InRange(2250 - 600, 2250 + 600));
+                Assert.That(plan[0].MarchCost, Is.InRange(2700 - 600, 2700 + 600)); // 2250 before I8's 45 s opening delay
                 Assert.That(plan[1].MarchCost, Is.InRange(3000 - 600, 3000 + 600));
                 marches.Add(plan[0].MarchCost);
                 Assert.AreEqual(plan[0].MarchCost, Authored(seed).State.Campaign.RivalPlan[0].MarchCost, "the same seed draws the same plan");
