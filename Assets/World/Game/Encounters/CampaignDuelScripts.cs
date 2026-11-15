@@ -168,6 +168,9 @@ namespace World.Game
             {
                 try
                 {
+                    // The duel alone, as package I7 built it: the expedition's director (I6) stays off for these scripts,
+                    // since its party, scout and company rules would fight the commands this script sends (I8).
+                    ExpeditionInstaller.Disabled = true;
                     AutoPlay.ContinueAfterLoad = KeeperAfterStart(name, win);
                     if (!DevStart.Begin(ScenarioStarts.DevHistoric)) Debug.LogWarning("[AutoPlay] " + name + ": " + DevStart.LastError);
                 }
