@@ -21,6 +21,10 @@ public static class HandoverDrive
     public static string Run() => Start("handover");
     public static string FirstScene() => Start("first_scene");
     public static string Follow() { PrinceScripts.TimeScale = 8f; return Start("follow_prince"); }
+    public static string Story() { PrinceScripts.TimeScale = 8f; return Start("follow_prince_story"); }
+    public static string DuelDance() => Start("duel_dance");
+    public static string EarthFirst() => Start("earth_first");
+    public static string EarthStolen() => Start("earth_stolen");
     public static string Ignore() { PrinceScripts.TimeScale = 8f; return Start("ignore_prince"); }
 
     static string Start(string name)

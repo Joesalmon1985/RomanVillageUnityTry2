@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Linq;
 using UnityEngine;
 using World.Sim;
+using World.Sim.Eras;
 using World.Sim.Economy;
 using World.Sim.Factions;
 
@@ -52,6 +53,7 @@ namespace World.Game
             s_registered = true;
             AutoPlayScripts.Register("first_scene", FirstScene);
             AutoPlayScripts.Register("follow_prince", () => FollowPrince("follow_prince", false));
+            AutoPlayScripts.Register("follow_prince_story", () => FollowPrince("follow_prince_story", false, true));
             AutoPlayScripts.Register("prompt_game", () => FollowPrince("prompt_game", true));
             AutoPlayScripts.Register("ignore_prince", IgnorePrince);
             AutoPlayScripts.Register("prince_captures", Captures);
@@ -306,15 +308,18 @@ namespace World.Game
         // follow_prince / prompt_game
         // =====================================================================================================
 
-        public static AutoPlayScript FollowPrince(string name, bool prompt)
+        public static AutoPlayScript FollowPrince(string name, bool prompt, bool story = false)
         {
             var s = new AutoPlayScript(name);
-            s.Step(a => FollowRoutine(a, name, prompt)).Quit(0);
+            s.Step(a => FollowRoutine(a, name, prompt, null, story)).Quit(0);
             return s;
         }
 
-        private static IEnumerator FollowRoutine(AutoPlay a, string name, bool prompt, Func<bool> until = null)
+        private static IEnumerator FollowRoutine(AutoPlay a, string name, bool prompt, Func<bool> until = null, bool story = false)
         {
+            // Which way the game went: "declined" (the invitation into the Historic age is always turned down: the Prehistoric
+            // skirmish plays to its own ending) or "story" (accepts "Show me" and plays on into Historic; no ending expected).
+            int invitesDeclined = 0; bool accepted = false; float storyAt = -1f;
             ApplyTimeScale(until != null ? 6f : -1f);
             float delay = prompt ? 0f : ArgF("-princeDelay", Delay);
             string modeArg = Arg("-princeMode");
@@ -334,6 +339,8 @@ namespace World.Game
             float lastCastAt = Now, stallLogAt = 0f; s_stalls = 0;
             while (!FactionApi.Outcome(S).GameOver && Now < maxMinutes * 60f && (until == null || !until()))
             {
+                if (story && storyAt < 0f && AgesApi.Current(S) == Era.Historic) { storyAt = Now; Debug.Log("[AutoPlay] " + name + ": Show me accepted, Historic age at game minute " + (Now / 60f).ToString("0.0", CultureInfo.InvariantCulture)); }
+                if (story && storyAt >= 0f && Now - storyAt > 120f) break; // two minutes on: the game continues
                 walked += BoardSpace.Flat(W.Position - last); last = W.Position;
                 if (d.Casts.Count > castsBefore)
                 {
@@ -362,6 +369,13 @@ namespace World.Game
                 if (pitchedNow >= 0 && pitchedNow != seenAsk && d.AskHandle != 0) { seenAsk = pitchedNow; seenAt = Now; }
                 if (h != 0)
                 {
+                    // The invitation into the Historic age shares the label "Show me" with a pitch: it is told apart by "Not yet".
+                    if (ReplyIndex(h, PrinceLines.NotYet) >= 0 && until == null)
+                    {
+                        if (story) { SpeechBubbles.Choose(h, ReplyIndex(h, PrinceLines.ShowMe)); accepted = true; }
+                        else { SpeechBubbles.Choose(h, ReplyIndex(h, PrinceLines.NotYet)); invitesDeclined++; }
+                        yield return null; continue;
+                    }
                     int ci = ReplyIndex(h, PrinceLines.Coming, PrinceLines.NotNow, DialoguePanel.FollowLabel);
                     bool pitch = ReplyIndex(h, PrinceLines.ReplyLead, PrinceLines.ShowMe) >= 0;
                     if (!pitch && ci >= 0) { SpeechBubbles.Choose(h, ci); yield return null; continue; }
@@ -418,7 +432,8 @@ namespace World.Game
             string Avg(List<float> l) => l.Count == 0 ? "-" : l.Average().ToString("0.0", CultureInfo.InvariantCulture);
             string Med(List<float> l) { if (l.Count == 0) return "-"; var x = l.OrderBy(v => v).ToList(); return x[x.Count / 2].ToString("0.0", CultureInfo.InvariantCulture); }
             string kinds = string.Join(",", casts.GroupBy(c => c.Kind).Select(g => g.Key + ":" + g.Count()));
-            string report = name + " result=" + (o.GameOver ? o.Outcome + "/" + o.Reason : "running") + " minute=" + (Now / 60f).ToString("0.0", CultureInfo.InvariantCulture)
+            string path = AgesApi.Current(S) == Era.Historic ? "story (accepted Show me, Historic age)" : "declined (invitation turned down " + invitesDeclined + " times)";
+            string report = name + " path=" + path + " result=" + (o.GameOver ? o.Outcome + "/" + o.Reason : "running") + " minute=" + (Now / 60f).ToString("0.0", CultureInfo.InvariantCulture)
                 + " casts=" + casts.Count + " declines=" + d.Declines + " walked=" + walked.ToString("0") + "m"
                 + " pitchToCast avg=" + Avg(pitched) + "s median=" + Med(pitched) + "s"
                 + " castInterval avg=" + Avg(gaps) + "s median=" + Med(gaps) + "s"
@@ -433,7 +448,9 @@ namespace World.Game
                 Debug.Log("[AutoPlay] " + name + " cast " + (i + 1) + ": t=" + (casts[i].CastTick / 10f).ToString("0") + "s " + casts[i].Kind + " by " + casts[i].Speaker
                     + " pitch->cast " + (casts[i].PitchedTick >= 0 ? ((casts[i].CastTick - casts[i].PitchedTick) / 10f).ToString("0.0") + "s" : "-")
                     + (i < walkPerCast.Count ? " walked " + walkPerCast[i].ToString("0") + "m" : ""));
-            if (prompt && o.Outcome != GameOutcome.Victory) a.Fail("prompt_game did not win: " + report);
+            if (story && o.GameOver) a.Fail(name + ": the game ended after Show me (a defeat or victory screen): " + report);
+            else if (story && AgesApi.Current(S) != Era.Historic) a.Fail(name + ": never reached the Historic age: " + report);
+            else if (prompt && o.Outcome != GameOutcome.Victory) a.Fail("prompt_game did not win: " + report);
             else Debug.Log("[AutoPlay] " + name + " OK");
             Time.timeScale = 1f;
         }
