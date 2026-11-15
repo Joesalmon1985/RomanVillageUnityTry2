@@ -276,25 +276,4 @@ namespace World.Game
             _legR.localRotation = Quaternion.Euler(swing, 0, 0);
         }
     }
-
-    /// <summary>
-    /// The single creation point for characters. Returns placeholder bodies today; an optional Sims 2
-    /// layer can be swapped in here later without touching callers.
-    /// </summary>
-    public static class ActorFactory
-    {
-        public static ICharacterActor Create(string id, Color colour, Transform parent = null)
-        {
-            if (parent == null && WorldBootstrap.Instance != null) parent = WorldBootstrap.Instance.ActorsRoot;
-            return PlaceholderActor.Build(id, colour, parent);
-        }
-
-        public static ICharacterActor Create(string id, Color colour, Vector3 position, float yaw, Transform parent = null)
-        {
-            var a = Create(id, colour, parent);
-            a.Root.position = position;
-            if (a is PlaceholderActor p) p.SetYaw(yaw); else a.Root.rotation = Quaternion.Euler(0, yaw, 0);
-            return a;
-        }
-    }
 }
