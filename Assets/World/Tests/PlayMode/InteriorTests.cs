@@ -382,7 +382,7 @@ namespace World.Game.Tests
                 Assert.IsFalse(DayNight.Instance.Sun.enabled, "no sun underground at " + hour);
                 Assert.IsFalse(DayNight.Instance.Moon.enabled, "no moon underground at " + hour);
                 Assert.IsTrue(InteriorLighting.Instance.SkyDark, "no sky underground at " + hour);
-                Assert.Less(RenderSettings.ambientSkyColor.maxColorComponent, 0.06f, "dark ambient at " + hour);
+                Assert.Less(RenderSettings.ambientSkyColor.maxColorComponent, InteriorLighting.MaxAmbient, "dark ambient at " + hour);
                 Assert.IsTrue(WorldLights.Instance.Lantern.enabled && WorldLights.Instance.Lantern.intensity > 0.5f, "the lantern is lit at " + hour);
                 var dome = _boot.transform.Find("SkyDome");
                 if (dome != null) Assert.IsFalse(dome.GetComponent<Renderer>().enabled, "the sky dome is hidden");

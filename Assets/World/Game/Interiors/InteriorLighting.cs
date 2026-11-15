@@ -13,12 +13,15 @@ namespace World.Game
     [DefaultExecutionOrder(1000)]
     public sealed class InteriorLighting : MonoBehaviour
     {
-        public static readonly Color AmbientSky = new Color(0.050f, 0.049f, 0.056f);
-        public static readonly Color AmbientEquator = new Color(0.042f, 0.039f, 0.040f);
-        public static readonly Color AmbientGround = new Color(0.020f, 0.018f, 0.017f);
+        // Raised at integration (I8, 15 Nov): the walls, the party and the way out must read on a phone-sized window.
+        public static readonly Color AmbientSky = new Color(0.105f, 0.100f, 0.112f);
+        public static readonly Color AmbientEquator = new Color(0.088f, 0.082f, 0.080f);
+        public static readonly Color AmbientGround = new Color(0.046f, 0.041f, 0.038f);
+        /// <summary>The underground ambient never goes above this (no sky light): what <see cref="SkyDark"/> and the tests check.</summary>
+        public const float MaxAmbient = 0.14f;
         public static readonly Color FogColour = new Color(0.010f, 0.009f, 0.009f);
-        public const float FogStart = 5f, FogEnd = 36f;
-        public const float LanternIntensity = 1.45f, LanternRange = 18f;
+        public const float FogStart = 8f, FogEnd = 48f;
+        public const float LanternIntensity = 2.1f, LanternRange = 23f;
 
         public static InteriorLighting Instance { get; private set; }
         /// <summary>True while the underground look is applied (the player is in an interior).</summary>
@@ -63,13 +66,13 @@ namespace World.Game
             if (wl != null && wl.Lantern != null)
             {
                 var enc = EncounterHost.Instance;
-                float dim = enc != null && enc.IsRunning ? 0.45f : 1f;
+                float dim = enc != null && enc.IsRunning ? 0.8f : 1f; // the duel underground must stay readable
                 wl.Lantern.enabled = true;
                 wl.Lantern.intensity = LanternIntensity * dim * (0.95f + 0.05f * Mathf.PerlinNoise(Time.time * 2.3f, 3.1f));
                 wl.Lantern.range = LanternRange;
             }
             SkyDark = (dn == null || ((dn.Sun == null || !dn.Sun.enabled) && (dn.Moon == null || !dn.Moon.enabled)))
-                      && (_dome == null || !_dome.enabled) && RenderSettings.ambientSkyColor.maxColorComponent < 0.06f;
+                      && (_dome == null || !_dome.enabled) && RenderSettings.ambientSkyColor.maxColorComponent < MaxAmbient;
         }
 
         private void FindSky()
