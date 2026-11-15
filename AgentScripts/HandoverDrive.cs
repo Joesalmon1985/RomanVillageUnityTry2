@@ -20,8 +20,8 @@ public static class HandoverDrive
 
     public static string Run() => Start("handover");
     public static string FirstScene() => Start("first_scene");
-    public static string Follow() => Start("follow_prince");
-    public static string Ignore() => Start("ignore_prince");
+    public static string Follow() { PrinceScripts.TimeScale = 8f; return Start("follow_prince"); }
+    public static string Ignore() { PrinceScripts.TimeScale = 8f; return Start("ignore_prince"); }
 
     static string Start(string name)
     {

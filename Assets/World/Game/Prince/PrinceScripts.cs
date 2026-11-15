@@ -367,7 +367,7 @@ namespace World.Game
                     if (!pitch && ci >= 0) { SpeechBubbles.Choose(h, ci); yield return null; continue; }
                     if (pitch && Now - seenAt >= delay) { SpeechBubbles.Choose(h, ReplyIndex(h, PrinceLines.ReplyLead, PrinceLines.ShowMe)); yield return null; continue; }
                 }
-                else if (seenAsk >= 0 && Now - seenAt >= delay && d.CurrentPhase == PrinceDirector.Phase.Waiting && FactionApi.Top(S, PlayerIds.Human) != null && Now >= tapAt)
+                else if (seenAsk >= 0 && Now - seenAt >= delay && d.CurrentPhase == PrinceDirector.Phase.Waiting && FactionApi.Top(S, PlayerIds.Human) != null && Now >= tapAt && !d.AfterHandover)
                 {
                     var top = FactionApi.Top(S, PlayerIds.Human);
                     var who = d.SpeakerFor(top);
