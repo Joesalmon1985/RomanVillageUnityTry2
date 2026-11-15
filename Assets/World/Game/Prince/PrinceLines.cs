@@ -22,6 +22,17 @@ namespace World.Game
         public const string ShowMe = "Show me", NotThis = "Not this", Later = "Later";
         public const string Coming = "Coming", Follow = "Follow", NotNow = "Not now";
 
+        // ---- after the handover (H1-4) ----
+        public static readonly string[] HandoverLines =
+        {
+            "The planks reached the builders. Our people can build on their own now.",
+            "Before I start something, I'll tell you what and where.",
+            "Want it sooner, or not at all? Press the ground first, or tap me and say.",
+        };
+        public const string WhatDoing = "What are you doing?", DoFirst = "Do this first", NotThat = "Not that", WhatFirst = "What should come first?", More = "More";
+        public const string NotYet = "Not yet", WhatChanges = "What changes?";
+        public const string InviteWhat = "Houses can be improved, camps grow into towns, and there are new goods to make. Beyond the hills the old towers wait for Mira. Shall I show you?";
+
         private static readonly Dictionary<string, string[]> Banks = new Dictionary<string, string[]>
         {
             // ======== the prince ========
@@ -38,9 +49,28 @@ namespace World.Game
             ["prince/body/road"] = new[] { "We need {thing}.", "Let's lay {thing}.", "I want {thing}." },
             ["prince/body/camp"] = new[] { "Let's found a new camp {where}.", "The road reaches far enough: a camp {where} next.", "I've chosen a spot for a new camp, {where}.", "A new camp {where} would make us stronger." },
             ["prince/body/city"] = new[] { "Let's raise {camp} to a city.", "{Camp} is ready to become a city.", "Make {camp} a city and we count double against the Ash Clan." },
-            // Historic placeholders (H1-1 proposal kinds; H1-4 writes the real lines).
-            ["prince/body/upgrade"] = new[] { "Let's improve the {name} {where}.", "The {name} {where} could do more. Let's improve it." },
-            ["prince/body/town"] = new[] { "Let's raise {camp} to a town.", "{Camp} has outgrown its walls. Make it a town." },
+            // Historic kinds (H1-1): the upgrade and the town.
+            ["prince/body/upgrade"] = new[] { "Let's improve the {name} {where}: it will make more.", "The {name} {where} can do better. Improve it?" },
+            ["prince/body/town"] = new[] { "{Camp} is big enough to be a town. Raise it?", "Let's raise {camp} to a town: more room, more hands." },
+
+            // After the handover (H1-4): what he says he is about to do, short and concrete.
+            ["prince/announce/hut"] = new[] { "I'm raising a woodcutter's hut {where}.", "Woodcutter's hut {where}: I'm going now." },
+            ["prince/announce/collector"] = new[] { "I'm setting up {thing} {where}.", "Going to start {thing} {where}." },
+            ["prince/announce/sawmill"] = new[] { "A sawmill {where}. I'm on my way.", "I'm building a sawmill {where}." },
+            ["prince/announce/workshop"] = new[] { "I'm building {thing} {where}.", "Off to raise {thing} {where}." },
+            ["prince/announce/lodge"] = new[] { "A warrior lodge {where}. I'm going there.", "I'm raising a warrior lodge {where}." },
+            ["prince/announce/road"] = new[] { "I'm laying {thing}.", "Off to lay {thing}." },
+            ["prince/announce/camp"] = new[] { "A new camp {where}. Heading there now.", "I'm founding a camp {where}." },
+            ["prince/announce/city"] = new[] { "I'm making {camp} a city.", "{Camp} becomes a city. I'm on my way." },
+            ["prince/announce/town"] = new[] { "I'm raising {camp} to a town.", "{Camp} becomes a town. Going now." },
+            ["prince/announce/upgrade"] = new[] { "I'm improving the {name} {where}.", "The {name} {where} gets better. Going now." },
+            ["prince/announce/banish"] = new[] { "I'm driving the demons off {site}.", "Going to clear {site} of demons." },
+            ["prince/advised"] = new[] { "As you asked:", "Taking your word:", "On your advice:" },
+            ["prince/invite"] = new[] { "Planks made at home reached the builders. Come and see what this place can become." },
+            ["prince/invite.again"] = new[] { "Ready to see what comes next? I'll show you.", "The next age is waiting whenever you are.", "Shall we go on? There is more to see." },
+            ["prince/step"] = new[] { "Then look. This is how it will be.", "Here we go, together. Look around you." },
+            ["prince/ask.menu"] = new[] { "Yes? Tell me.", "I'm listening.", "What is it?" },
+            ["prince/nothing"] = new[] { "Nothing to decide just now.", "No plan on the table yet." },
             ["prince/body/banish"] = new[] { "Demons sit on {site}. Banish them!", "We have to drive the demons off {site}.", "{Site} is held by demons. Only your spell can clear it.", "Come and banish the demons from {site}." },
 
             ["prince/lead"] = new[] { "Follow me.", "This way.", "Come on, it isn't far.", "Stay close.", "Right behind me, then." },

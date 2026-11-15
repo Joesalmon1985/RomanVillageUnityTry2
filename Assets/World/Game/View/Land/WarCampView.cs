@@ -30,8 +30,8 @@ namespace World.Game
                 var s = LandText.State;
                 if (s == null) yield break;
                 var w = FactionApi.Warning(s);
-                if (w.Active) yield return w.Sentence;
-                else yield return FactionApi.Headline(s);
+                if (w.Active) yield return AgeWords.Warning(s, w);
+                else yield return AgeWords.Headline(s);
             }
         }
 

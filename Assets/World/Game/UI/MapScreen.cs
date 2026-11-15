@@ -467,7 +467,7 @@ namespace World.Game
             y += UiStyle.Px(14);
             string text = "Numbered hexes yield when the dice show their number (6 and 8 most often, in red).\n\n" +
                           "Tap a spot to walk there when the map closes. Right click clears it. Tab closes the map.\n\n" +
-                          StrengthLine(s) + "\n\n" + FactionApi.Headline(s);
+                          AgeWords.StrengthLine(s) + "\n\n" + AgeWords.Headline(s);
             GUI.Label(new Rect(r.x, y, r.width, r.yMax - y), text, _small);
         }
 

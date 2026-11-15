@@ -138,7 +138,7 @@ namespace World.Game
             else
             {
                 var w = FactionApi.Warning(s);
-                if (w.Active) lines.Add("<color=#FF8A70><b>" + w.Sentence + "</b></color>");
+                if (w.Active) lines.Add("<color=#FF8A70><b>" + AgeWords.Warning(s, w) + "</b></color>");
             }
             return lines;
         }

@@ -24,7 +24,7 @@ namespace World.Game
     /// three he goes quiet for 90 s and walks behind you. When he has nothing to show, the prince walks a few metres
     /// behind you. The game's end plays as a scene in bubbles.
     /// </summary>
-    public sealed class PrinceDirector : MonoBehaviour
+    public sealed partial class PrinceDirector : MonoBehaviour
     {
         public static PrinceDirector Instance { get; private set; }
 
@@ -215,6 +215,7 @@ namespace World.Game
             Mood = MoodNow();
             UpdateCompanions();
             if (FirstSceneStep < SceneDone) UpdateFirstScene();
+            else if (AfterHandover) UpdateAfter(); // H1-4: calm announcements, advice, the invitation
             else UpdateLoop();
             UpdateBuilder();
             if (Time.unscaledTime >= _hudAt) { _hudAt = Time.unscaledTime + 0.5f; Hud.SetObjective(HudLine()); }
@@ -264,6 +265,7 @@ namespace World.Game
                     continue;
                 }
                 if (n == Prince && !tagAlong) continue;
+                if (AfterBusy(n)) continue; // H1-4: the prince is walking to an announced spot, inviting, or at the fire
                 if (tagAlong)
                 {
                     float d = BoardSpace.Flat(n.transform.position - w.Position);
@@ -758,6 +760,7 @@ namespace World.Game
                 PitchedTick = _pitchedAt.TryGetValue(e.ProposalId, out var t) ? t : -1, CastTick = e.Tick,
             });
             Unanswered = 0;
+            if (AfterHandover && FirstSceneStep >= SceneDone) { AfterCast(e); return; }
             bool opening = e.Kind == ProposalKind.Building && e.BuildingType == (int)BuildingType.WoodcutterHut && FirstSceneStep < SceneBuilding;
             if (opening) { FirstSceneCast(e); return; }
             var who = _p != null && _p.ProposalId == e.ProposalId ? _p.Who : Prince;
@@ -1019,6 +1022,7 @@ namespace World.Game
             var s = S;
             foreach (var ev in list)
             {
+                AfterEvent(ev);
                 switch (ev)
                 {
                     case SpellCast sc: OnSpellCast(sc); break;
@@ -1277,6 +1281,7 @@ namespace World.Game
         private void OnVillagerTapped(Npc n)
         {
             if (CurrentPhase == Phase.Ending) return;
+            if (AfterHandover && FirstSceneStep >= SceneDone && n == Prince) { AfterTapped(); return; }
             if (_p != null && _p.Who == n && _ask != 0) { SpeechBubbles.Expand(_ask); return; }
             if (_p != null && _p.Who == n && _callAsk != 0) { SpeechBubbles.Expand(_callAsk); return; }
             if (_p == null && FirstSceneStep >= SceneDone && CurrentPhase == Phase.Waiting)
@@ -1417,6 +1422,7 @@ namespace World.Game
             var s = S;
             var o = FactionApi.Outcome(s);
             if (o.GameOver) return o.Sentence;
+            if (AfterHandover && FirstSceneStep >= SceneDone) return AfterHudLine();
             Proposal p = _p != null ? FactionApi.GetProposal(s, _p.ProposalId) : null;
             if (p == null) p = FactionApi.Top(s, PlayerIds.Human);
             if (p == null) return Prince.DisplayName + ": nothing to build right now.";
