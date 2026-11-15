@@ -19,12 +19,19 @@ namespace World.Game
         /// <summary>Set by tests or scripts: also return to the village once the duel is over.</summary>
         public bool AutoReturn;
         public ulong Seed = 99;
+        /// <summary>Seconds the bot "reads" a lethal duel's stakes card before going on.</summary>
+        public float StakesReadSeconds = 1.5f;
+        /// <summary>Never casts: lets the opponent (or the idle auto-cast) decide the duel (a scripted loss).</summary>
+        public bool Passive;
+        /// <summary>After its first cast, waits for the opponent's first cast before casting again (captures see both sides cast).</summary>
+        public bool WaitForRival;
         public int CastsThisDuel { get; private set; }
 
         private WardDuelSession _session;
         private WardRival _solver;
         private int _observed;
         private float _nextCastAt;
+        private float _rivalSeenAt = -1f;
 
         public static WardBot Attach(GameObject host)
         {
@@ -48,6 +55,12 @@ namespace World.Game
             }
             switch (enc.Phase)
             {
+                case WardDuelEncounter.Screen.Stakes:
+                    // A lethal duel opens on the stakes card: read it, then set Mira's Ward.
+                    if (Time.unscaledTime < _nextCastAt + StakesReadSeconds) return;
+                    enc.BeginWard();
+                    _nextCastAt = Time.unscaledTime + 0.6f;
+                    break;
                 case WardDuelEncounter.Screen.Setup:
                     if (Time.unscaledTime < _nextCastAt) return;
                     var ward = FixedWard ?? _solver.ChooseWard();
@@ -60,7 +73,13 @@ namespace World.Game
                     var hist = enc.Session.PlayerHistory;
                     while (_observed < hist.Count) { var h = hist[_observed++]; _solver.Observe(h.Weave, h.Fractures, h.Echoes); }
                     if (Time.unscaledTime < _nextCastAt || enc.Session.MsUntilPlayerMayCast > 0 || enc.Session.PlayerCastsLeft <= 0) return;
-                    if (MaxCastsPerDuel >= 0 && CastsThisDuel >= MaxCastsPerDuel) return;
+                    if (Passive || (MaxCastsPerDuel >= 0 && CastsThisDuel >= MaxCastsPerDuel)) return;
+                    if (WaitForRival && CastsThisDuel >= 1)
+                    {
+                        if (enc.Session.RivalHistory.Count == 0) { _rivalSeenAt = -1f; return; }
+                        if (_rivalSeenAt < 0f) _rivalSeenAt = Time.unscaledTime;
+                        if (Time.unscaledTime - _rivalSeenAt < 2.5f) return;
+                    }
                     var weave = _solver.NextCast();
                     while (enc.RemoveLast()) { }
                     foreach (var e in weave) enc.AddEssence((Essence)e);
@@ -69,7 +88,7 @@ namespace World.Game
                     _nextCastAt = Time.unscaledTime + CastInterval;
                     break;
                 case WardDuelEncounter.Screen.Result:
-                    if (AutoReturn) enc.Return();
+                    if (AutoReturn) enc.Return(); // after the presentation hold in campaign modes (Return refuses before)
                     break;
             }
         }

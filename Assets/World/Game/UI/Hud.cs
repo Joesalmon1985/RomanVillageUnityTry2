@@ -267,6 +267,7 @@ namespace World.Game
             float bw = (w - 2 * pad - (n - 1) * gap) / n, bx = r.x + pad;
             if (GUI.Button(new Rect(bx, by, bw, bh), "Resume", UiStyle.Button)) CloseMenu();
             bx += bw + gap;
+            if (encounter && CampaignDuel.DrawLeaveButton(new Rect(bx, by, 2 * bw + gap, bh), CloseMenu)) bx += 2 * (bw + gap); else // crystals I7: a lethal duel's confirmed surrender
             if (encounter)
             {
                 if (GUI.Button(new Rect(bx, by, 2 * bw + gap, bh), "Leave encounter", UiStyle.Button)) { EncounterHost.Instance.Abort(); CloseMenu(); }
