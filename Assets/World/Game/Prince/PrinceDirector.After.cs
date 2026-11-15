@@ -294,7 +294,10 @@ namespace World.Game
         private void AskAfter(string text, IList<string> replies, Action<int> onReply)
         {
             CloseAsks();
-            ClearQueue(Prince);
+            // Whatever he was still saying gives way: the question shows at once.
+            var drop = new List<int>();
+            foreach (var b in SpeechBubbles.All) if (ReferenceEquals(b.Who, Prince)) drop.Add(b.Handle);
+            foreach (int h in drop) SpeechBubbles.Close(h);
             _ask = SpeechBubbles.Ask(Prince, text, replies, onReply, 0f);
             Record(Prince, text, true);
             _askAt = Now;
@@ -419,7 +422,7 @@ namespace World.Game
                 string name = Wares.DisplayName(ware);
                 items.Add(new Item
                 {
-                    Label = name,
+                    Label = char.ToUpperInvariant(name[0]) + name.Substring(1),
                     Do = () => Send(new Advise { Faction = PlayerIds.Human, Kind = AdviceKind.FocusWare, Ware = (int)ware }, "Then I'll work towards " + name.ToLowerInvariant() + "."),
                 });
             }

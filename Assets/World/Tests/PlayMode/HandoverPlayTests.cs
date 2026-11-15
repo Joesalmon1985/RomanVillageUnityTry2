@@ -130,14 +130,18 @@ namespace World.Game.Tests
         {
             yield return Load();
             HandOver(ready: false);
-            yield return Until(() => D.Announcements.Count > 0 && D.HandoverSceneDone, 120f, "no announcement");
+            yield return Until(() => D.HandoverSceneDone, 90f, "scene");
+            int seen = D.Announcements.Count;
+            yield return Until(() => D.Announcements.Count > seen, 120f, "no announcement");
+            var an = D.Announcements[D.Announcements.Count - 1];
+            Assert.IsNotNull(FactionApi.GetProposal(S, an.ProposalId), "announced proposal is open");
+            yield return null; yield return null;
+            Assert.IsTrue(PrinceDirector.ProposalMark(an.ProposalId) != null, "the ground mark still shows");
             yield return Until(() => D.WalkingToAnnounced || D.Acts.Count > 0, 40f, "he did not walk out");
-            var an = D.Announcements[0];
             Assert.Less(an.Text.Length, 100, an.Text);
             Assert.IsFalse(an.Text.Contains("{"), an.Text);
-            Assert.IsNotNull(PrinceDirector.ProposalMark(an.ProposalId) ?? (UnityEngine.Object)null, "the ground mark still shows");
-            yield return Until(() => D.Acts.Any(a => a.Gesture), 90f, "he did not act by himself");
-            var act = D.Acts.First(a => a.Gesture);
+            yield return Until(() => D.Acts.Any(a => a.Gesture && a.ProposalId == an.ProposalId), 90f, "he did not act by himself");
+            var act = D.Acts.First(a => a.Gesture && a.ProposalId == an.ProposalId);
             Assert.GreaterOrEqual(act.Tick, an.ExecuteTick, "after the announce window");
             Assert.IsFalse(D.Acts.Any(a => a.ByPlayer), "nothing was cast by the player");
             Assert.Greater(SpellEffect.Played, 0, "a visible gesture at the spot");
