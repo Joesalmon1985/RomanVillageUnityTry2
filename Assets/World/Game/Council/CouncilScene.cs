@@ -484,8 +484,8 @@ namespace World.Game
         void BuildPeople(SettlementCouncil sc)
         {
             // Candidates take the same place at the left of the table, one seat at a time (the active one shows).
-            var feet = L.OnFloor(0.085f, 0.905f);
-            float h = FigureHeight(feet, 0.585f);
+            var feet = L.OnFloor(0.088f, 0.91f);
+            float h = FigureHeight(feet, 0.625f);
             for (int s = 0; s < 4; s++)
             {
                 var a = Person("cand" + s, Color.Lerp(SeatColor(s), new Color(0.5f, 0.4f, 0.3f), 0.4f), feet, h, 180f - 14f);
@@ -521,7 +521,7 @@ namespace World.Game
         {
             // the council fire: a warm light high over the middle of the gathering, so firelight reaches every row
             var mid = L.OnFloor(0.5f, 0.45f) + new Vector3(0, 5.5f * L.Scale, 0);
-            var cf = WorldLights.Add(Root, mid, new Color(1f, 0.70f, 0.38f), 2.6f, 34f * L.Scale, 3, "Council fire light");
+            var cf = WorldLights.Add(Root, mid, new Color(1f, 0.70f, 0.38f), 1.5f, 34f * L.Scale, 3, "Council fire light");
             cf.GroundGlow = 0f; cf.Halo = 0f; cf.Sparks = false;
             for (int k = 0; k < 2; k++)
             {
@@ -530,7 +530,7 @@ namespace World.Game
                 var t = WorldLights.Torch(Root, ToWorld(p), false, true, "Council brazier " + k);
                 _fires[k] = t.gameObject;
                 t.transform.parent.localScale = Vector3.one * Mathf.Max(0.9f, 1.5f * L.Scale);
-                t.Intensity = 3.4f; t.Range = 26f * Mathf.Max(0.6f, L.Scale); t.Priority = 3;
+                t.Intensity = 2.3f; t.Range = 26f * Mathf.Max(0.6f, L.Scale); t.Priority = 3;
             }
         }
 
@@ -619,7 +619,7 @@ namespace World.Game
         float MarkerHeight(Vector3 pos, bool paw)
         {
             var uv = L.Project(pos);
-            return L.HeightFor(pos, uv.y - (paw ? 0.105f : 0.095f));
+            return L.HeightFor(pos, uv.y - (paw ? 0.135f : 0.125f));
         }
 
         void SyncMarkers(SettlementCouncil sc)
@@ -639,8 +639,8 @@ namespace World.Game
                     if (!_posts.TryGetValue(key, out var m))
                     {
                         var go = new GameObject("Post " + s + "." + t); go.transform.SetParent(Root, false);
-                        CouncilShapes.Make("Pole", go.transform, CouncilShapes.Post(), Vector3.zero, 0.7f);
-                        CouncilShapes.Make("Emblem", go.transform, Emblem(s), new Vector3(0, 0.95f, -0.04f), 0.5f);
+                        CouncilShapes.Make("Pole", go.transform, CouncilShapes.Post(), Vector3.zero, 0.75f);
+                        CouncilShapes.Make("Emblem", go.transform, Emblem(s), new Vector3(0, 1.0f, -0.04f), 0.95f);
                         m = new Mover { Go = go, Seat = s, Track = t, Place = place };
                         m.Pos = MarkerPos(s, t, place, false);
                         go.transform.localPosition = m.Pos; _posts[key] = m;
@@ -876,7 +876,7 @@ namespace World.Game
             float bob = moving && paw ? 0.18f * L.Scale * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 12f)) : 0f;
             m.Go.transform.localPosition = m.Pos + new Vector3(0, bob, 0);
             float h = MarkerHeight(m.Pos, paw);
-            m.Go.transform.localScale = Vector3.one * (paw ? h / 0.95f : h / 1.25f);
+            m.Go.transform.localScale = Vector3.one * (paw ? h / 0.95f : h / 1.5f);
             var d = m.Target - before; d.y = 0;
             m.Go.transform.localRotation = Quaternion.identity;
         }

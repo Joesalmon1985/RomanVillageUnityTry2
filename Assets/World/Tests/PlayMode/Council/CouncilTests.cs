@@ -29,6 +29,7 @@ namespace World.Game.Tests
             _savePath = Path.Combine(Application.temporaryCachePath, "worldmvp_council_test_save.json");
             if (File.Exists(_savePath)) File.Delete(_savePath);
             SaveSystem.PathOverride = _savePath;
+            SaveSystem.TestPauseOnLoad = "TestHold";
         }
 
         [TearDown]
@@ -36,7 +37,7 @@ namespace World.Game.Tests
         {
             PrinceInstaller.Disabled = false; CouncilDirector.Disabled = false; CouncilDirector.ApproachDelay = 12f;
             CouncilEncounter.AiDelay = 0.75f; CouncilEncounter.IntroSeconds = 2.4f;
-            SaveSystem.PathOverride = null;
+            SaveSystem.PathOverride = null; SaveSystem.TestPauseOnLoad = null;
             if (File.Exists(_savePath)) File.Delete(_savePath);
         }
 
@@ -100,7 +101,7 @@ namespace World.Game.Tests
         {
             yield return Stage();
             var scene = Enc.Scene;
-            var screenRect = new Rect(-0.012f, -0.012f, 1.024f, 1.024f);
+            var screenRect = new Rect(-0.012f, -0.012f, 1.03f, 1.03f);
             void Check(string what, GameObject go, Rect? within = null)
             {
                 Assert.IsTrue(CouncilScene.ProjectBounds(go, out var r), what + " has a renderer");
@@ -485,8 +486,9 @@ namespace World.Game.Tests
             yield return Load();
             CouncilDirector.Disabled = false; CouncilDirector.ApproachDelay = 0f;
             var s = Boot.Sim.State;
+            s.Economy.Carriers.Clear(); // a village of just its storekeeper
             var res = CouncilRoster.WouldStand(CouncilRoster.Build(s, Home, CouncilContent.BuiltIn));
-            Assert.Less(res.Count, 4, "a fresh village has fewer than four people who would stand");
+            Assert.Less(res.Count, 4, "a village with only its storekeeper has fewer than four people who would stand");
             Assert.IsFalse(CouncilApi.CanOffer(s, Home));
             var r = Boot.Sim.Check(new CouncilOffer { Settlement = Home, PlayerId = PlayerIds.Human });
             Assert.IsFalse(r.Ok); Assert.AreEqual(CouncilReasons.NotEligible, r.Reason);

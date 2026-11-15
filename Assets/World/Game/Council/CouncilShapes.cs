@@ -237,10 +237,10 @@ namespace World.Game
         public static Mesh HeavySeal(bool lit) => Cached("heavyseal" + lit, mb =>
         {
             var brass = lit ? new Color(1f, 0.82f, 0.30f) : new Color(0.78f, 0.60f, 0.22f);
-            Poly(mb, new[] { new Vector2(-0.42f, 0), new Vector2(-0.42f, 0.22f), new Vector2(0.42f, 0.22f), new Vector2(0.42f, 0) }, DarkWood, 0.5f);
-            Poly(mb, new[] { new Vector2(-0.40f, 0.22f), new Vector2(-0.40f, 0.30f), new Vector2(0.40f, 0.30f), new Vector2(0.40f, 0.22f) }, brass, 0.52f);
-            Poly(mb, new[] { new Vector2(-0.16f, 0.30f), new Vector2(-0.12f, 0.80f), new Vector2(0.12f, 0.80f), new Vector2(0.16f, 0.30f) }, Wood, 0.34f);
-            Poly(mb, Ngon(new Vector2(0, 0.90f), 0.28f, 0.14f, 10), brass, 0.40f);
+            Poly(mb, new[] { new Vector2(-0.34f, 0), new Vector2(-0.34f, 0.22f), new Vector2(0.34f, 0.22f), new Vector2(0.34f, 0) }, DarkWood, 0.26f);
+            Poly(mb, new[] { new Vector2(-0.32f, 0.22f), new Vector2(-0.32f, 0.30f), new Vector2(0.32f, 0.30f), new Vector2(0.32f, 0.22f) }, brass, 0.28f);
+            Poly(mb, new[] { new Vector2(-0.14f, 0.30f), new Vector2(-0.10f, 0.78f), new Vector2(0.10f, 0.78f), new Vector2(0.14f, 0.30f) }, Wood, 0.2f);
+            Poly(mb, Ngon(new Vector2(0, 0.88f), 0.24f, 0.13f, 10), brass, 0.24f);
         });
 
         public static Mesh Petition(bool lit) => Cached("petition" + lit, mb =>
@@ -270,11 +270,13 @@ namespace World.Game
 
         public static Mesh GateSeal(bool lit) => Cached("gateseal" + lit, mb =>
         {
-            var g = lit ? new Color(0.95f, 0.78f, 0.55f) : new Color(0.74f, 0.58f, 0.38f);
-            Poly(mb, new[] { new Vector2(-0.42f, -0.5f), new Vector2(-0.42f, 0.5f), new Vector2(-0.24f, 0.5f), new Vector2(-0.24f, -0.5f) }, g, 0.2f);
-            Poly(mb, new[] { new Vector2(0.24f, -0.5f), new Vector2(0.24f, 0.5f), new Vector2(0.42f, 0.5f), new Vector2(0.42f, -0.5f) }, g, 0.2f);
-            Poly(mb, new[] { new Vector2(-0.46f, 0.36f), new Vector2(-0.46f, 0.58f), new Vector2(0.46f, 0.58f), new Vector2(0.46f, 0.36f) }, g * 0.85f, 0.24f);
-            Bar(mb, new Vector2(-0.24f, -0.3f), new Vector2(0.24f, -0.3f), 0.06f, g * 0.6f, 0.14f);
+            var g = lit ? new Color(1f, 0.86f, 0.55f) : new Color(0.74f, 0.58f, 0.38f);
+            // a gate seen from the front: two tall posts, an arched head, an open way with two bars
+            Poly(mb, new[] { new Vector2(-0.46f, -0.6f), new Vector2(-0.46f, 0.55f), new Vector2(-0.30f, 0.55f), new Vector2(-0.30f, -0.6f) }, g, 0.2f);
+            Poly(mb, new[] { new Vector2(0.30f, -0.6f), new Vector2(0.30f, 0.55f), new Vector2(0.46f, 0.55f), new Vector2(0.46f, -0.6f) }, g, 0.2f);
+            Poly(mb, new[] { new Vector2(-0.46f, 0.45f), new Vector2(-0.34f, 0.72f), new Vector2(0f, 0.86f), new Vector2(0.34f, 0.72f), new Vector2(0.46f, 0.45f), new Vector2(0.30f, 0.40f), new Vector2(0f, 0.52f), new Vector2(-0.30f, 0.40f) }.Length > 0 ? new[] { new Vector2(-0.48f, 0.42f), new Vector2(-0.36f, 0.74f), new Vector2(0f, 0.88f), new Vector2(0.36f, 0.74f), new Vector2(0.48f, 0.42f), new Vector2(0f, 0.36f) } : null, g * 0.9f, 0.24f);
+            Bar(mb, new Vector2(-0.30f, -0.1f), new Vector2(0.30f, -0.1f), 0.07f, g * 0.7f, 0.14f);
+            Bar(mb, new Vector2(-0.30f, -0.4f), new Vector2(0.30f, -0.4f), 0.07f, g * 0.7f, 0.14f);
         });
 
         public static Mesh Banner(Color col) => Cached("banner" + ColorUtility.ToHtmlStringRGB(col), mb =>

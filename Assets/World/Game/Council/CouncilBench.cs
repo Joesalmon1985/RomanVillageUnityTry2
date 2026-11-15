@@ -24,7 +24,7 @@ namespace World.Game
         CouncilSpeaker _speakerSpeech, _aideSpeech;
         GameObject _slabSame, _slabDiff, _lantern;
         GameObject[] _seals = new GameObject[4];
-        float _slabPulseSame, _slabPulseDiff;
+        float _slabPulseSame, _slabPulseDiff; Vector3 _sealScale;
         float _stepT = -1f;
         int _count;
         public string SpeakerName { get; private set; }
@@ -87,11 +87,11 @@ namespace World.Game
             float d = 1.8f; float W = 2f * TanH * d, H = 2f * TanV * d;
             _slabSame = Slab("Slab same", 0.255f, d, W, H);
             _slabDiff = Slab("Slab different", 0.745f, d, W, H);
-            float sealH = 0.15f * H;
-            _seals[0] = CouncilShapes.Make("Leaf A", Root, CouncilShapes.LeafSeal(false), At(0.145f, 0.805f, d - 0.31f), sealH);
-            _seals[1] = CouncilShapes.Make("Leaf B", Root, CouncilShapes.LeafSeal(false), At(0.365f, 0.805f, d - 0.31f), sealH);
-            _seals[2] = CouncilShapes.Make("Leaf C", Root, CouncilShapes.LeafSeal(false), At(0.635f, 0.805f, d - 0.31f), sealH);
-            _seals[3] = CouncilShapes.Make("Gate", Root, CouncilShapes.GateSeal(false), At(0.855f, 0.805f, d - 0.31f), sealH);
+            float sealH = 0.19f * H;
+            _seals[0] = CouncilShapes.Make("Leaf A", Root, CouncilShapes.LeafSeal(true), At(0.145f, 0.805f, d - 0.31f), sealH);
+            _seals[1] = CouncilShapes.Make("Leaf B", Root, CouncilShapes.LeafSeal(true), At(0.365f, 0.805f, d - 0.31f), sealH);
+            _seals[2] = CouncilShapes.Make("Leaf C", Root, CouncilShapes.LeafSeal(true), At(0.635f, 0.805f, d - 0.31f), sealH);
+            _seals[3] = CouncilShapes.Make("Gate", Root, CouncilShapes.GateSeal(true), At(0.855f, 0.805f, d - 0.31f), sealH);
             foreach (var s in _seals) s.transform.position = s.transform.position; // keep as placed
             // fire and the gathering beyond (0-14%): braziers and dark shapes
             for (int k = 0; k < 3; k++)
@@ -193,7 +193,9 @@ namespace World.Game
         {
             _slabPulseSame = Mathf.MoveTowards(_slabPulseSame, 0f, Time.unscaledDeltaTime * 2.5f);
             _slabPulseDiff = Mathf.MoveTowards(_slabPulseDiff, 0f, Time.unscaledDeltaTime * 2.5f);
-            bool ls = _slabPulseSame > 0f, ld = _slabPulseDiff > 0f;
+            if (_sealScale == Vector3.zero) _sealScale = _seals[0].transform.localScale;
+            for (int k = 0; k < 4; k++) _seals[k].transform.localScale = _sealScale * (1f + 0.35f * (k < 2 ? _slabPulseSame : _slabPulseDiff));
+            bool ls = true, ld = true; // seals stay bright; a tap makes the pair swell
             _seals[0].GetComponent<MeshFilter>().sharedMesh = CouncilShapes.LeafSeal(ls); _seals[1].GetComponent<MeshFilter>().sharedMesh = CouncilShapes.LeafSeal(ls);
             _seals[2].GetComponent<MeshFilter>().sharedMesh = CouncilShapes.LeafSeal(ld); _seals[3].GetComponent<MeshFilter>().sharedMesh = CouncilShapes.GateSeal(ld);
             if (_stepT >= 0f && _speaker != null)
