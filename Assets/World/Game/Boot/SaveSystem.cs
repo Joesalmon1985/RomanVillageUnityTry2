@@ -83,6 +83,8 @@ namespace World.Game
         private void OnDuelResolved(int attempt, DuelResult result)
         {
             if (!CheckpointOnResolve || _boot == null || _boot.Sim == null) return;
+            // In the editor only with a test's own slot: editor test runs must not overwrite the player's save.
+            if (Application.isEditor && PathOverride == null) return;
             if (SaveNow("campaign checkpoint after attempt " + attempt + " (" + result + ")")) Checkpoints++;
         }
 

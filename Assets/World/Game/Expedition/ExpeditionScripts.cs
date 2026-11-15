@@ -502,6 +502,7 @@ namespace World.Game
                 Check(a, C.Resolved.Count == 1 && Dir.RetreatsPlayed == 0, "one attempt and no retreat expected");
             }
             Check(a, Dir.Sites.Tower(Element.Earth).Restored, "the Rooted Tower's view is not lit");
+            if (!Application.isEditor) Check(a, SaveSystem.Checkpoints >= C.Resolved.Count, "a campaign checkpoint after every duel, but " + SaveSystem.Checkpoints + " for " + C.Resolved.Count);
             yield return JournalAndMap(a);
         }
 
