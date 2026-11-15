@@ -669,7 +669,7 @@ namespace World.Game
             void Add(string name, Vector3 world, float worldRadius)
             {
                 var sp = cam.WorldToScreenPoint(world);
-                if (sp.z <= 0.1f) return;
+                if (sp.z <= 0.1f || sp.x < 0f || sp.x > cam.pixelWidth || sp.y < 0f || sp.y > cam.pixelHeight) return;
                 var edge = cam.WorldToScreenPoint(world + cam.transform.right * worldRadius);
                 float r = Mathf.Max(minR, Mathf.Abs(edge.x - sp.x));
                 l.Add(new TapTarget { Name = name, Px = new Vector2(sp.x, sp.y), RadiusPx = r, World = world });

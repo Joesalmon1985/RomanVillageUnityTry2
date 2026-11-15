@@ -177,7 +177,12 @@ namespace World.Game
             if (e == null) return l;
             if (Time.unscaledTime < _focusUntil) return _focus;
             bool mine = e.PlayerSeat >= 0 && e.Active == e.PlayerSeat;
-            if (mine && e.Phase == ElectionPhase.Choosing) { foreach (var p in Scene.Proposals) foreach (var st in p.Steps) if (!l.Contains(st.Key)) l.Add(st.Key); }
+            if (mine && e.Phase == ElectionPhase.Choosing)
+            {
+                int pi = Scene.PointedProposal;
+                if (pi >= 0 && pi < Scene.Proposals.Count) { foreach (var st in Scene.Proposals[pi].Steps) l.Add(st.Key); }
+                else foreach (var p in Scene.Proposals) foreach (var st in p.Steps) if (!l.Contains(st.Key)) l.Add(st.Key);
+            }
             else if (mine && (e.Phase == ElectionPhase.Ready || e.Phase == ElectionPhase.BustPending))
                 for (int t = 2; t <= 12; t++) if (e.Temp[t - 2] > 0 && e.Claimed[t - 2] < 0) l.Add(t);
             return l;

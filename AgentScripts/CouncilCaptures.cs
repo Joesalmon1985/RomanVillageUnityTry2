@@ -84,6 +84,10 @@ public static class CouncilCaptures
                 { var e = CouncilApi.Get(boot.Sim.State, home).Election; e.Temp[int.Parse(a[1]) - 2] = int.Parse(a[2]); return "temp set"; }
             case "setbank":
                 { var e = CouncilApi.Get(boot.Sim.State, home).Election; e.Banked[int.Parse(a[3]) * 11 + int.Parse(a[1]) - 2] = int.Parse(a[2]); return "bank set"; }
+            case "active":
+                { var e = CouncilApi.Get(boot.Sim.State, home).Election; e.Active = int.Parse(a[1]); return "active " + e.Active; }
+            case "claim":
+                { var e = CouncilApi.Get(boot.Sim.State, home).Election; e.Claimed[int.Parse(a[1]) - 2] = int.Parse(a[2]); return "claimed"; }
             case "near":
                 {
                     var sb = new StringBuilder("near tower: ");
