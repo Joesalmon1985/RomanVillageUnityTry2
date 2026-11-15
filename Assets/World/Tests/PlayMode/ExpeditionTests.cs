@@ -331,13 +331,17 @@ namespace World.Game.Tests
             if (Dir.AskHandle != 0 && Dir.AskKind != ExpeditionDirector.AskMenu) { /* a lead offered meanwhile: the tap unfolds it */ }
             // Falling behind: beyond 60 m for 20 s she counts the player away and a cue says so.
             int sent = Count<SetCompany>();
+            // The cue is "You fell behind" (60 m for 20 s), or the journal's "You left Mira" when the prince was leading the
+            // player off at that moment (PRD 5.9: that is "away" at once).
+            System.Func<int> leftCues = () => Dir.Cues.FindAll(c => c == T(ExpeditionLines.CueFellBehind) || c.StartsWith("You left Mira")).Count;
+            int left0 = leftCues();
             var far = WalkGrid.NearestFree(WalkLattice.ToCell(Dir.Mira.transform.position + new Vector3(110f, 0, 0)), 6);
             Assert.IsTrue(far.HasValue);
             W.StopAuto();
             W.Teleport(far.Value, 0);
             yield return Until(() => Count<SetCompany>() > sent, ExpeditionDirector.AwaySeconds + 15f, "SetCompany(false) for a player who fell behind");
             Assert.IsFalse(Last<SetCompany>().Present);
-            yield return Until(() => Dir.Cues.Contains(T(ExpeditionLines.CueFellBehind)), 90f, "the cue");
+            yield return Until(() => leftCues() > left0, 90f, "the cue (" + string.Join(" | ", Dir.Cues) + ")");
             foreach (var c in Dir.Commands) Assert.IsTrue(c is SetCompany, "only SetCompany was sent: " + c.GetType().Name);
         }
 
