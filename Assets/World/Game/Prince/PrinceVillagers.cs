@@ -44,7 +44,7 @@ namespace World.Game
 
         public static Npc SpawnSawyer(Vector3 at, float yaw)
         {
-            var n = Spawn(NpcIds.Sawyer, "Holt the sawyer", "Holt, the sawyer. He wants wood cut and logs turned into planks.", SawyerTunic, at, yaw);
+            var n = Spawn(NpcIds.Sawyer, "Osric the sawyer", "Osric, the sawyer. He wants wood cut and logs turned into planks.", SawyerTunic, at, yaw);
             if (n.Actor is PlaceholderActor a)
             {
                 Signs.Prim(PrimitiveType.Cube, a.BodyPivot, "AxeHaft", new Vector3(0.1f, 1.15f, -0.24f), new Vector3(0.05f, 0.8f, 0.05f), MaterialFactory.Shared(Wood), new Vector3(0, 0, 25f));

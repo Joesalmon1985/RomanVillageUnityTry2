@@ -42,7 +42,7 @@ namespace World.Game
             "stock (saplings, seedlings, lambs, clay, stone). It ripens in about 75 seconds; a camp's collecting " +
             "building then gathers it and carriers walk it to the camp's store.\n\n" +
             H("2. The prince and your spells") +
-            "You command nothing. The prince, Holt the sawyer and Wenna the merchant come to you with what they want " +
+            "You command nothing. The prince, Osric the sawyer and Wenna the merchant come to you with what they want " +
             "to build. Answer \"Show me\" and follow, or walk to the gold ring yourself, stand within 15 m and click " +
             "inside it: that spell starts the work. \"Not this\" drops a proposal for a minute; \"Later\" puts it off. " +
             "Click a villager to hear their proposal again.";

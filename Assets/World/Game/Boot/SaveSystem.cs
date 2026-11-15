@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using UnityEngine;
 using World.Sim;
+using World.Sim.Campaign;
 using World.Sim.Save;
 
 namespace World.Game
@@ -45,7 +46,7 @@ namespace World.Game
         private WorldBootstrap _boot;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() { s_pending = null; PathOverride = null; TestPauseOnLoad = null; LastMessage = null; LastWasError = false; LoadCount = 0; }
+        private static void ResetStatics() { s_pending = null; PathOverride = null; TestPauseOnLoad = null; LastMessage = null; LastWasError = false; LoadCount = 0; Checkpoints = 0; CheckpointOnResolve = true; }
 
         /// <summary>WorldBootstrap.Awake: the save to start from, or null for a new game.</summary>
         public static SaveModel TakePending()
@@ -60,9 +61,30 @@ namespace World.Game
             _boot = boot;
             _applying = loaded;
             if (loaded != null && !string.IsNullOrEmpty(TestPauseOnLoad)) boot.Clock.Pause(TestPauseOnLoad);
+            CampaignDuel.Resolved += OnDuelResolved;
         }
 
-        private void OnDestroy() { if (Instance == this) Instance = null; }
+        private void OnDestroy()
+        {
+            CampaignDuel.Resolved -= OnDuelResolved;
+            if (Instance == this) Instance = null;
+        }
+
+        /// <summary>Checkpoints written on <see cref="CampaignDuel.Resolved"/> since the domain loaded (tests).</summary>
+        public static int Checkpoints { get; private set; }
+        /// <summary>False turns the campaign checkpoint off (tests that keep their own slot untouched).</summary>
+        public static bool CheckpointOnResolve = true;
+
+        /// <summary>
+        /// The campaign checkpoint (PRD_CRYSTALS 8.1, I8): a lethal duel's result is saved to the main slot the moment
+        /// it is applied, the one exception to "no saving during an encounter", so quitting on the result screen cannot
+        /// undo a death or a win.
+        /// </summary>
+        private void OnDuelResolved(int attempt, DuelResult result)
+        {
+            if (!CheckpointOnResolve || _boot == null || _boot.Sim == null) return;
+            if (SaveNow("campaign checkpoint after attempt " + attempt + " (" + result + ")")) Checkpoints++;
+        }
 
         private void Start()
         {
@@ -94,6 +116,11 @@ namespace World.Game
         {
             string why = WhyCannotSave();
             if (why != null) { Report("Not saved: " + why, true); return false; }
+            return SaveNow(null);
+        }
+
+        private bool SaveNow(string checkpoint)
+        {
             try
             {
                 string json = BuildJson();
@@ -103,8 +130,8 @@ namespace World.Game
                 File.WriteAllText(tmp, json);
                 if (File.Exists(path)) File.Delete(path);
                 File.Move(tmp, path);
-                Debug.Log("[Save] saved " + json.Length + " chars to " + path + " at tick " + _boot.Sim.State.Tick);
-                Report("Game saved (" + Describe(_boot.Sim.State) + "). F9 loads it.", false);
+                Debug.Log("[Save] saved " + json.Length + " chars to " + path + " at tick " + _boot.Sim.State.Tick + (checkpoint != null ? ": " + checkpoint : ""));
+                if (checkpoint == null) Report("Game saved (" + Describe(_boot.Sim.State) + "). F9 loads it.", false);
                 return true;
             }
             catch (Exception e)
@@ -135,6 +162,9 @@ namespace World.Game
             };
             // The prince's first scene (the pitch loop itself restarts from the sim's open proposals).
             if (PrinceDirector.Instance != null) x[FirstSceneKey] = PrinceDirector.Instance.FirstSceneStep.ToString(CultureInfo.InvariantCulture);
+            // The crystal campaign: the cells seen underground (I5) and the expedition's opening step (I6).
+            if (Interiors.All.Count > 0) x[InteriorKey] = Interiors.SaveExtra();
+            if (ExpeditionDirector.Instance != null) x[ExpeditionSceneKey] = ExpeditionDirector.Instance.SceneStep.ToString(CultureInfo.InvariantCulture);
             return SaveCodec.ToJson(_boot.Sim.State, pose, x);
         }
 
@@ -196,6 +226,10 @@ namespace World.Game
             if (PrinceDirector.Instance != null && x.TryGetValue(FirstSceneKey, out var fs)
                 && int.TryParse(fs, NumberStyles.Integer, CultureInfo.InvariantCulture, out int step))
                 PrinceDirector.Instance.RestoreFirstScene(step);
+            if (x.TryGetValue(InteriorKey, out var seen) && !string.IsNullOrEmpty(seen)) Interiors.LoadExtra(seen);
+            if (ExpeditionDirector.Instance != null && x.TryGetValue(ExpeditionSceneKey, out var es)
+                && int.TryParse(es, NumberStyles.Integer, CultureInfo.InvariantCulture, out int estep))
+                ExpeditionDirector.Instance.RestoreScene(estep);
             if (x.TryGetValue("objective", out var obj) && !string.IsNullOrEmpty(obj)) Hud.SetObjective(obj);
             if (x.TryGetValue("view", out var view) && view == ViewMode.God.ToString()) _boot.Views.SetView(ViewMode.God);
             if (x.TryGetValue("god.focus", out var f) && TryV3(f, out var focus))
@@ -222,6 +256,10 @@ namespace World.Game
 
         /// <summary>Extras key of the first scene's step (<see cref="PrinceDirector.FirstSceneStep"/>).</summary>
         public const string FirstSceneKey = "scene.first";
+        /// <summary>Extras key of the explored interior cells (<see cref="Interiors.SaveExtra"/>).</summary>
+        public const string InteriorKey = "interior";
+        /// <summary>Extras key of the expedition's opening step (<see cref="ExpeditionDirector.SceneStep"/>).</summary>
+        public const string ExpeditionSceneKey = "scene.expedition";
 
         private static bool TryCell(string s, out WalkLattice.Cell c)
         {

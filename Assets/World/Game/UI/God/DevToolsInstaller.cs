@@ -11,6 +11,7 @@ namespace World.Game
         {
             DevTools.Register();
             DevStart.RegisterTool(); // developer starts (dev.historic)
+            CampaignDevTool.Register(); // the crystal campaign (I8)
             var bar = boot.gameObject.AddComponent<GodToolbar>();
             bar.Bind(boot);
         }
