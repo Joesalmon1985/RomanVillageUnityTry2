@@ -56,6 +56,8 @@ namespace World.Game
                         ? LandLook.Cached("gbld/" + key, mb => HistoricShapes.Build(mb, type, faction))
                         : LandLook.Cached("bld/" + (int)type + "/" + faction, mb => LandShapes.Building(mb, type, faction));
                     model.GetComponent<MeshFilter>().sharedMesh = mesh;
+                    // Timber and plaster must still read at night beyond the door torch's reach (Docs/LIGHTING.md, Readability).
+                    if (grade >= Grade.Historic) LightShapes.Apply(model.GetComponent<MeshRenderer>(), LightShapes.Read.Person);
                 }
             }
             SyncUpgrade(s, b, model);
