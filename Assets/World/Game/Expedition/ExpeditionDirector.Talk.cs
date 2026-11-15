@@ -364,7 +364,8 @@ namespace World.Game
             var p = C.Party;
             // She went on by herself (nobody answered in time), or the player is gone: no opening left to play.
             if (p.Mode != PartyMode.Idle || !p.PlayerPresent) { EndOpening(); return; }
-            if (Walker == null || PrinceBusy()) return;
+            if (Walker == null) return;
+            if (PrinceBusy()) { if (_askKind == AskOpening) CloseAsk(); return; } // she waits her turn and asks again after
             switch (_openingStep)
             {
                 case 0:
@@ -968,8 +969,25 @@ namespace World.Game
             LatestWord = ja.Text;
             bool report = _reportNext;
             _reportNext = false;
-            // Word of the Ash expedition reaches the player wherever they are; Mira's own doings only when they are not with her.
-            if (report || !C.Party.PlayerPresent) Cue(ja.Text);
+            // Word of the Ash expedition reaches the player wherever they are; Mira's own doings only when they are not with
+            // her, and then what she did, not what was said there (the journal also keeps the first line spoken at a place).
+            if (report || (!C.Party.PlayerPresent && !IsSpokenLine(ja.Text))) Cue(ja.Text);
+        }
+
+        private HashSet<string> _spokenTexts;
+
+        /// <summary>True when a journal sentence is a line somebody says in the pack (as written, tokens filled now).</summary>
+        private bool IsSpokenLine(string text)
+        {
+            if (_spokenTexts == null)
+            {
+                _spokenTexts = new HashSet<string>();
+                foreach (var l in D.Lines) if (!string.IsNullOrEmpty(l.Speaker)) _spokenTexts.Add(l.Text ?? "");
+            }
+            if (_spokenTexts.Contains(text)) return true;
+            foreach (var l in D.Lines)
+                if (!string.IsNullOrEmpty(l.Speaker) && (l.Text ?? "").IndexOf('{') >= 0 && CampaignTokens.Fill(C, l.Text) == text) return true;
+            return false;
         }
 
         /// <summary>A short line hung in front of the player for a few seconds (never while the prince's people speak, never two at once).</summary>
@@ -978,20 +996,22 @@ namespace World.Game
             if (string.IsNullOrEmpty(text)) return;
             if (_cueQueue.Count > 0 && _cueQueue[_cueQueue.Count - 1] == text) return;
             _cueQueue.Add(text);
-            while (_cueQueue.Count > 3) _cueQueue.RemoveAt(0); // the journal keeps the rest
+            while (_cueQueue.Count > 4) _cueQueue.RemoveAt(0); // the journal keeps the rest
         }
 
         private void UpdateCues()
         {
             if (_cueHandle != 0 && SpeechBubbles.IsOpen(_cueHandle)) return;
             if (_cueHandle != 0) { _cueHandle = 0; _cueGapUntil = Time.unscaledTime + Real(1.5f); }
-            if (_cueQueue.Count == 0 || Time.unscaledTime < _cueGapUntil || PrinceBusy() || _ask != 0 && _askKind != AskCall || ScriptPending > 0 || MapScreen.IsOpen) return;
+            // A cue is word from afar, not somebody speaking: it waits for Mira's own lines and questions, not for the prince's.
+            if (_cueQueue.Count == 0 || Time.unscaledTime < _cueGapUntil || _ask != 0 && _askKind != AskCall || ScriptPending > 0 || MapScreen.IsOpen) return;
             string text = _cueQueue[0];
             _cueQueue.RemoveAt(0);
-            if (_rejoinHintDue && !C.Party.PlayerPresent && _cueQueue.Count == 0)
+            if (_rejoinHintDue)
             {
+                // Right after the first word of an absence: how to find her again.
                 _rejoinHintDue = false;
-                _cueQueue.Add(ExpeditionLines.Get(S, ExpeditionLines.CueHowToRejoin, "The map shows where Mira is."));
+                _cueQueue.Insert(0, ExpeditionLines.Get(S, ExpeditionLines.CueHowToRejoin, "The map shows where Mira is."));
             }
             _cueHandle = SpeechBubbles.Say(null, text, Real(ExpeditionLines.Seconds(text)));
             Cues.Add(text);

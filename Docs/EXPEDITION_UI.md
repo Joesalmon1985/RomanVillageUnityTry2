@@ -54,7 +54,7 @@ One question of Mira's is open at a time (`AskHandle`, `AskKind`), with at most 
 
 **Company.** `SetCompany(false)` is sent on "Go on ahead" and "Go on without me", when the player is more than 60 m from the party (or in another space) for 20 game seconds, and when the player lets the prince lead them away. `SetCompany(true)` is sent on "I'm with you" and with any answer to one of her questions. Away, Mira never opens a question.
 
-**Cues.** While the player is away every journal entry is hung as a short line in front of the player for a few seconds (at most three waiting; the journal keeps the rest), the first of an absence followed by how to rejoin. Word of the Ash expedition (the sim's reports) is cued whether the player is with Mira or not. With the HUD on, a line at the top right says where Mira is and the newest journal sentence. `Cues`, `LastCue`.
+**Cues.** While the player is away every journal entry of what Mira did (not the lines spoken at a place, which the journal also keeps) is hung as a short line in front of the player for a few seconds (at most four waiting; the journal keeps the rest), the first of an absence followed by how to rejoin. A cue waits for Mira's own lines and questions, not for the prince's. Word of the Ash expedition (the sim's reports) is cued whether the player is with Mira or not. With the HUD on, a line at the top right says where Mira is and the newest journal sentence. `Cues`, `LastCue`.
 
 **The prince.** Mira says nothing new and closes her own question while the prince's people have the player's ear (`PrinceBusy`: an open question of theirs, one of them speaking within 40 m, or leading the player); she asks again after. The other way round needs one hook in `PrinceDirector` (below): while `MiraHasTheFloor` (her question or lines, the opening, the player in her company on the road or at a site, underground, a retreat) the prince starts no pitch, withdraws one he has not finished, and does not tag along, unless your people are under an overrun warning (he may then call the player, as `PRD_CRYSTALS` 5.9 says, and Mira yields). The camp's word on a lit tower (the pack's prince lines, topic `state`) is said by the prince when the player next stands by him.
 
@@ -64,7 +64,7 @@ One question of Mira's is open at a time (`AskHandle`, `AskKind`), with at most 
 - **Towers.** A round tower on each tower corner with a band in its element's colour, the door towards the path, the Rooted Tower with stone roots. Dark until `Restored`; then a beam, a glowing band and door, a strong light seen from far off, a ring of light and new growth on the ground round it, and (when the restoration happens in this scene) a wave of light that crosses the island in about twelve seconds. The change in demons is the sim's (`SevensPerDraw`); the journal states it.
 - **Crystals** are drawn once each from custody: on the pedestal (`AtSite`), on the altar (`AtRivalAltar`), at Mira's chest (`Carried`), in the tower's crown (`Restored`); lifting while she takes it, rising while she sets it; with the Ash runners while in transit. `ExpeditionSites.CrystalPlace(element)`.
 - **Keepers** stand at their encounter's opponent marker while the crystal lies on the altar and after a win; a tap says their line.
-- Everything follows state (custody, facts, restored list), so a load shows the same world and replays nothing.
+- Everything follows state (custody, facts, restored list), so a load shows the same world and replays nothing. One thing a load cannot know: where Mira stood when a surface leg began (at the camp she sets out from beside the player, not from her fire), so after a load in the middle of that leg she is on the path from the leg's first marker, up to some 20 m from where she was, and arrives on the same tick.
 
 ## The Ash expedition
 
@@ -90,10 +90,11 @@ All start from `dev.historic` plus `StartCampaign` on the authored pack (the scr
 
 | Script | What |
 |---|---|
-| `earth_first` | "Tell me more", "Lead the way", the stone, "Why there?", the stair, the marks, the Deepstone taken, out, the Rooted Tower, "Set it". Fails if a duel was fought or anyone died. |
+| `earth_first` | A prompt player: two bubbles of the story, a tap on Mira (her question at once), "Lead the way", the stone, the stair, the marks, the Deepstone taken, out, the Rooted Tower, "Set it". Fails if a duel was fought or anyone died. |
 | `earth_stolen` | `DevRivalNextStep` puts the Deepstone on the Ash altar. The bare pedestal, the tally, the vault, "What happens if we lose?", "Fight", a loss (Garrick stays), back down, "Fight", a win, out by the Ash cut, "Set it". Then the map and the journal. |
 | `earth_stolen_win` | The same with a win at the first attempt. |
 | `mira_alone` | "Go on ahead, I'll find you". The Ash expedition is held back in the definition handed to `StartCampaign` (as the proof's away run does), so that Mira reaches the pedestal first alone. The cues, the map and the HUD line are checked; the map's marker walks the player to the tower; "I'm with you"; "Set it". |
+| `ash_runners` | "Go on ahead", a walk to the glade's edge; the Ash runners come, seize the Deepstone and carry it off in sight; the word of it arrives as a cue. |
 | `expedition_captures` | `earth_stolen` with captures. |
 
 Each logs `[AutoPlay] <name> timings (game m:ss since the campaign began): ...` and `[AutoPlay] <name> OK`.

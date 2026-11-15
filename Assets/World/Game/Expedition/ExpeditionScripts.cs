@@ -57,6 +57,7 @@ namespace World.Game
             AutoPlayScripts.Register("earth_stolen", () => Start("earth_stolen", a => EarthStolen(a, "earth_stolen", true)));
             AutoPlayScripts.Register("earth_stolen_win", () => Start("earth_stolen_win", a => EarthStolen(a, "earth_stolen_win", false)));
             AutoPlayScripts.Register("mira_alone", () => Start("mira_alone", MiraAlone, d => d.Rival.Steps[0].MarchCost = 60000));
+            AutoPlayScripts.Register("ash_runners", () => Start("ash_runners", AshRunners));
             AutoPlayScripts.Register("expedition_captures", () => { Captures = true; return Start("expedition_captures", a => EarthStolen(a, "expedition_captures", true)); });
         }
 
@@ -240,6 +241,8 @@ namespace World.Game
         {
             public string Opening = ExpeditionLines.ReplyLead;
             public bool TellMore, WhyOnce, IfLose, NotYetOnce;
+            /// <summary>A player in a hurry: after two bubbles of the story, a tap on Mira brings her question at once.</summary>
+            public bool SkipStory;
             public readonly Queue<DuelResult> Duels = new Queue<DuelResult>();
             public readonly List<Moment> Moments = new List<Moment>();
             public Moment On(string name, Func<bool> when, string capture = null, float delay = 0f)
@@ -290,6 +293,12 @@ namespace World.Game
                 if (until()) yield break;
                 if (Now > end || Time.realtimeSinceStartup > realEnd) { a.Fail("timed out waiting for " + what + " (" + Status() + ")"); yield break; }
                 var d = Dir;
+                if (plan.SkipStory && d != null && d.SceneStep == ExpeditionDirector.SceneOpening && d.Said.Count >= 2 && d.ScriptPending > 0 && d.AskHandle == 0)
+                {
+                    plan.SkipStory = false;
+                    yield return TapMira(a);
+                    Stamp("tapped Mira: the rest of the story skipped");
+                }
                 int h = d != null ? d.AskHandle : 0;
                 if (h != 0 && SpeechBubbles.IsShowing(h))
                 {
@@ -375,7 +384,8 @@ namespace World.Game
 
         private static IEnumerator EarthFirst(AutoPlay a)
         {
-            var plan = new Plan { TellMore = true, WhyOnce = true };
+            // A prompt player: the race is tight (the Ash march on the Deepstone is drawn in 2:45 to 4:45), so the story is cut short by a tap.
+            var plan = new Plan { SkipStory = true };
             EarthMoments(plan);
             plan.On("at the pedestal", () => C.Party.At.Marker == "pedestal" && C.Party.Mode == PartyMode.Acting && C.Party.ActingAction == QuestAction.Take, "pedestal", 5f);
             plan.On("Deepstone taken", () => C.Crystal(Element.Earth).Custody == Custody.Carried, "taken", 2f);
@@ -464,6 +474,39 @@ namespace World.Game
             MapScreen.ClearTarget();
             MapScreen.Close();
             yield return null;
+        }
+
+        // =====================================================================================================
+        // ash_runners
+        // =====================================================================================================
+
+        /// <summary>
+        /// Leaves Mira at the camp, walks to the edge of the Stonemark Glade and watches: the Ash runners come for the
+        /// Deepstone, seize it and carry it off across the country, glowing; the word of it arrives as a cue.
+        /// </summary>
+        private static IEnumerator AshRunners(AutoPlay a)
+        {
+            var plan = new Plan { Opening = ExpeditionLines.ReplyAhead, SkipStory = true };
+            yield return Drive(a, plan, () => !C.Party.PlayerPresent, 150f, "the player to leave Mira at the camp");
+            if (a.Failed) yield break;
+            var glade = ExpeditionSpace.World(S, MarkerRef.Surface("glade", "safe"));
+            yield return a.DoWalkTo(() => glade, 6f, 300f);
+            if (a.Failed) yield break;
+            Stamp("the player waits at the glade");
+            var watch = new Plan();
+            watch.On("Ash runners in sight", () => Dir.Ash.Visible, "ash_marching", 2f);
+            watch.On("the Deepstone seized", () => C.Crystal(Element.Earth).Custody == Custody.RivalTransit);
+            yield return Drive(a, watch, () => Dir.Ash.CarryingShown, 600f, "the runners carrying the Deepstone");
+            if (a.Failed) yield break;
+            Stamp("runners carrying the Deepstone in sight");
+            yield return a.DoWait(5f / Mathf.Max(1f, Time.timeScale));
+            yield return a.DoFace(() => Dir.Ash.Position);
+            yield return Capture(a, "ash_carrying");
+            Check(a, Dir.Ash.Visible && Dir.Ash.CarryingShown, "the runners with the crystal are not drawn");
+            Check(a, Dir.Sites.CrystalPlace(Element.Earth) == "", "the crystal is still drawn at a place while the runners carry it");
+            yield return Drive(a, watch, () => Dir.Cues.Exists(c => c.Contains("has taken")), 120f, "word of the theft");
+            if (a.Failed) yield break;
+            Stamp("word came of the theft");
         }
 
         // =====================================================================================================

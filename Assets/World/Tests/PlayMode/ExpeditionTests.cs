@@ -41,6 +41,7 @@ namespace World.Game.Tests
             _path = Path.Combine(Application.temporaryCachePath, "worldmvp_test_expedition.json");
             if (File.Exists(_path)) File.Delete(_path);
             SaveSystem.PathOverride = _path;
+            SaveSystem.TestPauseOnLoad = null;
         }
 
         [TearDown]
@@ -48,6 +49,7 @@ namespace World.Game.Tests
         {
             Time.timeScale = 1f;
             SaveSystem.PathOverride = null;
+            SaveSystem.TestPauseOnLoad = null;
             if (MapScreen.IsOpen) { MapScreen.ClearTarget(); MapScreen.Close(); }
             Hud.Visible = false;
             if (File.Exists(_path)) File.Delete(_path);
@@ -259,7 +261,7 @@ namespace World.Game.Tests
             Assert.IsTrue(_boot.Sim.Submit(new DevSetCompanion { Id = "odo", Alive = false }).Ok);
             yield return Until(() => !Dir.MateOf("odo").Alive, 5f, "the roster view to follow the state");
             yield return Play(() => C.Knows("earth.glade_known"), 400f, "the sawyer's word");
-            Assert.AreEqual("earth_sawyer", C.FiredEvents.Contains("earth_sawyer_talk") ? "earth_sawyer" : "?", "the sawyer was asked");
+            yield return Until(() => C.FiredEvents.Contains("earth_sawyer_talk"), 60f, "the talk with the sawyer");
             yield return Until(() => SaidIndex("sawyer_notches_3") >= 0, 60f, "the sawyer's three lines");
             Assert.IsTrue(SaidLine("sawyer_notches_1", "sawyer") && SaidLine("sawyer_notches_2", "sawyer"));
             yield return Play(() => C.Knows("earth.stair_open"), 400f, "the stone read");
@@ -287,10 +289,10 @@ namespace World.Game.Tests
             int cues0 = Dir.Cues.Count;
             // Alone she waits, then goes: the journal's sentence is the cue, and how to rejoin follows.
             yield return Until(() => Dir.LegCount >= 1, 150f, "Mira to set out alone");
-            yield return Until(() => Dir.Cues.Count > cues0 + 1, 60f, "the cues");
-            var journal = CampaignApi.Journal(S);
-            Assert.IsTrue(Dir.Cues.Exists(c => c.StartsWith("Mira went on by herself")), "the cue says where she went: " + string.Join(" | ", Dir.Cues));
-            Assert.IsTrue(Dir.Cues.Contains(T(ExpeditionLines.CueHowToRejoin)), "and how to rejoin");
+            yield return Until(() => Dir.Cues.Exists(c => c.StartsWith("Mira went on by herself")), 120f, "the cue that says where she went (" + string.Join(" | ", Dir.Cues) + ")");
+            Assert.Greater(Dir.Cues.Count, cues0);
+            Assert.IsTrue(Dir.Cues.Contains(T(ExpeditionLines.CueHowToRejoin)), "and how to rejoin: " + string.Join(" | ", Dir.Cues));
+            foreach (var cue in Dir.Cues) Assert.IsFalse(cue.StartsWith("Three cuts"), "what was said at a place is not a cue");
             Assert.AreEqual(0, Dir.AskHandle, "she does not pester a player who is away");
             // HUD line and map.
             Hud.Visible = true;
@@ -365,12 +367,15 @@ namespace World.Game.Tests
                 StringAssert.Contains(CampaignApi.Belief(S, Element.Fire).WhereToLook, fire);
             }
             // Save, load: the same world from state alone, no opening again, nothing replayed.
+            _boot.Clock.Pause("Test");
+            yield return Frames(2);
             long tick = S.Tick;
             Assert.IsTrue(_boot.Saves.Save(), SaveSystem.LastMessage);
             var old = _boot;
+            SaveSystem.TestPauseOnLoad = "Test";
             Assert.IsTrue(_boot.Saves.Load(), SaveSystem.LastMessage);
             yield return WaitForReload(old);
-            yield return Until(() => Dir != null, 5f, "the director after the load");
+            Assert.IsNotNull(Dir, "the director after the load");
             yield return Frames(5);
             Assert.AreEqual(tick, S.Tick);
             Assert.AreEqual(ExpeditionDirector.SceneUnderWay, Dir.SceneStep, "no second opening");
@@ -381,6 +386,7 @@ namespace World.Game.Tests
             Assert.IsTrue(Dir.Sites.Stair("glade/stair").Open, "the opened stair stays open");
             Assert.AreEqual(6, Dir.Mates.Count);
             Assert.Less(BoardSpace.Flat(Dir.Mira.transform.position - ExpeditionSpace.World(S, C.Party.At)), 4f, "Mira is where the state says");
+            _boot.Clock.Resume("Test");
             yield return Frames(30);
             Assert.AreEqual(0, Dir.Commands.Count, "a load sends nothing");
             Assert.IsFalse(Dir.Asked.ContainsKey(ExpeditionDirector.AskOpening));
@@ -434,16 +440,19 @@ namespace World.Game.Tests
             long tick = S.Tick; int progress = C.Party.Leg.Progress; var to = C.Party.Leg.To;
             Assert.IsTrue(_boot.Saves.Save(), SaveSystem.LastMessage);
             var old = _boot;
+            SaveSystem.TestPauseOnLoad = "Test";
             Assert.IsTrue(_boot.Saves.Load(), SaveSystem.LastMessage);
             yield return WaitForReload(old);
-            yield return Until(() => Dir != null, 5f, "the director after the load");
-            _boot.Clock.Pause("Test");
+            Assert.IsNotNull(Dir, "the director after the load");
             yield return Frames(4);
             Assert.AreEqual(tick, S.Tick);
             Assert.AreEqual(PartyMode.Travelling, Dir.Phase);
             Assert.AreEqual(progress, C.Party.Leg.Progress);
             Assert.AreEqual(to, Dir.LastLeg.To, "the leg is rebuilt from state");
-            Assert.Less(BoardSpace.Flat(Dir.Mira.transform.position - pos), 6f, "Mira is on the leg where she was");
+            // The sim knows a leg by its two markers: after a load she is on the path from the leg's first marker (the camp's
+            // fire), not from where she happened to stand when she set out (beside the player), so she may be some metres off.
+            Assert.Less(BoardSpace.Flat(Dir.Mira.transform.position - pos), 25f, "Mira is on the leg near where she was");
+            Assert.Greater(BoardSpace.Flat(Dir.Mira.transform.position - ExpeditionSpace.World(S, C.Party.Leg.From)), 10f, "under way, not back at the start");
             foreach (var m in Dir.Mates) Assert.Less(BoardSpace.Flat(m.Npc.transform.position - Dir.Mira.transform.position), 12f, m.Id + " with her");
             Assert.AreEqual(ExpeditionDirector.SceneUnderWay, Dir.SceneStep);
             _boot.Clock.Resume("Test");
@@ -457,12 +466,16 @@ namespace World.Game.Tests
             Assert.AreEqual("altar", Dir.Sites.CrystalPlace(Element.Earth));
             Assert.AreEqual(0, Count<CommitEncounter>());
             // At the threshold.
+            _boot.Clock.Pause("Test");
+            yield return Frames(2);
             tick = S.Tick;
             Assert.IsTrue(_boot.Saves.Save(), SaveSystem.LastMessage);
             old = _boot;
             Assert.IsTrue(_boot.Saves.Load(), SaveSystem.LastMessage);
             yield return WaitForReload(old);
-            yield return Until(() => Dir != null, 5f, "the director after the load");
+            Assert.IsNotNull(Dir, "the director after the load");
+            Assert.AreEqual(tick, S.Tick);
+            _boot.Clock.Resume("Test");
             Speed(Fast);
             Assert.AreEqual(PartyMode.AtThreshold, C.Party.Mode);
             yield return Until(() => Dir.AskKind == ExpeditionDirector.AskThreshold, 30f, "the threshold question again");
@@ -525,29 +538,31 @@ namespace World.Game.Tests
             }
         }
 
+        // ---------------- the Ash expedition in the world ----------------
+
+        [UnityTest, Timeout(900000)]
+        public IEnumerator AshRunners_Script_SeenCarryingTheCrystal_AndWordComes()
+        {
+            yield return RunScript("ash_runners");
+            Assert.AreNotEqual(Custody.AtSite, C.Crystal(Element.Earth).Custody);
+            Assert.Greater(Dir.Ash.ReportsSeen, 0);
+            Assert.IsNotNull(Dir.Ash.LastReport);
+            Assert.IsTrue(Dir.Cues.Exists(c => c.StartsWith("Word came")), "reports are cued");
+            MapScreen.Open();
+            yield return Frames(3);
+            Assert.IsTrue(new List<ExpeditionMapLayer.Mark>(Dir.MapLayer.Marks).Exists(m => m.Kind == "ash" && m.Label.Contains("ago")), "the last report is on the map with its age");
+            MapScreen.ClearTarget();
+            MapScreen.Close();
+        }
+
         // ---------------- a choice, on the skeleton pack ----------------
 
         [UnityTest, Timeout(900000)]
         public IEnumerator Choice_OnTheSkeletonPack_AdviceGoesThroughAdviseMira()
         {
             yield return StartCampaign(ExpeditionDev.SkeletonPack);
-            // Follow only the lead to the wind cairn; the cairn's question is put to the player.
-            float end = Now + 1500f;
-            while (C.Party.Mode != PartyMode.AskingChoice || Dir.AskKind != ExpeditionDirector.AskChoice)
-            {
-                Assert.Less(Now, end, "the choice never came (" + ExpeditionScripts.Status() + ")");
-                if (Dir.AskHandle != 0 && SpeechBubbles.IsShowing(Dir.AskHandle))
-                {
-                    if (Dir.AskKind == ExpeditionDirector.AskOpening) yield return Tap("reply_lead");
-                    else if (Dir.AskKind == ExpeditionDirector.AskCall) yield return Tap(ExpeditionLines.ReplyComing);
-                    else if (Dir.AskKind == ExpeditionDirector.AskLead)
-                    {
-                        var top = CampaignApi.TopLead(S);
-                        yield return Tap(top != null && top.DefId == "air_cairn" ? "reply_lead" : "reply_not");
-                    }
-                }
-                yield return null;
-            }
+            // Follow Mira wherever she leads until the wind cairn's question is put to the player.
+            yield return Play(() => C.Party.Mode == PartyMode.AskingChoice && Dir.AskKind == ExpeditionDirector.AskChoice, 2400f, "the cairn's question");
             var ch = C.Definition.Choice(C.Party.ChoiceId);
             Assert.AreEqual("air_wind", ch.Id);
             var replies = SpeechBubbles.RepliesOf(Dir.AskHandle);

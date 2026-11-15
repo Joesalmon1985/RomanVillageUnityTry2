@@ -890,6 +890,24 @@ namespace World.Game
             return null;
         }
 
+        /// <summary>A point of floor about five metres from a place inside the current interior, on the side away from what is looked at when that is free.</summary>
+        private Vector3 ClearSpotNear(Vector3 centre, Vector3 lookAt)
+        {
+            var away = centre - lookAt; away.y = 0;
+            if (away.sqrMagnitude < 0.05f) away = -Mira.transform.forward;
+            float baseYaw = BoardSpace.YawOf(away);
+            foreach (float dist in new[] { 5f, 3.5f })
+                for (int k = 0; k < 12; k++)
+                {
+                    // 0, +30, -30, +60, -60 ... degrees round from the preferred side.
+                    float yaw = baseYaw + ((k + 1) / 2) * 30f * (k % 2 == 0 ? 1f : -1f);
+                    var dir = BoardSpace.DirOf(yaw);
+                    if (ExpeditionSpace.OnFloor(D, MiraSpace, centre + dir * dist) && ExpeditionSpace.OnFloor(D, MiraSpace, centre + dir * dist * 0.5f)
+                        && ExpeditionSpace.OnFloor(D, MiraSpace, centre + dir * (dist + 1.2f))) return centre + dir * dist;
+                }
+            return centre - Mira.transform.forward * 2f;
+        }
+
         private void StartRail()
         {
             if (Railed || Walker == null) return;
@@ -957,6 +975,8 @@ namespace World.Game
                 look = Mira.transform.position;
                 if (_retreat != null) look = Vector3.Lerp(look, _retreat.Gap, 0.5f);
                 else if (p.Mode != PartyMode.Travelling && _hasStand) look = Vector3.Lerp(look, ExpeditionSpace.World(S, p.At), 0.35f);
+                // No way walked here yet (placed by a duel's outcome, a load): a clear spot of floor a few paces from her.
+                if (BoardSpace.Flat(pos - Mira.transform.position) < 3f) pos = ClearSpotNear(Mira.transform.position, look);
             }
             var d = look - pos; d.y = 0;
             float yaw = d.sqrMagnitude > 0.5f ? BoardSpace.YawOf(d) : _railYaw;
