@@ -568,8 +568,8 @@ Ran (15 Nov, editor, other editors busy on the same machine):
 
 - `dotnet test DotNet`: 450 passed (the sim is untouched).
 - Unity console: 0 errors from game code (the editor's own search indexer logs an exception at start).
-- PlayMode: 88 tests, see the hand-off for the last full run; `ExpeditionTests` has 9.
-- AutoPlay in the editor at time scale 3 (game-minute timings do not depend on it), seed 20261113, the Ash march on the Deepstone 3:09: `earth_first` OK (Deepstone taken 2:30, restored 6:03), `earth_stolen` OK (threshold 7:20, loss 7:29, win 10:30, restored 12:26), `mira_alone` OK (she takes the Deepstone alone at 6:18, waits at the tower from 10:45, restored 11:58), `ash_runners` OK (seized 3:38, word 4:08).
+- PlayMode: 88 tests (79 from the base and 9 in `ExpeditionTests`). The last full run passed 87; the one failure was a check in `ExpeditionTests` that expected one of two possible cues, corrected afterwards, and `ExpeditionTests` then passed 9 of 9 (6 min 43 s). In an earlier full run `DanceTests.Drums_LightForTheRightPads_AtCueMinusFall_AutoplayAllPerfect` failed once on its frame-timing check (0.31 s late against 0.1 s, the machine was loaded); alone it passed, and it passed in the last full run.
+- AutoPlay in the editor at time scale 3 (game-minute timings do not depend on it), seed 20261113, the Ash march on the Deepstone 3:09: `earth_first` OK (Deepstone taken 2:30, restored 6:03), `earth_stolen` OK (as `expedition_captures`: threshold 7:19, loss 7:28, win 10:28, restored 12:24), `earth_stolen_win` OK (win 7:28, restored 9:24), `mira_alone` OK (she takes the Deepstone alone at 6:18, waits at the tower from 10:45, restored 11:58), `ash_runners` OK (seized 3:38, word 4:08). Captures at night in `Evidence/screenshots/i6_*.png` (not committed).
 
 Not done or not verified:
 

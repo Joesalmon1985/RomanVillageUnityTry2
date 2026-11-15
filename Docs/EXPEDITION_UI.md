@@ -80,7 +80,7 @@ Three runners in the Ash Clan's red, drawn only when the player is on the surfac
 Positions inside interiors come from `InteriorSpace.ToWorld`. `ExpeditionSpace.RealInteriors` is false while that is the I0 shell (it maps every interior onto the board centre). Then:
 
 - interior cells are laid out far east of the island (`StandInOrigin`), and `ExpeditionStandIn` builds a plain floor, rock, a roof, doors and lit stairs from the rows;
-- the walker cannot step there (open regions are package I5's), so a player in Mira's company is **led**: the viewpoint is locked (`ExpeditionRail`) and trails the party along the way it came, over Mira's shoulder at a threshold; "Go on without me" or "Lead me out" puts it back at the stair mouth; a tap on an open stair mouth offers "Go down" to join a party that is below.
+- the walker cannot step there (open regions are package I5's), so a player in Mira's company is **led**: the viewpoint is locked (`ExpeditionRail`) and trails the party along the way it came, over Mira's shoulder at a threshold (the keeper and the altar in view), held still for the first seconds of a retreat (on the one who stays), and on a clear spot of floor when the party was placed somewhere without walking; "Go on without me" or "Lead me out" puts it back at the stair mouth; a tap on an open stair mouth offers "Go down" to join a party that is below. When the party comes up again the player stands at that place's safe point and takes up the file once the party walks on.
 
 With package I5 merged none of that runs: the director calls `Interiors.Enter(marker)` when the party takes a stair with the player in company, `Interiors.LeadOut()` for "Lead me out", and reads `Interiors.Current` for the player's space.
 
@@ -98,6 +98,32 @@ All start from `dev.historic` plus `StartCampaign` on the authored pack (the scr
 | `expedition_captures` | `earth_stolen` with captures. |
 
 Each logs `[AutoPlay] <name> timings (game m:ss since the campaign began): ...` and `[AutoPlay] <name> OK`.
+
+## Lines the authored pack lacks
+
+The game asks the pack for these ids; until a pack has them the text in `ExpeditionLines.Missing` is used (original, short). A pack writer adds a line with the id and the pack's text wins.
+
+| Id | Used for | Stand-in |
+|---|---|---|
+| `reply_coming` | reply to her call | Coming |
+| `reply_go_down` | reply on an open stair mouth | Go down |
+| `mira_call` | she calls a player who lags | This way! Keep up. |
+| `mira_go_on` | not answered in time, she goes | I'm going on. Catch me up when you can. |
+| `mira_declined` | "Not that way" | Not that way, then. Let me think. |
+| `mira_why_<lead id>`, `mira_why` | "Why there?" (else `mira_where_<crystal>`) | It's the best lead we have. |
+| `mira_leave`, `mira_rejoin`, `mira_away_here` | leaving, "I'm with you", tapped while away | Go, then. I'll leave word of where I am. / Good. Stay close. / You found me. Are you with me? |
+| `mira_not_yet` | "Not yet" at a threshold | Not yet, then. We step back and breathe. |
+| `mira_tower_wait` | "Wait" at a tower | It will keep. Tell me when. |
+| `mira_retreat`, `mira_draw` | the retreat after a loss, after a clash or stalemate | Back! Back the way we came! / Neither Ward broke. Back, and we try again. |
+| `mira_wrong_answer` | a wrong answer when the choice has no wrong line | That wasn't it. We lost time. |
+| `mira_nothing_open` | no lead open (journal) | Nothing more to chase just now. We wait for word. |
+| `mira_lead_out` | "Lead me out" | The way out is lit. Follow the light. |
+| `mira_wait_scout` | a threshold while the scout is out | Wait for {companion.tansy.name}. I won't fight with one of us still out there. |
+| `cue_fell_behind`, `cue_rejoin` | cues | You fell behind. Mira has gone on without you. / The map (Tab) shows where Mira is. Find her and tap her to rejoin. |
+| `companion_fallen` | a tap on a fallen companion | fell here, holding the way out. |
+| `duel_stand_in`, `_win`, `_lose`, `_clash` | the duel stand-in only (gone with I7) | |
+
+Also missing in the pack (nothing is said): a `volunteer` line and a `memorial` line for each companion but Garrick; prince `state` lines for two, three and four towers.
 
 ## Files outside `Game/Expedition`
 
