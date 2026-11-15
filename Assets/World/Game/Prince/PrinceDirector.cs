@@ -57,6 +57,15 @@ namespace World.Game
         /// <summary>The first scene starts once the clock has run this many ticks (the prince walks up).</summary>
         public const int StartTick = 10;
 
+        /// <summary>
+        /// Crystals I6 (one additive hook, PRD_CRYSTALS 5.5 and 5.9): while this returns true someone else has the
+        /// player's ear (Mira, leading the expedition), so the prince starts no new pitch and does not tag along,
+        /// unless your people are under an overrun warning. Null = never. Set by <see cref="ExpeditionInstaller"/>.
+        /// </summary>
+        public static Func<bool> Hush;
+        /// <summary>True while <see cref="Hush"/> holds the prince back.</summary>
+        public bool Hushed => Hush != null && Mood != PitchMood.Urgent && Hush();
+
         // ---------------- first scene steps (saved by F as extras key "scene.first") ----------------
         public const int SceneNotStarted = 0, SceneAsked = 1, SceneLeading = 2, SceneAtPlot = 3, SceneBuilding = 4, SceneFirstLoad = 5, SceneDone = 6;
 
@@ -248,6 +257,12 @@ namespace World.Game
                 // The prince tags along once the first scene is over (during it, the scene places him); a speaker who
                 // went quiet after unanswered pitches walks behind the player too.
                 bool tagAlong = FirstSceneStep >= SceneDone && (n == Prince || (resigned && n == _resignedWho));
+                if (n == Prince && tagAlong && Hushed)
+                {
+                    // Crystals I6: the player is in Mira's company; the prince stays with his people.
+                    if (n.FollowingTarget == _tail) n.StopWalking();
+                    continue;
+                }
                 if (n == Prince && !tagAlong) continue;
                 if (tagAlong)
                 {
@@ -297,6 +312,7 @@ namespace World.Game
                     return;
             }
             // Waiting: pitch the top proposal when it is new, or again when its interval is up.
+            if (Hushed) return; // crystals I6: not while Mira has the player's ear
             var s = S;
             var top = FactionApi.Top(s, PlayerIds.Human);
             if (top == null) return;
