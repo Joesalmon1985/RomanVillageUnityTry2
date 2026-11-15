@@ -97,7 +97,8 @@ namespace World.Game
             return Scene;
         }
 
-        public Vector3 GatherSpot => Scene != null ? Scene.ToWorld(new Vector3(-9f * CouncilLayout.Scale, 0f, 3f * CouncilLayout.Scale)) : Site.ToWorld(new Vector3(-9f * Site.Scale, 0, 3f * Site.Scale));
+        /// <summary>The foot of the lookout tower: the candidate leads the player here and they climb up together.</summary>
+        public Vector3 GatherSpot => Site.ToWorld(new Vector3(-3f, 0f, 4f));
 
         // ------------------------------------------------------------------ events
 
@@ -117,7 +118,7 @@ namespace World.Game
             if (sc != null && sc.Status == CouncilStatus.InProgress && !sc.PlayerHelps && sc.Election != null && sc.Election.Phase != ElectionPhase.Complete
                 && !(EncounterHost.Instance != null && EncounterHost.Instance.IsRunning))
             {
-                bool near = Scene != null && PlayerWalker.Instance != null && (PlayerWalker.Instance.Position - Scene.Root.position).magnitude < 45f;
+                bool near = Scene != null && PlayerWalker.Instance != null && (PlayerWalker.Instance.Position - Site.Position).magnitude < 70f;
                 if (!near || _tickCounter % 7 == 0)
                     if (Boot.Sim.Submit(new CouncilAiStep { Settlement = HomeSettlement, PlayerId = PlayerIds.Human }).Ok) BackgroundSteps++;
             }
@@ -188,7 +189,7 @@ namespace World.Game
             var info = sc.Candidates[seat];
             var player = PlayerWalker.Instance;
             var site = Site;
-            var from = site.ToWorld(new Vector3(0, 0, 8f * site.Scale));
+            var from = site.ToWorld(new Vector3(0, 0, 8f));
             var tun = CouncilLayout.EmblemColor(CouncilLayout.EmblemColours[seat]);
             Asker = Npc.Spawn(AskerId, info.Name, "Candidate for " + sc.Office + " (" + info.Occupation + ")", "May I ask for your help?", Color.Lerp(tun, new Color(0.5f, 0.4f, 0.3f), 0.35f), from, site.Yaw);
             Asker.Directed = true; Asker.WalkSpeed = 8f;
@@ -272,7 +273,7 @@ namespace World.Game
             // no answer: step back, try again later (the offer stays open)
             _nextTry = Time.time + 45f;
             Approach = Stage.Waiting; _declineAt = Time.time + 2f;
-            Asker.WalkTo(Site.ToWorld(new Vector3(0, 0, 8f * Site.Scale)));
+            Asker.WalkTo(Site.ToWorld(new Vector3(0, 0, 8f)));
         }
 
         public bool Accept(SettlementCouncil sc)
@@ -295,7 +296,7 @@ namespace World.Game
             LastSaid = "Then we will settle it among ourselves.";
             SpeechBubbles.Say(Asker, LastSaid, 3f);
             Approach = Stage.Declined; _declineAt = Time.time + 4f;
-            Asker.WalkTo(Site.ToWorld(new Vector3(0, 0, 8f * Site.Scale)));
+            Asker.WalkTo(Site.ToWorld(new Vector3(0, 0, 8f)));
             return true;
         }
 

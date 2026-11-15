@@ -55,8 +55,10 @@ namespace World.Game
         bool _finished;
         Camera _cam; Transform _camParent; Vector3 _camLocalPos; Quaternion _camLocalRot; float _camFov;
         Vector3 _fromPos; Quaternion _fromRot; float _camT = 1f;
+        float _yaw, _pitch, _fov, _yawV, _pitchV, _fovV; float _focusUntil; List<int> _focus = new List<int>();
+        public float CamYaw => _yaw; public float CamPitch => _pitch; public float CamFov => _fov;
         float _lockUntil, _aiAt, _finishAt = -1f, _phaseUntil, _readyAt, _backAt = -1f;
-        bool _onHand, _onTray, _onSeal, _carryPending, _leaveSent;
+        bool _onHand, _onTray, _onSeal, _carryPending, _leaveSent, _frameInit;
         int _aideBubble, _speakerBubble, _lineCounter;
         EncounterSfx _sfx;
         AudioClip _good, _bad;
@@ -82,6 +84,7 @@ namespace World.Game
             _cam = ctx.FirstPersonCamera != null ? ctx.FirstPersonCamera : Camera.main;
             _camParent = _cam.transform.parent; _camLocalPos = _cam.transform.localPosition; _camLocalRot = _cam.transform.localRotation; _camFov = _cam.fieldOfView;
             _cam.transform.SetParent(Scene.Root, false);
+            Scene.ViewCamera = _cam;
             PlaceCamera(ViewKind.Forward, true);
             SpeechBubbles.ShowInEncounter = true;
             _sfxRoot = new GameObject("CouncilSfx");
@@ -102,7 +105,7 @@ namespace World.Game
             }
             SpeechBubbles.ShowInEncounter = false;
             foreach (int h in new[] { _aideBubble, _speakerBubble }) if (h != 0) SpeechBubbles.Close(h);
-            if (Scene != null) { Scene.ClearPreview(); Scene.HoldPetition = false; Scene.Bench?.HideSpeakers(); }
+            if (Scene != null) { Scene.ViewCamera = null; Scene.CloseBubbles(); Scene.HoldPetition = false; Scene.Bench?.HideSpeakers(); }
             var sc = Council;
             if (sc != null && sc.Status == CouncilStatus.InProgress && sc.Election != null && sc.Election.Phase != ElectionPhase.Complete && sc.Present && !_leaveSent)
             {
@@ -149,7 +152,6 @@ namespace World.Game
                 // control comes back at a safe boundary: my turn and the burst finished (or none)
                 bool mine = e.PlayerSeat >= 0 && e.Active == e.PlayerSeat && e.Phase != ElectionPhase.Complete;
                 if (mine && View == ViewKind.Left && !InTransition && _backAt < 0f && (e.Listening == null || e.Listening.Phase != ListeningPhase.InProgress)) _backAt = now + 0.5f;
-                if (Scene != null) UpdateHover(sc, e);
             }
             CouncilBubbles.Sweep(); // nothing but the council's own bubbles while the council is open
             {
@@ -159,7 +161,8 @@ namespace World.Game
         void UpdateCamera(float dt)
         {
             if (_cam == null || Scene == null) return;
-            _cam.fieldOfView = L.CameraFov(Screen.width, Screen.height);
+            if (View == ViewKind.Forward) SmoothForward(dt);
+            else _cam.fieldOfView = L.CameraFov(Screen.width, Screen.height);
             _camT = Mathf.MoveTowards(_camT, 1f, dt / 0.45f);
             GetPose(View, out var pos, out var rot);
             float k = Mathf.SmoothStep(0, 1, _camT);
@@ -167,15 +170,47 @@ namespace World.Game
             _cam.transform.rotation = Quaternion.Slerp(_fromRot, rot, k);
         }
 
+        /// <summary>The places the camera should show now: the proposals being offered, the catspaws' places, a place where something just changed, else all.</summary>
+        List<int> WantedFrame()
+        {
+            var sc = Council; var e = sc?.Election; var l = new List<int>();
+            if (e == null) return l;
+            if (Time.unscaledTime < _focusUntil) return _focus;
+            bool mine = e.PlayerSeat >= 0 && e.Active == e.PlayerSeat;
+            if (mine && e.Phase == ElectionPhase.Choosing) { foreach (var p in Scene.Proposals) foreach (var st in p.Steps) if (!l.Contains(st.Key)) l.Add(st.Key); }
+            else if (mine && (e.Phase == ElectionPhase.Ready || e.Phase == ElectionPhase.BustPending))
+                for (int t = 2; t <= 12; t++) if (e.Temp[t - 2] > 0 && e.Claimed[t - 2] < 0) l.Add(t);
+            return l;
+        }
+
+        public void FocusOn(IEnumerable<int> tracks, float seconds)
+        {
+            _focus = new List<int>(tracks); _focusUntil = Time.unscaledTime + seconds;
+        }
+
+        void SmoothForward(float dt)
+        {
+            Scene.Frame(WantedFrame(), Mathf.Max(0.5f, _cam.aspect), out float yaw, out float pitch, out float fov);
+            if (!_frameInit) { _yaw = yaw; _pitch = pitch; _fov = fov; _frameInit = true; }
+            _yaw = Mathf.SmoothDampAngle(_yaw, yaw, ref _yawV, 0.55f, 60f, dt);
+            _pitch = Mathf.SmoothDamp(_pitch, pitch, ref _pitchV, 0.55f, 40f, dt);
+            _fov = Mathf.SmoothDamp(_fov, fov, ref _fovV, 0.55f, 40f, dt);
+            _cam.fieldOfView = _fov;
+        }
+
         void GetPose(ViewKind v, out Vector3 pos, out Quaternion rot)
         {
             var root = Scene.Root;
-            if (v == ViewKind.Forward) { pos = root.TransformPoint(L.CamPos); rot = root.rotation * L.CamRot; }
+            if (v == ViewKind.Forward) { pos = Scene.CamPos; rot = Quaternion.Euler(_pitch, _yaw, 0); }
             else { pos = root.TransformPoint(Scene.Bench.CamPosLocal); rot = root.rotation; }
         }
 
         void PlaceCamera(ViewKind v, bool instant)
         {
+            if (v == ViewKind.Forward && !_frameInit)
+            {
+                Scene.Frame(null, Mathf.Max(0.5f, _cam.aspect), out _yaw, out _pitch, out _fov); _frameInit = true; _cam.fieldOfView = _fov;
+            }
             GetPose(v, out var pos, out var rot);
             if (instant || _cam == null) { _fromPos = pos; _fromRot = rot; _camT = 1f; _cam.transform.SetPositionAndRotation(pos, rot); return; }
             _fromPos = _cam.transform.position; _fromRot = _cam.transform.rotation; _camT = 0f;
@@ -201,14 +236,8 @@ namespace World.Game
             }
         }
 
-        string TargetAt(Vector2 safe)
+        string LeftTargetAt(Vector2 safe)
         {
-            if (View == ViewKind.Forward)
-            {
-                foreach (var kv in L.ForwardTargets()) if (kv.Value.Contains(safe)) return kv.Key;
-                for (int i = 0; i < 3; i++) if (L.Tray(i).Contains(safe)) return "tray " + i;
-                return null;
-            }
             if (L.SlabSame.Contains(safe)) return "same";
             if (L.SlabDifferent.Contains(safe)) return "different";
             if (L.RightLantern.Contains(safe)) return "rightlantern";
@@ -219,8 +248,9 @@ namespace World.Game
         public bool TapScreen(Vector2 screenBL)
         {
             if (_finished) return false;
-            var safe = L.ToSafe(screenBL, Screen.width, Screen.height);
-            string target = TargetAt(safe);
+            string target;
+            if (View == ViewKind.Forward) target = CouncilScene.Pick(Scene.Targets(_cam), screenBL);
+            else target = LeftTargetAt(L.ToSafe(screenBL, Screen.width, Screen.height));
             if (target == null) return false;
             LastTarget = target;
             float now = Time.unscaledTime;
@@ -228,80 +258,70 @@ namespace World.Game
             var sc = Council; var e = sc?.Election; if (e == null) return true;
             if (Handover) { if (now > _finishAt - 3.5f) _finished = true; return true; }
             TapsHandled++;
-            if (View == ViewKind.Forward) ForwardTap(sc, e, target, safe);
+            if (View == ViewKind.Forward) ForwardTap(sc, e, target);
             else LeftTap(sc, e, target);
             return true;
         }
 
-        void ForwardTap(SettlementCouncil sc, ElectionState e, string target, Vector2 safe)
+        void ForwardTap(SettlementCouncil sc, ElectionState e, string target)
         {
             bool mine = e.PlayerSeat >= 0 && e.Active == e.PlayerSeat;
             if (target == "lantern") { TurnLeft(); return; }
-            if (!Scene.Settled) return;
-            switch (target)
+            if (!Scene.Settled || !mine) return;
+            if (target == "hand" || target.StartsWith("paw "))
             {
-                case "hand":
-                    if (mine && e.Phase == ElectionPhase.Ready) Send(new CouncilPush { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
-                    break;
-                case "seal":
-                    if (mine && e.Phase == ElectionPhase.Ready && e.HasAdvanced) Send(new CouncilBank { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
-                    else if (mine && e.Phase == ElectionPhase.BustPending) Send(new CouncilAcceptBust { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
-                    break;
-                case "petition":
-                    if (mine && e.Phase == ElectionPhase.BustPending && e.PetitionAvailable) Send(new CouncilSpendPetition { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
-                    break;
-                default:
-                    int tray = -1, socket = -1;
-                    if (target.StartsWith("tray ")) tray = int.Parse(target.Substring(5));
-                    else if (target.StartsWith("socket ")) { tray = target[7] - '0'; socket = target[8] == 'b' ? 1 : 0; }
-                    if (tray < 0 || !mine || e.Phase != ElectionPhase.Choosing || tray >= e.Pending.Count) break;
-                    var t = e.Pending[tray];
-                    if (t.Mode == TrayMode.Both) Send(new CouncilChoose { Settlement = SettlementId, PushId = e.PushId, Tray = tray, Socket = -1, ExpectedSeq = e.ActionSeq });
-                    else if (socket >= 0 && !t.Sockets[socket].IsEmpty) Send(new CouncilChoose { Settlement = SettlementId, PushId = e.PushId, Tray = tray, Socket = socket, ExpectedSeq = e.ActionSeq });
-                    break;
+                if (e.Phase == ElectionPhase.Ready) Send(new CouncilPush { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
             }
+            else if (target == "seal" || target.StartsWith("lead "))
+            {
+                if (e.Phase == ElectionPhase.Ready && e.HasAdvanced) Send(new CouncilBank { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
+                else if (e.Phase == ElectionPhase.BustPending && target == "seal") Send(new CouncilAcceptBust { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
+            }
+            else if (target == "petition")
+            {
+                if (e.Phase == ElectionPhase.BustPending && e.PetitionAvailable) Send(new CouncilSpendPetition { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
+            }
+            else if (e.Phase == ElectionPhase.Choosing)
+            {
+                CouncilProposal chosen = null;
+                if (target.StartsWith("note ")) { int k = int.Parse(target.Substring(5)); if (k >= 0 && k < Scene.Proposals.Count) chosen = Scene.Proposals[k]; }
+                else if (target.StartsWith("place "))
+                {
+                    int t = int.Parse(target.Substring(6)); int n = 0;
+                    foreach (var p in Scene.Proposals) if (p.Touches(t)) { chosen = p; n++; }
+                    if (n != 1) chosen = null; // several proposals reach this place: the player taps the note they mean
+                }
+                if (chosen != null) Commit(e, chosen);
+            }
+        }
+
+        void Commit(ElectionState e, CouncilProposal p)
+        {
+            var t = e.Pending[p.Tray];
+            if (t.Mode == TrayMode.Both) Send(new CouncilChoose { Settlement = SettlementId, PushId = e.PushId, Tray = p.Tray, Socket = -1, ExpectedSeq = e.ActionSeq });
+            else Send(new CouncilChoose { Settlement = SettlementId, PushId = e.PushId, Tray = p.Tray, Socket = p.Socket, ExpectedSeq = e.ActionSeq });
         }
 
         void Send(Command c)
         {
             var r = Do(c);
-            if (r.Ok) { _lockUntil = Time.unscaledTime + 0.3f; Scene.ClearPreview(); }
+            if (r.Ok) _lockUntil = Time.unscaledTime + 0.3f;
         }
 
         /// <summary>Taps the centre of a named target of the current view (AutoPlay and tests: the same path as a real tap).</summary>
         public bool TapTarget(string name)
         {
-            var list = View == ViewKind.Forward ? L.ForwardTargets() : L.LeftTargets();
+            if (View == ViewKind.Forward)
+            {
+                foreach (var t in Scene.Targets(_cam)) if (t.Name == name) return TapScreen(t.Px);
+                return false;
+            }
             Rect r = default; bool found = false;
-            foreach (var kv in list) if (kv.Key == name) { r = kv.Value; found = true; }
-            if (!found && name.StartsWith("tray ")) { r = L.Tray(int.Parse(name.Substring(5))); found = true; }
+            foreach (var kv in L.LeftTargets()) if (kv.Key == name) { r = kv.Value; found = true; }
             if (!found && name == "rightlantern") { r = L.RightLantern; found = true; }
             if (!found) return false;
             var px = L.ToPixels(r, Screen.width, Screen.height);
             return TapScreen(new Vector2(px.center.x, Screen.height - px.center.y));
-        }
-
-        // ------------------------------------------------------------------ hover preview
-
-        void UpdateHover(SettlementCouncil sc, ElectionState e)
-        {
-            if (View != ViewKind.Forward || e.Phase != ElectionPhase.Choosing || e.PlayerSeat != e.Active) { Scene.ClearPreview(); return; }
-            var safe = L.ToSafe(Input.mousePosition, Screen.width, Screen.height);
-            string target = TargetAt(safe);
-            if (target == null) { Scene.ClearPreview(); return; }
-            PreviewTarget(e, target);
-        }
-
-        public void PreviewTarget(ElectionState e, string target)
-        {
-            int tray = -1, socket = -1;
-            if (target.StartsWith("tray ")) tray = int.Parse(target.Substring(5));
-            else if (target.StartsWith("socket ")) { tray = target[7] - '0'; socket = target[8] == 'b' ? 1 : 0; }
-            if (tray < 0 || tray >= e.Pending.Count) { Scene.ClearPreview(); return; }
-            var t = e.Pending[tray];
-            var tracks = new List<int>();
-            for (int s = 0; s < 2; s++) if ((socket < 0 || socket == s) && !t.Sockets[s].IsEmpty) tracks.Add(t.Sockets[s].Track);
-            Scene.SetPreview(tracks, tray, socket);
         }
 
         // ------------------------------------------------------------------ rivals
@@ -311,7 +331,7 @@ namespace World.Game
             if (e.Phase == ElectionPhase.Complete) return;
             bool rival = e.PlayerSeat < 0 || e.Active != e.PlayerSeat;
             if (!rival || InTransition && View == ViewKind.Forward) return;
-            if (now < _aiAt || !Scene.Settled) return;
+            if (now < _aiAt || !(Scene.Settled || now > _aiAt + 2.5f)) return;
             var r = Do(new CouncilAiStep { Settlement = SettlementId });
             _aiAt = now + AiDelay;
         }
@@ -327,7 +347,7 @@ namespace World.Game
             if (!rival && !open) return false; // listening is for the rivals' turns
             View = ViewKind.Left;
             PlaceCamera(ViewKind.Left, false);
-            Scene.ClearPreview(); Scene.CloseBubbles();
+            Scene.CloseBubbles();
             _lockUntil = Time.unscaledTime + 0.5f;
             BeginListening(sc, e);
             return true;
@@ -451,6 +471,9 @@ namespace World.Game
                     break;
                 case CouncilBustPending _:
                     break;
+                case CouncilBust b: FocusOn(TracksOf(b.Lost), 3.4f); break;
+                case CouncilBanked bk: FocusOn(TracksOf(bk.Places), 3.0f); break;
+                case CouncilTrackClaimed cl: FocusOn(new[] { cl.Track }, 3.6f); break;
                 case CouncilOfficeHandedOver h:
                     Handover = true; HandoverLine = "I will serve as " + h.Office + ". Thank you for sitting with us.";
                     Scene.CandidateSay(HandoverLine, 4.6f);
@@ -462,12 +485,19 @@ namespace World.Game
 
         // ------------------------------------------------------------------ onboarding
 
+        static List<int> TracksOf(IEnumerable<BankedPlace> items)
+        {
+            var l = new List<int>();
+            foreach (var it in items) if (!l.Contains(it.Track)) l.Add(it.Track);
+            return l;
+        }
+
         void Onboard(SettlementCouncil sc, ElectionState e)
         {
             if (View != ViewKind.Forward || e.PlayerSeat < 0 || e.Active != e.PlayerSeat || InTransition) return;
-            if (!_onHand && e.Phase == ElectionPhase.Ready && Scene.Settled) { _onHand = true; OnboardingLines++; Scene.CandidateSay("Tap my open hand and the catspaws go on.", 5f); }
-            else if (!_onTray && e.Phase == ElectionPhase.Choosing && Scene.Settled) { _onTray = true; OnboardingLines++; Scene.CandidateSay("Tap a tray. Its carvings show which disputes move.", 5f); }
-            else if (!_onSeal && e.HasAdvanced && e.Phase == ElectionPhase.Ready && Scene.Settled) { _onSeal = true; OnboardingLines++; Scene.CandidateSay("Tap the seal to keep these places for good.", 5f); }
+            if (!_onHand && e.Phase == ElectionPhase.Ready && Scene.Settled) { _onHand = true; OnboardingLines++; Scene.CandidateSay("Tap my hand to press on.", 4f); Scene.Press("hand"); }
+            else if (!_onTray && e.Phase == ElectionPhase.Choosing && Scene.Settled) { _onTray = true; OnboardingLines++; Scene.CandidateSay("Tap the place I point at.", 4f); }
+            else if (!_onSeal && e.HasAdvanced && e.Phase == ElectionPhase.Ready && Scene.Settled) { _onSeal = true; OnboardingLines++; Scene.CandidateSay("Tap my seal to settle.", 4f); }
         }
 
         // ------------------------------------------------------------------ sound (synthesised)

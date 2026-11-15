@@ -41,9 +41,9 @@ namespace World.Game
              .Wait(1.6f)
              .Check(() => Enc != null && Enc.View == CouncilEncounter.ViewKind.Forward, "the council did not open")
              .Check(() => Sc.Election.Pending.Count == 3, "three example trays were expected")
-             .Check(() => CouncilScene.Current.TraysShown == 3 && CouncilScene.Current.CarvingsShown == 6, "the three trays and six carvings are not on the table")
+             .Check(() => CouncilScene.Current.Proposals.Count == 3, "the three example proposals are not held out as notes")
              .Capture("council_fixture_forward")
-             .Call(() => Enc.TapTarget("tray " + TrayWith(5, 8)))
+             .Call(() => Enc.TapTarget("note " + TrayWith(5, 8)))
              .Wait(2.2f)
              .Check(() => Sc.Election.Temp[5 - 2] > 0 && Sc.Election.Temp[8 - 2] > 0, "tapping the 5+8 tray did not move both catspaws")
              .Check(() => CouncilScene.Current.ViewMismatch(Sc) == null, "the view does not match the state")
@@ -58,12 +58,8 @@ namespace World.Game
 
         static int TrayWith(int a, int b)
         {
-            var p = Sc.Election.Pending;
-            for (int i = 0; i < p.Count; i++)
-            {
-                int x = p[i].Sockets[0].Track, y = p[i].Sockets[1].Track;
-                if ((x == a && y == b) || (x == b && y == a)) return i;
-            }
+            var p = CouncilScene.Current.Proposals;
+            for (int i = 0; i < p.Count; i++) if (p[i].Touches(a) && p[i].Touches(b)) return i;
             return 0;
         }
 
@@ -170,22 +166,21 @@ namespace World.Game
                 switch (e.Phase)
                 {
                     case ElectionPhase.Ready:
-                        if (e.HasAdvanced && ShouldBank(e, advancesThisSitting, pressOnForBust, d)) { enc.TapTarget("seal"); }
-                        else enc.TapTarget("hand");
+                        if (e.HasAdvanced && ShouldBank(e, advancesThisSitting, pressOnForBust, d)) { BankTap(enc); }
+                        else PressOn(enc);
                         break;
                     case ElectionPhase.Choosing:
                         {
-                            int before = e.Advances;
-                            // prefer a tray that moves the most; tap its socket when it is a choice of one
+                            // prefer the proposal that moves the most
+                            var props = CouncilScene.Current.Proposals;
+                            if (props.Count == 0) break;
                             int best = 0, bestScore = -1;
-                            for (int i = 0; i < e.Pending.Count; i++)
+                            for (int i = 0; i < props.Count; i++)
                             {
-                                int score = e.Pending[i].Sockets[0].Steps + e.Pending[i].Sockets[1].Steps + (e.Pending[i].Mode == TrayMode.Both ? 1 : 0);
+                                int score = 0; foreach (var st in props[i].Steps) score += st.Value;
                                 if (score > bestScore) { bestScore = score; best = i; }
                             }
-                            var t = e.Pending[best];
-                            if (t.Mode == TrayMode.Both) enc.TapTarget("tray " + best);
-                            else enc.TapTarget("socket " + best + (t.Sockets[0].IsEmpty ? "b" : "a"));
+                            enc.TapTarget("note " + best);
                             advancesThisSitting++;
                             break;
                         }
@@ -208,6 +203,30 @@ namespace World.Game
             // let the handover play
             float t1 = Time.realtimeSinceStartup + 9f;
             while (Enc != null && Time.realtimeSinceStartup < t1) yield return null;
+        }
+
+        static int _alt;
+        static int FirstPaw()
+        {
+            var e = Sc.Election;
+            for (int t = 2; t <= 12; t++) if (e.Temp[t - 2] > 0 && CouncilScene.Current.Catspaw(t) != null) return t;
+            return 0;
+        }
+
+        /// <summary>Press on by tapping a catspaw (every other time) or the candidate's beckoning hand.</summary>
+        static void PressOn(CouncilEncounter enc)
+        {
+            int t = FirstPaw();
+            if (t > 0 && (_alt++ % 2) == 1 && enc.TapTarget("paw " + t)) return;
+            enc.TapTarget("hand");
+        }
+
+        /// <summary>Bank by tapping a lead who has listeners (every other time) or the candidate's seal.</summary>
+        static void BankTap(CouncilEncounter enc)
+        {
+            int t = FirstPaw();
+            if (t > 0 && (_alt++ % 2) == 1 && enc.TapTarget("lead " + t)) return;
+            enc.TapTarget("seal");
         }
 
         static bool ShouldBank(ElectionState e, int advances, bool pressOnForBust, Demo d)

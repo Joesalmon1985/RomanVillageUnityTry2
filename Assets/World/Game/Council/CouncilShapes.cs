@@ -260,12 +260,16 @@ namespace World.Game
             Poly(mb, new[] { new Vector2(-0.24f, 0.90f), new Vector2(0, 1.04f), new Vector2(0.24f, 0.90f) }, DarkWood, 0.36f);
         });
 
-        public static Mesh LeafSeal(bool lit) => Cached("leafseal" + lit, mb =>
+        public static Mesh LeafSeal(bool lit) => Cached("leafseal2" + lit, mb =>
         {
-            var g = lit ? new Color(0.55f, 0.95f, 0.40f) : new Color(0.36f, 0.70f, 0.28f);
-            Poly(mb, new[] { new Vector2(-0.30f, 0), new Vector2(0, 0.52f), new Vector2(0.30f, 0), new Vector2(0, -0.52f) }, g, 0.2f);
-            Bar(mb, new Vector2(0, -0.50f), new Vector2(0, 0.46f), 0.045f, g * 0.55f, 0.28f);
-            Bar(mb, new Vector2(0, -0.50f), new Vector2(0.16f, -0.70f), 0.05f, g * 0.55f, 0.24f);
+            // a plain leaf: a pointed oval with a midrib and a short stem, light so it reads at night
+            var g = lit ? new Color(0.80f, 1.0f, 0.55f) : new Color(0.60f, 0.88f, 0.42f);
+            var pts = new List<Vector2>();
+            for (int i = 0; i <= 8; i++) { float t = i / 8f; pts.Add(new Vector2(0.34f * Mathf.Sin(t * Mathf.PI) * (1f - 0.25f * t), -0.46f + 1.04f * t)); }
+            for (int i = 7; i >= 1; i--) { float t = i / 8f; pts.Add(new Vector2(-0.34f * Mathf.Sin(t * Mathf.PI) * (1f - 0.25f * t), -0.46f + 1.04f * t)); }
+            Poly(mb, pts.ToArray(), g, 0.2f);
+            Bar(mb, new Vector2(0, -0.40f), new Vector2(0, 0.50f), 0.05f, g * 0.6f, 0.26f);
+            Bar(mb, new Vector2(0, -0.40f), new Vector2(0.14f, -0.74f), 0.07f, new Color(0.45f, 0.62f, 0.28f), 0.24f);
         });
 
         public static Mesh GateSeal(bool lit) => Cached("gateseal" + lit, mb =>
@@ -283,6 +287,14 @@ namespace World.Game
         {
             Bar(mb, new Vector2(0, 0), new Vector2(0, 1.0f), 0.05f, DarkWood, 0.08f);
             Poly(mb, new[] { new Vector2(0.03f, 0.98f), new Vector2(0.03f, 0.50f), new Vector2(0.30f, 0.58f), new Vector2(0.55f, 0.50f), new Vector2(0.55f, 0.98f) }, col, 0.04f);
+        });
+
+        /// <summary>A small folded note (about 0.3 wide) with a tiny stamp in the given colour; lies flat, base at y = 0.</summary>
+        public static Mesh FoldedNote(Color stamp) => Cached("note" + ColorUtility.ToHtmlStringRGB(stamp), mb =>
+        {
+            mb.Box(new Vector3(0, 0.02f, 0), new Vector3(0.30f, 0.04f, 0.22f), new Color(0.93f, 0.88f, 0.72f));
+            mb.Box(new Vector3(0, 0.045f, 0.04f), new Vector3(0.30f, 0.012f, 0.10f), new Color(0.84f, 0.78f, 0.62f));
+            mb.Box(new Vector3(0.06f, 0.055f, -0.02f), new Vector3(0.07f, 0.014f, 0.07f), stamp);
         });
 
         public static Mesh Post() => Cached("post", mb => Bar(mb, new Vector2(0, 0), new Vector2(0, 1f), 0.10f, DarkWood, 0.10f));

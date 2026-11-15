@@ -57,32 +57,35 @@ namespace World.Game
         {
             var st = scene.State; var board = st.Board; var topo = board.Topology;
             var layout = new CampLayout(board);
-            Vector3 best = new Vector3(-30f, 0, 4f); float bestScore = float.MinValue;
-            for (float x = -22f; x >= -48f; x -= 2f)
-                for (float z = -14f; z <= 34f; z += 2f)
+            var site = scene.Site;
+            var back = -CouncilSite.Dir(site.Yaw);
+            var side = new Vector3(back.z, 0, -back.x);
+            Vector3 best = site.Hearth + back * 70f; best.y = 0; float bestScore = float.MinValue;
+            for (float dist = 45f; dist <= 120f; dist += 6f)
+                for (float lat = -60f; lat <= 60f; lat += 6f)
                 {
-                    var local = new Vector3(x, 0, z);
-                    var w = scene.Root.TransformPoint(local);
+                    var w = site.Hearth + back * dist + side * lat; w.y = 0;
                     float clear = 99f;
                     for (int h = 0; h < topo.HexCount; h++)
                     {
-                        var hc = BoardSpace.Hex(topo, h); hc.y = 0; w.y = 0;
+                        var hc = BoardSpace.Hex(topo, h); hc.y = 0;
                         clear = Mathf.Min(clear, (w - hc).magnitude - (float)PlotLayout.StockPatchRadius);
                     }
                     if (clear < 4f) continue;
-                    if (CouncilSite.Blocked(board, layout, w, 5f) != null) continue;
+                    if (CouncilSite.Blocked(board, layout, w, 6f) != null) continue;
                     int hx = BoardSpace.HexAt(w); if (hx < 0) continue;
                     var tr = board.HexTerrain[hx];
                     if (tr == World.Sim.Terrain.Hills || tr == World.Sim.Terrain.Mountain) continue;
-                    float score = clear * 2f + x * 0.3f; // clear of stock first, then close to the stage
-                    if (score > bestScore) { bestScore = score; best = local; }
+                    float score = clear * 2f - dist * 0.3f - Mathf.Abs(lat) * 0.1f;
+                    if (score > bestScore) { bestScore = score; best = w; }
                 }
+            best.y = 0;
             return best;
         }
 
         void BuildSet()
         {
-            var floor = CouncilScene.Cube(Root, "Bench floor", Origin + new Vector3(0, 0.0f, 12f), new Vector3(60f, 0.06f, 40f), new Color(0.34f, 0.26f, 0.17f));
+            var floor = CouncilScene.Cube(Root, "Bench floor", Origin + new Vector3(0, 0.0f, 12f), new Vector3(44f, 0.06f, 34f), new Color(0.34f, 0.26f, 0.17f));
             // the slabs (foreground, 60-92% height): left Same, right Different
             float d = 1.8f; float W = 2f * TanH * d, H = 2f * TanV * d;
             _slabSame = Slab("Slab same", 0.255f, d, W, H);

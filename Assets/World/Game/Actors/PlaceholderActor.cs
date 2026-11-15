@@ -37,6 +37,8 @@ namespace World.Game
         private Vector3 _lastPos; private float _walkBlend, _phase;
         private Renderer[] _renderers;
         private Vector3? _pointAt;
+        /// <summary>Sits on the ground (legs forward, body lowered). Used by the council village's crowds.</summary>
+        public bool Seated;
         private float _pointBlend;
 
         /// <summary>The head pivot (accessories such as the prince's circlet hang here).</summary>
@@ -267,13 +269,13 @@ namespace World.Game
                 var pose = new Vector3(-90f - Mathf.Clamp(down, -40f, 30f), 0, Mathf.Clamp(side, -60f, 60f) + 4f);
                 armR = Vector3.Lerp(armR, pose, _pointBlend);
             }
-            _body.localPosition = new Vector3(0, bob + lift, 0);
+            _body.localPosition = new Vector3(0, bob + lift - (Seated ? 0.42f : 0f), 0);
             _body.localRotation = Quaternion.Euler(bodyPitch, 0, 0);
             _head.localRotation = Quaternion.Euler(headPitch, 0, 0);
             _armL.localRotation = Quaternion.Euler(armL);
             _armR.localRotation = Quaternion.Euler(armR);
-            _legL.localRotation = Quaternion.Euler(-swing, 0, 0);
-            _legR.localRotation = Quaternion.Euler(swing, 0, 0);
+            if (Seated) { _legL.localRotation = Quaternion.Euler(-88f, 4f, 0); _legR.localRotation = Quaternion.Euler(-80f, -6f, 0); }
+            else { _legL.localRotation = Quaternion.Euler(-swing, 0, 0); _legR.localRotation = Quaternion.Euler(swing, 0, 0); }
         }
     }
 

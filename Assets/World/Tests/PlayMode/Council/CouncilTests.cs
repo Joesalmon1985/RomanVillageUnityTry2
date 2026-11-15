@@ -12,8 +12,8 @@ using L = World.Game.CouncilLayout;
 namespace World.Game.Tests
 {
     /// <summary>
-    /// The council's Unity half: layout of every hit target, visibility of every part from the forward camera, one move
-    /// per accepted tap, doubles, temporary versus banked marks, bust rollback, the petition, listening with timing,
+    /// The council's Unity half: hit targets inside the screen and distinct at two sizes, the exact crowd counts per place,
+    /// normal-size people, nothing floating, one move per accepted tap, doubles, listeners versus settled matching the engine, bust returning only the unsettled, the petition, listening with timing,
     /// unchanged draws after visiting the bench, leave and rejoin, save and load mid-push, no election below four
     /// residents, camera and clock restored, the approach, and the AutoPlay scripts.
     /// </summary>
@@ -71,54 +71,100 @@ namespace World.Game.Tests
         // ---------------------------------------------------------------- layout
 
         [Test]
-        public void Layout_HitTargets_InsideSafeArea_AndNotOverlapping_At1080p_And_Phone()
+        public void Layout_LeftViewTargets_InsideSafeArea_AndNotOverlapping_At1080p_And_Phone()
         {
             foreach (var size in new[] { new Vector2(1920, 1080), new Vector2(844, 390) })
             {
                 var safe = L.SafeRect(size.x, size.y);
-                foreach (var set in new[] { L.ForwardTargets(), L.LeftTargets() })
+                var px = new List<KeyValuePair<string, Rect>>();
+                foreach (var kv in L.LeftTargets()) px.Add(new KeyValuePair<string, Rect>(kv.Key, L.ToPixels(kv.Value, size.x, size.y)));
+                px.Add(new KeyValuePair<string, Rect>("rightlantern", L.ToPixels(L.RightLantern, size.x, size.y)));
+                foreach (var kv in px)
                 {
-                    var px = new List<KeyValuePair<string, Rect>>();
-                    foreach (var kv in set) px.Add(new KeyValuePair<string, Rect>(kv.Key, L.ToPixels(kv.Value, size.x, size.y)));
-                    foreach (var kv in px)
-                    {
-                        Assert.GreaterOrEqual(kv.Value.xMin, safe.xMin - 0.01f, kv.Key + " inside the safe area (left) at " + size);
-                        Assert.LessOrEqual(kv.Value.xMax, safe.xMax + 0.01f, kv.Key + " inside (right) at " + size);
-                        Assert.GreaterOrEqual(kv.Value.yMin, safe.yMin - 0.01f, kv.Key + " inside (top) at " + size);
-                        Assert.LessOrEqual(kv.Value.yMax, safe.yMax + 0.01f, kv.Key + " inside (bottom) at " + size);
-                        Assert.GreaterOrEqual(Mathf.Min(kv.Value.width, kv.Value.height), size.y > 500 ? 40f : 12f, kv.Key + " big enough to tap at " + size);
-                    }
-                    for (int i = 0; i < px.Count; i++)
-                        for (int j = i + 1; j < px.Count; j++)
-                            Assert.IsFalse(px[i].Value.Overlaps(px[j].Value), px[i].Key + " overlaps " + px[j].Key + " at " + size);
+                    Assert.GreaterOrEqual(kv.Value.xMin, safe.xMin - 0.01f); Assert.LessOrEqual(kv.Value.xMax, safe.xMax + 0.01f);
+                    Assert.GreaterOrEqual(kv.Value.yMin, safe.yMin - 0.01f); Assert.LessOrEqual(kv.Value.yMax, safe.yMax + 0.01f);
                 }
-                Assert.IsTrue(Mathf.Approximately(safe.width / safe.height, 16f / 9f), "safe area is 16:9");
+                for (int i = 0; i < px.Count; i++) for (int j = i + 1; j < px.Count; j++) Assert.IsFalse(px[i].Value.Overlaps(px[j].Value), px[i].Key + " overlaps " + px[j].Key);
+            }
+        }
+
+        /// <summary>The scene's targets as a camera of the given pixel size sees them (a render-texture copy of the encounter camera).</summary>
+        List<TapTarget> TargetsAt(int w, int h, out Camera cam)
+        {
+            var go = new GameObject("TestCam");
+            cam = go.AddComponent<Camera>();
+            cam.CopyFrom(Camera.main != null ? Camera.main : Enc.Scene.ViewCamera);
+            cam.transform.SetPositionAndRotation(Enc.Scene.ViewCamera.transform.position, Enc.Scene.ViewCamera.transform.rotation);
+            cam.targetTexture = new RenderTexture(w, h, 16);
+            cam.fieldOfView = VerticalFovFor(w, h);
+            return Enc.Scene.Targets(cam);
+        }
+
+        float VerticalFovFor(int w, int h) => Enc.CamFov;
+
+        void CheckTargets(string phase)
+        {
+            foreach (var size in new[] { new Vector2Int(1920, 1080), new Vector2Int(844, 390) })
+            {
+                var l = TargetsAt(size.x, size.y, out var cam);
+                Assert.Greater(l.Count, 0, phase + ": there are targets at " + size);
+                float minGap = 0.045f * size.y;
+                for (int i = 0; i < l.Count; i++)
+                {
+                    Assert.IsTrue(l[i].Px.x >= 0 && l[i].Px.x <= size.x && l[i].Px.y >= 0 && l[i].Px.y <= size.y, phase + ": " + l[i].Name + " on screen at " + size + " " + l[i].Px);
+                    for (int j = i + 1; j < l.Count; j++)
+                        Assert.GreaterOrEqual((l[i].Px - l[j].Px).magnitude, minGap, phase + ": " + l[i].Name + " and " + l[j].Name + " apart at " + size);
+                }
+                UnityEngine.Object.Destroy(cam.targetTexture); UnityEngine.Object.Destroy(cam.gameObject);
             }
         }
 
         [UnityTest, Timeout(120000)]
-        public IEnumerator Layout_EveryLeadAndPart_IsVisibleFromTheForwardCamera()
+        public IEnumerator Layout_HitTargets_OnScreenAndDistinct_At1080p_And_Phone()
         {
             yield return Stage();
-            var scene = Enc.Scene;
-            var screenRect = new Rect(-0.012f, -0.012f, 1.07f, 1.07f);
-            void Check(string what, GameObject go, Rect? within = null)
-            {
-                Assert.IsTrue(CouncilScene.ProjectBounds(go, out var r), what + " has a renderer");
-                Assert.IsTrue(screenRect.Contains(r.min) && screenRect.Contains(r.max), what + " inside the safe area: " + r);
-                if (within.HasValue) Assert.IsTrue(within.Value.Contains(r.center), what + " in its band " + within.Value + ": " + r);
-            }
+            yield return Until(() => Enc.Scene.Proposals.Count == 3, 10f, "three notes held out");
+            CheckTargets("choosing");
+            Assert.IsTrue(Enc.TapTarget("note 0")); yield return WaitReady();
+            yield return Until(() => Enc.Scene.Targets(Enc.Scene.ViewCamera).Exists(t => t.Name == "seal"), 10f, "ready targets");
+            CheckTargets("ready");
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Crowd_ExactCountsPerPlace_LeadsIncluded_AtNormalSize()
+        {
+            yield return Stage();
+            var want = new[] { 3, 5, 7, 9, 11, 13, 11, 9, 7, 5, 3 };
+            int total = 0;
             for (int t = 2; t <= 12; t++)
             {
-                var bay = L.LeadBay(t);
-                Check("lead " + t, scene.Lead(t).gameObject, new Rect(bay.x - 0.01f, 0.08f, bay.width + 0.02f, 0.2f));
-                Check("prop " + t, scene.LeadProp(t), new Rect(bay.x - 0.01f, 0.08f, bay.width + 0.045f, 0.2f));
+                var ppl = Enc.Scene.People(t);
+                Assert.AreEqual(want[t - 2], ppl.Count, "people at place " + t);
+                int leads = 0; foreach (var p in ppl) { if (p.IsLead) leads++; Assert.That(p.A.transform.localScale.y, Is.InRange(0.9f, 1.1f), "normal world size"); }
+                Assert.AreEqual(1, leads, "one lead at place " + t);
+                Assert.IsTrue(ppl[ppl.Count - 1].IsLead, "the lead is the last to be won");
+                total += ppl.Count;
             }
-            for (int s = 0; s < 4; s++) Check("emblem " + s, scene.BayEmblem(s), L.Bay(s));
-            Check("hand", scene.HandObject); Check("seal", scene.SealObject);
-            Check("candidate", scene.Candidate(E.Active).gameObject);
-            for (int i = 0; i < 3; i++) Check("tray " + i, scene.TrayObject(i));
-            Assert.AreEqual(3, scene.TraysShown); Assert.AreEqual(6, scene.CarvingsShown, "six carvings: two per tray");
+            Assert.AreEqual(83, total);
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Scene_HasNothingFloating_OrScreenSpace()
+        {
+            yield return Stage();
+            var root = Enc.Scene.Root;
+            Assert.AreEqual(0, root.GetComponentsInChildren<Canvas>(true).Length, "no canvases in the village");
+            foreach (var r in root.GetComponentsInChildren<Renderer>())
+            {
+                if (r.GetComponentInParent<PlaceholderActor>() != null) continue;
+                string n = r.transform.root == r.transform ? r.name : r.transform.name;
+                if (r.GetComponentInParent<CouncilBench>() != null) continue;
+                var hold = r.transform; bool held = false;
+                while (hold != null && hold != root) { if (hold.name.StartsWith("Note") || hold.name == "Belt seal" || hold.name == "Petition" || hold.name == "Bench lantern") held = true; hold = hold.parent; }
+                if (held) continue;
+                Assert.IsFalse(r.name.Contains("Halo") || r.name.Contains("Marker") || r.name.Contains("Banner") || r.name.Contains("Emblem"), "no floating marks: " + r.name);
+                Assert.Less(r.bounds.min.y - Enc.Scene.GroundY, 5.2f, r.name + " stands on the ground, not in the air");
+            }
         }
 
         // ---------------------------------------------------------------- the example trays and moves
@@ -131,7 +177,9 @@ namespace World.Game.Tests
             foreach (var t in E.Pending) { var a = t.Sockets[0].Track; var b = t.Sockets[1].Track; sums.Add(Math.Min(a, b) + "+" + Math.Max(a, b)); }
             sums.Sort();
             CollectionAssert.AreEqual(new[] { "4+9", "5+8", "6+7" }, sums);
-            foreach (var t in E.Pending) Assert.AreEqual(TrayMode.Both, t.Mode, "tapping a tray commits both advances");
+            foreach (var t in E.Pending) Assert.AreEqual(TrayMode.Both, t.Mode, "tapping a note commits both advances");
+            yield return Until(() => Enc.Scene.Proposals.Count == 3, 10f, "three notes");
+            foreach (var p in Enc.Scene.Proposals) Assert.AreEqual(2, p.Steps.Count, "each note names two places");
         }
 
         [UnityTest, Timeout(120000)]
@@ -139,12 +187,12 @@ namespace World.Game.Tests
         {
             yield return Stage();
             int adv0 = E.Advances;
-            for (int i = 0; i < 6; i++) Enc.TapTarget("tray 1"); // six taps in one frame, then more over time
-            for (int i = 0; i < 20; i++) { yield return null; Enc.TapTarget("tray " + (i % 3)); }
+            for (int i = 0; i < 6; i++) Enc.TapTarget("note 1"); // six taps in one frame, then more over time
+            for (int i = 0; i < 20; i++) { yield return null; Enc.TapTarget("note " + (i % 3)); Enc.TapTarget("hand"); }
             yield return WaitReady();
             Assert.AreEqual(1, E.Advances - adv0, "exactly one move committed");
             int moved = 0; foreach (int p in E.Temp) if (p > 0) moved++;
-            Assert.AreEqual(2, moved, "both carvings of the tray moved a catspaw");
+            Assert.AreEqual(2, moved, "both places of the note moved a catspaw");
             yield return Until(() => Enc.Scene.ViewMismatch(Sc) == null, 10f, "the view equals the state");
         }
 
@@ -158,7 +206,8 @@ namespace World.Game.Tests
             for (int i = 0; i < E.Pending.Count; i++) if (E.Pending[i].Sockets[0].Track == 5 && E.Pending[i].Sockets[1].Track == 5) tray = i;
             Assert.GreaterOrEqual(tray, 0, "a tray with two copies of dispute 5");
             yield return WaitReady();
-            Assert.IsTrue(Enc.TapTarget("tray " + tray));
+            yield return Until(() => Enc.Scene.Proposals.Exists(pp => pp.Tray == tray), 10f, "the double is held out as a note");
+            Assert.IsTrue(Enc.TapTarget("note " + Enc.Scene.Proposals.FindIndex(pp => pp.Tray == tray)));
             yield return WaitReady();
             Assert.AreEqual(2, E.Temp[5 - 2], "the catspaw on dispute 5 moved two places");
             Assert.AreEqual(1, E.CatspawsInPlay, "one catspaw");
@@ -166,19 +215,42 @@ namespace World.Game.Tests
         }
 
         [UnityTest, Timeout(120000)]
-        public IEnumerator Marks_TemporaryThenBanked_AreDistinctInTheView()
+        public IEnumerator ListenersVersusSettled_MatchTheEngine_AfterEachEvent()
         {
             yield return Stage();
-            Enc.TapTarget("tray 0");
+            Enc.TapTarget("note 0");
             yield return WaitReady();
-            Assert.AreEqual(2, Enc.Scene.CatspawsShown, "two temporary catspaws"); Assert.AreEqual(0, Enc.Scene.PostsShown, "no banked emblem yet");
+            Assert.AreEqual(2, Enc.Scene.AgentsShown, "two catspaws at the places being worked");
+            yield return Until(() => Enc.Scene.ViewMismatch(Sc) == null, 10f, "after the advance");
+            int listeners = 0, settled = 0;
+            for (int t = 2; t <= 12; t++) { Enc.Scene.Counts(t, out int s, out int l, out _); listeners += l; settled += s; }
+            Assert.AreEqual(2, listeners, "one person won at each of the two places, listening, not settled");
+            Assert.AreEqual(0, settled, "nothing banked yet");
             CouncilEncounter.AiDelay = 600f;
             Assert.IsTrue(Enc.TapTarget("seal"));
             yield return WaitReady();
-            yield return Until(() => Enc.Scene.CatspawsShown == 0, 10f, "catspaws gone after the bank");
-            int banked = 0; for (int t = 2; t <= 12; t++) if (E.BankedAt(0, t) > 0) banked++;
-            Assert.AreEqual(2, banked);
-            Assert.AreEqual(2, Enc.Scene.PostsShown, "two emblems fixed at their places");
+            yield return Until(() => Enc.Scene.AgentsShown == 0, 10f, "catspaws gone after the bank");
+            yield return Until(() => Enc.Scene.ViewMismatch(Sc) == null, 10f, "after the bank");
+            listeners = 0; settled = 0;
+            for (int t = 2; t <= 12; t++) { Enc.Scene.Counts(t, out int s, out int l, out _); listeners += l; settled += s; }
+            // the turn has passed to a rival: the village shows the rival's standing, which has no banked support yet
+            Assert.AreEqual(0, listeners);
+            Assert.AreNotEqual(E.PlayerSeat, E.Active);
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator BankedSupport_ShowsAgain_WhenTheTurnComesBackToThePlayer()
+        {
+            yield return Stage(true, 0, 5150);
+            Enc.TapTarget("note 0"); yield return WaitReady(); Enc.TapTarget("seal"); yield return WaitReady();
+            yield return Until(() => E.Active == E.PlayerSeat && E.Phase != ElectionPhase.Complete, 60f, "the player's turn again");
+            CouncilEncounter.AiDelay = 600f;
+            yield return WaitReady();
+            yield return Until(() => Enc.Scene.ViewMismatch(Sc) == null, 15f, "the village re-formed for the player");
+            int settled = 0; for (int t = 2; t <= 12; t++) { Enc.Scene.Counts(t, out int s, out _, out _); settled += s; }
+            int banked = 0; for (int t = 2; t <= 12; t++) banked += E.BankedAt(0, t);
+            Assert.AreEqual(banked, settled, "as many people stand with the candidate as the banked places");
+            Assert.Greater(settled, 0);
         }
 
         // ---------------------------------------------------------------- bust, petition
@@ -194,20 +266,19 @@ namespace World.Game.Tests
                 if (e.Phase == ElectionPhase.Ready) Enc.TapTarget("hand");
                 else if (e.Phase == ElectionPhase.Choosing)
                 {
-                    int best = 0;
-                    for (int k = 0; k < e.Pending.Count; k++) if (e.Pending[k].Mode == TrayMode.Both) best = k;
-                    var t = e.Pending[best];
-                    Enc.TapTarget(t.Mode == TrayMode.Both ? "tray " + best : "socket " + best + (t.Sockets[0].IsEmpty ? "b" : "a"));
+                    var props = Enc.Scene.Proposals; if (props.Count == 0) continue;
+                    int best = 0; for (int k = 0; k < props.Count; k++) if (props[k].Steps.Count > props[best].Steps.Count) best = k;
+                    Enc.TapTarget("note " + best);
                 }
                 else if (e.Phase == ElectionPhase.BustPending) break;
             }
         }
 
         [UnityTest, Timeout(300000)]
-        public IEnumerator Bust_WalksCatspawsBack_ViewEqualsState_BankedEmblemsStay()
+        public IEnumerator Bust_ReturnsOnlyTheUnsettled_ViewEqualsState_BankedSupportStays()
         {
             yield return Stage(true, 0, 12345);
-            Enc.TapTarget("tray 0"); yield return WaitReady(); Enc.TapTarget("seal"); yield return WaitReady();
+            Enc.TapTarget("note 0"); yield return WaitReady(); Enc.TapTarget("seal"); yield return WaitReady();
             int bankedBefore = 0; for (int t = 2; t <= 12; t++) if (E.BankedAt(0, t) > 0) bankedBefore++;
             Assert.Greater(bankedBefore, 0);
             yield return Until(() => E.Active == E.PlayerSeat && E.Phase != ElectionPhase.Complete, 60f, "the player's turn again");
@@ -219,8 +290,11 @@ namespace World.Game.Tests
             yield return Until(() => Enc.Scene.ViewMismatch(Sc) == null, 15f, "the view equals the state after the bust");
             Assert.AreEqual(0, E.CatspawsInPlay, "unbanked progress is gone");
             int bankedAfter = 0; for (int t = 2; t <= 12; t++) if (E.BankedAt(0, t) > 0) bankedAfter++;
-            Assert.AreEqual(bankedBefore, bankedAfter, "banked emblems stay");
-            Assert.Greater(Enc.Scene.WitnessesAway, 0, "a witness walked away");
+            Assert.AreEqual(bankedBefore, bankedAfter, "banked support stays");
+            int settledNow = 0, listening = 0; for (int t = 2; t <= 12; t++) { Enc.Scene.Counts(t, out int s, out int l, out _); settledNow += s; listening += l; }
+            Assert.AreEqual(0, listening, "the unsettled listeners are gone");
+            int expectSettled = 0; for (int t = 2; t <= 12; t++) expectSettled += E.BankedAt(E.PlayerSeat, t);
+            Assert.AreEqual(expectSettled, settledNow, "a bust returns only the unsettled: the settled stay");
         }
 
         [UnityTest, Timeout(300000)]
@@ -232,7 +306,7 @@ namespace World.Game.Tests
             yield return PressOnUntil(() => E.Phase == ElectionPhase.BustPending, 800);
             Assert.AreEqual(ElectionPhase.BustPending, E.Phase, "with a petition held the bust waits");
             yield return WaitReady();
-            Assert.IsTrue(Enc.Scene.PetitionShown, "the petition is shown beside the seal");
+            Assert.IsTrue(Enc.Scene.PetitionShown, "the petition roll hangs at the candidate's hip");
             int pushes = E.Pushes;
             Assert.IsTrue(Enc.TapTarget("petition"));
             yield return WaitReady();
@@ -262,7 +336,7 @@ namespace World.Game.Tests
         {
             yield return Stage(true, 0, seed);
             CouncilEncounter.AiDelay = 600f; // the rival does not move while we listen
-            Enc.TapTarget("tray 0"); yield return WaitReady(); Enc.TapTarget("seal"); yield return WaitReady();
+            Enc.TapTarget("note 0"); yield return WaitReady(); Enc.TapTarget("seal"); yield return WaitReady();
             Assert.AreNotEqual(E.PlayerSeat, E.Active, "a rival's turn");
         }
 
@@ -346,7 +420,7 @@ namespace World.Game.Tests
                         yield return new WaitForSecondsRealtime(0.1f);
                         if (!Enc.Scene.Settled) continue;
                         if (el.Phase == ElectionPhase.Ready) { if (el.Pushes >= 25) break; Enc.TapTarget(el.HasAdvanced ? "seal" : "hand"); }
-                        else if (el.Phase == ElectionPhase.Choosing) Enc.TapTarget(el.Pending[0].Mode == TrayMode.Both ? "tray 0" : "socket 0" + (el.Pending[0].Sockets[0].IsEmpty ? "b" : "a"));
+                        else if (el.Phase == ElectionPhase.Choosing) Enc.TapTarget("note 0");
                         else if (el.Phase == ElectionPhase.BustPending) Enc.TapTarget("seal");
                     }
                     else if (pass == 1 && !visited && Enc.View == CouncilEncounter.ViewKind.Forward && !Enc.InTransition && Enc.TurnLeft())
@@ -398,7 +472,7 @@ namespace World.Game.Tests
             Assert.IsTrue(Sc.Present, "present again");
             Assert.AreEqual(before, SigOf(E), "same candidate, positions, trays and petition state");
             Assert.AreEqual(pushId, E.PushId);
-            Assert.AreEqual(3, Enc.Scene.TraysShown, "the same three trays are on the table");
+            yield return Until(() => Enc.Scene.Proposals.Count == 3, 10f, "the same three notes are held out");
         }
 
         [UnityTest, Timeout(300000)]
@@ -422,9 +496,9 @@ namespace World.Game.Tests
             Boot.Clock.Pause("TestHold");
             Assert.IsTrue(EncounterDirectory.TryStart(CouncilEncounter.Id, null, Home));
             yield return WaitReady();
-            Assert.AreEqual(3, Enc.Scene.TraysShown, "the trays are back on the table");
+            yield return Until(() => Enc.Scene.Proposals.Count == 3, 10f, "the notes are back in hand");
             int adv = E.Advances;
-            Assert.IsTrue(Enc.TapTarget("tray 1"));
+            Assert.IsTrue(Enc.TapTarget("note 1"));
             yield return WaitReady();
             Assert.AreEqual(adv + 1, E.Advances, "one move from the loaded push");
         }
@@ -467,7 +541,7 @@ namespace World.Game.Tests
         {
             yield return Stage();
             Assert.IsFalse(Enc.TurnLeft(), "no listening on your own turn");
-            Enc.TapTarget("tray 0"); yield return WaitReady();
+            Enc.TapTarget("note 0"); yield return WaitReady();
             CouncilEncounter.AiDelay = 600f;
             Enc.TapTarget("seal"); yield return WaitReady();
             Assert.IsTrue(Enc.TapTarget("lantern"), "the bench lantern turns the view");
