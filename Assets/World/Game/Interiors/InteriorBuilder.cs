@@ -123,7 +123,64 @@ namespace World.Game
             foreach (var c in m.Floor) Dress(x, deco, c);
             if (deco.VertexCount > 0) deco.ToObject("Rubble", m.Root, RockMaterial).GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
+            var chalk = new MeshBuilder();
+            WayMarks(d, m, chalk);
+            if (chalk.VertexCount > 0) chalk.ToObject("Way marks", m.Root, RockMaterial).GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
             foreach (var md in m.Markers) InteriorProps.Build(d, m, md, views);
+        }
+
+        /// <summary>
+        /// Pale chalk chevrons on the floor at every fork, pointing the shortest way to this level's nearest way up
+        /// (the way you came in): the way out is findable without the map. Doors count as passable.
+        /// </summary>
+        private static void WayMarks(InteriorDirector d, InteriorModel m, MeshBuilder mb)
+        {
+            var dist = new Dictionary<Cell, int>();
+            var q = new Queue<Cell>();
+            foreach (var l in d.Links)
+                if (l.Up && l.End.IsInterior && l.End.Interior == m.Id) { dist[l.Cell] = 0; q.Enqueue(l.Cell); }
+            if (q.Count == 0) return;
+            while (q.Count > 0)
+            {
+                var c = q.Dequeue();
+                for (int h = 0; h < 6; h++)
+                {
+                    var n = c + WalkLattice.Dir(h);
+                    if (!m.Floor.Contains(n) || dist.ContainsKey(n)) continue;
+                    dist[n] = dist[c] + 1;
+                    q.Enqueue(n);
+                }
+            }
+            var markerCells = new HashSet<Cell>();
+            foreach (var md in m.Markers) markerCells.Add(m.ToCell(md.I, md.J));
+            var chalk = new Color(0.86f, 0.84f, 0.76f);
+            foreach (var c in m.Floor)
+            {
+                if (!dist.TryGetValue(c, out int dc) || dc == 0 || markerCells.Contains(c)) continue;
+                // A fork: open floor in three directions or more, not all side by side.
+                int open = 0, runs = 0;
+                for (int h = 0; h < 6; h++)
+                {
+                    bool o = m.Floor.Contains(c + WalkLattice.Dir(h));
+                    if (o) open++;
+                    if (o && !m.Floor.Contains(c + WalkLattice.Dir(h - 1))) runs++;
+                }
+                if (open < 3 || runs < 2) continue;
+                int toward = -1;
+                for (int h = 0; h < 6; h++)
+                    if (dist.TryGetValue(c + WalkLattice.Dir(h), out int dn) && dn == dc - 1) { toward = h; break; }
+                if (toward < 0) continue;
+                float yaw = WalkLattice.Yaw(toward) * Mathf.Deg2Rad;
+                var f = new Vector3(Mathf.Sin(yaw), 0, Mathf.Cos(yaw));
+                var side = new Vector3(f.z, 0, -f.x);
+                var at = WalkLattice.ToWorld(c) + f * 1.2f + Vector3.up * 0.05f;
+                at.y = InteriorSpace.FloorY + 0.05f;
+                // Two strokes of a chevron and a short tail: ">" pointing the way out.
+                mb.Strip(at - f * 0.45f + side * 0.4f, at + f * 0.15f, 0.11f, chalk);
+                mb.Strip(at - f * 0.45f - side * 0.4f, at + f * 0.15f, 0.11f, chalk);
+                mb.Strip(at - f * 0.95f, at - f * 0.35f, 0.09f, chalk * 0.9f);
+            }
         }
 
         private static void CellShell(Ctx x, MeshBuilder mb, Cell c)

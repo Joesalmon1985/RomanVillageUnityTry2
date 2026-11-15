@@ -74,14 +74,15 @@ namespace World.Game
         }
 
         /// <summary>A free floor cell next to a marker (the side nearest the player), to stand and look at it.</summary>
-        public static Cell Beside(string marker)
+        public static Cell Beside(string marker, string notOn = null)
         {
             var c = CellOf(marker);
+            Cell? skip = notOn != null ? CellOf(notOn) : (Cell?)null;
             Cell best = c; float bd = float.MaxValue;
             for (int h = 0; h < 6; h++)
             {
                 var n = c + WalkLattice.Dir(h);
-                if (WalkGrid.IsBlocked(n) || WalkGrid.IsAvoided(n)) continue;
+                if (WalkGrid.IsBlocked(n) || WalkGrid.IsAvoided(n) || n == skip) continue;
                 float d = WalkGrid.Distance(n, W.Cell) + h * 0.01f;
                 if (d < bd) { bd = d; best = n; }
             }
@@ -141,6 +142,9 @@ namespace World.Game
              .Call(() => PointerInput.TapObject(Thing("glade/quarry_upper/marks")))
              .Wait(0.5f).Capture("i5_survey_marks_read")
              .Call(() => { foreach (var h in SpeechBubbles.OpenHandles()) SpeechBubbles.Close(h); })
+             // The way out, seen from inside: the lit stair up.
+             .Step(a => Face(a, "glade/quarry_upper/exit"))
+             .Wait(0.4f).Capture("i5_way_out_from_inside")
              // The Root Chamber with the Deepstone on its pedestal.
              .WalkTo(() => Beside("glade/quarry_upper/pedestal"), 60f)
              .Step(a => Face(a, "glade/quarry_upper/pedestal"))
@@ -151,14 +155,14 @@ namespace World.Game
              .Call(() => { if (!Interiors.LeadOut()) throw new InvalidOperationException("Lead me out found no way"); })
              .Step(a => WaitLeadOut(a, 60f))
              .Check(() => Interiors.Current == null && W.Cell == CellOf("glade/stair"), "Lead me out did not reach the glade")
-             .Wait(0.6f).Capture("i5_glade_after_lead_out")
+             .Turn(3).Wait(0.6f).Capture("i5_glade_after_lead_out").Turn(3)
              // The theft: the Deepstone goes to the Ash altar (developer command), Mira follows the trail.
              .Call(() => { var r = B.Sim.Submit(new DevSetCustody { Crystal = Element.Earth, To = Custody.AtRivalAltar }); if (!r.Ok) throw new InvalidOperationException(r.ToString()); B.Clock.StepOnce(); })
              .Step(a => Drive(() => Knows("earth.vault_known"), 180f, 40, a.Fail))
-             .Call(() => Debug.Log("[AutoPlay] quarry_walk: the vault is known at tick " + S.Tick))
+             .Call(() => { Debug.Log("[AutoPlay] quarry_walk: the vault is known at tick " + S.Tick); DayNight.Instance?.SetHour(23.0); })
              .Step(LatticeMove.Forward).Turn(3).Step(LatticeMove.Forward)
              .Step(a => WaitCrossed(a, "quarry_upper"))
-             .WalkTo(() => Beside("glade/quarry_upper/pedestal"), 60f)
+             .WalkTo(() => Beside("glade/quarry_upper/pedestal", "glade/quarry_upper/tally"), 60f)
              .Step(a => Face(a, "glade/quarry_upper/pedestal"))
              .Wait(0.5f).Capture("i5_root_chamber_bare")
              .Check(() => !StandHasCrystal("glade/quarry_upper/pedestal"), "the pedestal still shows the crystal")
@@ -194,9 +198,10 @@ namespace World.Game
              .Step(a => Face(a, "ash_cut/tally_vault/bar"))
              .Wait(0.3f).Capture("i5_vault_door_open")
              .WalkTo(() => CellOf("ash_cut/tally_vault/cut_exit"), 30f)
+             .Call(() => DayNight.Instance?.SetHour(23.5))
              .Step(a => WaitCrossed(a, null))
              .Check(() => W.Cell == CellOf("ash_cut/cut"), "not at the Ash cut on the surface")
-             .Wait(0.6f).Capture("i5_ash_cut_surface")
+             .Turn(3).Wait(0.6f).Capture("i5_ash_cut_surface")
              .MeasureFps("quarry_walk surface", 2f)
              .Call(() => B.Clock.Resume("quarry_walk"))
              .Log("[AutoPlay] quarry_walk OK")
