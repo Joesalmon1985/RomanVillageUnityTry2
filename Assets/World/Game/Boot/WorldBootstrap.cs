@@ -79,6 +79,7 @@ namespace World.Game
             PrinceInstaller.Install(this);   // N: prince, sawyer, merchant, first scene
             InteriorsInstaller.Install(this); // crystals I5: interiors (shell)
             ExpeditionInstaller.Install(this); // crystals I6: the expedition director (shell)
+            CouncilDirector.Install(this);   // council: the village election (approach, gathering, encounter); before the F1 tools so its tool registers
             DevToolsInstaller.Install(this); // P: F1 developer tools
 
             Saves = gameObject.AddComponent<SaveSystem>(); // F5 / F9, one slot; applies the loaded save's game-layer data in Start
