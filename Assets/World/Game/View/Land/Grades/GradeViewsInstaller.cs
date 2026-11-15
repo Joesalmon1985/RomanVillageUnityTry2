@@ -15,7 +15,8 @@ namespace World.Game
     {
         public static void Install(WorldBootstrap boot)
         {
-            // H1-5: var views = LandViews.Instance; views.Synced += events => ...;
+            var views = LandViews.Instance;
+            if (views != null) GradeViews.Create(views);
         }
     }
 }
