@@ -37,6 +37,7 @@ namespace World.Characters.Editor.Tests
         private static (JObject ch, JObject build, GameObject prefab) Load(string id)
         {
             if (!CharacterPaths.LocalArtPresent) Assert.Ignore("No local character art (" + CharacterPaths.Manifest + "): the public repository has none.");
+            if (id == "no-local-art") Assert.Ignore("The test list was built while the art was absent; it is listed again after the next script compile.");
             var parts = id.Split('@');
             var ch = (JObject)Manifest["characters"][parts[0]];
             var build = (JObject)ch["builds"][parts[1]];

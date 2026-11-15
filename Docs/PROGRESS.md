@@ -555,3 +555,32 @@ Not done or not verified:
 - The map's side text in a Historic game still speaks of falling to an overrun ("they fall in 33 s"), which is a setback there, not a defeat; the overrun wording is H1-4's or H2-7's.
 - `follow_prince` was run once (no repeat at 10, 20, 30 s delays).
 - The window-size registry key written by one windowed run of the refactor build (made to capture the version-4 save) could not be deleted from this session: the owner's next double-click may open in a 1280 x 720 window. Delete `HKCU\Software\Joe Salmon\WorldMVP` to restore full screen.
+
+## Characters WP-6 (Unity import) and WP-7 (rigged actor and factory) (15 Nov 2026, branch `char/unity`)
+
+Details and the API for later packages: `Docs/CHARACTERS_UNITY.md`.
+
+- Local art: `Tools/characters/sync_unity_local.py` copies the 28 character FBX (14 humans x 2 costumes) and `cast_manifest.json` into the git-ignored `Assets/LocalBaked/Characters` (it refuses unless `git check-ignore` agrees) and the 22 animation-only FBX (refused if any holds a mesh) with their manifests into the tracked `Assets/Characters/Animation`. Nothing under `Assets/LocalBaked` was staged.
+- Import (WP-6): `CharacterImport` postprocessor (flat normals as authored, blend shapes, no tangents, sockets and chains kept, clip loop/root/additive/events from the manifests) and `CharacterBuilder` (Humanoid from the contract map for all 28 builds and all 22 animation files; role-slot `World/Lit` materials; one merged skinned mesh per build, one submesh per slot; prefabs in `Assets/LocalBaked/Characters/Resources/Characters`). Two import faults found and fixed: the part mesh `Head` clashed with the bone `Head` (Humanoid refused every character; meshes renamed on import), and animation-only FBX files default to a take's first frame, so their avatars were built from a posed skeleton and the retargeted walk was wrecked (avatars now take the rest pose of the rig the file was baked on). Forward axis +Z, scale 1 confirmed; no rotation needed.
+- Runtime (WP-7): `RiggedActor` (PlayableGraph: idle variety, phase-synchronised gaits driven by ground covered, start/stop/turn clips timed by their root curves, full-body or upper-body gestures, talk loop, additive layer; face, gaze, cloth), `IExpressiveActor`, `IMotionShaper` (Npc speed shaping for the weight shift before the first step and the planted stop), `CastRegistry` (prince, Mira, champion by default; `-allCast` for the rest; `-placeholder-actors`), `ActorFactory` moved out of `PlaceholderActor.cs`. The prince's carried light is moved onto a small torch in his left hand (it washed out his face).
+
+Ran (15 Nov, editor on `wt-char-unity`):
+
+- `dotnet test DotNet`: 450 passed (12 min 30 s; it does not see the art).
+- Unity, art present: EditMode **538 passed** (450 plus 88 `CharacterImportTests`, HeavyProof included, 25 min); PlayMode **87 passed** (79 plus 8 `ActorTests`); console 0 errors.
+- Unity, `Assets/LocalBaked/Characters` moved out of the project: EditMode 450 passed, 6 character cases skipped with a message, 1 animation-file test passed, and `CampaignProof` failed once on a log line from the editor's command server (`/api/exec` connection aborted while this session polled it); run again alone it passed (18.6 min). PlayMode 80 passed, 7 `ActorTests` skipped with a message; console 0 errors. Art moved back afterwards and both character suites re-run green.
+- AutoPlay in the editor from the night start with the rigged prince and Mira: `first_scene` OK (twice), `duel_dance` OK (twice: Victory after 3 casts, the dance phrase passed).
+- Measured: Walk clip planted-foot speed at native speed (EditMode, own avatar) prince 0.053, Mira 0.017, champion 0.037 m/s. Root moved at the game's speeds (PlayMode, prince): 1.4 m/s 0.011, 2.2: 0.029, 3: 0.12, 5: 0.38, 7: 0.47, 8: 0.75 m/s mean; the clips themselves measure Jog 0.35 and Run 0.56 m/s at their native speed. 10 m lattice walk at 3 m/s with weight shift and stop: 4.03 s (3.33 s without shaping), ends on the cell. Gaze error 0.35 to 1.7 degrees on a target 35 degrees aside. Frame rate at night, 1920 x 1080, vSync off, three rigged plus 28 placeholder and land figures: 122 to 185 fps in the editor (one run under load: 62).
+- Captures (local, `Evidence/screenshots/characters/`, `Evidence/video/`): approach and greeting video `Evidence/video/prince_approach_greet.mp4` (14 s, 30 fps PNG sequence, tracking camera), player-eye greeting, the prince's face at 2.5 m, the point at the plot (at 23:30 by the F1 scrub; the real run had reached dawn), Mira at her spot, the three faces close up, an 844 x 390 frame, the duel with rigged Mira.
+
+Not done or not verified:
+
+- Nobody played it by hand. No player build was made (not asked).
+- The prince stops about 10 m from the player at the opening (the director's distance): at 844 x 390 and the walking view's 70 degree field of view his head is about 10 pixels, so the face does not read on a phone from the player's eye; it reads at dialogue distance.
+- Weight shift and planted stops are there for walks started by `Npc`; the stop from a run first slows to walking pace (about 0.3 s more per walk). The running gaits slide (clip data). Standing turns pivot round the root, so the planted foot swivels a little.
+- The point at the plot reads weakly (a low arm, no finger). Talk is a loop and a jaw ticker, not lip sync. Cloth is a light spring, not a simulation; the cape's back face reads pale when it lifts at a run.
+- Humanoid clips carry no curves for the cape, hood and skirt bones; the runtime springs drive them.
+- Over budget: `champion@prehistoric` 3,521 and `sol@prehistoric` 3,416 triangles (hero budget 3,200); art data, logged by the tests.
+- Only the prince, Mira and the champion are on by default; the other 11 bodies (`-allCast`) were built and imported but not looked at in the game. `ward_player` maps to Juno (off by default), so the duel opponent stays a placeholder.
+- `Evidence/video/` is not git-ignored in this repository (only `Evidence/screenshots/` and `Evidence/raw/` are); nothing there was staged.
+- The `PrinceVillagers` decorations (feathers, sun standard) apply only to the placeholder prince.
