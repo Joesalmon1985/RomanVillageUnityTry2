@@ -50,7 +50,12 @@ namespace World.Characters.Editor
             var clips = new Dictionary<string, AnimationClip>();
             foreach (var path in Directory.GetFiles(CharacterPaths.Animation, "*.fbx").Select(p => p.Replace('\\', '/')).OrderBy(p => p))
             {
-                string res = EnsureHumanoid(path, humanMap, false, out _);
+                // An animation-only FBX has no rest pose of its own (its default pose is the first frame of a take), so
+                // its avatar is built from the rest pose of the rig it was baked on: the character for "anim_<set>@<key>",
+                // the template character (anim_manifest "template", Mira) for the base sets.
+                string rigKey = RigKeyOf(path);
+                var rest = AssetDatabase.LoadAssetAtPath<GameObject>(CharacterPaths.ModelPath(rigKey, "prehistoric"));
+                string res = EnsureHumanoid(path, humanMap, false, out _, rest, "rest:" + rigKey + ":v1");
                 log.AppendLine("anim " + Path.GetFileName(path) + ": " + res);
                 foreach (var c in AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>())
                     if (!c.name.StartsWith("__preview__")) clips[c.name] = c;
@@ -111,12 +116,23 @@ namespace World.Characters.Editor
         /// Makes the FBX at <paramref name="path"/> Humanoid with an explicit bone map (no auto-mapping). Falls back to
         /// Generic when Unity rejects the description. Returns a one-line report.
         /// </summary>
-        public static string EnsureHumanoid(string path, Dictionary<string, string> map, bool force, out bool human)
+        /// <summary>Cast key whose rig an animation file was baked on: "anim_duel@mira.fbx" -> mira, base sets -> the template.</summary>
+        public static string RigKeyOf(string animPath)
+        {
+            string n = Path.GetFileNameWithoutExtension(animPath);
+            int at = n.IndexOf('@');
+            if (at >= 0) return n.Substring(at + 1);
+            var anim = JObject.Parse(File.ReadAllText(CharacterPaths.AnimManifest));
+            return (string)anim["template"] ?? "mira";
+        }
+
+        public static string EnsureHumanoid(string path, Dictionary<string, string> map, bool force, out bool human, GameObject restSource = null, string stamp = "")
         {
             var imp = (ModelImporter)AssetImporter.GetAtPath(path);
             var avatar = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Avatar>().FirstOrDefault();
             human = false;
-            if (!force && imp.animationType == ModelImporterAnimationType.Human && avatar != null && avatar.isValid && avatar.isHuman)
+            if (restSource == null && !string.IsNullOrEmpty(stamp)) return "skipped: no rest model for " + stamp + " (avatar kept as imported)";
+            if (!force && imp.userData == stamp && imp.animationType == ModelImporterAnimationType.Human && avatar != null && avatar.isValid && avatar.isHuman)
             {
                 human = true;
                 return "Humanoid (kept)";
@@ -128,9 +144,13 @@ namespace World.Characters.Editor
             {
                 boneName = kv.Key, humanName = kv.Value, limit = new HumanLimit { useDefaultValues = true },
             }).ToArray();
-            var skeleton = all.Select(t => new SkeletonBone
+            var restBones = new Dictionary<string, Transform>();
+            if (restSource != null)
+                foreach (var t in restSource.GetComponentsInChildren<Transform>(true)) if (t != restSource.transform) restBones[t.name] = t;
+            var skeleton = all.Select(t =>
             {
-                name = t.name, position = t.localPosition, rotation = t.localRotation, scale = t.localScale,
+                var r = t != root.transform && restBones.TryGetValue(t.name, out var rt) ? rt : t;
+                return new SkeletonBone { name = t.name, position = r.localPosition, rotation = r.localRotation, scale = r.localScale };
             }).ToArray();
             var hd = new HumanDescription
             {
@@ -141,6 +161,7 @@ namespace World.Characters.Editor
             imp.animationType = ModelImporterAnimationType.Human;
             imp.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
             imp.humanDescription = hd;
+            imp.userData = stamp;
             imp.SaveAndReimport();
             avatar = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Avatar>().FirstOrDefault();
             if (avatar != null && avatar.isValid && avatar.isHuman)
