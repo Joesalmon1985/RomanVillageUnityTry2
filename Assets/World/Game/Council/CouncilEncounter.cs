@@ -151,6 +151,9 @@ namespace World.Game
                 if (mine && View == ViewKind.Left && !InTransition && _backAt < 0f && (e.Listening == null || e.Listening.Phase != ListeningPhase.InProgress)) _backAt = now + 0.5f;
                 if (Scene != null) UpdateHover(sc, e);
             }
+            CouncilBubbles.Sweep(); // nothing but the council's own bubbles while the council is open
+            {
+            }
         }
 
         void UpdateCamera(float dt)
@@ -324,7 +327,7 @@ namespace World.Game
             if (!rival && !open) return false; // listening is for the rivals' turns
             View = ViewKind.Left;
             PlaceCamera(ViewKind.Left, false);
-            Scene.ClearPreview();
+            Scene.ClearPreview(); Scene.CloseBubbles();
             _lockUntil = Time.unscaledTime + 0.5f;
             BeginListening(sc, e);
             return true;
@@ -365,7 +368,7 @@ namespace World.Game
             {
                 Listen = ListenPhase.Done;
                 string why = e.PetitionEarned ? "You already hold your petition." : "There is nothing more to hear just now.";
-                _aideBubble = SpeechBubbles.Say(bench.AideTalk, why, 4f);
+                _aideBubble = CouncilBubbles.Say(bench.AideTalk, why, 4f);
                 return;
             }
             // Hear the line before the one to judge (the reference, or the previous speaker when resuming), then the new line.
@@ -374,8 +377,8 @@ namespace World.Game
             var ref0 = CouncilApi.ListeningLineOf(e.Listening.LineIds[e.Listening.Index]);
             bench.ShowSpeaker(ref0.Speaker, _lineCounter++);
             bench.SpeakerGesture(e.Listening.Tags[e.Listening.Index]);
-            _speakerBubble = SpeechBubbles.Say(bench.SpeakerTalk, ref0.Text, IntroSeconds + 0.6f);
-            _aideBubble = SpeechBubbles.Say(bench.AideTalk, "Listen to how they say it.", IntroSeconds);
+            _speakerBubble = CouncilBubbles.Say(bench.SpeakerTalk, ref0.Text, IntroSeconds + 0.6f);
+            _aideBubble = CouncilBubbles.Say(bench.AideTalk, "Listen to how they say it.", IntroSeconds);
         }
 
         void TickListening(SettlementCouncil sc, ElectionState e, float now)
@@ -401,7 +404,7 @@ namespace World.Game
             bench.ShowSpeaker(line.Speaker, _lineCounter++);
             bench.SpeakerGesture(ls.Tags[ls.Index + 1]);
             if (ls.Index + 2 < ls.LineIds.Length) bench.ShowNext(CouncilApi.ListeningLineOf(ls.LineIds[ls.Index + 2]).Speaker, _lineCounter++);
-            _speakerBubble = SpeechBubbles.Say(bench.SpeakerTalk, line.Text, 60f);
+            _speakerBubble = CouncilBubbles.Say(bench.SpeakerTalk, line.Text, 60f);
             _readyAt = Time.unscaledTime + 0.45f; // readable and ready
             Listen = ListenPhase.Question;
         }
@@ -441,7 +444,7 @@ namespace World.Game
                     break;
                 case CouncilListeningFinished f:
                     if (_aideBubble != 0) SpeechBubbles.Close(_aideBubble);
-                    _aideBubble = SpeechBubbles.Say(bench.AideTalk, f.Result.Earned ? "That is enough. I will take a petition to the table." : "Not quite this time. Go back to your table.", 3.5f);
+                    _aideBubble = CouncilBubbles.Say(bench.AideTalk, f.Result.Earned ? "That is enough. I will take a petition to the table." : "Not quite this time. Go back to your table.", 3.5f);
                     break;
                 case CouncilPetitionEarned _:
                     _carryPending = true; Scene.HoldPetition = true;

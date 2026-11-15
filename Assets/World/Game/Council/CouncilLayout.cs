@@ -63,7 +63,7 @@ namespace World.Game
         public static Rect LeadBay(int track) => R(6 + 8 * (track - 2), 10, 14 + 8 * (track - 2), 22);
         public static Rect Tray(int i) => R(24 + 18 * i, 62, 42 + 18 * i, 88);
         /// <summary>One socket of a tray: side by side, 0 = left.</summary>
-        public static Rect Socket(int i, int s) => R(25 + 18 * i + 8 * s, 66, 33 + 18 * i + 8 * s, 84);
+        public static Rect Socket(int i, int s) => R(25.2f + 18 * i + 8.4f * s, 66, 32.4f + 18 * i + 8.4f * s, 84);
         public static readonly Rect Hand = R(10, 62, 24, 84);
         public static readonly Rect Candidate = R(0, 58, 10, 92);
         public static readonly Rect Seal = R(80, 62, 89, 88);

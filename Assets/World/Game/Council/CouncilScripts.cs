@@ -92,7 +92,10 @@ namespace World.Game
         {
             CouncilDirector.Disabled = false; CouncilDirector.ApproachDelay = 0.5f; CouncilEncounter.AiDelay = 0.12f;
             CouncilFixture.MakeEligible(B.Sim.State, Home);
-            if (PrinceDirector.Instance != null) { }
+            // the prince keeps to himself while the council is played (his pitch bubbles would hold the candidate back)
+            CouncilDirector.IgnorePrince = true;
+            if (PrinceDirector.Instance != null) PrinceDirector.Instance.enabled = false;
+            foreach (int h in SpeechBubbles.OpenHandles()) SpeechBubbles.Close(h);
         }
 
         static bool Asking()

@@ -20,11 +20,13 @@ namespace World.Game
         public static CouncilDirector Instance { get; private set; }
         /// <summary>No council approach (tests, -nocouncil).</summary>
         public static bool Disabled;
+        /// <summary>Scripts and tests that run with the prince on: skip his checks (the bubble check stays).</summary>
+        public static bool IgnorePrince;
         /// <summary>Game seconds after the village first qualifies before the candidate comes.</summary>
         public static float ApproachDelay = 12f;
         public const string AskerId = "council_asker";
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetStatics() { Instance = null; Disabled = false; ApproachDelay = 12f; s_site = null; s_siteSeed = 0; }
+        static void ResetStatics() { Instance = null; Disabled = false; IgnorePrince = false; ApproachDelay = 12f; s_site = null; s_siteSeed = 0; }
 
         public enum Stage { Idle, Walking, Asking, Explaining, Leading, Waiting, Declined, Gathered }
 
@@ -167,7 +169,7 @@ namespace World.Game
             if (host != null && host.IsRunning) return false;
             if (Hud.MenuOpen || MapScreen.IsOpen) return false;
             var views = ViewSwitcher.Instance; if (views != null && views.CurrentView != ViewMode.FirstPerson) return false;
-            var pr = PrinceDirector.Instance;
+            var pr = IgnorePrince ? null : PrinceDirector.Instance;
             if (pr != null)
             {
                 if (pr.FirstSceneStep < PrinceDirector.SceneDone) return false;

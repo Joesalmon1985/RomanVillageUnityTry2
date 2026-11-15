@@ -29,6 +29,52 @@ namespace World.Game
         public Vector3 ToWorld(Vector3 local) => Position + Quaternion.Euler(0, Yaw, 0) * local;
 
         /// <summary>
+        /// Like <see cref="CampLayout.Obstruction"/> but ignoring hex stock patches and the unbuilt road lines (full-size ground cannot sit between them; trees, crops and rocks are
+        /// cleared with <c>LandViews.AddClearing</c>): keeps off plots, corners, the home camp's paths and the main roads.
+        /// </summary>
+        public static string Blocked(Board board, CampLayout layout, Vector3 p, float radius)
+        {
+            var t = board.Topology;
+            p.y = 0;
+            int home = board.StartCorners != null && board.StartCorners.Length > 0 ? board.StartCorners[0] : 0;
+            int reserved = board.ReservedPlots != null && board.ReservedPlots.Length > 0 ? board.ReservedPlots[0] : -1;
+            if (reserved >= 0)
+            {
+                var c = new Vector3((float)PlotLayout.PlotX(t, reserved), 0, (float)PlotLayout.PlotZ(t, reserved));
+                if ((p - c).magnitude < PlotLayout.DanceCircleRadius + radius + 2f) return "dance circle";
+            }
+            for (int c = 0; c < t.CornerCount; c++)
+            {
+                var cp = BoardSpace.Vertex(t, c); cp.y = 0;
+                float d = (p - cp).magnitude;
+                if (d > 200f) continue;
+                if (d < (c == home ? CampLayout.HomeCornerClear : CampLayout.CornerClear) + radius) return "corner " + c;
+                if (!PlotLayout.IsSettlementCorner(t, c)) continue;
+                for (int k = 0; k < PlotLayout.PlotsPerCorner; k++)
+                {
+                    int plot = PlotLayout.PlotId(c, k / 3, k % 3);
+                    if (plot == reserved) continue;
+                    var pc = new Vector3((float)PlotLayout.PlotX(t, plot), 0, (float)PlotLayout.PlotZ(t, plot));
+                    if ((p - pc).magnitude < PlotLayout.PlotRadius + CampLayout.PlotMargin + radius) return "plot " + plot;
+                }
+                if (c != home) continue;
+                for (int k = 0; k < PlotLayout.PlotsPerCorner; k++)
+                {
+                    int plot = PlotLayout.PlotId(c, k / 3, k % 3);
+                    var pts = PlotLayout.PathPoints(t, plot);
+                    for (int i = 0; i + 3 < pts.Length; i += 2)
+                    {
+                        var a = new Vector3((float)pts[i], 0, (float)pts[i + 1]); var b = new Vector3((float)pts[i + 2], 0, (float)pts[i + 3]);
+                        if (BoardSpace.DistanceToSegment(p, a, b) < CampLayout.PathMargin + radius) return "path " + plot;
+                    }
+                }
+            }
+            foreach (var pr in layout.Dressing) { var d2 = pr.Position - p; d2.y = 0; if (d2.magnitude < pr.Radius + radius + 1f) return "camp prop"; }
+            foreach (var cl in layout.Clearings) { var d2 = new Vector3(cl.x - p.x, 0, cl.y - p.z); if (d2.magnitude < cl.z + radius * 0.5f) return "camp clearing"; }
+            return null;
+        }
+
+        /// <summary>
         /// Finds the clear spot for the stage with the camp layout's obstruction check: the largest clear disc near the
         /// home camp's fire (grid search), the stage scaled to fit it (1 = full size, down to 0.3).
         /// </summary>
@@ -37,39 +83,39 @@ namespace World.Game
             var board = s.Board;
             var layout = new CampLayout(board);
             float prev = L.Scale;
-            L.Scale = 1f; L.Footprint(out var c1, out float r1);
+            L.Scale = 1f;
+            var samples = L.FootprintSamples(1f);
+            L.Footprint(out var c1, out float r1);
             L.Scale = prev;
-            Vector3 bestP = Vector3.zero; float bestR = 0f, bestScore = float.MinValue;
-            for (float x = -90f; x <= 90f; x += 2f)
-                for (float z = -90f; z <= 90f; z += 2f)
+            var centres = new List<Vector3>();
+            for (float x = -120f; x <= 120f; x += 4f)
+                for (float z = -120f; z <= 120f; z += 4f) centres.Add(layout.Hearth + new Vector3(x, 0, z));
+            centres.Sort((m, n) => (m - layout.Hearth).sqrMagnitude.CompareTo((n - layout.Hearth).sqrMagnitude));
+            foreach (var c in centres)
+            {
+                if ((c - layout.Hearth).magnitude < 14f) continue;
+                if (Blocked(board, layout, c, 3f) != null) continue; // quick reject
+                for (int k = 0; k < 8; k++)
                 {
-                    var p = layout.Hearth + new Vector3(x, 0, z);
-                    if (CampLayout.Obstruction(board, p, 1f) != null) continue;
-                    float r = 1f;
-                    while (r < 11f && CampLayout.Obstruction(board, p, r + 1f) == null) r += 1f;
-                    float d = new Vector2(x, z).magnitude;
-                    // keep off hills and mountains (mounds and peaks tower over the stage) and prefer open meadow
-                    float pen = 0f; bool bad = false;
-                    for (int k = 0; k < 9 && !bad; k++)
+                    float yaw = k * 45f;
+                    var q = Quaternion.Euler(0, yaw, 0);
+                    var origin = c - q * c1; origin.y = 0;
+                    bool ok = true;
+                    foreach (var lp in samples)
                     {
-                        var q = k == 0 ? p : p + new Vector3(Mathf.Cos(k * 0.785f), 0, Mathf.Sin(k * 0.785f)) * (Mathf.Min(r, 9f) + 3f);
-                        int hx = BoardSpace.HexAt(q);
-                        if (hx < 0) { bad = true; break; }
+                        var w = origin + q * lp;
+                        if (Blocked(board, layout, w, 1.6f) != null) { ok = false; break; }
+                        int hx = BoardSpace.HexAt(w);
+                        if (hx < 0) { ok = false; break; }
                         var tr = board.HexTerrain[hx];
-                        if (tr == World.Sim.Terrain.Hills || tr == World.Sim.Terrain.Mountain) bad = true;
-                        else if (tr == World.Sim.Terrain.Forest) pen += 6f;
+                        if (tr == World.Sim.Terrain.Hills || tr == World.Sim.Terrain.Mountain) { ok = false; break; }
                     }
-                    if (bad) continue;
-                    float score = Mathf.Min(r, 9f) * 5f - d * 0.15f - pen; // roomy first, then near the fire
-                    if (r >= 4f && score > bestScore) { bestScore = score; bestP = p; bestR = r; }
+                    if (!ok) continue;
+                    return new CouncilSite { Position = origin, Yaw = yaw, Scale = 1f, Why = "open ground " + (c - layout.Hearth).magnitude.ToString("0") + " m from the fire, full size" };
                 }
-            if (bestR < 4f) { bestP = layout.Hearth + new Vector3(0, 0, 30f); bestR = 6f; }
-            float sc = Mathf.Clamp((bestR + 0.5f) / r1, 0.3f, 1f);
-            var away = bestP - layout.Hearth; away.y = 0; if (away.sqrMagnitude < 1) away = Vector3.forward;
-            float yaw = BoardSpace.YawOf(away.normalized);
-            var origin = bestP - Quaternion.Euler(0, yaw, 0) * (c1 * sc);
-            origin.y = 0;
-            return new CouncilSite { Position = origin, Yaw = yaw, Scale = sc, Why = "clear disc of " + bestR.ToString("0") + " m at " + (bestP - layout.Hearth).magnitude.ToString("0") + " m from the fire, scale " + sc.ToString("0.00") };
+            }
+            L.Scale = 1f;
+            return new CouncilSite { Position = layout.Hearth + new Vector3(0, 0, 40f), Yaw = 0f, Scale = 1f, Why = "fallback (no clear ground found)" };
         }
     }
 
@@ -140,7 +186,7 @@ namespace World.Game
         int _previewTray = -1, _previewSocket = -1;
         float _handPress, _sealPress, _petitionLift, _carryT = -1f, _winT = -1f;
         int _lastActive = -1, _lastPhase = -1, _lineCounter;
-        int _leadBubble;
+        int _leadBubble, _candBubble;
         public int ActiveSeatShown { get; private set; } = -1;
         /// <summary>Set while the aide is still on the way with an earned petition: the petition is not shown yet.</summary>
         public bool HoldPetition;
@@ -305,7 +351,7 @@ namespace World.Game
                 float uc = (6f + 22f * s + 11f) / 100f;
                 var bay = Cube(beam, "Bay " + s, new Vector3(W(uc - 0.5f), 0, -0.12f * L.Scale), new Vector3(W(0.205f), H(0.082f), 0.1f * L.Scale), new Color(0.22f, 0.14f, 0.08f));
                 // the emblem
-                var emb = CouncilShapes.Make("Emblem " + s, beam, Emblem(s), new Vector3(W(uc - 0.5f - 0.058f), 0, -0.22f * L.Scale), H(0.074f));
+                var emb = CouncilShapes.Make("Emblem " + s, beam, Emblem(s), new Vector3(W(uc - 0.5f - 0.058f), 0, -0.22f * L.Scale), H(0.062f));
                 _bayEmblem[s] = emb;
                 _bayHalo[s] = Halo(beam, new Vector3(W(uc - 0.5f - 0.058f), 0, -0.1f * L.Scale), H(0.18f), SeatColor(s));
                 _bayHalo[s].SetActive(false);
@@ -473,6 +519,10 @@ namespace World.Game
 
         void BuildFires()
         {
+            // the council fire: a warm light high over the middle of the gathering, so firelight reaches every row
+            var mid = L.OnFloor(0.5f, 0.45f) + new Vector3(0, 5.5f * L.Scale, 0);
+            var cf = WorldLights.Add(Root, mid, new Color(1f, 0.70f, 0.38f), 2.6f, 34f * L.Scale, 3, "Council fire light");
+            cf.GroundGlow = 0f; cf.Halo = 0f; cf.Sparks = false;
             for (int k = 0; k < 2; k++)
             {
                 float u = k == 0 ? 0.095f : 0.905f;
@@ -480,6 +530,7 @@ namespace World.Game
                 var t = WorldLights.Torch(Root, ToWorld(p), false, true, "Council brazier " + k);
                 _fires[k] = t.gameObject;
                 t.transform.parent.localScale = Vector3.one * Mathf.Max(0.9f, 1.5f * L.Scale);
+                t.Intensity = 3.4f; t.Range = 26f * Mathf.Max(0.6f, L.Scale); t.Priority = 3;
             }
         }
 
@@ -881,16 +932,18 @@ namespace World.Game
         {
             var c = ActiveSeatShown >= 0 ? _candSpeaker[ActiveSeatShown] : null; if (c == null) return;
             LastCandidateLine = text;
-            SpeechBubbles.Say(c, text, seconds);
+            { if (_candBubble != 0) SpeechBubbles.Close(_candBubble); _candBubble = CouncilBubbles.Say(c, text, seconds); }
         }
 
         public void SayLead(int track, string text, float seconds = 3.6f)
         {
             if (track < 2 || track > 12 || string.IsNullOrEmpty(text)) return;
             if (_leadBubble != 0) SpeechBubbles.Close(_leadBubble);
-            _leadBubble = SpeechBubbles.Say(_leadSpeaker[track - 2], text, seconds);
+            _leadBubble = CouncilBubbles.Say(_leadSpeaker[track - 2], text, seconds);
             LeadBubbles++; LastLeadLine = text;
         }
+
+        public void CloseBubbles() { if (_leadBubble != 0) SpeechBubbles.Close(_leadBubble); _leadBubble = 0; if (_candBubble != 0) SpeechBubbles.Close(_candBubble); _candBubble = 0; }
 
         public void StartWin() { _winT = 0f; }
 

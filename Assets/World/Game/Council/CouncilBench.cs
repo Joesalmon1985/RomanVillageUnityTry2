@@ -1,3 +1,4 @@
+using World.Sim;
 using UnityEngine;
 
 namespace World.Game
@@ -46,9 +47,37 @@ namespace World.Game
             go.transform.SetParent(scene.Root, false);
             var b = go.AddComponent<CouncilBench>();
             b.Scene = scene; b.Root = go.transform;
-            b.Origin = new Vector3(-(16f * CouncilLayout.Scale + 7f), 0f, 4f);
+            b.Origin = PickOrigin(scene);
             b.BuildSet();
             return b;
+        }
+
+        /// <summary>The bench set stands on its own open ground beside the stage: off stock patches, hills, plots, paths and camp props.</summary>
+        static Vector3 PickOrigin(CouncilScene scene)
+        {
+            var st = scene.State; var board = st.Board; var topo = board.Topology;
+            var layout = new CampLayout(board);
+            Vector3 best = new Vector3(-30f, 0, 4f); float bestScore = float.MinValue;
+            for (float x = -22f; x >= -48f; x -= 2f)
+                for (float z = -14f; z <= 34f; z += 2f)
+                {
+                    var local = new Vector3(x, 0, z);
+                    var w = scene.Root.TransformPoint(local);
+                    float clear = 99f;
+                    for (int h = 0; h < topo.HexCount; h++)
+                    {
+                        var hc = BoardSpace.Hex(topo, h); hc.y = 0; w.y = 0;
+                        clear = Mathf.Min(clear, (w - hc).magnitude - (float)PlotLayout.StockPatchRadius);
+                    }
+                    if (clear < 4f) continue;
+                    if (CouncilSite.Blocked(board, layout, w, 5f) != null) continue;
+                    int hx = BoardSpace.HexAt(w); if (hx < 0) continue;
+                    var tr = board.HexTerrain[hx];
+                    if (tr == World.Sim.Terrain.Hills || tr == World.Sim.Terrain.Mountain) continue;
+                    float score = clear * 2f + x * 0.3f; // clear of stock first, then close to the stage
+                    if (score > bestScore) { bestScore = score; best = local; }
+                }
+            return best;
         }
 
         void BuildSet()
@@ -58,7 +87,7 @@ namespace World.Game
             float d = 1.8f; float W = 2f * TanH * d, H = 2f * TanV * d;
             _slabSame = Slab("Slab same", 0.255f, d, W, H);
             _slabDiff = Slab("Slab different", 0.745f, d, W, H);
-            float sealH = 0.17f * H * 2.4f;
+            float sealH = 0.15f * H;
             _seals[0] = CouncilShapes.Make("Leaf A", Root, CouncilShapes.LeafSeal(false), At(0.145f, 0.805f, d - 0.31f), sealH);
             _seals[1] = CouncilShapes.Make("Leaf B", Root, CouncilShapes.LeafSeal(false), At(0.365f, 0.805f, d - 0.31f), sealH);
             _seals[2] = CouncilShapes.Make("Leaf C", Root, CouncilShapes.LeafSeal(false), At(0.635f, 0.805f, d - 0.31f), sealH);

@@ -96,9 +96,17 @@ public static class CouncilCaptures
                     var cam = Camera.main; var ray = cam.ScreenPointToRay(new Vector3(float.Parse(a[1]) * Screen.width, float.Parse(a[2]) * Screen.height, 0));
                     var sb = new StringBuilder("ray: ");
                     foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
-                        if (r.enabled && r.bounds.IntersectRay(ray, out float d) && d < 30f && r.bounds.size.x < 100f) sb.Append(r.transform.root.name + "/" + (r.transform.parent != null ? r.transform.parent.name : "") + "/" + r.name + " d" + d.ToString("0.0") + " " + r.bounds.size.ToString("0.0") + "; ");
+                        if (r.enabled && r.bounds.IntersectRay(ray, out float d) && d < 9f) sb.Append(r.transform.root.name + "/" + (r.transform.parent != null ? r.transform.parent.name : "") + "/" + r.name + " d" + d.ToString("0.0") + " " + r.bounds.size.ToString("0.0") + "; ");
                     return sb.ToString();
                 }
+            case "site":
+                { var st = CouncilSite.Find(boot.Sim.State); var lay = new CampLayout(boot.Sim.State.Board); return "site " + st.Position + " d" + (st.Position - lay.Hearth).magnitude.ToString("0") + " scale " + st.Scale + " " + st.Why; }
+            case "hide":
+                { int n = 0; foreach (var go in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None)) if (go.name == cmd.Substring(5)) { go.gameObject.SetActive(false); n++; } return "hid " + n; }
+            case "wherecam":
+                { var c = Camera.main; var sc3 = CouncilScene.Current; return "cam local " + sc3.Root.InverseTransformPoint(c.transform.position) + " bench origin " + sc3.Bench.Origin + " fov " + c.fieldOfView; }
+            case "cams":
+                { var sb = new StringBuilder(); foreach (var c in Camera.allCameras) sb.Append(c.name + " depth " + c.depth + " mask " + c.cullingMask + " rect " + c.rect + " clear " + c.clearFlags + " parent " + (c.transform.parent != null ? c.transform.parent.name : "-") + "; "); return sb.ToString(); }
             case "info":
                 {
                     var sc = CouncilApi.Get(boot.Sim.State, home);
