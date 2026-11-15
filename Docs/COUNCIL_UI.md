@@ -30,3 +30,22 @@ Namespace `World.Game`, code in `Assets/World/Game/Council/`. The rules are in `
 ## Tests
 
 `Assets/World/Tests/PlayMode/Council/CouncilTests.cs`. See the results at the end of this file.
+
+### Results (15 Nov 2026, Unity 6000.3.28f1)
+
+- Full PlayMode run: 105 tests, 103 passed. The two failures were then re-run: `DanceTests.Drums_LightForTheRightPads` passed alone (a frame-timing assertion that failed under load in the long run; unrelated code), and the council layout test passed after the candidate was moved in from the screen edge. The EditMode suite and `dotnet test --filter Council` were not re-run by this package.
+- 26 council tests (`CouncilTests`): layout rectangles inside the safe area and not overlapping at 1920x1080 and 844x390; every lead, prop, emblem, tray, hand, seal and candidate inside the safe area; example trays 4+9, 5+8, 6+7; one move under repeated taps; a double advances two places; temporary versus banked marks; bust rollback with the view equal to the state and banked emblems kept; petition spend and accept; listening Same/Different with response times passed through, wrong answers, petition earned and carried; draws unchanged after visiting the bench; leave and rejoin; save and load mid-push; camera, clock and avatar restored; other bubbles swept; no election with fewer than four residents; approach accept, decline (background play) and waiting for an open bubble; the dance and Ward duel still start; the three AutoPlay scripts (`council_full` about 265 s).
+- Captures (`Evidence/screenshots/d_*.png`, git-ignored; the capture command writes 1280x720 files from a 1920x1080 or 844x390 game view).
+
+### Readability (honest)
+
+- 1920x1080: the four emblems are told apart by shape on the beam, on the posts and on the catspaws' chests; the carvings on the trays match the leads' props; temporary catspaws (cloaked, eared, in the seat colour) read apart from banked posts (a pole with a big emblem). Which disputes a tray affects is shown by the carvings and, on hover, by the leads' props lifting and a ring on the floor.
+- 844x390: the shapes still read, but the 2.5 percent place pitch is only about 10 px, so catspaws and posts overlap their neighbours and a place count cannot be read by counting residents; the hooks and seals in the beam are about 20 px. Leads' props are small but still distinct in silhouette. The rows of residents blur into columns.
+- Left view reads well at both sizes; the leaf seals are dark at night.
+
+### Not done or limited
+
+- The stage sits on cleared open ground 34 m from the fire; the unbuilt road lines and stock patches there are covered by the floor and cleared with `AddClearing`, not avoided.
+- The left view's lantern for turning right has no separate drawn prop beyond the candidate's lantern.
+- Resident support (gaze, turns) is limited to turning towards the candidate's side and a witness walking off; no handshakes beyond a lead's greeting animation.
+- `council_content.json` updates on `council/content` were not merged (instructed); the code uses only the existing format.

@@ -484,8 +484,8 @@ namespace World.Game
         void BuildPeople(SettlementCouncil sc)
         {
             // Candidates take the same place at the left of the table, one seat at a time (the active one shows).
-            var feet = L.OnFloor(0.088f, 0.91f);
-            float h = FigureHeight(feet, 0.625f);
+            var feet = L.OnFloor(0.105f, 0.91f);
+            float h = FigureHeight(feet, 0.68f);
             for (int s = 0; s < 4; s++)
             {
                 var a = Person("cand" + s, Color.Lerp(SeatColor(s), new Color(0.5f, 0.4f, 0.3f), 0.4f), feet, h, 180f - 14f);

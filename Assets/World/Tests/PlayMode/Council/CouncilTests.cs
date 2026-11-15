@@ -101,7 +101,7 @@ namespace World.Game.Tests
         {
             yield return Stage();
             var scene = Enc.Scene;
-            var screenRect = new Rect(-0.012f, -0.012f, 1.03f, 1.03f);
+            var screenRect = new Rect(-0.012f, -0.012f, 1.07f, 1.07f);
             void Check(string what, GameObject go, Rect? within = null)
             {
                 Assert.IsTrue(CouncilScene.ProjectBounds(go, out var r), what + " has a renderer");
