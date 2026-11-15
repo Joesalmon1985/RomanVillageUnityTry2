@@ -108,10 +108,38 @@ Format (all keys PascalCase; the file is read with Newtonsoft):
 - `Personalities[4+]`: `Id`, `Name`, `Description`, `BustTolerance` (percent: press on while the chance of a bust next push is at most this), `MinAdvances`, `MaxAdvances`, `BankAtTopPercent`, `TrailingBoost`, `LeadingCaution`, `PetitionBoost`, `Impulse`, tray weights `WeightStep`, `WeightProgress`, `WeightTop`, `WeightNewCatspaw`, `WeightCentral`, `WeightAdvanced`, `Noise`. The first four are dealt to the four seats by a seeded shuffle.
 - `Listening`: `Responses` (5), `AccuracyThresholdPercent`, `SpeedBonusPercent`, `FastMs`, `SlowMs`, `MaxBursts`. Copied into each election when it starts, so tuning changes affect new elections only.
 - `Fallbacks`: `DelegateTitle`, `DelegateNames`, `Note`. `Names`: the seeded list used for residents.
-- `Disputes[11]`: `Id`, `Track` (2 to 12), `Pattern`, `Role`, `Occupations` (resident occupation ids who may lead it, `"*"` = anyone), `FallbackTitle` (local delegate title), `Props` (`prehistoric`, `historic`; later ages use `historic`), `Silhouette` (the drawn shape idea shared by the real object and its carving), `Lines` (`opening`, `progress`, `setback`, `revisit`, `agreement`, `acknowledgement`, each an array of at least two).
+- `Disputes[11]`: `Id`, `Track` (2 to 12), `Pattern`, `Role`, `Occupations` (resident occupation ids who may lead it, `"*"` = anyone), `FallbackTitle` (local delegate title), `Props` (`prehistoric`, `historic`; later ages use `historic`), `Silhouette` (the drawn shape idea shared by the real object and its carving), `Lines` (`opening`, `progress`, `setback`, `revisit`, `agreement`, `acknowledgement`, each an array of at least two; the shipped file has three), optional `Cast` (`wronged`, `accused`, `witness`, `settler`; see below, ignored by readers).
 - `ListeningLines[60+]`: `Id`, `Tag` (`Complain`, `Encourage`, `Warn`, `Reassure`, `Question`), `Speaker`, `Text` (90 characters at most; speech-bubble sized). Evenly spread over the five intentions.
 
 Occupation ids a resident can have come from the village's active buildings: woodcutter (log pile, woodcutter's hut), claydigger, gleaner, farmer, shepherd, quarrier (rock heap, quarry), sawyer, potter, baker, curer, stonecutter, warden; plus carrier (one per carrier living there) and storekeeper (always). No ferryman, healer, miner, well keeper or reeve exists in this economy, so those leads are local delegates (miner is filled by a quarrier when there is one).
+
+## Disputes and their patterns
+
+Each dispute is one of the owner's story patterns from the village cast workbook (cast by role: who is wronged, who is accused, who witnessed, who could settle it). The content file carries that cast as an optional `Cast` object per dispute (`wronged`, `accused`, `witness`, `settler`: short role descriptions; `{office}` means the elected office). Older readers ignore it (the loader does not read it and unknown keys are skipped), so no code or count changed. Lines are written in the lead's voice, use `{prop}` so the prehistoric prop reads right, mention other residents only generically (a carrier, a gleaner, an elder) and never name a building or occupation a village may lack. Each line kind has three variants.
+
+| Track | Lead and prop | Pattern | Cast (wronged / accused / witness / settler) | Sample line |
+|---|---|---|---|---|
+| 2 crossing | Ferryman, broken oar (cracked paddle) | absent worker | ferryman / helper who left / carrier at the bank / {office} | My {prop} is broken and my helper has gone. Who minds the bank, {candidate}? |
+
+| 3 boundary | Neighbour, boundary rope | disputed ownership | neighbour / other neighbour / elder who remembers the stakes / {office} | Two of us claim the same strip. {candidate}, walk the line with us. |
+
+| 4 forest | Forester, sapling | forest dispute | forester or woodcutter / cutters past the marked slope / ridge gleaner or shepherd / {office} | They fell trees faster than the forest grows. Plant this {prop} with me, {candidate}. |
+
+| 5 timber | Carpenter, split beam (split log) | withheld resource | carpenter or sawyer / whoever keeps the sound timber / carrier who hauled it / {office} | This {prop} will not hold a roof. Someone keeps the good timber back, {candidate}. |
+
+| 6 herbs | Healer, empty jar (empty clay pot) | withheld resource | healer / whoever keeps the herb store shut / gleaner who knows the herbs / {office} | The sick wait on me and I have nothing. Find the herbs, {candidate}. |
+
+| 7 grain | Storekeeper, empty grain crate (basket) | withheld resource | storekeeper / whoever set grain aside / carrier who counted loads / {office} | Look at this {prop}. It was full at the last count. Who took the grain, {candidate}? |
+
+| 8 tools | Miner, cracked pickaxe (stone pick) | absent worker | miner or quarrier / digging crew who walked off / carrier who saw them go / {office} | My {prop} cracked and half the diggers walked off. {candidate}, get them back. |
+
+| 9 shares | Miller, grain sack (skin bag) | disputed ownership | miller or baker / neighbour claiming half / whoever saw it weighed / {office} | We both counted the {prop}, and counted differently. Help us, {candidate}. |
+
+| 10 water | Well keeper, bucket (bark bucket) | withheld resource | well keeper / whoever draws past their turn / carrier at dawn / {office} | My {prop} comes up half empty. Someone draws past their turn, {candidate}. |
+
+| 11 witness | Carter, cart wheel (log roller) | reluctant witness | carter or carrier / whoever broke the wheel / bystander who will not say / {office} | Somebody saw who cracked my {prop}. Silence helps no one, {candidate}. |
+
+| 12 deed | Reeve, deed scroll (tally stick) | disputed ownership | reeve or chief / second claimant / elder who remembers / {office} | The {prop} says one thing, the elders another. Whose land is it, {candidate}? |
 
 ## Rules summary the view can rely on
 
