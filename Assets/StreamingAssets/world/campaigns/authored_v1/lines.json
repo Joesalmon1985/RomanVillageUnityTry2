@@ -46,6 +46,41 @@
     { "Id": "tower_air_sign", "Speaker": "", "Topic": "sign", "Text": "Carved over the door: wind finds its way. This tower keeps {crystal.air.name}." },
 
     { "Id": "prince_none_lit", "Speaker": "prince", "Topic": "state", "Guards": [ "restored: 0" ], "Text": "The camps will keep. Go and find your crystals." },
-    { "Id": "prince_one_lit", "Speaker": "prince", "Topic": "state", "Guards": [ "restored: 1" ], "Text": "One tower burning again. The demons came less often this week." }
+    { "Id": "prince_one_lit", "Speaker": "prince", "Topic": "state", "Guards": [ "restored: 1" ], "Text": "One tower burning again. The demons came less often this week." },
+    { "Id": "prince_two_lit", "Speaker": "prince", "Topic": "state", "Guards": [ "restored: 2" ], "Text": "Two towers lit. The old folk say they slept through the night for once." },
+    { "Id": "prince_three_lit", "Speaker": "prince", "Topic": "state", "Guards": [ "restored: 3" ], "Text": "Three towers. One more and we can stop counting the demons." },
+    { "Id": "prince_four_lit", "Speaker": "prince", "Topic": "state", "Guards": [ "restored: 4" ], "Text": "All four towers burn. Whatever sleeps under us is tied down tight." },
+
+    { "Id": "reply_coming", "Speaker": "", "Topic": "reply", "Text": "Coming" },
+    { "Id": "reply_go_down", "Speaker": "", "Topic": "reply", "Text": "Go down" },
+    { "Id": "mira_call", "Speaker": "mira", "Topic": "call", "Text": "This way! Keep up." },
+    { "Id": "mira_go_on", "Speaker": "mira", "Topic": "lead", "Text": "I'm going on. Catch me up when you can." },
+    { "Id": "mira_declined", "Speaker": "mira", "Topic": "lead", "Text": "Not that way, then. Let me think." },
+    { "Id": "mira_why", "Speaker": "mira", "Topic": "lead", "Text": "It's the best lead we have." },
+    { "Id": "mira_leave", "Speaker": "mira", "Topic": "company", "Text": "Go, then. I'll leave word of where I am." },
+    { "Id": "mira_rejoin", "Speaker": "mira", "Topic": "company", "Text": "Good. Stay close." },
+    { "Id": "mira_away_here", "Speaker": "mira", "Topic": "company", "Text": "You found me. Are you with me?" },
+    { "Id": "mira_not_yet", "Speaker": "mira", "Topic": "wait", "Text": "Not yet, then. We step back and breathe." },
+    { "Id": "mira_wait_scout", "Speaker": "mira", "Topic": "wait", "Text": "Wait for {companion.tansy.name}. I won't fight with one of us still out there." },
+    { "Id": "mira_tower_wait", "Speaker": "mira", "Topic": "tower", "Text": "It will keep. Tell me when." },
+    { "Id": "mira_retreat", "Speaker": "mira", "Topic": "retreat", "Text": "Back! Back the way we came!" },
+    { "Id": "mira_draw", "Speaker": "mira", "Topic": "retreat", "Text": "Neither Ward broke. Back, and we try again." },
+    { "Id": "mira_wrong_answer", "Speaker": "mira", "Topic": "choice", "Text": "That wasn't it. We lost time." },
+    { "Id": "mira_nothing_open", "Speaker": "mira", "Topic": "status", "Text": "Nothing more to chase just now. We wait for word." },
+    { "Id": "mira_lead_out", "Speaker": "mira", "Topic": "menu", "Text": "The way out is lit. Follow the light." },
+    { "Id": "cue_fell_behind", "Speaker": "", "Topic": "cue", "Text": "You fell behind. Mira has gone on without you." },
+    { "Id": "cue_rejoin", "Speaker": "", "Topic": "cue", "Text": "The map (Tab) shows where Mira is. Find her and tap her to rejoin." },
+    { "Id": "companion_fallen", "Speaker": "", "Topic": "fallen", "Text": "fell here, holding the way out." },
+
+    { "Id": "ivo_holds", "Speaker": "ivo", "Topic": "volunteer", "Guards": [ "alive: ivo" ], "Text": "Take the map. I drew the way out for you, not for me." },
+    { "Id": "petra_holds", "Speaker": "petra", "Topic": "volunteer", "Guards": [ "alive: petra" ], "Text": "Go. I'll give them something hotter to think about." },
+    { "Id": "nell_holds", "Speaker": "nell", "Topic": "volunteer", "Guards": [ "alive: nell" ], "Text": "Run. I'll hold them the way the tide holds a boat." },
+    { "Id": "odo_holds", "Speaker": "odo", "Topic": "volunteer", "Guards": [ "alive: odo" ], "Text": "Go on. A tree doesn't move for a storm, and nor will I." },
+    { "Id": "tansy_holds", "Speaker": "tansy", "Topic": "volunteer", "Guards": [ "alive: tansy" ], "Text": "I'm the fastest of us. That's why I'm last. Go!" },
+    { "Id": "mira_after_ivo", "Speaker": "mira", "Topic": "memorial", "Guards": [ "dead: ivo" ], "Text": "Ivo drew us the way out and stayed at the top of it." },
+    { "Id": "mira_after_petra", "Speaker": "mira", "Topic": "memorial", "Guards": [ "dead: petra" ], "Text": "Petra stood in that gap like it was her father's forge door." },
+    { "Id": "mira_after_nell", "Speaker": "mira", "Topic": "memorial", "Guards": [ "dead: nell" ], "Text": "The tide keeps its promises, Nell said. So did she." },
+    { "Id": "mira_after_odo", "Speaker": "mira", "Topic": "memorial", "Guards": [ "dead: odo" ], "Text": "Odo stood like one of his trees. We got out because of him." },
+    { "Id": "mira_after_tansy", "Speaker": "mira", "Topic": "memorial", "Guards": [ "dead: tansy" ], "Text": "Tansy was always back before we finished worrying. Not this time." }
   ]
 }

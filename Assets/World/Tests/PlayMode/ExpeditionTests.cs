@@ -128,6 +128,9 @@ namespace World.Game.Tests
             return null;
         }
 
+        /// <summary>The surface way's state as package I5 keeps it (I5 draws both ends of a way since the integration).</summary>
+        private static bool StairOpen(string marker) => MarkerRef.TryParse(marker, out var r) && Interiors.LinkAt(r) != null && Interiors.LinkAt(r).IsOpen;
+
         private int Count<T>() where T : Command { int n = 0; foreach (var c in Dir.Commands) if (c is T) n++; return n; }
 
         private bool SaidLine(string lineId, string speaker)
@@ -231,7 +234,7 @@ namespace World.Game.Tests
             Assert.Less(BoardSpace.Flat(Dir.Mira.transform.position - stone), 3f, "she stands at the stone");
             Assert.Greater(BoardSpace.Flat(Dir.Mira.transform.position - stone), 1f, "in front of it, not inside it");
             Assert.IsTrue(Dir.Sites.MarkerProps.ContainsKey("glade/stone"));
-            Assert.IsFalse(Dir.Sites.Stair("glade/stair").Open);
+            Assert.IsFalse(StairOpen("glade/stair"));
             yield return Until(() => SaidIndex("mira_stone_1") >= 0, 10f, "her first line as she reads");
             Assert.IsFalse(C.Knows("earth.stair_open"), "said while reading, before the event");
             yield return Until(() => C.Knows("earth.stair_open"), 60f, "the stair");
@@ -239,7 +242,7 @@ namespace World.Game.Tests
             Assert.IsTrue(SaidLine("mira_stone_2", "mira"));
             Assert.IsTrue(SaidLine("odo_stone", "odo"));
             Assert.AreEqual(1, Lines.FindAll(l => l.Text == ExpeditionLines.Sentence(C.Definition.Line("mira_stone_1").Text)).Count, "the early line is not said twice");
-            Assert.IsTrue(Dir.Sites.Stair("glade/stair").Open, "the slab slides back");
+            Assert.IsTrue(StairOpen("glade/stair"), "the slab slides back");
             // The next lead is offered with its reason and the three replies; "Why there?" then two replies.
             yield return Until(() => Dir.AskKind == ExpeditionDirector.AskLead, 60f, "the next lead");
             var lead = CampaignApi.TopLead(S);
@@ -388,7 +391,7 @@ namespace World.Game.Tests
             Assert.IsTrue(tower.Restored && tower.Lit.activeSelf, "lit after the load");
             Assert.AreEqual(0, Dir.Sites.RestorationsPlayed, "the effect is not replayed");
             Assert.AreEqual("tower", Dir.Sites.CrystalPlace(Element.Earth));
-            Assert.IsTrue(Dir.Sites.Stair("glade/stair").Open, "the opened stair stays open");
+            Assert.IsTrue(StairOpen("glade/stair"), "the opened stair stays open");
             Assert.AreEqual(6, Dir.Mates.Count);
             Assert.Less(BoardSpace.Flat(Dir.Mira.transform.position - ExpeditionSpace.World(S, C.Party.At)), 4f, "Mira is where the state says");
             _boot.Clock.Resume("Test");
@@ -426,7 +429,7 @@ namespace World.Game.Tests
             StringAssert.Contains("Garrick Holt fell at the Tally Vault", string.Join(" ", ExpeditionJournal.RosterLines(S)));
             // Commands: exactly one commit and one resolution per attempt, and nothing but commands.
             Assert.AreEqual(2, Count<CommitEncounter>());
-            Assert.AreEqual(2, Count<ResolveEncounter>());
+            Assert.AreEqual(2, C.Resolved.Count, "two attempts resolved (by the campaign duel, I7)");
             Assert.AreEqual(1, Count<ConfirmRestore>());
         }
 
@@ -498,7 +501,7 @@ namespace World.Game.Tests
             // Back, "Fight", a win: the crystal comes off the altar into her hands.
             yield return Play(() => C.Crystal(Element.Earth).Custody == Custody.Carried, 900f, "the win", DuelResult.Victory);
             Assert.AreEqual(1, Count<CommitEncounter>());
-            Assert.AreEqual(1, Count<ResolveEncounter>());
+            Assert.AreEqual(1, C.Resolved.Count, "one attempt resolved (by the campaign duel, I7)");
             yield return Frames(5);
             Assert.AreEqual(1, Dir.CarriedShown, "the Deepstone in Mira's hands");
             Assert.AreEqual("", Dir.Sites.CrystalPlace(Element.Earth));

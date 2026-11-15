@@ -43,7 +43,7 @@
   "Rival": {
     "LeaderRole": "rival_leader",
     "Steps": [
-      { "Crystal": "earth", "MarchCost": 2250, "MarchSpread": 600, "CarryCost": 900, "Altar": "ash_cut/tally_vault/altar" },
+      { "Crystal": "earth", "MarchCost": 2700, "MarchSpread": 600, "CarryCost": 900, "Altar": "ash_cut/tally_vault/altar" },
       { "Crystal": "fire", "MarchCost": 3000, "MarchSpread": 600, "CarryCost": 900, "Altar": "forge/altar" },
       { "Crystal": "water", "MarchCost": 3000, "MarchSpread": 600, "CarryCost": 900, "Altar": "cistern/altar" },
       { "Crystal": "air", "MarchCost": 3000, "MarchSpread": 600, "CarryCost": 900, "Altar": "cliff/altar" }

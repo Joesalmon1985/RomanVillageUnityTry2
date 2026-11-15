@@ -249,6 +249,7 @@ namespace World.Game
             public bool SkipStory;
             public readonly Queue<DuelResult> Duels = new Queue<DuelResult>();
             public int DuelAttempt = -1;
+            public ulong DuelSeed;
             public DuelResult DuelWanted;
             public bool DuelShot;
             public readonly List<Moment> Moments = new List<Moment>();
@@ -312,11 +313,17 @@ namespace World.Game
                 if (duel != null && duel.IsLethal && EncounterHost.Instance != null && EncounterHost.Instance.IsRunning)
                 {
                     int att = duel.Request != null ? duel.Request.AttemptId : -1;
-                    if (att != plan.DuelAttempt)
+                    ulong seed = duel.Request != null ? duel.Request.Seed : 0;
+                    bool restaged = att == plan.DuelAttempt && seed != plan.DuelSeed; // the same attempt restarted (a load, a duel left)
+                    if (att != plan.DuelAttempt || restaged)
                     {
-                        plan.DuelAttempt = att; plan.DuelShot = false;
-                        if (plan.Duels.Count == 0) { a.Fail("a duel the script did not expect (" + Status() + ")"); yield break; }
-                        plan.DuelWanted = plan.Duels.Dequeue();
+                        plan.DuelSeed = seed; plan.DuelShot = false;
+                        if (!restaged)
+                        {
+                            plan.DuelAttempt = att;
+                            if (plan.Duels.Count == 0) { a.Fail("a duel the script did not expect (" + Status() + ")"); yield break; }
+                            plan.DuelWanted = plan.Duels.Dequeue();
+                        }
                         bool win = plan.DuelWanted == DuelResult.Victory;
                         var bot = WardBot.Attach(B.gameObject);
                         bot.CastInterval = win ? 2.1f : 2.4f; bot.MaxCastsPerDuel = -1; bot.FixedWard = null; bot.AutoReturn = false;

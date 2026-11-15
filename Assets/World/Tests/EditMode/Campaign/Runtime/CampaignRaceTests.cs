@@ -79,7 +79,7 @@ namespace World.Sim.Tests
                 var sim = Authored(seed, d => d.Rival.OpenWith = new List<string> { "earth", "fire", "water", "air" });
                 var plan = sim.State.Campaign.RivalPlan;
                 opens.Add(plan[0].Crystal);
-                Assert.That(plan[0].MarchCost, Is.InRange(1650, 2850), "the opening march is the first position's");
+                Assert.That(plan[0].MarchCost, Is.InRange(2100, 3300), "the opening march is the first position's (2700 +- 600 since I8's 45 s opening delay)");
                 Assert.AreEqual(4, plan.Select(x => x.Crystal).Distinct().Count());
                 Assert.AreEqual(sim.State.Campaign.Definition.Rival.Steps.First(x => x.Crystal == plan[0].Crystal).Altar, plan[0].Altar, "a crystal keeps its altar");
             }

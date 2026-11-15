@@ -52,7 +52,7 @@ Hold a key to keep going. You cannot walk into a camp's hearth, a building, a te
 
 **Camps.** A camp sits on a hex corner and has its own store. Carriers walk goods between its buildings and its store on short paths. Main roads run along hex edges and join camps; porters carry loads along them. A camp can later become a city.
 
-**The prince.** He walks up to you at the start and asks you to come and see a woodcutter's hut. After that he, Holt the sawyer and Wenna the merchant come to you with one proposal at a time, the best first. Your answers:
+**The prince.** He walks up to you at the start and asks you to come and see a woodcutter's hut. After that he, Osric the sawyer and Wenna the merchant come to you with one proposal at a time, the best first. Your answers:
 
 - **Show me** (or "Lead the way"): the villager walks to the spot and you follow automatically. At the spot they say why, and a gold ring glows on the ground. Click inside the ring to cast.
 - **Not this**: that proposal is dropped for a minute and the next best is offered.
@@ -77,6 +77,23 @@ Sol the drummer stands at the dance circle (the fire with four drums, in the fie
 ## Saving
 
 F5 saves and F9 loads, or use the pause menu. There is one slot. You cannot save during the duel or the dance. A loaded game comes back at the same game time, so the time of day is the same too.
+
+## How to play the Earth route (the crystal campaign, first slice)
+
+A normal launch is the island game above. The crystal campaign is reached by a developer start for now (the prince's handover scene that leads into it comes later).
+
+**Start it.** Either:
+
+- In the game press F1, open the tool "Campaign" (key K in the God View) and press "Start the campaign (authored_v1)". The world is rebuilt on the developer start `dev.historic` (a few seconds) and the campaign begins. Press F1 again to walk.
+- Or start the exe from a command prompt: `WorldMVP.exe -start dev.historic -campaign authored_v1`.
+
+**What to expect.** Mira comes to you with six companions and tells why the four crystals matter (about 45 seconds; click her to skip to her question). Answer "Lead the way" and follow her: to the boundary stone in the Stonemark Glade, down the stair into the Old Quarry, along the survey marks to the Root Chamber, where the Deepstone (an amber and moss crystal cluster) rests on its pedestal. She carries it out and to the Rooted Tower; answer "Set it" and the tower lights. Underground, Tab shows the cave map with the party and the way out, and any party member offers "Lead me out". Tap Mira at any time for "What do we know?" (the journal, also on the Tab map; J opens it) or "Go on without me".
+
+If the Ash Clan's runners get there first (they set out when the campaign starts; the march takes about 3:30 to 5:30), the pedestal is bare: Mira follows their tally into the Tally Vault, where Dolm the Tally-Keeper guards the crystal. At his threshold she asks whether to fight. The duel is Mira's Ward against Dolm's; if her Ward breaks, the companion named at the threshold (Garrick first) stays to hold the way out and does not come back, and the party retreats to the survey gallery to try again. Win, and the barred door opens onto the Ash cut, a shorter way up.
+
+**Developer buttons** (F1, "Campaign", while a campaign runs): send the Ash expedition ahead one step (twice puts the Deepstone on their altar), move Mira on to her next marker at once, kill or revive a companion. The game saves a checkpoint to the one slot the moment a duel ends; F5 and F9 work as usual outside a duel.
+
+**What is rough here.** Only the Earth crystal is written; the other three sites are placeholders. Companions, Mira and the keeper are block figures. The duel is played with the duel panel's buttons (or keys 1 to 4, Enter). Nobody has played this route by hand yet: it has been driven by scripts that tap the replies.
 
 ## What is rough
 

@@ -161,8 +161,10 @@ namespace World.Sim.Tests
             Assert.AreEqual("keeper_earth", keeper.OpponentActorId);
             Assert.AreEqual("glade/quarry_upper/safe", keeper.SafePoint.ToString(), "the safe point is the survey gallery");
             Assert.AreEqual("ash_cut/tally_vault/altar", d.Rival.Steps[0].Altar.ToString());
-            // The race tuning (sim-H1-cry-S1-tuned): the opening march is drawn per run in 2250 +- 600 (2:45 to 4:45), was 4800.
-            Assert.AreEqual(2250, d.Rival.Steps[0].MarchCost);
+            // The race tuning (sim-H1-cry-S1-tuned): the opening march was drawn per run in 2250 +- 600 (2:45 to 4:45), was 4800.
+            // Crystals I8: +450 ticks (45 s, the length of Mira's opening in play) because the march starts at tick 0 and the
+            // format has no field to start it when the party first sets out: 2700 +- 600 (3:30 to 5:30).
+            Assert.AreEqual(2700, d.Rival.Steps[0].MarchCost);
             Assert.AreEqual(600, d.Rival.Steps[0].MarchSpread);
             CollectionAssert.AreEqual(new[] { "earth" }, d.Rival.OpenWith, "the Partial pack's expedition always opens with the Deepstone");
         }

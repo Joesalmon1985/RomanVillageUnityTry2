@@ -178,17 +178,48 @@ namespace World.Game
             return sb.ToString();
         }
 
-        /// <summary>The journal without a sentence written twice on one tick (the runtime and the pack both record some deeds).</summary>
-        private static List<JournalEntry> Distinct(IReadOnlyList<JournalEntry> journal)
+        /// <summary>
+        /// The journal without a deed told twice: the runtime and the pack both record some deeds ("Mira took the
+        /// Deepstone from the Ash altar" and the pack's "Mira beat Dolm ... and took the Deepstone from the Ash altar"),
+        /// on the same tick or a few apart. Of two near-doubles within <see cref="NearTicks"/> the fuller sentence is kept.
+        /// </summary>
+        public static List<JournalEntry> Distinct(IReadOnlyList<JournalEntry> journal)
         {
             var list = new List<JournalEntry>();
+            var words = new List<HashSet<string>>();
             foreach (var j in journal)
             {
-                bool twice = false;
-                for (int k = list.Count - 1; k >= 0 && list[k].Tick == j.Tick; k--) if (list[k].Text == j.Text) { twice = true; break; }
-                if (!twice) list.Add(j);
+                var w = Words(j.Text);
+                int twin = -1;
+                for (int k = list.Count - 1; k >= 0 && j.Tick - list[k].Tick <= NearTicks; k--)
+                    if (list[k].Text == j.Text || NearDouble(words[k], w)) { twin = k; break; }
+                if (twin < 0) { list.Add(j); words.Add(w); }
+                else if ((j.Text ?? "").Length > (list[twin].Text ?? "").Length) { list[twin] = j; words[twin] = w; }
             }
             return list;
+        }
+
+        /// <summary>Two entries this close (ticks) may be one deed told twice.</summary>
+        public const int NearTicks = 30;
+
+        private static readonly HashSet<string> s_common = new HashSet<string> { "mira", "the", "and", "from", "with", "that", "this", "they", "their", "into", "were", "have" };
+
+        private static HashSet<string> Words(string text)
+        {
+            var set = new HashSet<string>();
+            foreach (var raw in (text ?? "").ToLowerInvariant().Split(' ', ',', '.', ':', ';', '!', '?'))
+                if (raw.Length >= 4 && !s_common.Contains(raw)) set.Add(raw);
+            return set;
+        }
+
+        /// <summary>Most of the shorter sentence's words are in the other one.</summary>
+        private static bool NearDouble(HashSet<string> a, HashSet<string> b)
+        {
+            var small = a.Count <= b.Count ? a : b; var big = small == a ? b : a;
+            if (small.Count < 3) return false;
+            int shared = 0;
+            foreach (var x in small) if (big.Contains(x)) shared++;
+            return shared * 10 >= small.Count * 8;
         }
 
         /// <summary>The line for the HUD: where Mira is, and the newest thing in the journal.</summary>

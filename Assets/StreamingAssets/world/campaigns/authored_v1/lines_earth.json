@@ -1,6 +1,6 @@
 {
   "Lines": [
-    { "Id": "mira_open_earth", "Speaker": "mira", "Topic": "opening", "Text": "{crystal.earth.name} lies under old workings. The foresters' marks point the way, if we can read them." },
+    { "Id": "mira_open_earth", "Speaker": "mira", "Topic": "opening", "Text": "Under old workings lies {crystal.earth.name}. The foresters' marks point the way, if we can read them." },
 
     { "Id": "mira_reason_sawyer", "Speaker": "mira", "Topic": "lead", "Text": "The sawyer knows the foresters' notches. He can read us the way." },
     { "Id": "mira_reason_posts", "Speaker": "mira", "Topic": "lead", "Text": "The foresters left posts where the home wood begins. Slow to read, but they don't forget." },
@@ -9,7 +9,7 @@
     { "Id": "mira_reason_root", "Speaker": "mira", "Topic": "lead", "Text": "The double cuts lead to the Root Chamber. With luck, we're first." },
     { "Id": "mira_reason_tally", "Speaker": "mira", "Topic": "lead", "Text": "The tally counts turnings. Follow it and we find where they went." },
     { "Id": "mira_reason_vault", "Speaker": "mira", "Topic": "lead", "Text": "{role.keeper_earth.name} waits below with what they took. We get it back there." },
-    { "Id": "mira_reason_tower_earth", "Speaker": "mira", "Topic": "lead", "Text": "{crystal.earth.name} belongs in {crystal.earth.tower}. Let's take it home." },
+    { "Id": "mira_reason_tower_earth", "Speaker": "mira", "Topic": "lead", "Text": "Its place is {crystal.earth.tower}. Let's take {crystal.earth.name} home." },
     { "Id": "mira_where_earth", "Speaker": "mira", "Topic": "earth", "Text": "Last we heard, {crystal.earth.name} was at {crystal.earth.place}." },
 
     { "Id": "odo_marks", "Speaker": "odo", "Topic": "earth", "Guards": [ "alive: odo" ], "Text": "Three short notches, again and again. Somebody wanted us at that glade." },
@@ -53,7 +53,7 @@
     { "Id": "garrick_holds", "Speaker": "garrick", "Topic": "volunteer", "Guards": [ "alive: garrick" ], "Text": "Go. I've had the practice." },
     { "Id": "mira_after_garrick", "Speaker": "mira", "Topic": "memorial", "Guards": [ "dead: garrick" ], "Text": "Garrick held the passage so we could run. He knew he would." },
     { "Id": "dolm_beaten", "Speaker": "keeper_earth", "Topic": "keeper_earth", "Guards": [ "fact: earth.recovered" ], "Text": "Count's finished. Take it. The bar's off the door, too." },
-    { "Id": "mira_recovered", "Speaker": "mira", "Topic": "earth", "Guards": [ "fact: earth.recovered" ], "Text": "{crystal.earth.name} is ours again. And that door is the Ash cut: a shorter way up." },
+    { "Id": "mira_recovered", "Speaker": "mira", "Topic": "earth", "Guards": [ "fact: earth.recovered" ], "Text": "We have {crystal.earth.name} again. And that door is the Ash cut: a shorter way up." },
     { "Id": "journal_earth_recovered", "Speaker": "", "Topic": "journal", "Guards": [ "fact: earth.recovered" ], "Text": "Mira beat Dolm in the Tally Vault and took {crystal.earth.name} from the Ash altar." },
 
     { "Id": "mira_set_1", "Speaker": "mira", "Topic": "restore", "Text": "Stone to stone. Hold still, all of you." },

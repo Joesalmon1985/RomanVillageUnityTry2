@@ -181,7 +181,9 @@ namespace World.Sim.Tests
                 Check(promptRestores.Count > 0 && promptRestores.All(x => x >= 3000 && x <= 4200), "Followed promptly and not stolen, the Earth route takes 5 to 7 minutes from the opening to the restoration: " + T(promptRestores.Min()) + " to " + T(promptRestores.Max()) + ".");
                 Check(theftRestored >= 3600 && theftRestored <= 6600, "Followed promptly with the theft trail and the duel (the \"Ash got there first\" start, seed " + RaceSeeds[0] + ", duel won), it takes 6 to 11 minutes of game time: Dolm's threshold and the duel at " + T(theftDuel) + ", restored at " + T(theftRestored) + ". Game time does not run during the duel; with a duel of one to two minutes of play the player's own time is about 8 to 9 minutes.");
                 int midStolen = mid.Count(x => x.Earth == "stolen");
-                Check(midStolen >= 3 && midStolen <= 8, "The 45 s player's race is close to even: stolen on " + midStolen + " of 11 (3 to 8 asserted).");
+                // Crystals I8: the authored opening march is 45 s longer (the opening the game plays before the party sets
+                // out, which the proof's players do not sit through), so the 45 s player is a little ahead; 2 to 8 asserted.
+                Check(midStolen >= 2 && midStolen <= 8, "The 45 s player's race is contested: stolen on " + midStolen + " of 11 (2 to 8 asserted; 3 to 8 before the 45 s opening delay of I8).");
                 Check(slow.Count(x => x.Earth == "stolen") >= 9, "The 90 s player loses it on most seeds: stolen on " + slow.Count(x => x.Earth == "stolen") + " of 11.");
                 Check(prince.Count(x => x.Earth == "stolen") >= 9, "The player who stays with the prince finds it taken: stolen on " + prince.Count(x => x.Earth == "stolen") + " of 11.");
                 Check(rows.All(x => x.Earth != "first" || x.Duels == 0), "Arriving first means no lethal duel for that crystal: every first arrival had no duel; every lethal duel above was fought for a stolen Deepstone.");

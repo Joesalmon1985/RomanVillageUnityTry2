@@ -181,6 +181,7 @@ namespace World.Game
             UpdateParty(encounter); // positions come from state, so a paused clock only stops them where they are
             if (encounter) return;
             UpdateCompany();
+            UpdateMemorial();
             UpdateTalk();
             UpdateCues();
         }

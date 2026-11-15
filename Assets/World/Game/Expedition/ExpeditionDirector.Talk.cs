@@ -692,9 +692,9 @@ namespace World.Game
             _preResolveSpace = MiraSpace;
             DuelsStarted++;
             Mira.Actor?.PlayOneShot(ActorKeys.Cast);
-            // The duel is package I7's: CampaignDuel stages Mira as the caster and sends the one ResolveEncounter.
-            if (!CampaignDuel.Start(ec) && CampaignDuel.AutoStage)
-                Debug.LogWarning("[Expedition] the campaign duel for attempt " + ec.AttemptId + " was not staged (its driver retries)");
+            // The duel is package I7's: its driver stages every EncounterCommitted on the tick (CampaignDuel.Start) and
+            // sends the one ResolveEncounter. Not called again from here: this event is read a frame later, when a duel
+            // left in the meantime must not be staged again with the old seed.
         }
 
         private void OnResolved(EncounterResolved er)
@@ -744,7 +744,20 @@ namespace World.Game
         private void OnRetreatEnded(RetreatScene sc)
         {
             if (C.Party.PlayerPresent) Interiors.Enter(C.Party.At);
-            // Mira's word for the fallen (the pack's "memorial" topic, lines without a custody guard).
+            // Mira's word for the fallen, once the player stands with the party again (the way to the safe point takes a moment).
+            _memorialDue = true; _memorialBy = Time.unscaledTime + 6f;
+        }
+
+        private bool _memorialDue;
+        private float _memorialBy;
+
+        private void UpdateMemorial()
+        {
+            if (!_memorialDue) return;
+            bool here = PlayerSpace == MiraSpace && (Interiors.Current == null || !InteriorDirector.Instance || !InteriorDirector.Instance.IsCrossing);
+            if (!here && Time.unscaledTime < _memorialBy) return;
+            _memorialDue = false;
+            // The pack's "memorial" topic, lines without a custody guard.
             foreach (var l in D.Lines)
             {
                 if (l.Speaker != "mira" || l.Topic != "memorial" || _saidIds.Contains(l.Id)) continue;
