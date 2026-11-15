@@ -1,0 +1,485 @@
+{
+ "characters": {
+  "brute": {
+   "display": "Shadow Brute",
+   "eye_shape": null,
+   "gaze_method": null,
+   "height_m": 2.0306,
+   "height_with_props_m": 2.0306,
+   "island_map": "cast/islands/brute.json",
+   "leg_family": "n/a",
+   "number": 16,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Head",
+    "Legs"
+   ],
+   "prop": null,
+   "rig": "demon",
+   "slice": 2,
+   "source_fbx": "16_Shadow_Brute.fbx",
+   "tris": 1320
+  },
+  "carpenter": {
+   "display": "Carpenter",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.6591,
+   "height_with_props_m": 1.6591,
+   "island_map": "cast/islands/carpenter.json",
+   "leg_family": "trousers",
+   "number": 6,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Head",
+    "Legs",
+    "Prop"
+   ],
+   "prop": {
+    "bone": "Hand.L",
+    "grip_point": [
+     0.3641,
+     -0.0372,
+     0.8975
+    ],
+    "hand": "L",
+    "head_point": [
+     0.3675,
+     -0.0372,
+     0.6868
+    ]
+   },
+   "rig": "humanoid",
+   "slice": 2,
+   "source_fbx": "06_Carpenter.fbx",
+   "tris": 2316
+  },
+  "carrier": {
+   "display": "Timber Carrier",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.9106,
+   "height_with_props_m": 1.9106,
+   "island_map": "cast/islands/carrier.json",
+   "leg_family": "trousers",
+   "number": 13,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Head",
+    "Legs",
+    "Prop"
+   ],
+   "prop": {
+    "bone": "Hand.L",
+    "grip_point": [
+     0.4056,
+     -0.0157,
+     0.9839
+    ],
+    "hand": "L",
+    "head_point": [
+     0.4056,
+     -0.0177,
+     0.7082
+    ]
+   },
+   "rig": "humanoid",
+   "slice": 2,
+   "source_fbx": "13_Timber_Carrier.fbx",
+   "tris": 2552
+  },
+  "champion": {
+   "display": "Road Hero (Ash champion)",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.8876,
+   "height_with_props_m": 1.8876,
+   "island_map": "cast/islands/champion.json",
+   "leg_family": "trousers",
+   "number": 14,
+   "optional_chains": {
+    "cape": true,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Cloth",
+    "Head",
+    "Legs",
+    "Prop"
+   ],
+   "prop": {
+    "bone": "Hand.R",
+    "grip_point": [
+     -0.4108,
+     -0.0341,
+     1.0036
+    ],
+    "hand": "R",
+    "head_point": [
+     -0.4108,
+     -0.0326,
+     0.234
+    ]
+   },
+   "rig": "humanoid",
+   "slice": 1,
+   "source_fbx": "14_Road_Hero.fbx",
+   "tris": 2684
+  },
+  "dancer_ash": {
+   "display": "Dancer Ash",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.6517,
+   "height_with_props_m": 1.6517,
+   "island_map": "cast/islands/dancer_ash.json",
+   "leg_family": "dress",
+   "number": 10,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": true
+   },
+   "parts": [
+    "Body",
+    "Cloth",
+    "Head",
+    "Legs"
+   ],
+   "prop": null,
+   "rig": "humanoid",
+   "slice": 2,
+   "source_fbx": "10_Dancer_Ash.fbx",
+   "tris": 2356
+  },
+  "dancer_moss": {
+   "display": "Dancer Moss",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.7637,
+   "height_with_props_m": 1.7637,
+   "island_map": "cast/islands/dancer_moss.json",
+   "leg_family": "trousers",
+   "number": 11,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Cloth",
+    "Head",
+    "Legs"
+   ],
+   "prop": null,
+   "rig": "humanoid",
+   "slice": 2,
+   "source_fbx": "11_Dancer_Moss.fbx",
+   "tris": 2104
+  },
+  "dancer_ochre": {
+   "display": "Dancer Ochre",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.8004,
+   "height_with_props_m": 1.8004,
+   "island_map": "cast/islands/dancer_ochre.json",
+   "leg_family": "trousers",
+   "number": 9,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Cloth",
+    "Head",
+    "Legs"
+   ],
+   "prop": null,
+   "rig": "humanoid",
+   "slice": 2,
+   "source_fbx": "09_Dancer_Ochre.fbx",
+   "tris": 2324
+  },
+  "dancer_plum": {
+   "display": "Dancer Plum",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.7061,
+   "height_with_props_m": 1.7061,
+   "island_map": "cast/islands/dancer_plum.json",
+   "leg_family": "dress",
+   "number": 12,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": true
+   },
+   "parts": [
+    "Body",
+    "Cloth",
+    "Head",
+    "Legs"
+   ],
+   "prop": null,
+   "rig": "humanoid",
+   "slice": 2,
+   "source_fbx": "12_Dancer_Plum.fbx",
+   "tris": 2524
+  },
+  "hesta": {
+   "display": "Hesta",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.688,
+   "height_with_props_m": 1.688,
+   "island_map": "cast/islands/hesta.json",
+   "leg_family": "dress",
+   "number": 7,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": true
+   },
+   "parts": [
+    "Body",
+    "Cloth",
+    "Head",
+    "Legs"
+   ],
+   "prop": null,
+   "rig": "humanoid",
+   "slice": 2,
+   "source_fbx": "07_Hesta_Market_Keeper.fbx",
+   "tris": 2468
+  },
+  "juno": {
+   "display": "Juno",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.7269,
+   "height_with_props_m": 1.7269,
+   "island_map": "cast/islands/juno.json",
+   "leg_family": "trousers",
+   "number": 3,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Head",
+    "Legs"
+   ],
+   "prop": null,
+   "rig": "humanoid",
+   "slice": 1,
+   "source_fbx": "03_Juno.fbx",
+   "tris": 2180
+  },
+  "merchant": {
+   "display": "Village Merchant",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.8004,
+   "height_with_props_m": 1.8004,
+   "island_map": "cast/islands/merchant.json",
+   "leg_family": "trousers",
+   "number": 8,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Head",
+    "Legs"
+   ],
+   "prop": null,
+   "rig": "humanoid",
+   "slice": 2,
+   "source_fbx": "08_Village_Merchant.fbx",
+   "tris": 2424
+  },
+  "mira": {
+   "display": "Mira",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.87,
+   "height_with_props_m": 1.967,
+   "island_map": "cast/islands/mira.json",
+   "leg_family": "dress",
+   "number": 2,
+   "optional_chains": {
+    "cape": true,
+    "hood": true,
+    "skirt": true
+   },
+   "parts": [
+    "Body",
+    "Cloth",
+    "Head",
+    "Legs",
+    "Prop"
+   ],
+   "prop": {
+    "bone": "Hand.L",
+    "grip_point": [
+     0.432,
+     -0.04,
+     0.965
+    ],
+    "hand": "L",
+    "head_point": [
+     0.432,
+     -0.04,
+     1.855
+    ]
+   },
+   "rig": "humanoid",
+   "slice": 1,
+   "source_fbx": "02_Mira.fbx",
+   "tris": 2696
+  },
+  "prince": {
+   "display": "Prince",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.8371,
+   "height_with_props_m": 1.8371,
+   "island_map": "cast/islands/prince.json",
+   "leg_family": "trousers",
+   "number": 1,
+   "optional_chains": {
+    "cape": true,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Cloth",
+    "Head",
+    "Legs"
+   ],
+   "prop": null,
+   "rig": "humanoid",
+   "slice": 1,
+   "source_fbx": "01_Prince.fbx",
+   "tris": 2520
+  },
+  "sol": {
+   "display": "DJ Sol",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.8555,
+   "height_with_props_m": 1.8555,
+   "island_map": "cast/islands/sol.json",
+   "leg_family": "trousers",
+   "number": 4,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Cloth",
+    "Head",
+    "Legs"
+   ],
+   "prop": null,
+   "rig": "humanoid",
+   "slice": 2,
+   "source_fbx": "04_DJ_Sol.fbx",
+   "tris": 2768
+  },
+  "stalker": {
+   "display": "Shadow Stalker",
+   "eye_shape": null,
+   "gaze_method": null,
+   "height_m": 1.5239,
+   "height_with_props_m": 1.5239,
+   "island_map": "cast/islands/stalker.json",
+   "leg_family": "n/a",
+   "number": 15,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Head",
+    "Legs"
+   ],
+   "prop": null,
+   "rig": "demon",
+   "slice": 2,
+   "source_fbx": "15_Shadow_Stalker.fbx",
+   "tris": 1260
+  },
+  "woodcutter": {
+   "display": "Woodcutter",
+   "eye_shape": "disc",
+   "gaze_method": "bone",
+   "height_m": 1.9106,
+   "height_with_props_m": 1.9106,
+   "island_map": "cast/islands/woodcutter.json",
+   "leg_family": "trousers",
+   "number": 5,
+   "optional_chains": {
+    "cape": false,
+    "hood": false,
+    "skirt": false
+   },
+   "parts": [
+    "Body",
+    "Head",
+    "Legs",
+    "Prop"
+   ],
+   "prop": {
+    "bone": "Hand.R",
+    "grip_point": [
+     -0.423,
+     -0.0416,
+     1.0056
+    ],
+    "hand": "R",
+    "head_point": [
+     -0.4538,
+     -0.0416,
+     0.764
+    ]
+   },
+   "rig": "humanoid",
+   "slice": 2,
+   "source_fbx": "05_Woodcutter.fbx",
+   "tris": 2472
+  }
+ },
+ "contract_version": 1,
+ "schema": 1
+}

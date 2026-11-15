@@ -1,0 +1,41 @@
+{
+ "key": "prince",
+ "schema": "cast/1",
+ "face": {
+  "identity": "The prince. Leader, stern neutral face, clean-shaven, short dark tousled hair. Squared, slightly long jaw; straight level brows of medium weight set a little low; even, slightly narrowed eyes; straight longer nose; firm thin mouth.",
+  "differentiation": {
+   "face_width": 1.0,
+   "cheek_width": 1.02,
+   "jaw_width": 1.1,
+   "chin_drop_m": 0.006,
+   "chin_forward_m": 0.003,
+   "brow_ridge_m": 0.002,
+   "brow_thickness": 1.15,
+   "brow_length": 1.05,
+   "brow_angle_deg": 2.0,
+   "brow_height_m": -0.001,
+   "brow_forward_m": 0.001,
+   "eye_size": 1.0,
+   "eye_height": 0.9,
+   "eye_spacing_m": 0.0,
+   "nose_size": 1.0,
+   "nose_length": 1.1,
+   "nose_width": 0.95,
+   "mouth_width": 1.0,
+   "mouth_thickness": 0.85,
+   "hairline_m": 0.0
+  },
+  "tuning": {
+   "gain": {"blink": 1.0, "brow": 1.0, "mouth": 1.0, "jaw": 1.0}
+  },
+  "expressions": {
+   "neutral": {"keys": {}, "jaw_deg": 0.0, "gaze": "target", "blink_rate": 1.0},
+   "attentive": {"keys": {"BrowRaise.L": 0.7, "BrowRaise.R": 0.7, "BrowWorry": 0.15, "MouthSmile": 0.3}, "jaw_deg": 0.0, "gaze": "target", "blink_rate": 0.8},
+   "concentrating": {"keys": {"BrowFurrow": 0.85, "Blink.L": 0.4, "Blink.R": 0.4, "MouthFrown": 0.1}, "jaw_deg": 0.0, "gaze": "target", "blink_rate": 0.5},
+   "surprised": {"keys": {"BrowRaise.L": 1.0, "BrowRaise.R": 1.0, "BrowWorry": 0.25, "MouthRound": 0.6, "MouthOpen": 0.75}, "jaw_deg": 3.0, "gaze": "target", "blink_rate": 0.2},
+   "pleased": {"keys": {"MouthSmile": 0.9, "BrowRaise.L": 0.25, "BrowRaise.R": 0.25, "Blink.L": 0.15, "Blink.R": 0.15}, "jaw_deg": 0.0, "gaze": "target", "blink_rate": 1.0},
+   "pained": {"keys": {"BrowWorry": 0.9, "BrowFurrow": 0.3, "Blink.L": 0.45, "Blink.R": 0.45, "MouthFrown": 0.6, "MouthOpen": 0.25}, "jaw_deg": 1.5, "gaze": "down", "blink_rate": 1.4},
+   "determined": {"keys": {"BrowFurrow": 0.5, "MouthFrown": 0.6}, "jaw_deg": 0.0, "gaze": "target", "blink_rate": 0.6}
+  }
+ }
+}

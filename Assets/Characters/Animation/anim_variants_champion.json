@@ -1,0 +1,892 @@
+{
+ "clips": [
+  {
+   "additive": false,
+   "base": "Idle_A",
+   "events": [],
+   "fps": 30,
+   "frames": 194,
+   "length_s": 6.4667,
+   "loop": true,
+   "name": "Idle_A@champion",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Idle_B",
+   "events": [],
+   "fps": 30,
+   "frames": 147,
+   "length_s": 4.9,
+   "loop": true,
+   "name": "Idle_B@champion",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Idle_Look",
+   "events": [],
+   "fps": 30,
+   "frames": 162,
+   "length_s": 5.4,
+   "loop": true,
+   "name": "Idle_Look@champion",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Idle_Staff",
+   "events": [],
+   "fps": 30,
+   "frames": 194,
+   "length_s": 6.4667,
+   "loop": true,
+   "name": "Idle_Staff@champion",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Walk",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 16,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 32,
+   "length_s": 1.0667,
+   "loop": true,
+   "name": "Walk@champion",
+   "native_speed_mps": 1.4,
+   "set": "locomotion",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "WalkBrisk",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 11,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 22,
+   "length_s": 0.7333,
+   "loop": true,
+   "name": "WalkBrisk@champion",
+   "native_speed_mps": 2.2,
+   "set": "locomotion",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Jog",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 8,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 17,
+   "length_s": 0.5667,
+   "loop": true,
+   "name": "Jog@champion",
+   "native_speed_mps": 3.6,
+   "set": "locomotion",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Run",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 8,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 15,
+   "length_s": 0.5,
+   "loop": true,
+   "name": "Run@champion",
+   "native_speed_mps": 7.0,
+   "set": "locomotion",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "StartL",
+   "events": [
+    {
+     "frame": 15,
+     "name": "FootL"
+    }
+   ],
+   "exit_phase": 0.12,
+   "fps": 30,
+   "frames": 19,
+   "gait": "Walk",
+   "length_s": 0.6333,
+   "loop": false,
+   "name": "StartL@champion",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0035,
+     0.0135,
+     0.0297,
+     0.0513,
+     0.078,
+     0.1092,
+     0.1443,
+     0.1829,
+     0.2244,
+     0.2682,
+     0.314,
+     0.3611,
+     0.409,
+     0.4572,
+     0.5052,
+     0.5524
+    ]
+   },
+   "set": "locomotion",
+   "style": "champion",
+   "travel_m": 0.5524
+  },
+  {
+   "additive": false,
+   "base": "StartR",
+   "events": [
+    {
+     "frame": 15,
+     "name": "FootR"
+    }
+   ],
+   "exit_phase": 0.62,
+   "fps": 30,
+   "frames": 19,
+   "gait": "Walk",
+   "length_s": 0.6333,
+   "loop": false,
+   "name": "StartR@champion",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0035,
+     0.0135,
+     0.0297,
+     0.0513,
+     0.078,
+     0.1092,
+     0.1443,
+     0.1829,
+     0.2244,
+     0.2682,
+     0.314,
+     0.3611,
+     0.409,
+     0.4572,
+     0.5052,
+     0.5524
+    ]
+   },
+   "set": "locomotion",
+   "style": "champion",
+   "travel_m": 0.5524
+  },
+  {
+   "additive": false,
+   "base": "StopL",
+   "enter_phase": 0.0,
+   "events": [
+    {
+     "frame": 12,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 22,
+   "gait": "Walk",
+   "length_s": 0.7333,
+   "loop": false,
+   "name": "StopL@champion",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0461,
+     0.0906,
+     0.1333,
+     0.1738,
+     0.2116,
+     0.2464,
+     0.2778,
+     0.3054,
+     0.3289,
+     0.3478,
+     0.3618,
+     0.3705,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735
+    ]
+   },
+   "set": "locomotion",
+   "style": "champion",
+   "travel_m": 0.3735
+  },
+  {
+   "additive": false,
+   "base": "StopR",
+   "enter_phase": 0.5,
+   "events": [
+    {
+     "frame": 12,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 22,
+   "gait": "Walk",
+   "length_s": 0.7333,
+   "loop": false,
+   "name": "StopR@champion",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0461,
+     0.0906,
+     0.1333,
+     0.1738,
+     0.2116,
+     0.2464,
+     0.2778,
+     0.3054,
+     0.3289,
+     0.3478,
+     0.3618,
+     0.3705,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735,
+     0.3735
+    ]
+   },
+   "set": "locomotion",
+   "style": "champion",
+   "travel_m": 0.3735
+  },
+  {
+   "additive": false,
+   "base": "Turn60L",
+   "events": [
+    {
+     "frame": 9,
+     "name": "FootL"
+    },
+    {
+     "frame": 15,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 18,
+   "length_s": 0.6,
+   "loop": false,
+   "name": "Turn60L@champion",
+   "native_speed_mps": 0.0,
+   "root_curve": {
+    "yaw_deg": [
+     0.0,
+     0.0,
+     0.0,
+     0.305,
+     2.13,
+     6.211,
+     12.593,
+     20.797,
+     30.0,
+     39.203,
+     47.407,
+     53.789,
+     57.87,
+     59.695,
+     60.0,
+     60.0,
+     60.0,
+     60.0,
+     60.0
+    ]
+   },
+   "set": "locomotion",
+   "style": "champion",
+   "turn_deg": 60.0,
+   "turn_frames": [
+    2,
+    14
+   ]
+  },
+  {
+   "additive": false,
+   "base": "Turn60R",
+   "events": [
+    {
+     "frame": 9,
+     "name": "FootR"
+    },
+    {
+     "frame": 15,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 18,
+   "length_s": 0.6,
+   "loop": false,
+   "name": "Turn60R@champion",
+   "native_speed_mps": 0.0,
+   "root_curve": {
+    "yaw_deg": [
+     0.0,
+     0.0,
+     0.0,
+     -0.305,
+     -2.13,
+     -6.211,
+     -12.593,
+     -20.797,
+     -30.0,
+     -39.203,
+     -47.407,
+     -53.789,
+     -57.87,
+     -59.695,
+     -60.0,
+     -60.0,
+     -60.0,
+     -60.0,
+     -60.0
+    ]
+   },
+   "set": "locomotion",
+   "style": "champion",
+   "turn_deg": -60.0,
+   "turn_frames": [
+    2,
+    14
+   ]
+  },
+  {
+   "additive": true,
+   "base": "TurnSmallL",
+   "events": [],
+   "fps": 30,
+   "frames": 13,
+   "length_s": 0.4333,
+   "loop": false,
+   "name": "TurnSmallL@champion",
+   "native_speed_mps": 0.0,
+   "set": "locomotion",
+   "style": "champion"
+  },
+  {
+   "additive": true,
+   "base": "TurnSmallR",
+   "events": [],
+   "fps": 30,
+   "frames": 13,
+   "length_s": 0.4333,
+   "loop": false,
+   "name": "TurnSmallR@champion",
+   "native_speed_mps": 0.0,
+   "set": "locomotion",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Greet",
+   "events": [],
+   "fps": 30,
+   "frames": 65,
+   "length_s": 2.1667,
+   "loop": false,
+   "name": "Greet@champion",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "champion"
+  },
+  {
+   "additive": true,
+   "base": "Nod",
+   "events": [],
+   "fps": 30,
+   "frames": 26,
+   "length_s": 0.8667,
+   "loop": false,
+   "name": "Nod@champion",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "champion"
+  },
+  {
+   "additive": true,
+   "base": "ShakeHead",
+   "events": [],
+   "fps": 30,
+   "frames": 28,
+   "length_s": 0.9333,
+   "loop": false,
+   "name": "ShakeHead@champion",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Talk_A",
+   "events": [],
+   "fps": 30,
+   "frames": 104,
+   "length_s": 3.4667,
+   "loop": true,
+   "name": "Talk_A@champion",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Talk_B",
+   "events": [],
+   "fps": 30,
+   "frames": 117,
+   "length_s": 3.9,
+   "loop": true,
+   "name": "Talk_B@champion",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Talk_Emphasis",
+   "events": [],
+   "fps": 30,
+   "frames": 90,
+   "length_s": 3.0,
+   "loop": true,
+   "name": "Talk_Emphasis@champion",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Listen",
+   "events": [],
+   "fps": 30,
+   "frames": 130,
+   "length_s": 4.3333,
+   "loop": true,
+   "name": "Listen@champion",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "CastAnticipate",
+   "events": [],
+   "fps": 30,
+   "frames": 7,
+   "length_s": 0.2333,
+   "loop": false,
+   "name": "CastAnticipate@champion",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "CastRelease",
+   "events": [
+    {
+     "frame": 3,
+     "name": "FootL"
+    },
+    {
+     "frame": 3,
+     "name": "Release"
+    }
+   ],
+   "fps": 30,
+   "frames": 8,
+   "length_s": 0.2667,
+   "loop": false,
+   "name": "CastRelease@champion",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "CastRecover",
+   "events": [
+    {
+     "frame": 7,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 11,
+   "length_s": 0.3667,
+   "loop": false,
+   "name": "CastRecover@champion",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "CastWeave_Loop",
+   "events": [],
+   "fps": 30,
+   "frames": 60,
+   "length_s": 2.0,
+   "loop": true,
+   "name": "CastWeave_Loop@champion",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Block",
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    }
+   ],
+   "fps": 30,
+   "frames": 15,
+   "length_s": 0.5,
+   "loop": false,
+   "name": "Block@champion",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "RecoilLight",
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    }
+   ],
+   "fps": 30,
+   "frames": 19,
+   "length_s": 0.6333,
+   "loop": false,
+   "name": "RecoilLight@champion",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "RecoilHeavy",
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    },
+    {
+     "frame": 7,
+     "name": "FootR"
+    },
+    {
+     "frame": 18,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 28,
+   "length_s": 0.9333,
+   "loop": false,
+   "name": "RecoilHeavy@champion",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "WardBreak",
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    },
+    {
+     "frame": 6,
+     "name": "FootR"
+    },
+    {
+     "frame": 13,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 44,
+   "hold_frames": [
+    34,
+    44
+   ],
+   "length_s": 1.4667,
+   "loop": false,
+   "name": "WardBreak@champion",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Victory",
+   "events": [],
+   "fps": 30,
+   "frames": 78,
+   "hold_frames": [
+    62,
+    78
+   ],
+   "length_s": 2.6,
+   "loop": false,
+   "name": "Victory@champion",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Defeat",
+   "events": [],
+   "fps": 30,
+   "frames": 75,
+   "hold_frames": [
+    52,
+    75
+   ],
+   "length_s": 2.5,
+   "loop": false,
+   "name": "Defeat@champion",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Surprise",
+   "events": [],
+   "fps": 30,
+   "frames": 26,
+   "length_s": 0.8667,
+   "loop": false,
+   "name": "Surprise@champion",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "KneelTake",
+   "events": [
+    {
+     "frame": 22,
+     "name": "FootR"
+    },
+    {
+     "frame": 33,
+     "name": "PropHit"
+    },
+    {
+     "frame": 66,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 104,
+   "hold_frames": [
+    93,
+    104
+   ],
+   "length_s": 3.4667,
+   "loop": false,
+   "name": "KneelTake@champion",
+   "native_speed_mps": 0.0,
+   "set": "campaign",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Cover",
+   "events": [
+    {
+     "frame": 12,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 52,
+   "hold_frames": [
+    22,
+    52
+   ],
+   "length_s": 1.7333,
+   "loop": false,
+   "name": "Cover@champion",
+   "native_speed_mps": 0.0,
+   "set": "campaign",
+   "style": "champion"
+  },
+  {
+   "additive": false,
+   "base": "Point",
+   "events": [],
+   "fps": 30,
+   "frames": 65,
+   "hold_frames": [
+    19,
+    45
+   ],
+   "length_s": 2.1667,
+   "loop": false,
+   "name": "Point@champion",
+   "native_speed_mps": 0.0,
+   "set": "campaign",
+   "style": "champion"
+  }
+ ],
+ "costume": "prehistoric",
+ "files": {
+  "campaign": {
+   "actions": [
+    "Cover@champion",
+    "KneelTake@champion",
+    "Point@champion"
+   ],
+   "bytes": 1154012,
+   "fbx": "anim_campaign@champion.fbx"
+  },
+  "duel": {
+   "actions": [
+    "Block@champion",
+    "CastAnticipate@champion",
+    "CastRecover@champion",
+    "CastRelease@champion",
+    "CastWeave_Loop@champion",
+    "Defeat@champion",
+    "RecoilHeavy@champion",
+    "RecoilLight@champion",
+    "Surprise@champion",
+    "Victory@champion",
+    "WardBreak@champion"
+   ],
+   "bytes": 3073964,
+   "fbx": "anim_duel@champion.fbx"
+  },
+  "idle": {
+   "actions": [
+    "Idle_A@champion",
+    "Idle_B@champion",
+    "Idle_Look@champion",
+    "Idle_Staff@champion"
+   ],
+   "bytes": 2428028,
+   "fbx": "anim_idle@champion.fbx"
+  },
+  "locomotion": {
+   "actions": [
+    "Jog@champion",
+    "Run@champion",
+    "StartL@champion",
+    "StartR@champion",
+    "StopL@champion",
+    "StopR@champion",
+    "Turn60L@champion",
+    "Turn60R@champion",
+    "TurnSmallL@champion",
+    "TurnSmallR@champion",
+    "Walk@champion",
+    "WalkBrisk@champion"
+   ],
+   "bytes": 2939628,
+   "fbx": "anim_locomotion@champion.fbx"
+  },
+  "social": {
+   "actions": [
+    "Greet@champion",
+    "Listen@champion",
+    "Nod@champion",
+    "ShakeHead@champion",
+    "Talk_A@champion",
+    "Talk_B@champion",
+    "Talk_Emphasis@champion"
+   ],
+   "bytes": 2742348,
+   "fbx": "anim_social@champion.fbx"
+  }
+ },
+ "key": "champion"
+}

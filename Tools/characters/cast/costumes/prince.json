@@ -1,0 +1,429 @@
+{
+ "schema": 1,
+ "key": "prince",
+ "identity_colour": "682937",
+ "variants": {
+  "historic": {
+   "description": "Supplied look: tan tunic, maroon cape and trim, dark trousers and boots."
+  },
+  "prehistoric": {
+   "description": "Tan hide tunic with a short rough kilt, maroon-dyed fur mantle over the left shoulder, hide sash, bare arms and legs, fur-cuffed boots, bone-and-leather circlet with a feather, flint knife on the right hip.",
+   "palette": {
+    "hair": "2E2427",
+    "cloth_main": "B08D62",
+    "cloth_trim": "6A2640",
+    "leather": "6B4A30",
+    "metal": "E6DBC0"
+   },
+   "slot_overrides": {
+    "role:shoulder_cap": "skin",
+    "role:upper_arm_piece": "skin",
+    "role:thigh": "skin",
+    "hex:4C4548": "skin"
+   },
+   "hidden": [
+    "part:Cloth"
+   ],
+   "overlays": [
+    {
+     "name": "Mantle",
+     "type": "shell",
+     "slot": "cloth_trim",
+     "parts": [
+      {
+       "type": "shell",
+       "sides": 14,
+       "arc": [
+        -15,
+        215
+       ],
+       "teeth": 7,
+       "tooth_depth": 0.045,
+       "jitter": 0.008,
+       "boxy": 3.0,
+       "rings": [
+        {
+         "z": 1.515,
+         "cx": 0.0,
+         "cy": -0.01,
+         "rx": 0.125,
+         "ry": 0.115
+        },
+        {
+         "z": 1.49,
+         "cx": 0.03,
+         "cy": 0.0,
+         "rx": 0.25,
+         "ry": 0.17
+        },
+        {
+         "z": 1.4,
+         "cx": 0.05,
+         "cy": 0.0,
+         "rx": 0.325,
+         "ry": 0.2
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Chest",
+         "Shoulder.L",
+         "UpperArm.L"
+        ],
+        "falloff": 2.5
+       }
+      },
+      {
+       "type": "shell",
+       "sides": 14,
+       "arc": [
+        -15,
+        215
+       ],
+       "teeth": 7,
+       "tooth_depth": 0.055,
+       "jitter": 0.008,
+       "boxy": 3.0,
+       "rings": [
+        {
+         "z": 1.43,
+         "cx": 0.05,
+         "cy": 0.0,
+         "rx": 0.305,
+         "ry": 0.19
+        },
+        {
+         "z": 1.3,
+         "cx": 0.07,
+         "cy": 0.0,
+         "rx": 0.375,
+         "ry": 0.215,
+         "z_sin": -0.04
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Chest",
+         "Shoulder.L",
+         "UpperArm.L"
+        ],
+        "falloff": 2.5
+       }
+      },
+      {
+       "type": "shell",
+       "sides": 14,
+       "arc": [
+        -15,
+        215
+       ],
+       "teeth": 7,
+       "tooth_depth": 0.065,
+       "jitter": 0.008,
+       "boxy": 3.0,
+       "rings": [
+        {
+         "z": 1.335,
+         "cx": 0.07,
+         "cy": 0.0,
+         "rx": 0.36,
+         "ry": 0.205
+        },
+        {
+         "z": 1.16,
+         "cx": 0.085,
+         "cy": 0.0,
+         "rx": 0.41,
+         "ry": 0.225,
+         "z_sin": -0.1
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Chest",
+         "Shoulder.L",
+         "UpperArm.L"
+        ],
+        "falloff": 2.5
+       }
+      },
+      {
+       "type": "shell",
+       "sides": 12,
+       "teeth": 6,
+       "tooth_depth": 0.04,
+       "jitter": 0.005,
+       "boxy": 2.2,
+       "rings": [
+        {
+         "z": 1.53,
+         "cx": 0.0,
+         "cy": -0.01,
+         "rx": 0.095,
+         "ry": 0.095
+        },
+        {
+         "z": 1.47,
+         "cx": 0.0,
+         "cy": -0.01,
+         "rx": 0.15,
+         "ry": 0.14
+        }
+       ],
+       "weights": {
+        "bones": [
+         "Chest",
+         "Neck"
+        ],
+        "falloff": 2.0
+       }
+      }
+     ],
+     "stray_m": 0.55
+    },
+    {
+     "name": "Sash",
+     "type": "sash",
+     "slot": "leather",
+     "fit": [
+      "role:torso",
+      "role:torso_detail"
+     ],
+     "margin": 0.022,
+     "width": 0.055,
+     "steps": 6,
+     "from": {
+      "theta": 45,
+      "z": "shoulder_z+0.03"
+     },
+     "to": {
+      "theta": -70,
+      "z": "hip_z+0.04"
+     },
+     "weights": {
+      "bones": [
+       "Chest",
+       "Spine",
+       "Hips"
+      ],
+      "falloff": 3.0
+     }
+    },
+    {
+     "name": "Kilt",
+     "type": "shell",
+     "slot": "leather",
+     "sides": 16,
+     "teeth": 8,
+     "tooth_depth": 0.055,
+     "jitter": 0.006,
+     "rings": [
+      {
+       "z": "hip_z+0.02",
+       "fit": [
+        "role:torso"
+       ],
+       "margin": 0.045
+      },
+      {
+       "z": "hip_z-0.10",
+       "fit": [
+        "role:thigh"
+       ],
+       "margin": 0.07,
+       "min_rx": 0.235
+      },
+      {
+       "z": "knee_z+0.14",
+       "fit": [
+        "role:thigh"
+       ],
+       "margin": 0.085,
+       "min_ry": 0.14
+      }
+     ],
+     "weights": {
+      "bones": [
+       "Hips",
+       "Spine",
+       "UpperLeg.L",
+       "UpperLeg.R"
+      ],
+      "falloff": 3.0
+     }
+    },
+    {
+     "name": "Boots",
+     "type": "band",
+     "bone": "LowerLeg.L",
+     "slot": "cloth_trim",
+     "sides": 10,
+     "teeth": 5,
+     "tooth_depth": 0.022,
+     "teeth_at": "first",
+     "rings": [
+      {
+       "t": 0.46,
+       "r": 0.14
+      },
+      {
+       "t": 0.56,
+       "r": 0.128
+      },
+      {
+       "t": 0.66,
+       "r": 0.122
+      }
+     ],
+     "weights": {
+      "bones": [
+       "LowerLeg.L",
+       "LowerLeg.R"
+      ],
+      "falloff": 6.0,
+      "eps": 0.01
+     },
+     "note_cuff": "Cuff teeth shortened and the cuff moved 4 % down the shin: in deep knee bends the teeth reached 5 to 6 cm into the thigh."
+    },
+    {
+     "name": "Circlet",
+     "type": "shell",
+     "slot": "leather",
+     "parts": [
+      {
+       "type": "shell",
+       "sides": 12,
+       "boxy": 2.6,
+       "rings": [
+        {
+         "z": "head_cz+0.085",
+         "fit": [
+          "role:head_skin",
+          "role:hair"
+         ],
+         "margin": 0.022
+        },
+        {
+         "z": "head_cz+0.05",
+         "fit": [
+          "role:head_skin",
+          "role:hair"
+         ],
+         "margin": 0.022
+        }
+       ]
+      },
+      {
+       "type": "box",
+       "slot": "metal",
+       "centre": [
+        -0.075,
+        0.08,
+        "head_cz+0.17"
+       ],
+       "size": [
+        0.036,
+        0.008,
+        0.17
+       ],
+       "top_scale": [
+        0.15,
+        1.0
+       ],
+       "rot": [
+        -22,
+        -14,
+        0
+       ]
+      },
+      {
+       "type": "box",
+       "slot": "cloth_trim",
+       "centre": [
+        -0.1,
+        0.07,
+        "head_cz+0.14"
+       ],
+       "size": [
+        0.03,
+        0.007,
+        0.12
+       ],
+       "top_scale": [
+        0.15,
+        1.0
+       ],
+       "rot": [
+        -18,
+        -28,
+        0
+       ]
+      }
+     ],
+     "weights": {
+      "bones": [
+       "Head"
+      ],
+      "rigid": true
+     }
+    },
+    {
+     "name": "Knife",
+     "type": "box",
+     "slot": "leather",
+     "parts": [
+      {
+       "type": "box",
+       "slot": "leather",
+       "centre": [
+        -0.27,
+        0.07,
+        "hip_z-0.12"
+       ],
+       "size": [
+        0.034,
+        0.024,
+        0.17
+       ],
+       "top_scale": [
+        0.4,
+        0.5
+       ],
+       "rot": [
+        170,
+        0,
+        6
+       ]
+      },
+      {
+       "type": "box",
+       "slot": "metal",
+       "centre": [
+        -0.272,
+        0.075,
+        "hip_z-0.015"
+       ],
+       "size": [
+        0.026,
+        0.022,
+        0.075
+       ],
+       "rot": [
+        -10,
+        0,
+        6
+       ]
+      }
+     ],
+     "weights": {
+      "bones": [
+       "Hips"
+      ],
+      "rigid": true
+     },
+     "note": "Sits on the back of the right hip so the thigh never swings through it (it is rigid on Hips)."
+    }
+   ]
+  }
+ }
+}

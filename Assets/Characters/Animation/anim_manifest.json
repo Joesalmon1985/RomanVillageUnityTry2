@@ -1,0 +1,861 @@
+{
+ "armature": "wp2",
+ "clips": [
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 180,
+   "length_s": 6.0,
+   "loop": true,
+   "name": "Idle_A",
+   "native_speed_mps": 0.0,
+   "set": "idle"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 136,
+   "length_s": 4.5333,
+   "loop": true,
+   "name": "Idle_B",
+   "native_speed_mps": 0.0,
+   "set": "idle"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 150,
+   "length_s": 5.0,
+   "loop": true,
+   "name": "Idle_Look",
+   "native_speed_mps": 0.0,
+   "set": "idle"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 180,
+   "length_s": 6.0,
+   "loop": true,
+   "name": "Idle_Staff",
+   "native_speed_mps": 0.0,
+   "set": "idle"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 15,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 30,
+   "length_s": 1.0,
+   "loop": true,
+   "name": "Walk",
+   "native_speed_mps": 1.4,
+   "set": "locomotion"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 10,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 20,
+   "length_s": 0.6667,
+   "loop": true,
+   "name": "WalkBrisk",
+   "native_speed_mps": 2.2,
+   "set": "locomotion"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 8,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 16,
+   "length_s": 0.5333,
+   "loop": true,
+   "name": "Jog",
+   "native_speed_mps": 3.6,
+   "set": "locomotion"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 7,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 14,
+   "length_s": 0.4667,
+   "loop": true,
+   "name": "Run",
+   "native_speed_mps": 7.0,
+   "set": "locomotion"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 14,
+     "name": "FootL"
+    }
+   ],
+   "exit_phase": 0.12,
+   "fps": 30,
+   "frames": 18,
+   "gait": "Walk",
+   "length_s": 0.6,
+   "loop": false,
+   "name": "StartL",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0037,
+     0.0145,
+     0.0317,
+     0.0547,
+     0.083,
+     0.1159,
+     0.1527,
+     0.1931,
+     0.2362,
+     0.2815,
+     0.3284,
+     0.3763,
+     0.4247,
+     0.4728,
+     0.52
+    ]
+   },
+   "set": "locomotion",
+   "travel_m": 0.52
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 14,
+     "name": "FootR"
+    }
+   ],
+   "exit_phase": 0.62,
+   "fps": 30,
+   "frames": 18,
+   "gait": "Walk",
+   "length_s": 0.6,
+   "loop": false,
+   "name": "StartR",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0037,
+     0.0145,
+     0.0317,
+     0.0547,
+     0.083,
+     0.1159,
+     0.1527,
+     0.1931,
+     0.2362,
+     0.2815,
+     0.3284,
+     0.3763,
+     0.4247,
+     0.4728,
+     0.52
+    ]
+   },
+   "set": "locomotion",
+   "travel_m": 0.52
+  },
+  {
+   "additive": false,
+   "enter_phase": 0.0,
+   "events": [
+    {
+     "frame": 11,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 20,
+   "gait": "Walk",
+   "length_s": 0.6667,
+   "loop": false,
+   "name": "StopL",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0461,
+     0.0906,
+     0.1331,
+     0.1732,
+     0.2103,
+     0.244,
+     0.2738,
+     0.2992,
+     0.3198,
+     0.3352,
+     0.3447,
+     0.348,
+     0.348,
+     0.348,
+     0.348,
+     0.348,
+     0.348,
+     0.348,
+     0.348,
+     0.348
+    ]
+   },
+   "set": "locomotion",
+   "travel_m": 0.348
+  },
+  {
+   "additive": false,
+   "enter_phase": 0.5,
+   "events": [
+    {
+     "frame": 11,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 20,
+   "gait": "Walk",
+   "length_s": 0.6667,
+   "loop": false,
+   "name": "StopR",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0461,
+     0.0906,
+     0.1331,
+     0.1732,
+     0.2103,
+     0.244,
+     0.2738,
+     0.2992,
+     0.3198,
+     0.3352,
+     0.3447,
+     0.348,
+     0.348,
+     0.348,
+     0.348,
+     0.348,
+     0.348,
+     0.348,
+     0.348,
+     0.348
+    ]
+   },
+   "set": "locomotion",
+   "travel_m": 0.348
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 8,
+     "name": "FootL"
+    },
+    {
+     "frame": 14,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 17,
+   "length_s": 0.5667,
+   "loop": false,
+   "name": "Turn60L",
+   "native_speed_mps": 0.0,
+   "root_curve": {
+    "yaw_deg": [
+     0.0,
+     0.0,
+     0.0,
+     0.392,
+     2.694,
+     7.735,
+     15.403,
+     24.914,
+     35.086,
+     44.597,
+     52.265,
+     57.306,
+     59.608,
+     60.0,
+     60.0,
+     60.0,
+     60.0,
+     60.0
+    ]
+   },
+   "set": "locomotion",
+   "turn_deg": 60.0,
+   "turn_frames": [
+    2,
+    13
+   ]
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 8,
+     "name": "FootR"
+    },
+    {
+     "frame": 14,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 17,
+   "length_s": 0.5667,
+   "loop": false,
+   "name": "Turn60R",
+   "native_speed_mps": 0.0,
+   "root_curve": {
+    "yaw_deg": [
+     0.0,
+     0.0,
+     0.0,
+     -0.392,
+     -2.694,
+     -7.735,
+     -15.403,
+     -24.914,
+     -35.086,
+     -44.597,
+     -52.265,
+     -57.306,
+     -59.608,
+     -60.0,
+     -60.0,
+     -60.0,
+     -60.0,
+     -60.0
+    ]
+   },
+   "set": "locomotion",
+   "turn_deg": -60.0,
+   "turn_frames": [
+    2,
+    13
+   ]
+  },
+  {
+   "additive": true,
+   "events": [],
+   "fps": 30,
+   "frames": 12,
+   "length_s": 0.4,
+   "loop": false,
+   "name": "TurnSmallL",
+   "native_speed_mps": 0.0,
+   "set": "locomotion"
+  },
+  {
+   "additive": true,
+   "events": [],
+   "fps": 30,
+   "frames": 12,
+   "length_s": 0.4,
+   "loop": false,
+   "name": "TurnSmallR",
+   "native_speed_mps": 0.0,
+   "set": "locomotion"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 60,
+   "length_s": 2.0,
+   "loop": false,
+   "name": "Greet",
+   "native_speed_mps": 0.0,
+   "set": "social"
+  },
+  {
+   "additive": true,
+   "events": [],
+   "fps": 30,
+   "frames": 24,
+   "length_s": 0.8,
+   "loop": false,
+   "name": "Nod",
+   "native_speed_mps": 0.0,
+   "set": "social"
+  },
+  {
+   "additive": true,
+   "events": [],
+   "fps": 30,
+   "frames": 26,
+   "length_s": 0.8667,
+   "loop": false,
+   "name": "ShakeHead",
+   "native_speed_mps": 0.0,
+   "set": "social"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 96,
+   "length_s": 3.2,
+   "loop": true,
+   "name": "Talk_A",
+   "native_speed_mps": 0.0,
+   "set": "social"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 108,
+   "length_s": 3.6,
+   "loop": true,
+   "name": "Talk_B",
+   "native_speed_mps": 0.0,
+   "set": "social"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 90,
+   "length_s": 3.0,
+   "loop": true,
+   "name": "Talk_Emphasis",
+   "native_speed_mps": 0.0,
+   "set": "social"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 120,
+   "length_s": 4.0,
+   "loop": true,
+   "name": "Listen",
+   "native_speed_mps": 0.0,
+   "set": "social"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 48,
+   "length_s": 1.6,
+   "loop": false,
+   "name": "Beckon",
+   "native_speed_mps": 0.0,
+   "set": "prince"
+  },
+  {
+   "additive": true,
+   "events": [],
+   "fps": 30,
+   "frames": 36,
+   "length_s": 1.2,
+   "loop": false,
+   "name": "LeadLook",
+   "native_speed_mps": 0.0,
+   "set": "prince"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 72,
+   "hold_frames": [
+    22,
+    52
+   ],
+   "length_s": 2.4,
+   "loop": false,
+   "name": "PointGround",
+   "native_speed_mps": 0.0,
+   "set": "prince"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 9,
+   "length_s": 0.3,
+   "loop": false,
+   "name": "CastAnticipate",
+   "native_speed_mps": 0.0,
+   "set": "duel"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 2,
+     "name": "Release"
+    }
+   ],
+   "fps": 30,
+   "frames": 8,
+   "length_s": 0.2667,
+   "loop": false,
+   "name": "CastRelease",
+   "native_speed_mps": 0.0,
+   "set": "duel"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 15,
+   "length_s": 0.5,
+   "loop": false,
+   "name": "CastRecover",
+   "native_speed_mps": 0.0,
+   "set": "duel"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 60,
+   "length_s": 2.0,
+   "loop": true,
+   "name": "CastWeave_Loop",
+   "native_speed_mps": 0.0,
+   "set": "duel"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    }
+   ],
+   "fps": 30,
+   "frames": 15,
+   "length_s": 0.5,
+   "loop": false,
+   "name": "Block",
+   "native_speed_mps": 0.0,
+   "set": "duel"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    }
+   ],
+   "fps": 30,
+   "frames": 18,
+   "length_s": 0.6,
+   "loop": false,
+   "name": "RecoilLight",
+   "native_speed_mps": 0.0,
+   "set": "duel"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    },
+    {
+     "frame": 7,
+     "name": "FootR"
+    },
+    {
+     "frame": 21,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 27,
+   "length_s": 0.9,
+   "loop": false,
+   "name": "RecoilHeavy",
+   "native_speed_mps": 0.0,
+   "set": "duel"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    },
+    {
+     "frame": 8,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 42,
+   "hold_frames": [
+    30,
+    42
+   ],
+   "length_s": 1.4,
+   "loop": false,
+   "name": "WardBreak",
+   "native_speed_mps": 0.0,
+   "set": "duel"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 75,
+   "hold_frames": [
+    58,
+    75
+   ],
+   "length_s": 2.5,
+   "loop": false,
+   "name": "Victory",
+   "native_speed_mps": 0.0,
+   "set": "duel"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 75,
+   "hold_frames": [
+    54,
+    75
+   ],
+   "length_s": 2.5,
+   "loop": false,
+   "name": "Defeat",
+   "native_speed_mps": 0.0,
+   "set": "duel"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 24,
+   "length_s": 0.8,
+   "loop": false,
+   "name": "Surprise",
+   "native_speed_mps": 0.0,
+   "set": "duel"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 20,
+     "name": "FootR"
+    },
+    {
+     "frame": 31,
+     "name": "PropHit"
+    },
+    {
+     "frame": 61,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 96,
+   "hold_frames": [
+    86,
+    96
+   ],
+   "length_s": 3.2,
+   "loop": false,
+   "name": "KneelTake",
+   "native_speed_mps": 0.0,
+   "set": "campaign"
+  },
+  {
+   "additive": false,
+   "events": [
+    {
+     "frame": 11,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 48,
+   "hold_frames": [
+    20,
+    48
+   ],
+   "length_s": 1.6,
+   "loop": false,
+   "name": "Cover",
+   "native_speed_mps": 0.0,
+   "set": "campaign"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 66,
+   "hold_frames": [
+    54,
+    66
+   ],
+   "length_s": 2.2,
+   "loop": false,
+   "name": "Fall",
+   "native_speed_mps": 0.0,
+   "set": "campaign"
+  },
+  {
+   "additive": false,
+   "events": [],
+   "fps": 30,
+   "frames": 60,
+   "hold_frames": [
+    18,
+    42
+   ],
+   "length_s": 2.0,
+   "loop": false,
+   "name": "Point",
+   "native_speed_mps": 0.0,
+   "set": "campaign"
+  }
+ ],
+ "costume": "prehistoric",
+ "files": {
+  "campaign": {
+   "actions": [
+    "Cover",
+    "Fall",
+    "KneelTake",
+    "Point"
+   ],
+   "bytes": 1692684,
+   "fbx": "anim_campaign.fbx"
+  },
+  "duel": {
+   "actions": [
+    "Block",
+    "CastAnticipate",
+    "CastRecover",
+    "CastRelease",
+    "CastWeave_Loop",
+    "Defeat",
+    "RecoilHeavy",
+    "RecoilLight",
+    "Surprise",
+    "Victory",
+    "WardBreak"
+   ],
+   "bytes": 3558124,
+   "fbx": "anim_duel.fbx"
+  },
+  "idle": {
+   "actions": [
+    "Idle_A",
+    "Idle_B",
+    "Idle_Look",
+    "Idle_Staff"
+   ],
+   "bytes": 2685820,
+   "fbx": "anim_idle.fbx"
+  },
+  "locomotion": {
+   "actions": [
+    "Jog",
+    "Run",
+    "StartL",
+    "StartR",
+    "StopL",
+    "StopR",
+    "Turn60L",
+    "Turn60R",
+    "TurnSmallL",
+    "TurnSmallR",
+    "Walk",
+    "WalkBrisk"
+   ],
+   "bytes": 3368460,
+   "fbx": "anim_locomotion.fbx"
+  },
+  "prince": {
+   "actions": [
+    "Beckon",
+    "LeadLook",
+    "PointGround"
+   ],
+   "bytes": 1151292,
+   "fbx": "anim_prince.fbx"
+  },
+  "social": {
+   "actions": [
+    "Greet",
+    "Listen",
+    "Nod",
+    "ShakeHead",
+    "Talk_A",
+    "Talk_B",
+    "Talk_Emphasis"
+   ],
+   "bytes": 3079164,
+   "fbx": "anim_social.fbx"
+  }
+ },
+ "fps": 30,
+ "template": "mira"
+}

@@ -139,7 +139,11 @@ namespace World.Game
         public void FaceTowards(Vector3 point) { Actor?.FaceTowards(point); }
 
         /// <summary>Raises an arm towards a point and keeps it there (null lowers it).</summary>
-        public void PointAt(Vector3? point) { if (Actor is PlaceholderActor p) p.PointAt(point); }
+        public void PointAt(Vector3? point)
+        {
+            if (Actor is PlaceholderActor p) p.PointAt(point);
+            else if (Actor is IExpressiveActor x) x.PointAt(point);
+        }
 
         private void Plan(Vector3 target)
         {
@@ -165,9 +169,17 @@ namespace World.Game
             _waypoints.Add(target);
         }
 
+        /// <summary>Distance left along the planned waypoints (m); for a follow, less the follow distance.</summary>
+        private float Remaining()
+        {
+            float r = 0f; var at = transform.position;
+            foreach (var w in _waypoints) { r += BoardSpace.Flat(w - at); at = w; }
+            return _followTarget != null ? Mathf.Max(0f, r - _followDistance) : r;
+        }
+
         private void UpdateWalk()
         {
-            if (Hold) return;
+            if (Hold) { (Actor as IMotionShaper)?.SpeedScale(false, 0f, 0f); return; }
             float stop = 0.05f;
             if (_followTarget != null)
             {
@@ -188,7 +200,9 @@ namespace World.Game
                 return;
             }
             IsWalking = true;
-            float budget = WalkSpeed * Time.deltaTime;
+            // A rigged body shapes the speed at the start and end of a walk (weight shift, planted stop); 1 otherwise.
+            float shape = Actor is IMotionShaper shaper ? shaper.SpeedScale(true, WalkSpeed, _followTarget != null && _waypoints.Count > 1 ? float.PositiveInfinity : Remaining()) : 1f;
+            float budget = WalkSpeed * shape * Time.deltaTime;
             var pos = transform.position;
             while (budget > 0f && _waypoints.Count > 0)
             {
@@ -237,7 +251,9 @@ namespace World.Game
         {
             HomePosition = pos; HomeYaw = yaw;
             transform.position = pos;
-            if (Actor is PlaceholderActor p) p.SetYaw(yaw); else transform.rotation = Quaternion.Euler(0, yaw, 0);
+            if (Actor is PlaceholderActor p) p.SetYaw(yaw);
+            else if (Actor is IExpressiveActor x) x.SetYaw(yaw);
+            else transform.rotation = Quaternion.Euler(0, yaw, 0);
         }
 
         private void OnEnable() { if (!_all.Contains(this)) _all.Add(this); }
@@ -263,6 +279,7 @@ namespace World.Game
         private void Update()
         {
             UpdateWalk();
+            if (!IsWalking) (Actor as IMotionShaper)?.SpeedScale(false, 0f, 0f);
             if (IsWalking || Directed) { _wasNear = false; IsGreetingShown = false; return; }
             var views = ViewSwitcher.Instance;
             if (views == null || Actor == null) return;
