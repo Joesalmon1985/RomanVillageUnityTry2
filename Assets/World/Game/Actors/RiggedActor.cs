@@ -443,6 +443,7 @@ namespace World.Game
         public float SpeedScale(bool walking, float speed, float remaining)
         {
             float dt = Time.deltaTime;
+            bool wasWalking = _walkingNow;
             _walkingNow = walking;
             _remaining = remaining;
             if (!walking || speed <= 0f || dt <= 0f)
@@ -456,6 +457,7 @@ namespace World.Game
             {
                 case Phase.Stand:
                 case Phase.Stop:
+                    if (_phase == Phase.Stop && wasWalking) break; // still arriving
                     if (_phase == Phase.Stop && _stopClip != null && _phaseT < _stopClip.Length * 0.5f) { _phase = Phase.Cruise; _shapeV = walkNative; break; }
                     if (startClip == null || startClip.RootDist.Length < 2 || remaining < 0.6f) { _phase = Phase.Cruise; _shapeV = speed; break; }
                     _phase = Phase.Lead; _startClip = startClip; _phaseT = 0f; _shapeDist = 0f; _leftNext = !_leftNext;
