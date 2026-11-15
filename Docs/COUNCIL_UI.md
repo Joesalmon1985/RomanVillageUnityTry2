@@ -47,4 +47,25 @@ Nothing floats and there are no counters, markers or text: only speech bubbles (
 
 `Assets/World/Tests/PlayMode/Council/CouncilTests.cs`. See the results at the end of this file.
 
-RESULTS_PLACEHOLDER
+### Results (15 Nov 2026, Unity 6000.3.28f1)
+
+- Full PlayMode run: 108 tests, 108 passed (about 52 minutes; the council's 29 tests take about half of that). EditMode was not re-run by this package (no change to `Assets/World/Sim`).
+- 29 council tests: left-view targets inside the safe area; village targets on screen and distinct at 1920x1080 and 844x390 (choosing and ready phases, measured with render-texture cameras); exact crowd counts 3, 5, 7, 9, 11, 13, 11, 9, 7, 5, 3 (83 people, one lead each, normal size); nothing floating or screen-space; example proposals 4+9, 5+8, 6+7 held out as notes; one move per tap under repeated taps; a double advances one catspaw two places; listeners and settled counts match the engine after the advance and after the bank; banked support re-forms when the turn returns to the player; a bust returns only the unsettled; petition spend and accept; listening Same/Different with response times passed through, wrong answers, petition earned; draws unchanged after visiting the bench; leave and rejoin; save and load mid-push; camera, clock and avatar restored; other bubbles swept; no election with fewer than four residents; approach accept, decline and waiting for an open bubble; the dance and Ward duel still start; the three AutoPlay scripts (`council_full`: 37 banks, 6 busts, one listening burst with the petition earned and spent, 129 pushes, 43 sittings, a winner).
+- Captures at 844x390 and 1920x1080 at night (`Evidence/screenshots/c*.png`, `p*.png`, git-ignored).
+
+### Readability (honest)
+
+- Wide view (all eleven places, nothing in play): it reads as a believable settlement: the fire, tents, eleven gatherings with fire baskets, props that tell the places apart at a glance (pond, stakes, trees, workyard logs, shelter, quarry blocks, mill stone, spring ring, track, post). At 844x390 the near places (20 to 30 m) show people about 40 px tall, the far ones (50 to 62 m) 15 to 20 px: a group's presence and spread read, individual posture does not.
+- Choosing: the camera follows the proposal the candidate is pointing at (two places, 30 to 45 m, people 25 to 35 px). The pointing arm and the three held notes read; the lead's raised hand and the gathering turning to the tower are small at that distance. Which dispute is being offered is told by the camera framing and the stamp-sized carved miniatures on the notes (readable only at 1920x1080).
+- Standing: with several people at one place, the settled huddle (close, turned to the tower, clapping now and then) and the leaning arc round a catspaw are different shapes, and the catspaw is in the candidate's colour with a coloured band. At 844x390 at 40 m the two groups are distinguishable by where they stand, but "relaxed" versus "leaning in" is a posture difference too fine to see at that size (the actor has no lean pose; the arc is only a position and facing).
+- Bust: the unsettled listeners walk back and away over about 3 s; the settled stay. This reads as movement, less so as a still picture.
+- Rival turns: the rival's candidate (own cap colour) stands at the tower foot and the village re-forms to the rival's standing; people cross the ground. Readable from the wide view as groups changing places; the count at each place is only readable by looking close.
+
+### Not done or limited
+
+- Rival delegates with cords or notched sticks and the spoken risk and bank-offer lines were dropped on the owner's later instruction; only one candidate's standing is shown at a time.
+- The listening arc has no lean-in pose, and a bust shows no one handing back a note (there is no note handover at a bank either: banking shows the listeners joining the settled huddle).
+- Places are placed by a search that can fall back to relaxed ground (reported in the log as "N places on relaxed ground"); on the default seed two places sit on ground the search rated relaxed. The fan direction (12 tried) is chosen per board.
+- The tower base is 18 m behind the home fire and the village shares ground with the camp's dressing; places partly under the camp's paths are cleared with `AddClearing` rather than avoided.
+- Candidate and aide stand where the camera's lower-left and lower-right screen anchors meet the ground, so they walk when the camera turns; at the widest framing they are 10 to 14 m from the camera.
+
