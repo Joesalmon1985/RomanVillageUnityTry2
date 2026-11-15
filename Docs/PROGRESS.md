@@ -650,3 +650,12 @@ Not done or not verified:
 - Only the prince, Mira and the champion are on by default; the other 11 bodies (`-allCast`) were built and imported but not looked at in the game. `ward_player` maps to Juno (off by default), so the duel opponent stays a placeholder.
 - `Evidence/video/` is not git-ignored in this repository (only `Evidence/screenshots/` and `Evidence/raw/` are); nothing there was staged.
 - The `PrinceVillagers` decorations (feathers, sun standard) apply only to the placeholder prince.
+
+## Crystals I8, step 5: the rigged cast merged (15 Nov 2026, tag `earth-slice-1-cast`)
+
+Merged `char/unity` (rigged Prince, Mira and champion from the git-ignored `Assets/LocalBaked/Characters`, placeholders without it; `Docs/CHARACTERS_UNITY.md`). Only `Docs/PROGRESS.md` conflicted (both kept). Local art copied with `Tools/characters/sync_unity_local.py` (the script refuses a source inside the project, so `NEWSTUFF/characters_work/integrated` was copied to a temporary folder outside it first) and built with `CharacterBuilder.Run` (28 builds, Humanoid). Nothing under `Assets/LocalBaked` is staged.
+
+- In the campaign duel underground Mira is her rigged body (factory id `mira`) and Dolm uses the champion body (`CastRegistry`: `keeper_*` -> champion); seen in the editor capture of `earth_stolen` at 1920 x 1080. The six companions stay placeholders (not in the reviewed set).
+- PlayMode with the art: 118 passed. Without it (`Assets/LocalBaked` moved aside for the run): 111 passed, 7 `ActorTests` skipped (they need the art), 0 failed.
+- Rebuilt (123 MB with the local prefabs). Packaged, exit 0 and 0 error lines: `first_scene`, `earth_stolen` (two checkpoints), full screen 1920 x 1080.
+- Not checked: the rigged bodies by hand, or the companions' and keepers' look beyond the one capture.
