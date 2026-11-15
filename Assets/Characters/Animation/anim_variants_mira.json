@@ -1,0 +1,902 @@
+{
+ "clips": [
+  {
+   "additive": false,
+   "base": "Idle_A",
+   "events": [],
+   "fps": 30,
+   "frames": 180,
+   "length_s": 6.0,
+   "loop": true,
+   "name": "Idle_A@mira",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Idle_B",
+   "events": [],
+   "fps": 30,
+   "frames": 136,
+   "length_s": 4.5333,
+   "loop": true,
+   "name": "Idle_B@mira",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Idle_Look",
+   "events": [],
+   "fps": 30,
+   "frames": 150,
+   "length_s": 5.0,
+   "loop": true,
+   "name": "Idle_Look@mira",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Idle_Staff",
+   "events": [],
+   "fps": 30,
+   "frames": 180,
+   "length_s": 6.0,
+   "loop": true,
+   "name": "Idle_Staff@mira",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Walk",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 12,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 25,
+   "length_s": 0.8333,
+   "loop": true,
+   "name": "Walk@mira",
+   "native_speed_mps": 1.4,
+   "set": "locomotion",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "WalkBrisk",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 8,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 17,
+   "length_s": 0.5667,
+   "loop": true,
+   "name": "WalkBrisk@mira",
+   "native_speed_mps": 2.2,
+   "set": "locomotion",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Jog",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 6,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 13,
+   "length_s": 0.4333,
+   "loop": true,
+   "name": "Jog@mira",
+   "native_speed_mps": 3.6,
+   "set": "locomotion",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Run",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 6,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 12,
+   "length_s": 0.4,
+   "loop": true,
+   "name": "Run@mira",
+   "native_speed_mps": 7.0,
+   "set": "locomotion",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "StartL",
+   "events": [
+    {
+     "frame": 15,
+     "name": "FootL"
+    }
+   ],
+   "exit_phase": 0.12,
+   "fps": 30,
+   "frames": 18,
+   "gait": "Walk",
+   "length_s": 0.6,
+   "loop": false,
+   "name": "StartL@mira",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0028,
+     0.011,
+     0.0242,
+     0.042,
+     0.0642,
+     0.0904,
+     0.1202,
+     0.1533,
+     0.1893,
+     0.2279,
+     0.2688,
+     0.3115,
+     0.3558,
+     0.4013,
+     0.4477
+    ]
+   },
+   "set": "locomotion",
+   "style": "mira",
+   "travel_m": 0.4477
+  },
+  {
+   "additive": false,
+   "base": "StartR",
+   "events": [
+    {
+     "frame": 15,
+     "name": "FootR"
+    }
+   ],
+   "exit_phase": 0.62,
+   "fps": 30,
+   "frames": 18,
+   "gait": "Walk",
+   "length_s": 0.6,
+   "loop": false,
+   "name": "StartR@mira",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0028,
+     0.011,
+     0.0242,
+     0.042,
+     0.0642,
+     0.0904,
+     0.1202,
+     0.1533,
+     0.1893,
+     0.2279,
+     0.2688,
+     0.3115,
+     0.3558,
+     0.4013,
+     0.4477
+    ]
+   },
+   "set": "locomotion",
+   "style": "mira",
+   "travel_m": 0.4477
+  },
+  {
+   "additive": false,
+   "base": "StopL",
+   "enter_phase": 0.0,
+   "events": [
+    {
+     "frame": 11,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 20,
+   "gait": "Walk",
+   "length_s": 0.6667,
+   "loop": false,
+   "name": "StopL@mira",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0446,
+     0.0852,
+     0.1218,
+     0.1544,
+     0.1831,
+     0.2078,
+     0.2287,
+     0.2457,
+     0.2588,
+     0.2682,
+     0.2738,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756
+    ]
+   },
+   "set": "locomotion",
+   "style": "mira",
+   "travel_m": 0.2756
+  },
+  {
+   "additive": false,
+   "base": "StopR",
+   "enter_phase": 0.5,
+   "events": [
+    {
+     "frame": 11,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 20,
+   "gait": "Walk",
+   "length_s": 0.6667,
+   "loop": false,
+   "name": "StopR@mira",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0446,
+     0.0852,
+     0.1218,
+     0.1544,
+     0.1831,
+     0.2078,
+     0.2287,
+     0.2457,
+     0.2588,
+     0.2682,
+     0.2738,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756,
+     0.2756
+    ]
+   },
+   "set": "locomotion",
+   "style": "mira",
+   "travel_m": 0.2756
+  },
+  {
+   "additive": false,
+   "base": "Turn60L",
+   "events": [
+    {
+     "frame": 8,
+     "name": "FootL"
+    },
+    {
+     "frame": 14,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 17,
+   "length_s": 0.5667,
+   "loop": false,
+   "name": "Turn60L@mira",
+   "native_speed_mps": 0.0,
+   "root_curve": {
+    "yaw_deg": [
+     0.0,
+     0.0,
+     0.0,
+     0.392,
+     2.694,
+     7.735,
+     15.403,
+     24.914,
+     35.086,
+     44.597,
+     52.265,
+     57.306,
+     59.608,
+     60.0,
+     60.0,
+     60.0,
+     60.0,
+     60.0
+    ]
+   },
+   "set": "locomotion",
+   "style": "mira",
+   "turn_deg": 60.0,
+   "turn_frames": [
+    2,
+    13
+   ]
+  },
+  {
+   "additive": false,
+   "base": "Turn60R",
+   "events": [
+    {
+     "frame": 8,
+     "name": "FootR"
+    },
+    {
+     "frame": 14,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 17,
+   "length_s": 0.5667,
+   "loop": false,
+   "name": "Turn60R@mira",
+   "native_speed_mps": 0.0,
+   "root_curve": {
+    "yaw_deg": [
+     0.0,
+     0.0,
+     0.0,
+     -0.392,
+     -2.694,
+     -7.735,
+     -15.403,
+     -24.914,
+     -35.086,
+     -44.597,
+     -52.265,
+     -57.306,
+     -59.608,
+     -60.0,
+     -60.0,
+     -60.0,
+     -60.0,
+     -60.0
+    ]
+   },
+   "set": "locomotion",
+   "style": "mira",
+   "turn_deg": -60.0,
+   "turn_frames": [
+    2,
+    13
+   ]
+  },
+  {
+   "additive": true,
+   "base": "TurnSmallL",
+   "events": [],
+   "fps": 30,
+   "frames": 12,
+   "length_s": 0.4,
+   "loop": false,
+   "name": "TurnSmallL@mira",
+   "native_speed_mps": 0.0,
+   "set": "locomotion",
+   "style": "mira"
+  },
+  {
+   "additive": true,
+   "base": "TurnSmallR",
+   "events": [],
+   "fps": 30,
+   "frames": 12,
+   "length_s": 0.4,
+   "loop": false,
+   "name": "TurnSmallR@mira",
+   "native_speed_mps": 0.0,
+   "set": "locomotion",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Greet",
+   "events": [],
+   "fps": 30,
+   "frames": 60,
+   "length_s": 2.0,
+   "loop": false,
+   "name": "Greet@mira",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "mira"
+  },
+  {
+   "additive": true,
+   "base": "Nod",
+   "events": [],
+   "fps": 30,
+   "frames": 24,
+   "length_s": 0.8,
+   "loop": false,
+   "name": "Nod@mira",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "mira"
+  },
+  {
+   "additive": true,
+   "base": "ShakeHead",
+   "events": [],
+   "fps": 30,
+   "frames": 26,
+   "length_s": 0.8667,
+   "loop": false,
+   "name": "ShakeHead@mira",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Talk_A",
+   "events": [],
+   "fps": 30,
+   "frames": 96,
+   "length_s": 3.2,
+   "loop": true,
+   "name": "Talk_A@mira",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Talk_B",
+   "events": [],
+   "fps": 30,
+   "frames": 108,
+   "length_s": 3.6,
+   "loop": true,
+   "name": "Talk_B@mira",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Talk_Emphasis",
+   "events": [],
+   "fps": 30,
+   "frames": 90,
+   "length_s": 3.0,
+   "loop": true,
+   "name": "Talk_Emphasis@mira",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Listen",
+   "events": [],
+   "fps": 30,
+   "frames": 120,
+   "length_s": 4.0,
+   "loop": true,
+   "name": "Listen@mira",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "CastAnticipate",
+   "events": [],
+   "fps": 30,
+   "frames": 12,
+   "length_s": 0.4,
+   "loop": false,
+   "name": "CastAnticipate@mira",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "CastRelease",
+   "events": [
+    {
+     "frame": 2,
+     "name": "Release"
+    }
+   ],
+   "fps": 30,
+   "frames": 6,
+   "length_s": 0.2,
+   "loop": false,
+   "name": "CastRelease@mira",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "CastRecover",
+   "events": [],
+   "fps": 30,
+   "frames": 20,
+   "length_s": 0.6667,
+   "loop": false,
+   "name": "CastRecover@mira",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "CastWeave_Loop",
+   "events": [],
+   "fps": 30,
+   "frames": 60,
+   "length_s": 2.0,
+   "loop": true,
+   "name": "CastWeave_Loop@mira",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Block",
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    }
+   ],
+   "fps": 30,
+   "frames": 16,
+   "length_s": 0.5333,
+   "loop": false,
+   "name": "Block@mira",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "RecoilLight",
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    },
+    {
+     "frame": 6,
+     "name": "FootR"
+    },
+    {
+     "frame": 15,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 18,
+   "length_s": 0.6,
+   "loop": false,
+   "name": "RecoilLight@mira",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "RecoilHeavy",
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    },
+    {
+     "frame": 7,
+     "name": "FootR"
+    },
+    {
+     "frame": 22,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 28,
+   "length_s": 0.9333,
+   "loop": false,
+   "name": "RecoilHeavy@mira",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "WardBreak",
+   "events": [
+    {
+     "frame": 0,
+     "name": "Impact"
+    },
+    {
+     "frame": 8,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 42,
+   "hold_frames": [
+    30,
+    42
+   ],
+   "length_s": 1.4,
+   "loop": false,
+   "name": "WardBreak@mira",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Victory",
+   "events": [],
+   "fps": 30,
+   "frames": 75,
+   "hold_frames": [
+    56,
+    75
+   ],
+   "length_s": 2.5,
+   "loop": false,
+   "name": "Victory@mira",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Defeat",
+   "events": [
+    {
+     "frame": 39,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 75,
+   "hold_frames": [
+    56,
+    75
+   ],
+   "length_s": 2.5,
+   "loop": false,
+   "name": "Defeat@mira",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Surprise",
+   "events": [],
+   "fps": 30,
+   "frames": 24,
+   "length_s": 0.8,
+   "loop": false,
+   "name": "Surprise@mira",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "KneelTake",
+   "events": [
+    {
+     "frame": 20,
+     "name": "FootR"
+    },
+    {
+     "frame": 31,
+     "name": "PropHit"
+    },
+    {
+     "frame": 61,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 96,
+   "hold_frames": [
+    86,
+    96
+   ],
+   "length_s": 3.2,
+   "loop": false,
+   "name": "KneelTake@mira",
+   "native_speed_mps": 0.0,
+   "set": "campaign",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Cover",
+   "events": [
+    {
+     "frame": 11,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 48,
+   "hold_frames": [
+    20,
+    48
+   ],
+   "length_s": 1.6,
+   "loop": false,
+   "name": "Cover@mira",
+   "native_speed_mps": 0.0,
+   "set": "campaign",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Fall",
+   "events": [],
+   "fps": 30,
+   "frames": 66,
+   "hold_frames": [
+    54,
+    66
+   ],
+   "length_s": 2.2,
+   "loop": false,
+   "name": "Fall@mira",
+   "native_speed_mps": 0.0,
+   "set": "campaign",
+   "style": "mira"
+  },
+  {
+   "additive": false,
+   "base": "Point",
+   "events": [],
+   "fps": 30,
+   "frames": 60,
+   "hold_frames": [
+    18,
+    42
+   ],
+   "length_s": 2.0,
+   "loop": false,
+   "name": "Point@mira",
+   "native_speed_mps": 0.0,
+   "set": "campaign",
+   "style": "mira"
+  }
+ ],
+ "costume": "prehistoric",
+ "files": {
+  "campaign": {
+   "actions": [
+    "Cover@mira",
+    "Fall@mira",
+    "KneelTake@mira",
+    "Point@mira"
+   ],
+   "bytes": 1691804,
+   "fbx": "anim_campaign@mira.fbx"
+  },
+  "duel": {
+   "actions": [
+    "Block@mira",
+    "CastAnticipate@mira",
+    "CastRecover@mira",
+    "CastRelease@mira",
+    "CastWeave_Loop@mira",
+    "Defeat@mira",
+    "RecoilHeavy@mira",
+    "RecoilLight@mira",
+    "Surprise@mira",
+    "Victory@mira",
+    "WardBreak@mira"
+   ],
+   "bytes": 3568652,
+   "fbx": "anim_duel@mira.fbx"
+  },
+  "idle": {
+   "actions": [
+    "Idle_A@mira",
+    "Idle_B@mira",
+    "Idle_Look@mira",
+    "Idle_Staff@mira"
+   ],
+   "bytes": 2685996,
+   "fbx": "anim_idle@mira.fbx"
+  },
+  "locomotion": {
+   "actions": [
+    "Jog@mira",
+    "Run@mira",
+    "StartL@mira",
+    "StartR@mira",
+    "StopL@mira",
+    "StopR@mira",
+    "Turn60L@mira",
+    "Turn60R@mira",
+    "TurnSmallL@mira",
+    "TurnSmallR@mira",
+    "Walk@mira",
+    "WalkBrisk@mira"
+   ],
+   "bytes": 3324204,
+   "fbx": "anim_locomotion@mira.fbx"
+  },
+  "social": {
+   "actions": [
+    "Greet@mira",
+    "Listen@mira",
+    "Nod@mira",
+    "ShakeHead@mira",
+    "Talk_A@mira",
+    "Talk_B@mira",
+    "Talk_Emphasis@mira"
+   ],
+   "bytes": 3073468,
+   "fbx": "anim_social@mira.fbx"
+  }
+ },
+ "key": "mira"
+}

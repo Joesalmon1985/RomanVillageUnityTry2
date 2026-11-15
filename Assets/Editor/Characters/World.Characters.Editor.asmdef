@@ -1,0 +1,20 @@
+{
+    "name": "World.Characters.Editor",
+    "rootNamespace": "World.Characters.Editor",
+    "references": [
+        "World.Game",
+        "World.Sim",
+        "Bedsit.Core"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

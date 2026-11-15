@@ -1,0 +1,674 @@
+{
+ "clips": [
+  {
+   "additive": false,
+   "base": "Idle_A",
+   "events": [],
+   "fps": 30,
+   "frames": 171,
+   "length_s": 5.7,
+   "loop": true,
+   "name": "Idle_A@prince",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Idle_B",
+   "events": [],
+   "fps": 30,
+   "frames": 129,
+   "length_s": 4.3,
+   "loop": true,
+   "name": "Idle_B@prince",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Idle_Look",
+   "events": [],
+   "fps": 30,
+   "frames": 142,
+   "length_s": 4.7333,
+   "loop": true,
+   "name": "Idle_Look@prince",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Idle_Staff",
+   "events": [],
+   "fps": 30,
+   "frames": 171,
+   "length_s": 5.7,
+   "loop": true,
+   "name": "Idle_Staff@prince",
+   "native_speed_mps": 0.0,
+   "set": "idle",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Walk",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 14,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 28,
+   "length_s": 0.9333,
+   "loop": true,
+   "name": "Walk@prince",
+   "native_speed_mps": 1.4,
+   "set": "locomotion",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "WalkBrisk",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 10,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 19,
+   "length_s": 0.6333,
+   "loop": true,
+   "name": "WalkBrisk@prince",
+   "native_speed_mps": 2.2,
+   "set": "locomotion",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Jog",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 8,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 15,
+   "length_s": 0.5,
+   "loop": true,
+   "name": "Jog@prince",
+   "native_speed_mps": 3.6,
+   "set": "locomotion",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Run",
+   "events": [
+    {
+     "frame": 0,
+     "name": "FootL"
+    },
+    {
+     "frame": 6,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 13,
+   "length_s": 0.4333,
+   "loop": true,
+   "name": "Run@prince",
+   "native_speed_mps": 7.0,
+   "set": "locomotion",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "StartL",
+   "events": [
+    {
+     "frame": 14,
+     "name": "FootL"
+    }
+   ],
+   "exit_phase": 0.12,
+   "fps": 30,
+   "frames": 17,
+   "gait": "Walk",
+   "length_s": 0.5667,
+   "loop": false,
+   "name": "StartL@prince",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0041,
+     0.0158,
+     0.0344,
+     0.0593,
+     0.0896,
+     0.1247,
+     0.1639,
+     0.2064,
+     0.2515,
+     0.2985,
+     0.3467,
+     0.3953,
+     0.4437,
+     0.4911
+    ]
+   },
+   "set": "locomotion",
+   "style": "prince",
+   "travel_m": 0.4911
+  },
+  {
+   "additive": false,
+   "base": "StartR",
+   "events": [
+    {
+     "frame": 14,
+     "name": "FootR"
+    }
+   ],
+   "exit_phase": 0.62,
+   "fps": 30,
+   "frames": 17,
+   "gait": "Walk",
+   "length_s": 0.5667,
+   "loop": false,
+   "name": "StartR@prince",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.0,
+     0.0,
+     0.0,
+     0.0041,
+     0.0158,
+     0.0344,
+     0.0593,
+     0.0896,
+     0.1247,
+     0.1639,
+     0.2064,
+     0.2515,
+     0.2985,
+     0.3467,
+     0.3953,
+     0.4437,
+     0.4911
+    ]
+   },
+   "set": "locomotion",
+   "style": "prince",
+   "travel_m": 0.4911
+  },
+  {
+   "additive": false,
+   "base": "StopL",
+   "enter_phase": 0.0,
+   "events": [
+    {
+     "frame": 10,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 19,
+   "gait": "Walk",
+   "length_s": 0.6333,
+   "loop": false,
+   "name": "StopL@prince",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.046,
+     0.0903,
+     0.1323,
+     0.1715,
+     0.2072,
+     0.2391,
+     0.2664,
+     0.2886,
+     0.3051,
+     0.3155,
+     0.319,
+     0.319,
+     0.319,
+     0.319,
+     0.319,
+     0.319,
+     0.319,
+     0.319,
+     0.319
+    ]
+   },
+   "set": "locomotion",
+   "style": "prince",
+   "travel_m": 0.319
+  },
+  {
+   "additive": false,
+   "base": "StopR",
+   "enter_phase": 0.5,
+   "events": [
+    {
+     "frame": 10,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 19,
+   "gait": "Walk",
+   "length_s": 0.6333,
+   "loop": false,
+   "name": "StopR@prince",
+   "native_speed_mps": 1.4,
+   "root_curve": {
+    "dist_m": [
+     0.0,
+     0.046,
+     0.0903,
+     0.1323,
+     0.1715,
+     0.2072,
+     0.2391,
+     0.2664,
+     0.2886,
+     0.3051,
+     0.3155,
+     0.319,
+     0.319,
+     0.319,
+     0.319,
+     0.319,
+     0.319,
+     0.319,
+     0.319,
+     0.319
+    ]
+   },
+   "set": "locomotion",
+   "style": "prince",
+   "travel_m": 0.319
+  },
+  {
+   "additive": false,
+   "base": "Turn60L",
+   "events": [
+    {
+     "frame": 8,
+     "name": "FootL"
+    },
+    {
+     "frame": 13,
+     "name": "FootR"
+    }
+   ],
+   "fps": 30,
+   "frames": 16,
+   "length_s": 0.5333,
+   "loop": false,
+   "name": "Turn60L@prince",
+   "native_speed_mps": 0.0,
+   "root_curve": {
+    "yaw_deg": [
+     0.0,
+     0.0,
+     0.0,
+     0.514,
+     3.475,
+     9.785,
+     19.046,
+     30.0,
+     40.954,
+     50.215,
+     56.525,
+     59.486,
+     60.0,
+     60.0,
+     60.0,
+     60.0,
+     60.0
+    ]
+   },
+   "set": "locomotion",
+   "style": "prince",
+   "turn_deg": 60.0,
+   "turn_frames": [
+    2,
+    12
+   ]
+  },
+  {
+   "additive": false,
+   "base": "Turn60R",
+   "events": [
+    {
+     "frame": 8,
+     "name": "FootR"
+    },
+    {
+     "frame": 13,
+     "name": "FootL"
+    }
+   ],
+   "fps": 30,
+   "frames": 16,
+   "length_s": 0.5333,
+   "loop": false,
+   "name": "Turn60R@prince",
+   "native_speed_mps": 0.0,
+   "root_curve": {
+    "yaw_deg": [
+     0.0,
+     0.0,
+     0.0,
+     -0.514,
+     -3.475,
+     -9.785,
+     -19.046,
+     -30.0,
+     -40.954,
+     -50.215,
+     -56.525,
+     -59.486,
+     -60.0,
+     -60.0,
+     -60.0,
+     -60.0,
+     -60.0
+    ]
+   },
+   "set": "locomotion",
+   "style": "prince",
+   "turn_deg": -60.0,
+   "turn_frames": [
+    2,
+    12
+   ]
+  },
+  {
+   "additive": true,
+   "base": "TurnSmallL",
+   "events": [],
+   "fps": 30,
+   "frames": 11,
+   "length_s": 0.3667,
+   "loop": false,
+   "name": "TurnSmallL@prince",
+   "native_speed_mps": 0.0,
+   "set": "locomotion",
+   "style": "prince"
+  },
+  {
+   "additive": true,
+   "base": "TurnSmallR",
+   "events": [],
+   "fps": 30,
+   "frames": 11,
+   "length_s": 0.3667,
+   "loop": false,
+   "name": "TurnSmallR@prince",
+   "native_speed_mps": 0.0,
+   "set": "locomotion",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Greet",
+   "events": [],
+   "fps": 30,
+   "frames": 57,
+   "length_s": 1.9,
+   "loop": false,
+   "name": "Greet@prince",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "prince"
+  },
+  {
+   "additive": true,
+   "base": "Nod",
+   "events": [],
+   "fps": 30,
+   "frames": 23,
+   "length_s": 0.7667,
+   "loop": false,
+   "name": "Nod@prince",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "prince"
+  },
+  {
+   "additive": true,
+   "base": "ShakeHead",
+   "events": [],
+   "fps": 30,
+   "frames": 25,
+   "length_s": 0.8333,
+   "loop": false,
+   "name": "ShakeHead@prince",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Talk_A",
+   "events": [],
+   "fps": 30,
+   "frames": 91,
+   "length_s": 3.0333,
+   "loop": true,
+   "name": "Talk_A@prince",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Talk_B",
+   "events": [],
+   "fps": 30,
+   "frames": 103,
+   "length_s": 3.4333,
+   "loop": true,
+   "name": "Talk_B@prince",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Talk_Emphasis",
+   "events": [],
+   "fps": 30,
+   "frames": 86,
+   "length_s": 2.8667,
+   "loop": true,
+   "name": "Talk_Emphasis@prince",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Listen",
+   "events": [],
+   "fps": 30,
+   "frames": 114,
+   "length_s": 3.8,
+   "loop": true,
+   "name": "Listen@prince",
+   "native_speed_mps": 0.0,
+   "set": "social",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Beckon",
+   "events": [],
+   "fps": 30,
+   "frames": 46,
+   "length_s": 1.5333,
+   "loop": false,
+   "name": "Beckon@prince",
+   "native_speed_mps": 0.0,
+   "set": "prince",
+   "style": "prince"
+  },
+  {
+   "additive": true,
+   "base": "LeadLook",
+   "events": [],
+   "fps": 30,
+   "frames": 34,
+   "length_s": 1.1333,
+   "loop": false,
+   "name": "LeadLook@prince",
+   "native_speed_mps": 0.0,
+   "set": "prince",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "PointGround",
+   "events": [],
+   "fps": 30,
+   "frames": 68,
+   "hold_frames": [
+    21,
+    49
+   ],
+   "length_s": 2.2667,
+   "loop": false,
+   "name": "PointGround@prince",
+   "native_speed_mps": 0.0,
+   "set": "prince",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Surprise",
+   "events": [],
+   "fps": 30,
+   "frames": 23,
+   "length_s": 0.7667,
+   "loop": false,
+   "name": "Surprise@prince",
+   "native_speed_mps": 0.0,
+   "set": "duel",
+   "style": "prince"
+  },
+  {
+   "additive": false,
+   "base": "Point",
+   "events": [],
+   "fps": 30,
+   "frames": 57,
+   "hold_frames": [
+    17,
+    40
+   ],
+   "length_s": 1.9,
+   "loop": false,
+   "name": "Point@prince",
+   "native_speed_mps": 0.0,
+   "set": "campaign",
+   "style": "prince"
+  }
+ ],
+ "costume": "prehistoric",
+ "files": {
+  "campaign": {
+   "actions": [
+    "Point@prince"
+   ],
+   "bytes": 375612,
+   "fbx": "anim_campaign@prince.fbx"
+  },
+  "duel": {
+   "actions": [
+    "Surprise@prince"
+   ],
+   "bytes": 299532,
+   "fbx": "anim_duel@prince.fbx"
+  },
+  "idle": {
+   "actions": [
+    "Idle_A@prince",
+    "Idle_B@prince",
+    "Idle_Look@prince",
+    "Idle_Staff@prince"
+   ],
+   "bytes": 2241100,
+   "fbx": "anim_idle@prince.fbx"
+  },
+  "locomotion": {
+   "actions": [
+    "Jog@prince",
+    "Run@prince",
+    "StartL@prince",
+    "StartR@prince",
+    "StopL@prince",
+    "StopR@prince",
+    "Turn60L@prince",
+    "Turn60R@prince",
+    "TurnSmallL@prince",
+    "TurnSmallR@prince",
+    "Walk@prince",
+    "WalkBrisk@prince"
+   ],
+   "bytes": 2863292,
+   "fbx": "anim_locomotion@prince.fbx"
+  },
+  "prince": {
+   "actions": [
+    "Beckon@prince",
+    "LeadLook@prince",
+    "PointGround@prince"
+   ],
+   "bytes": 973900,
+   "fbx": "anim_prince@prince.fbx"
+  },
+  "social": {
+   "actions": [
+    "Greet@prince",
+    "Listen@prince",
+    "Nod@prince",
+    "ShakeHead@prince",
+    "Talk_A@prince",
+    "Talk_B@prince",
+    "Talk_Emphasis@prince"
+   ],
+   "bytes": 2599132,
+   "fbx": "anim_social@prince.fbx"
+  }
+ },
+ "key": "prince"
+}
