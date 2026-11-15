@@ -650,10 +650,10 @@ namespace World.Game
                 {
                     if (_carriedGems[n] != null) Destroy(_carriedGems[n]);
                     var parent = Mira.Actor is PlaceholderActor pa ? pa.BodyPivot : Mira.transform;
-                    _carriedGems[n] = ExpeditionSites.MakeCrystal(parent, want, ExpeditionSites.ElementColour(c.Definition, (Element)i), 0.24f, true);
+                    _carriedGems[n] = ExpeditionSites.MakeCrystal(parent, want, (Element)i, 0.24f, true);
                 }
                 _carriedGems[n].transform.localPosition = new Vector3(-0.16f + 0.2f * n, 1.24f, 0.36f);
-                _carriedGems[n].transform.localRotation = Quaternion.Euler(0, Time.time * 40f, 0);
+                _carriedGems[n].transform.localRotation = Quaternion.Euler(0, 20f + 40f * n, 0);
                 n++;
             }
             for (int i = _carriedGems.Count - 1; i >= n; i--) { if (_carriedGems[i] != null) Destroy(_carriedGems[i]); _carriedGems.RemoveAt(i); }
@@ -868,22 +868,10 @@ namespace World.Game
             if (m.FallenMark != null) { Destroy(m.FallenMark); m.FallenMark = null; }
         }
 
-        // ---------------- the viewpoint underground while interiors are a stand-in ----------------
-
-        public const string RailLock = "ExpeditionRail";
-        /// <summary>True while the viewpoint is led through a stand-in interior (no package I5): it trails the party and cannot step.</summary>
-        public bool Railed { get; private set; }
-        private Cell _railEntry;
-        private int _railEntryHeading;
-        private float _railYaw;
-        private Vector3 _railPos;
-        private bool _railFresh;
-
-        /// <summary>True when the build has no walkable interiors (package I5 is not merged): the party's interior cells are laid out by this package.</summary>
-        public bool StandInInteriors => !ExpeditionSpace.RealInteriors(D);
+        // ---------------- the player's space (package I5's interiors) ----------------
 
         /// <summary>The space the player is in: an interior id, or "" on the surface.</summary>
-        public string PlayerSpace => StandInInteriors ? (Railed ? MiraSpace : "") : (Interiors.Current ?? "");
+        public string PlayerSpace => Interiors.Current ?? "";
 
         /// <summary>The keeper the party stands before (the opponent of the encounter whose threshold is the party's place), or null.</summary>
         private Vector3? EnemyHere()
@@ -895,125 +883,6 @@ namespace World.Game
                 return ExpeditionSpace.World(S, e.Stage.Opponent);
             }
             return null;
-        }
-
-        /// <summary>A point of floor about five metres from a place inside the current interior, on the side away from what is looked at when that is free.</summary>
-        private Vector3 ClearSpotNear(Vector3 centre, Vector3 lookAt)
-        {
-            var away = centre - lookAt; away.y = 0;
-            float baseYaw = away.sqrMagnitude < 0.05f ? 0f : BoardSpace.YawOf(away);
-            foreach (float dist in new[] { 5.5f, 4.5f, 3.5f })
-                for (int k = 0; k < 24; k++)
-                {
-                    // 0, +15, -15, +30, -30 ... degrees round from the preferred side.
-                    float yaw = baseYaw + ((k + 1) / 2) * 15f * (k % 2 == 0 ? 1f : -1f);
-                    var dir = BoardSpace.DirOf(yaw);
-                    if (ExpeditionSpace.OnFloor(D, MiraSpace, centre + dir * dist) && ExpeditionSpace.OnFloor(D, MiraSpace, centre + dir * dist * 0.5f)) return centre + dir * dist;
-                }
-            return centre - Mira.transform.forward * 2.5f;
-        }
-
-        private bool _refollowWhenMoving;
-        private Vector3? _clearSpot;
-        private MarkerRef _clearSpotFor;
-
-        private void StartRail()
-        {
-            if (Railed || Walker == null) return;
-            Railed = true; _railFresh = true;
-            _railEntry = Walker.Cell; _railEntryHeading = Walker.Heading;
-            Walker.StopAuto();
-            Walker.AddLock(RailLock);
-        }
-
-        private void EndRail(Vector3? surfaceNear)
-        {
-            if (!Railed) return;
-            Railed = false;
-            if (Walker == null) return;
-            Walker.RemoveLock(RailLock);
-            var cell = _railEntry;
-            if (surfaceNear.HasValue)
-            {
-                var free = WalkGrid.NearestFree(WalkLattice.ToCell(surfaceNear.Value), 4);
-                if (free.HasValue) cell = free.Value;
-            }
-            int heading = _railEntryHeading;
-            var to = Mira.transform.position - WalkLattice.ToWorld(cell); to.y = 0;
-            if (surfaceNear.HasValue && to.sqrMagnitude > 1f) heading = WalkLattice.HeadingOf(BoardSpace.YawOf(to));
-            Walker.Teleport(cell, heading);
-        }
-
-        private void UpdateRail()
-        {
-            if (!StandInInteriors) { if (Railed) EndRail(null); return; }
-            bool under = MiraSpace.Length > 0;
-            if (!Railed) return;
-            if (!under)
-            {
-                // Up again: beside the way out, on the side the place is approached from (its safe point).
-                var at = C.Party.Mode == PartyMode.Travelling && C.Party.Leg != null ? C.Party.Leg.To : C.Party.At;
-                var loc = D.Location(at.Location);
-                Vector3 near = Mira.transform.position;
-                if (loc != null && !string.IsNullOrEmpty(loc.SafePoint) && !at.IsInterior) near = ExpeditionSpace.World(S, MarkerRef.Surface(loc.Id, loc.SafePoint));
-                EndRail(near);
-                // The player takes up the file again once the party walks on (not while it is still climbing out).
-                _refollowWhenMoving = _following;
-                return;
-            }
-            if (Walker == null) return;
-            Vector3 pos, look;
-            var p = C.Party;
-            var enemy = EnemyHere();
-            if (_retreat != null && _retreat.Start >= 0f && Time.unscaledTime - _retreat.Start < 2.6f)
-            {
-                // The retreat begins: the view holds where it was, on the one who steps into the gap, as the others run past.
-                pos = _railPos;
-                look = Vector3.Lerp(_retreat.Gap, _retreat.Enemy, 0.35f);
-            }
-            else if (enemy.HasValue && p.Mode != PartyMode.Travelling && _retreat == null)
-            {
-                // At a threshold: over Mira's shoulder, so the keeper and the altar are in view beyond her.
-                var mp = Mira.transform.position;
-                var dir = enemy.Value - mp; dir.y = 0; dir.Normalize();
-                var side = new Vector3(dir.z, 0, -dir.x);
-                pos = mp - dir * 2.0f;
-                foreach (float sgn in new[] { 1f, -1f })
-                {
-                    var cand = mp - dir * 2.9f + side * (1.7f * sgn);
-                    if (ExpeditionSpace.OnFloor(D, MiraSpace, cand) && ExpeditionSpace.OnFloor(D, MiraSpace, cand - dir * 1.2f)) { pos = cand; break; }
-                }
-                look = Vector3.Lerp(mp, enemy.Value, 0.6f);
-            }
-            else
-            {
-                // Behind the last of the file, on the way the party came, looking at Mira and what she is at.
-                TrailAt(p.Mode == PartyMode.Travelling ? 8.5f : 6.5f, out pos, out _, out var space);
-                if (space != MiraSpace)
-                    for (int i = 0; i < _trail.Count; i++)
-                        if (_trail[i].Space == MiraSpace) { pos = _trail[i].Pos; break; }
-                look = Mira.transform.position;
-                if (_retreat != null) look = Vector3.Lerp(look, _retreat.Gap, 0.5f);
-                else if (p.Mode != PartyMode.Travelling && _hasStand) look = Vector3.Lerp(look, ExpeditionSpace.World(S, p.At), 0.35f);
-                // No way walked here yet (placed by a duel's outcome, a load): a clear spot of floor a few paces from her.
-                if (BoardSpace.Flat(pos - Mira.transform.position) < 3f)
-                {
-                    // Chosen once per place: she turns to whoever she talks to, and the view must not circle her.
-                    if (!_clearSpot.HasValue || _clearSpotFor != p.At || BoardSpace.Flat(_clearSpot.Value - Mira.transform.position) > 9f)
-                    {
-                        _clearSpot = ClearSpotNear(Mira.transform.position, look);
-                        _clearSpotFor = p.At;
-                    }
-                    pos = _clearSpot.Value;
-                }
-            }
-            var d = look - pos; d.y = 0;
-            float yaw = d.sqrMagnitude > 0.5f ? BoardSpace.YawOf(d) : _railYaw;
-            if (_railFresh) { _railPos = pos; _railYaw = yaw; _railFresh = false; }
-            float k = 1f - Mathf.Exp(-6f * Time.unscaledDeltaTime);
-            _railPos = BoardSpace.Flat(pos - _railPos) > 20f ? pos : Vector3.Lerp(_railPos, pos, k);
-            _railYaw = Mathf.LerpAngle(_railYaw, yaw, k);
-            Walker.PlaceExact(_railPos, _railYaw, PlayerWalker.FixedPitch);
         }
     }
 }

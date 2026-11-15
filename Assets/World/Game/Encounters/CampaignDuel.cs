@@ -160,12 +160,13 @@ namespace World.Game
             return spec;
         }
 
-        /// <summary>World point of a marker: surface markers from the location's anchor cell, interior markers through <see cref="InteriorSpace"/> (I5).</summary>
+        /// <summary>World point of a marker: <see cref="Interiors.TryWorld"/> (I5: interior floor or surface cell) when the interiors are built, else from the definition.</summary>
         public static bool TryMarkerWorld(WorldState s, MarkerRef r, out Vector3 p)
         {
             p = default;
             var d = s?.Campaign?.Definition;
             if (d == null || string.IsNullOrEmpty(r.Location) && string.IsNullOrEmpty(r.Interior)) return false;
+            if (r.IsInterior && Interiors.TryWorld(r, out p)) return true;
             if (r.IsInterior)
             {
                 var m = d.Interior(r.Interior);

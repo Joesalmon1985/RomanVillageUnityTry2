@@ -68,7 +68,7 @@ public static class ExpeditionDrive
         var d = ExpeditionDirector.Instance;
         if (d != null)
         {
-            sb.Append(" | scene ").Append(d.SceneStep).Append(" script ").Append(d.ScriptPending).Append(" duelStandIn ").Append(d.DuelStandInOpen).Append(" last cmd ").Append(d.LastCommand);
+            sb.Append(" | scene ").Append(d.SceneStep).Append(" script ").Append(d.ScriptPending).Append(" last cmd ").Append(d.LastCommand);
             sb.Append(" | mira ").Append(d.Mira.transform.position.ToString("0")).Append(" player ").Append(B.Avatar.Position.ToString("0")).Append(" following ").Append(B.Avatar.Following != null);
             sb.Append(" | said: ");
             for (int i = Mathf.Max(0, d.Said.Count - 6); i < d.Said.Count; i++) sb.Append('[').Append(d.Said[i].Speaker).Append("] ").Append(d.Said[i].Text).Append(" / ");

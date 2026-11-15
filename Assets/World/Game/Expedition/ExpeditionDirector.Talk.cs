@@ -76,7 +76,7 @@ namespace World.Game
         {
             if (n == null || Walker == null || SpaceOfSpeaker(n) != PlayerSpace) return false;
             // A viewpoint led with the party is with the party, wherever the last frame left it.
-            return Railed || BoardSpace.Flat(n.transform.position - Walker.Position) <= 75f;
+            return BoardSpace.Flat(n.transform.position - Walker.Position) <= 75f;
         }
 
         private void Record(string speaker, string text) => _said.Add(new Line { Tick = S.Tick, Speaker = speaker ?? "", Text = text ?? "" });
@@ -112,7 +112,7 @@ namespace World.Game
         // ---------------- her question (one at a time) ----------------
 
         public const string AskOpening = "opening", AskLead = "lead", AskChoice = "choice", AskThreshold = "threshold",
-            AskTower = "tower", AskMenu = "menu", AskCall = "call", AskDuel = "duel";
+            AskTower = "tower", AskMenu = "menu", AskCall = "call";
 
         private int _ask;
         private string _askKind;
@@ -183,7 +183,7 @@ namespace World.Game
             get
             {
                 if (!_begun || C == null || C.Phase != CampaignPhase.Running) return false;
-                if (_retreat != null || Railed) return true;
+                if (_retreat != null) return true;
                 if (!C.Party.PlayerPresent) return false;
                 if (AskHandle != 0 || ScriptPending > 0) return true;
                 // In her company on the road or at a site (not idling at the camp between leads).
@@ -224,18 +224,11 @@ namespace World.Game
                 _prevMiraSpace = MiraSpace;
                 if (present && wasNear)
                 {
-                    if (StandInInteriors) { if (MiraSpace.Length > 0) StartRail(); }
-                    else if (_leg != null && (Interiors.Current ?? "") != MiraSpace) Interiors.Enter(_leg.To);
+                    if (_leg != null && (Interiors.Current ?? "") != MiraSpace) Interiors.Enter(_leg.To);
                 }
             }
             _wasNearBeforeLink = PlayerNear(45f);
-            if (_refollowWhenMoving && (!present || Railed)) _refollowWhenMoving = false;
-            if (_refollowWhenMoving && p.Mode == PartyMode.Travelling && _leg != null && !_leg.Link && _miraSpeed > 0.5f)
-            {
-                _refollowWhenMoving = false;
-                if (PlayerSpace == MiraSpace) Walker.Follow(Mira);
-            }
-            if (!StandInInteriors && _following && present && PlayerSpace == MiraSpace && !ReferenceEquals(Walker.Following, Mira) && _enteredSpace != MiraSpace)
+            if (_following && present && PlayerSpace == MiraSpace && !ReferenceEquals(Walker.Following, Mira) && _enteredSpace != MiraSpace)
             {
                 // Arrived in her interior: take up the file again.
                 _enteredSpace = MiraSpace;
@@ -271,7 +264,6 @@ namespace World.Game
             if (Walker != null && ReferenceEquals(Walker.Following, Mira)) Walker.StopAuto();
             if (_askKind != AskMenu) CloseAsk();
             if (said) SayLine(ExpeditionLines.MiraLeave);
-            if (Railed) EndRail(null);
         }
 
         private void JoinCompany(bool said)
@@ -279,13 +271,12 @@ namespace World.Game
             if (!C.Party.PlayerPresent) Send(new SetCompany { Present = true });
             _awaySince = -1f;
             if (said) SayLine(ExpeditionLines.MiraRejoin);
-            if (StandInInteriors && MiraSpace.Length > 0 && !Railed) StartRail();
         }
 
         private void FollowMira()
         {
             _following = true;
-            if (Walker != null && !Railed && PlayerSpace == MiraSpace) Walker.Follow(Mira);
+            if (Walker != null && PlayerSpace == MiraSpace) Walker.Follow(Mira);
         }
 
         // ---------------- the conversation loop ----------------
@@ -300,7 +291,6 @@ namespace World.Game
             if (_ask != 0 && !SpeechBubbles.IsOpen(_ask)) { _ask = 0; _askKind = null; }
             var c = C; var p = c.Party;
             if (c.Phase != CampaignPhase.Running) { if (_askKind != AskMenu) CloseAsk(); return; }
-            UpdateDuelStandIn();
             UpdatePrinceNews();
             if (SceneStep < SceneUnderWay) { UpdateOpening(); return; }
 
@@ -308,14 +298,14 @@ namespace World.Game
             bool prince = PrinceBusy();
             if (_ask != 0)
             {
-                bool own = _askKind == AskMenu || _askKind == AskDuel;
+                bool own = _askKind == AskMenu;
                 if (!own && !AskStillFits()) CloseAsk();
                 else if (!own && prince) CloseAsk();                       // she waits her turn and asks again after
                 else if (!own && _askKind != AskCall && !near) CloseAsk();  // the player walked off
                 else if (_askKind == AskCall && (PlayerNear(12f) || ReferenceEquals(Walker != null ? Walker.Following : null, Mira) || p.Mode != PartyMode.Travelling)) CloseAsk();
                 if (_ask != 0) return;
             }
-            if (ScriptPending > 0 || prince || _retreat != null || _duelStandIn || Walker == null) return;
+            if (ScriptPending > 0 || prince || _retreat != null || Walker == null) return;
             if (!p.PlayerPresent) return; // away: she does not pester; a tap on her offers "I'm with you"
 
             switch (p.Mode)
@@ -514,7 +504,7 @@ namespace World.Game
 
         private void CallIfLagging()
         {
-            if (Railed || Walker == null || PlayerSpace != MiraSpace) return;
+            if (Walker == null || PlayerSpace != MiraSpace) return;
             float dist = BoardSpace.Flat(Walker.Position - Mira.transform.position);
             if (dist <= LagDistance || ReferenceEquals(Walker.Following, Mira)) return;
             if (Now - _lastCall < CallEvery) return;
@@ -638,13 +628,16 @@ namespace World.Game
                 var any = CampaignApi.LinesFor(S, "mira", "threshold");
                 text = any.Count > 0 ? any[0] : (string.IsNullOrEmpty(e.OpponentName) ? "Do we fight?" : e.OpponentName + " has seen us. Do we fight?");
             }
+            // The stakes in the duel's own words (package I7), so the bubble and the duel's stakes card agree.
+            string stakes = CampaignDuel.StakesLine(new WardDuelRequest { Mode = EncounterKind.Lethal, VolunteerName = vol?.Name });
             if (vol == null)
             {
                 var alone = ExpeditionLines.Get(S, "mira_nobody_left");
-                if (alone != null) text = alone + " Do we fight?";
+                text = (alone ?? stakes) + " Do we fight?";
             }
             else
             {
+                if (stakes != null && !text.Contains(CampaignDuel.FirstName(vol.Name))) text = text + " " + stakes;
                 // The one who will cover the retreat steps forward as he is named.
                 var m = MateOf(vol.Id);
                 if (m != null) m.Npc.Actor?.PlayOneShot(ActorKeys.Greet);
@@ -683,13 +676,9 @@ namespace World.Game
 
         // ---- the duel (package I7), or its stand-in ----
 
-        public const string DuelPause = "ExpeditionDuelStandIn";
-        private bool _duelStandIn, _duelPaused;
         private EncounterCommitted _committed;
         private string _lastResolvedEncounter;
         private DuelResult _lastResult;
-        /// <summary>True while the duel stand-in waits for its outcome (package I7's duel is not in this build).</summary>
-        public bool DuelStandInOpen => _duelStandIn;
         /// <summary>Attempts committed since this director started (tests).</summary>
         public int DuelsStarted { get; private set; }
         /// <summary>The last duel's result as the sim applied it (tests).</summary>
@@ -704,45 +693,14 @@ namespace World.Game
             DuelsStarted++;
             Mira.Actor?.PlayOneShot(ActorKeys.Cast);
             // The duel is package I7's: CampaignDuel stages Mira as the caster and sends the one ResolveEncounter.
-            if (CampaignDuel.Start(ec)) return;
-            // Not in this build: a stand-in asks how it ends and sends the result through the same command.
-            _duelStandIn = true;
-        }
-
-        private void UpdateDuelStandIn()
-        {
-            if (!_duelStandIn) return;
-            if (CampaignApi.Attempt(S) == null) { EndDuelStandIn(); return; }
-            if (!_duelPaused) { _boot.Clock.Pause(DuelPause); _duelPaused = true; } // the world clock stands still during a duel (5.1)
-            if (_ask != 0 || ScriptPending > 0) return;
-            OpenAsk(AskDuel, null, ExpeditionLines.Get(S, ExpeditionLines.DuelStandIn, "How does the duel end?"),
-                new[] { Reply(ExpeditionLines.DuelWin), Reply(ExpeditionLines.DuelLose), Reply(ExpeditionLines.DuelClash) },
-                i => ResolveStandIn(i == 0 ? DuelResult.Victory : i == 1 ? DuelResult.Defeat : DuelResult.Clash));
-        }
-
-        /// <summary>The duel stand-in's outcome (also for scripts and tests): sends <c>ResolveEncounter</c> for the pending attempt and steps the clock once.</summary>
-        public bool ResolveStandIn(DuelResult result)
-        {
-            var a = CampaignApi.Attempt(S);
-            if (a == null) { EndDuelStandIn(); return false; }
-            var r = Send(new ResolveEncounter { AttemptId = a.Id, Result = result });
-            EndDuelStandIn();
-            if (r.Ok) _boot.Clock.StepOnce();
-            return r.Ok;
-        }
-
-        private void EndDuelStandIn()
-        {
-            _duelStandIn = false;
-            if (_askKind == AskDuel) CloseAsk();
-            if (_duelPaused) { _boot.Clock.Resume(DuelPause); _duelPaused = false; }
+            if (!CampaignDuel.Start(ec) && CampaignDuel.AutoStage)
+                Debug.LogWarning("[Expedition] the campaign duel for attempt " + ec.AttemptId + " was not staged (its driver retries)");
         }
 
         private void OnResolved(EncounterResolved er)
         {
             _lastResolvedEncounter = er.EncounterId;
             _lastResult = er.Result;
-            if (_duelStandIn) EndDuelStandIn();
             if (er.Result != DuelResult.Victory) return;
             // A win: the keeper's word, then Mira's (the lines that the victory's facts unlock).
             var e = D.Encounter(er.EncounterId);
@@ -774,7 +732,7 @@ namespace World.Game
             {
                 // Said by hand: the sim already counts them dead, so the guarded lookup would refuse the line.
                 string text = CampaignTokens.Fill(C, lines[0].Text ?? "");
-                if (Hears(m.Npc) || Railed)
+                if (Hears(m.Npc))
                 {
                     SpeechBubbles.Say(m.Npc, text, Real(4f));
                     // His last words belong to the tick he fell on (the scene plays a frame or two after it).
@@ -785,7 +743,7 @@ namespace World.Game
 
         private void OnRetreatEnded(RetreatScene sc)
         {
-            if (!StandInInteriors && C.Party.PlayerPresent) Interiors.Enter(C.Party.At);
+            if (C.Party.PlayerPresent) Interiors.Enter(C.Party.At);
             // Mira's word for the fallen (the pack's "memorial" topic, lines without a custody guard).
             foreach (var l in D.Lines)
             {
@@ -886,7 +844,7 @@ namespace World.Game
         {
             if (C == null || _retreat != null) return;
             if (C.Phase != CampaignPhase.Running) { n.OnTapped = null; n.Interact(); n.OnTapped = OnMiraTapped; return; }
-            if (_ask != 0 && _askKind != AskMenu && _askKind != AskDuel) { SpeechBubbles.Expand(_ask); return; }
+            if (_ask != 0 && _askKind != AskMenu) { SpeechBubbles.Expand(_ask); return; }
             if (SceneStep < SceneUnderWay)
             {
                 // Impatient: straight to her question.
@@ -934,8 +892,7 @@ namespace World.Game
         private void LeadOut()
         {
             SayLine(ExpeditionLines.MiraLeadOut);
-            if (!StandInInteriors) { Interiors.LeadOut(); return; }
-            if (Railed) EndRail(null);
+            Interiors.LeadOut();
         }
 
         private void OnCompanionTapped(Npc n)

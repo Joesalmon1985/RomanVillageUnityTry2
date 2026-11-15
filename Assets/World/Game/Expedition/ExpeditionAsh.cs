@@ -135,7 +135,7 @@ namespace World.Game
                 if (_carried == null || _carriedElement != element)
                 {
                     if (_carried != null) Destroy(_carried);
-                    _carried = ExpeditionSites.MakeCrystal(_runners[1].Body, "Seized crystal", ExpeditionSites.ElementColour(_boot.Sim.State.Campaign.Definition, element), 0.34f, false);
+                    _carried = ExpeditionSites.MakeCrystal(_runners[1].Body, "Seized crystal", element, 0.34f, false);
                     _carried.transform.localPosition = new Vector3(0, 2.0f, 0.1f);
                     _carriedElement = element;
                 }

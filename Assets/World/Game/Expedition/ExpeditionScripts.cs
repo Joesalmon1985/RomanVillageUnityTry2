@@ -7,6 +7,7 @@ using UnityEngine;
 using World.Sim;
 using World.Sim.Campaign;
 using World.Sim.Eras;
+using World.Sim.Encounters.Ward;
 
 namespace World.Game
 {
@@ -27,8 +28,8 @@ namespace World.Game
     /// tower; "I'm with you"; "Set it".</item>
     /// <item><c>expedition_captures</c>: <c>earth_stolen</c> with night captures of every staged moment.</item>
     /// </list>
-    /// The duel itself is package I7's: while it is not in the build the director's stand-in asks how it ends, and
-    /// the script answers it (the result goes through <c>ResolveEncounter</c> like any duel's).
+    /// The duel is package I7's real campaign duel, staged underground from <c>EncounterCommitted</c>; a scripted Ward
+    /// player (<see cref="WardBot"/>) plays Mira's side: passive for a planned loss, casting for a planned win.
     /// </summary>
     public static class ExpeditionScripts
     {
@@ -133,7 +134,7 @@ namespace World.Game
             if (a.Failed) yield break;
             var plan = C.RivalPlan ?? C.Definition.Rival.Steps;
             Debug.Log("[AutoPlay] " + name + ": campaign " + C.Definition.Id + " on " + (DevStart.Current ?? "this world") + ", seed " + S.Seed + ", tick " + S.Tick
-                      + ", the Ash march on the first crystal takes " + ExpeditionJournal.Clock(plan[0].MarchCost) + ", interiors " + (Dir.StandInInteriors ? "stand-in (no package I5)" : "package I5")
+                      + ", the Ash march on the first crystal takes " + ExpeditionJournal.Clock(plan[0].MarchCost) + ", interiors " + Interiors.All.Count
                       + ", time x" + Time.timeScale.ToString("0.#", CultureInfo.InvariantCulture) + ", " + Screen.width + "x" + Screen.height);
             yield return play(a);
             Time.timeScale = 1f;
@@ -183,7 +184,7 @@ namespace World.Game
             if (B == null || S.Campaign == null) return "no campaign";
             var p = C.Party; var d = Dir;
             return "tick " + S.Tick + ", party " + p.Mode + " at " + p.At + (p.Mode == PartyMode.Travelling && p.Leg != null ? " to " + p.Leg.To : "")
-                   + ", player " + (p.PlayerPresent ? "present" : "away") + (d != null ? ", ask " + (d.AskKind ?? "-") + ", space " + (d.MiraSpace.Length > 0 ? d.MiraSpace : "surface") + (d.Railed ? " (led)" : "") : "")
+                   + ", player " + (p.PlayerPresent ? "present" : "away") + (d != null ? ", ask " + (d.AskKind ?? "-") + ", space " + (d.MiraSpace.Length > 0 ? d.MiraSpace : "surface") + ", player in " + (Interiors.Current ?? "surface") : "")
                    + ", earth " + C.Crystal(Element.Earth).Custody + ", rival " + C.Rival.Phase + " step " + C.Rival.Step + ", alive " + CountAlive();
         }
 
@@ -194,7 +195,7 @@ namespace World.Game
 
         /// <summary>
         /// For tests: plays as a willing player until the condition holds ("Lead the way", "Coming", "Fight", "Set it",
-        /// the right answer), settling each duel of the stand-in with the next of the given results.
+        /// the right answer), playing each campaign duel to the next of the given results (Victory or Defeat).
         /// </summary>
         public static IEnumerator PlayUntil(AutoPlay a, Func<bool> until, float gameSeconds, string what, params DuelResult[] duels)
         {
@@ -247,6 +248,9 @@ namespace World.Game
             /// <summary>A player in a hurry: after two bubbles of the story, a tap on Mira brings her question at once.</summary>
             public bool SkipStory;
             public readonly Queue<DuelResult> Duels = new Queue<DuelResult>();
+            public int DuelAttempt = -1;
+            public DuelResult DuelWanted;
+            public bool DuelShot;
             public readonly List<Moment> Moments = new List<Moment>();
             public Moment On(string name, Func<bool> when, string capture = null, float delay = 0f)
             {
@@ -292,17 +296,49 @@ namespace World.Game
                     if (m.Capture != null && Captures)
                     {
                         if (m.Delay > 0f) yield return a.DoWait(m.Delay / Mathf.Max(1f, Time.timeScale));
-                        if (m.LookAtMira && !Dir.Railed)
+                        if (m.LookAtMira && Interiors.Current == null)
                         {
                             W.StopAuto();
                             yield return a.DoFace(() => Dir.Mira.transform.position);
                         }
                         yield return Capture(a, m.Capture);
-                        if (m.LookAtMira && !Dir.Railed && C.Party.PlayerPresent) W.Follow(Dir.Mira);
+                        if (m.LookAtMira && Interiors.Current == null && C.Party.PlayerPresent) W.Follow(Dir.Mira);
                     }
                 }
                 if (until()) yield break;
                 if (Now > end || Time.realtimeSinceStartup > realEnd) { a.Fail("timed out waiting for " + what + " (" + Status() + ")"); yield break; }
+                // The campaign duel (package I7): played by the scripted Ward player to the planned result.
+                var duel = WardDuelEncounter.Current;
+                if (duel != null && duel.IsLethal && EncounterHost.Instance != null && EncounterHost.Instance.IsRunning)
+                {
+                    int att = duel.Request != null ? duel.Request.AttemptId : -1;
+                    if (att != plan.DuelAttempt)
+                    {
+                        plan.DuelAttempt = att; plan.DuelShot = false;
+                        if (plan.Duels.Count == 0) { a.Fail("a duel the script did not expect (" + Status() + ")"); yield break; }
+                        plan.DuelWanted = plan.Duels.Dequeue();
+                        bool win = plan.DuelWanted == DuelResult.Victory;
+                        var bot = WardBot.Attach(B.gameObject);
+                        bot.CastInterval = win ? 2.1f : 2.4f; bot.MaxCastsPerDuel = -1; bot.FixedWard = null; bot.AutoReturn = false;
+                        bot.Passive = !win; bot.WaitForRival = win; bot.StakesReadSeconds = 2.0f;
+                        Stamp("duel " + Dir.DuelsStarted + " staged underground in " + (Interiors.Current ?? "the open") + " (to play: " + plan.DuelWanted + ")");
+                    }
+                    if (!plan.DuelShot && duel.Phase == WardDuelEncounter.Screen.Active && duel.Session != null && duel.Session.RivalHistory.Count >= 1)
+                    {
+                        plan.DuelShot = true;
+                        yield return Capture(a, plan.DuelWanted == DuelResult.Victory ? "duel_win" : "duel_loss");
+                    }
+                    if (duel.Phase == WardDuelEncounter.Screen.Result && duel.HoldOver)
+                    {
+                        var want = plan.DuelWanted == DuelResult.Victory ? WardOutcome.Victory : WardOutcome.Defeat;
+                        if (duel.LastOutcome != want) { a.Fail("the duel ended " + duel.LastOutcome + ", the script played for " + want); yield break; }
+                        Stamp("duel " + Dir.DuelsStarted + ": " + duel.LastOutcome + " (" + duel.Session.PlayerHistory.Count + " casts by Mira)");
+                        duel.Return();
+                        var bot = B.GetComponent<WardBot>(); if (bot != null) bot.enabled = false;
+                    }
+                    yield return null;
+                    continue;
+                }
                 var d = Dir;
                 if (plan.SkipStory && d != null && d.SceneStep == ExpeditionDirector.SceneOpening && d.Said.Count >= 2 && d.ScriptPending > 0 && d.AskHandle == 0)
                 {
@@ -336,14 +372,6 @@ namespace World.Game
                             else if (plan.NotYetOnce) { plan.NotYetOnce = false; reply = Text(ExpeditionLines.ReplyNotYet); Stamp("threshold: \"Not yet\""); }
                             else { reply = Text(ExpeditionLines.ReplyFight); Stamp("threshold: \"Fight\" (" + (d.ThresholdVolunteer.Length > 0 ? d.ThresholdVolunteer : "nobody") + " will hold the way)"); }
                             break;
-                        case ExpeditionDirector.AskDuel:
-                        {
-                            if (plan.Duels.Count == 0) { a.Fail("a duel the script did not expect (" + Status() + ")"); yield break; }
-                            var result = plan.Duels.Dequeue();
-                            reply = Text(result == DuelResult.Victory ? ExpeditionLines.DuelWin : result == DuelResult.Defeat ? ExpeditionLines.DuelLose : ExpeditionLines.DuelClash);
-                            Stamp("duel " + (d.DuelsStarted) + ": " + result + " (stand-in for package I7's duel)");
-                            break;
-                        }
                         case ExpeditionDirector.AskChoice:
                         {
                             var ch = C.Definition.Choice(C.Party.ChoiceId);

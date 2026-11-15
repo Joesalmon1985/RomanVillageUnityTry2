@@ -97,8 +97,9 @@ namespace World.Game
             if (Instance == this) Instance = null;
             if (_boot != null && _boot.Clock != null) _boot.Clock.Ticked -= OnTicked;
             if (MapLayer != null) MapScreen.RemoveLayer(MapLayer);
-            if (Walker != null) Walker.RemoveLock(RailLock);
-            if (_duelPaused && _boot != null && _boot.Clock != null) _boot.Clock.Resume(DuelPause);
+            CampaignDuel.Staged -= OnDuelStaged;
+            if (Instance == null) CrystalStandView.DrawnElsewhere = false;
+            if (_hostHooked != null) _hostHooked.Ended -= OnHostEnded;
         }
 
         /// <summary>Called by <see cref="ExpeditionInstaller"/> once a campaign exists: takes Mira over, spawns the six, builds the views.</summary>
@@ -133,9 +134,11 @@ namespace World.Game
             MapScreen.AddLayer(MapLayer);
 
             boot.Clock.Ticked += OnTicked;
+            CampaignDuel.Staged += OnDuelStaged;
+            CrystalStandView.DrawnElsewhere = true; // I5's stands show no crystal of their own: one body per crystal
             InitFromState();
             Debug.Log("[Expedition] director ready: " + D.Id + ", party " + p.Mode + " at " + p.At + ", player " + (p.PlayerPresent ? "present" : "away")
-                      + ", interiors " + (ExpeditionSpace.RealInteriors(D) ? "package I5" : "stand-in"));
+                      + ", interiors " + Interiors.All.Count);
         }
 
         private void OnTicked(IReadOnlyList<SimEvent> events)
@@ -146,16 +149,6 @@ namespace World.Game
 
         /// <summary>Events of a tick the director did not hear itself (the tick that started the campaign).</summary>
         public void Feed(IReadOnlyList<SimEvent> events) { if (events != null) _events.AddRange(events); }
-
-        /// <summary>
-        /// Stand-in interiors only: the player taps an open way down. The viewpoint is led to the party below; with
-        /// nobody down there, there is nothing to be led to.
-        /// </summary>
-        public void GoDownStandIn(ExpeditionStair st)
-        {
-            if (MiraSpace.Length == 0) { Cue("Nobody is down there now. " + CampaignApi.WhereIsMira(S)); return; }
-            StartRail();
-        }
 
         /// <summary>Sends a command (the only way this package acts on the world). Returns the sim's answer.</summary>
         private CommandResult Send(Command c)
@@ -190,12 +183,6 @@ namespace World.Game
             UpdateCompany();
             UpdateTalk();
             UpdateCues();
-        }
-
-        private void LateUpdate()
-        {
-            if (!_begun || C == null) return;
-            UpdateRail();
         }
 
         // =====================================================================================================
@@ -254,16 +241,43 @@ namespace World.Game
                 m.Out = c.Scout != null && c.Scout.Out && c.Scout.CompanionId == m.Id;
             }
             PlaceFromState(true);
-            // Stand-in interiors: a player saved underground with the party is led again (the way back up is the interior's way in).
-            if (StandInInteriors && MiraSpace.Length > 0 && p.PlayerPresent && Walker != null)
+        }
+
+        // ---- the campaign duel (package I7) stages its own bodies: the party's are hidden until the duel's screen is gone ----
+
+        private EncounterHost _hostHooked;
+        private readonly List<GameObject> _hiddenForDuel = new List<GameObject>();
+        /// <summary>True while the party's bodies are hidden for a staged campaign duel (tests).</summary>
+        public bool HiddenForDuel => _hiddenForDuel.Count > 0;
+
+        private void OnDuelStaged(WardDuelRequest req)
+        {
+            if (req == null || req.Mode == EncounterKind.Practice) return;
+            ShowAfterDuel();
+            // A duel underground is fought with the player in that interior (its light, no sky), e.g. after a load or a dev jump.
+            var att = CampaignApi.Attempt(S);
+            var enc = att != null ? D.Encounter(att.EncounterId) : null;
+            if (enc != null && enc.Threshold.IsInterior && (Interiors.Current ?? "") != enc.Threshold.Interior) Interiors.Enter(enc.Threshold);
+            foreach (var m in _mates) if (m.Npc != null && m.Npc.gameObject.activeSelf) { m.Npc.gameObject.SetActive(false); _hiddenForDuel.Add(m.Npc.gameObject); }
+            foreach (var m in _mates) if (m.FallenMark != null && m.FallenMark.activeSelf) { m.FallenMark.SetActive(false); _hiddenForDuel.Add(m.FallenMark); }
+            if (Sites != null)
+                foreach (var k in Sites.Keepers)
+                    if (k.Npc != null && k.Npc.gameObject.activeSelf) { k.Npc.gameObject.SetActive(false); _hiddenForDuel.Add(k.Npc.gameObject); }
+            var host = EncounterHost.Instance;
+            if (host != null && _hostHooked != host)
             {
-                StartRail();
-                if (ExpeditionSpace.TrySurfaceEntrance(S, MiraSpace, out var ent))
-                {
-                    var free = WalkGrid.NearestFree(WalkLattice.ToCell(ExpeditionSpace.World(S, ent)), 4);
-                    if (free.HasValue) { _railEntry = free.Value; _railEntryHeading = 0; }
-                }
+                if (_hostHooked != null) _hostHooked.Ended -= OnHostEnded;
+                _hostHooked = host;
+                host.Ended += OnHostEnded;
             }
+        }
+
+        private void OnHostEnded(IEncounter enc, bool completed) => ShowAfterDuel();
+
+        private void ShowAfterDuel()
+        {
+            foreach (var go in _hiddenForDuel) if (go != null) go.SetActive(true);
+            _hiddenForDuel.Clear();
         }
     }
 }

@@ -9,27 +9,14 @@ namespace World.Game
     /// <summary>
     /// Where the campaign's places are in the world (package I6). A surface marker is its lattice cell
     /// (<see cref="CampaignPlaces"/>); the home camp's markers follow the camp's own layout (Mira's fire, the sawyer).
-    /// An interior cell comes from package I5's <see cref="InteriorSpace"/>; while that is still the I0 shell (every
-    /// interior mapped onto the board centre) the cells are laid out by <see cref="StandInOrigin"/> far east of the
-    /// island, so the expedition runs alone (see <see cref="ExpeditionStandIn"/>). Reads only.
+    /// An interior cell comes from package I5's <see cref="InteriorSpace"/>. Reads only.
     /// </summary>
     public static class ExpeditionSpace
     {
-        /// <summary>Stand-in interiors (no package I5): world X of the first one, and the spacing between them.</summary>
-        public const float StandInX = 2200f, StandInSpacing = 260f;
         /// <summary>How far in front of a thing (stone, pedestal, altar, witness, door) the party's leader stands.</summary>
         public const float PropStandOff = 1.9f;
 
         private static WorldState S => WorldBootstrap.Instance != null && WorldBootstrap.Instance.Sim != null ? WorldBootstrap.Instance.Sim.State : null;
-
-        /// <summary>True when package I5's interiors are in the build (the I0 shell puts every interior on the board centre).</summary>
-        public static bool RealInteriors(CampaignDefinition d)
-        {
-            if (d?.Interiors == null || d.Interiors.Count == 0) return false;
-            var a = InteriorSpace.ToWorld(d.Interiors[0].Id, 3, 2);
-            var stub = WalkLattice.ToWorld(new Cell(3, 2));
-            return BoardSpace.Flat(a - stub) > 1f;
-        }
 
         /// <summary>The space a marker lies in: the interior's id, or "" on the surface.</summary>
         public static string SpaceOf(MarkerRef r) => r.IsInterior ? r.Interior : "";
@@ -41,14 +28,10 @@ namespace World.Game
             return -1;
         }
 
-        /// <summary>World origin of a stand-in interior's local cell (0, 0).</summary>
-        public static Vector3 StandInOrigin(int index) => new Vector3(StandInX + StandInSpacing * Mathf.Max(0, index), 0f, 0f);
-
         /// <summary>World point (floor level) of an interior's local cell.</summary>
         public static Vector3 InteriorCell(CampaignDefinition d, string interiorId, int i, int j)
         {
-            if (RealInteriors(d)) return InteriorSpace.ToWorld(interiorId, i, j);
-            return StandInOrigin(InteriorIndex(d, interiorId)) + new Vector3((float)Lattice.X(i, j), 0f, (float)Lattice.Z(i, j));
+            return InteriorSpace.ToWorld(interiorId, i, j);
         }
 
         /// <summary>The local cell of an interior marker. False when the marker is not there.</summary>

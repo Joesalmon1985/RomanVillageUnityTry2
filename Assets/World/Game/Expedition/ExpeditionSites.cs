@@ -37,7 +37,8 @@ namespace World.Game
     /// (<see cref="LandViews.AddClearing"/>). Everything follows state: custody, facts and the restored list, so a load
     /// shows the same world. Original primitive shapes only. Things inside interiors (pedestal, altar, marks, keeper,
     /// crystal) are placed through <see cref="ExpeditionSpace"/>; while package I5's interiors are missing,
-    /// <see cref="ExpeditionStandIn"/> also builds a plain floor and walls for them.
+    /// Inside interiors package I5 draws the markers (pedestal, altar, inscriptions, tally, ways) and the surface stair
+    /// mouths; this package draws the crystals (one body each, following custody) and the keepers.
     /// </summary>
     public sealed class ExpeditionSites : MonoBehaviour
     {
@@ -67,7 +68,6 @@ namespace World.Game
         private readonly Dictionary<string, GameObject> _markerProps = new Dictionary<string, GameObject>();
         /// <summary>Marker props built, by marker text ("glade/stone", "glade/quarry_upper/pedestal").</summary>
         public IReadOnlyDictionary<string, GameObject> MarkerProps => _markerProps;
-        public ExpeditionStandIn StandIn { get; private set; }
         /// <summary>Restorations whose effect was played in this scene (not counting towers found lit at a load).</summary>
         public int RestorationsPlayed { get; private set; }
 
@@ -109,21 +109,21 @@ namespace World.Game
             }
         }
 
-        /// <summary>A crystal: a faceted gem that glows in its element's colour (the same shape on a pedestal, in Mira's hands, on an altar, in a tower).</summary>
-        public static GameObject MakeCrystal(Transform parent, string name, Color colour, float size, bool small)
+        /// <summary>
+        /// A crystal: a rough cluster in its element's own palette (<see cref="CrystalLook"/>), the same shape on a
+        /// pedestal, in Mira's hands, on an altar, with the Ash runners and in a tower, with a soft halo. Its base is at
+        /// the object's origin.
+        /// </summary>
+        public static GameObject MakeCrystal(Transform parent, string name, Element element, float size, bool small)
         {
-            var mb = new MeshBuilder();
-            var bright = Color.Lerp(colour, Color.white, 0.35f);
-            mb.Cylinder(new Vector3(0, 0, 0), 0.05f * size / 0.24f, size * 0.5f, size * 0.55f, 6, colour, false);
-            mb.Cone(new Vector3(0, size * 0.55f, 0), size * 0.5f, size * 0.9f, 6, bright);
-            var go = mb.ToObject(name, parent, LandLook.Unlit);
-            go.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            var go = CrystalLook.Make(parent, name, element, size * 1.25f, 11 + (int)element);
+            var glow = CrystalLook.For(element).Glow;
             // A soft halo so it reads at night from across a cave or a glade.
             var halo = LandLook.Part(go.transform, "Halo", LightShapes.RadialDisc(true), LightShapes.Glow, false);
-            halo.transform.localPosition = new Vector3(0, size * 0.7f, 0);
-            halo.transform.localScale = Vector3.one * size * (small ? 3.2f : 4.5f);
+            halo.transform.localPosition = new Vector3(0, size * 0.55f, 0);
+            halo.transform.localScale = Vector3.one * size * (small ? 2.6f : 3.4f);
             var mpb = new MaterialPropertyBlock();
-            mpb.SetColor("_Color", colour * 0.55f);
+            mpb.SetColor("_Color", glow * 0.38f);
             halo.GetComponent<Renderer>().SetPropertyBlock(mpb);
             halo.AddComponent<FaceCamera>();
             return go;
@@ -134,7 +134,6 @@ namespace World.Game
             var s = S; var d = D;
             WalkGrid.RemoveStaticBlockers(SolidOwner);
             LandViews.ClearExtraClearings();
-            if (!ExpeditionSpace.RealInteriors(d) && d.Interiors.Count > 0) StandIn = ExpeditionStandIn.Create(this, _boot, transform);
 
             foreach (var loc in d.Locations)
             {
@@ -168,21 +167,15 @@ namespace World.Game
                 foreach (var m in home.Markers)
                     if (m.Kind == MarkerKind.Inscription) BuildMarker(root, MarkerRef.Surface(home.Id, m.Id), m, home);
             }
-            // Things inside interiors (the stand-in adds floor, walls, doors and lit stairs when package I5 is missing).
-            foreach (var map in d.Interiors)
-            {
-                var root = new GameObject("Interior things " + map.Id).transform;
-                root.SetParent(transform, false);
-                foreach (var m in InteriorMaps.Markers(map)) BuildMarker(root, new MarkerRef(map.Location, map.Id, m.Id), m, null);
-            }
+            // Things inside interiors are package I5's (InteriorProps): one owner per object.
             foreach (var cd in d.Crystals)
             {
-                var gem = MakeCrystal(transform, "Crystal " + cd.Id, ElementColour(d, cd.Element), 0.55f, false);
+                var gem = MakeCrystal(transform, "Crystal " + cd.Id, cd.Element, 0.55f, false);
                 var cv = new CrystalView { Element = cd.Element, Gem = gem };
                 if (DayNight.Instance != null)
                 {
-                    cv.Light = WorldLights.Add(gem.transform, new Vector3(0, 0.5f, 0), ElementColour(d, cd.Element), 1.3f, 9f, 1, "Crystal light");
-                    cv.Light.Look = FireLight.Style.Pulse; cv.Light.Sparks = false; cv.Light.GroundGlow = 3.2f; cv.Light.Halo = 0.6f; cv.Light.DayLevel = 0.5f;
+                    cv.Light = WorldLights.Add(gem.transform, new Vector3(0, 0.5f, 0), CrystalLook.For(cd.Element).Glow, 1.1f, 8f, 1, "Crystal light");
+                    cv.Light.Look = FireLight.Style.Steady; cv.Light.Sparks = false; cv.Light.GroundGlow = 3.2f; cv.Light.Halo = 0.6f; cv.Light.DayLevel = 0.5f;
                 }
                 Crystals.Add(cv);
             }
@@ -338,8 +331,7 @@ namespace World.Game
                 case MarkerKind.Door:
                 {
                     if (string.IsNullOrEmpty(m.To) || !MarkerRef.TryParse(m.To, out var to)) break;
-                    if (inside) break; // the far end of a stair is the interior's own (package I5, or the stand-in)
-                    BuildStairMouth(root, r, m, to, pos, loc);
+                    // Both ends of a way are package I5's (SurfaceWayView on the surface, InteriorProps below).
                     break;
                 }
             }
@@ -579,8 +571,7 @@ namespace World.Game
             SpeechBubbles.Inspect(st.transform, Vector3.zero, st.Title, new[] { StairSentence(st) }, 8f, new[] { go }, i =>
             {
                 if (i != 0) return;
-                if (!_dir.StandInInteriors) Interiors.Enter(st.To);
-                else _dir.GoDownStandIn(st);
+                Interiors.Enter(st.To);
             });
         }
 
@@ -704,7 +695,8 @@ namespace World.Game
                 {
                     case Custody.AtSite:
                     {
-                        pos = MarkerPoint(cd.Site) + Vector3.up * 1.14f; where = "pedestal";
+                        // On the stand's top: package I5's cut-stone column underground, this package's drum on the surface.
+                        pos = MarkerPoint(cd.Site) + Vector3.up * (cd.Site.IsInterior ? 1.25f : 1.17f); where = "pedestal";
                         // While Mira takes it, it lifts off the pedestal towards her hands.
                         if (p.Mode == PartyMode.Acting && p.ActingAction == QuestAction.Take && p.At == cd.Site && _dir != null && _dir.Mira != null)
                         {
@@ -715,7 +707,7 @@ namespace World.Game
                         break;
                     }
                     case Custody.AtRivalAltar:
-                        pos = MarkerPoint(st.At) + Vector3.up * 1.08f; where = "altar";
+                        pos = MarkerPoint(st.At) + Vector3.up * (st.At.IsInterior ? 1.11f : 1.05f); where = "altar";
                         break;
                     case Custody.Restored:
                     {
@@ -745,8 +737,10 @@ namespace World.Game
                 if (cv.Gem.activeSelf != show) cv.Gem.SetActive(show);
                 if (!show) continue;
                 float size = st.Custody == Custody.Restored ? 1.9f : 1f;
-                cv.Gem.transform.position = pos + Vector3.up * (Mathf.Sin(Time.time * 1.7f + (int)cv.Element) * 0.05f);
-                cv.Gem.transform.rotation = Quaternion.Euler(0, Time.time * 35f, 0);
+                // A cluster rests where it lies (no spin, no bob); moving, it turns slowly.
+                bool resting = where == "pedestal" || where == "altar" || where == "tower";
+                cv.Gem.transform.position = pos;
+                cv.Gem.transform.rotation = Quaternion.Euler(0, resting ? 17f * (int)cv.Element : Time.time * 25f, 0);
                 cv.Gem.transform.localScale = Vector3.one * size;
             }
             foreach (var tv in Towers)

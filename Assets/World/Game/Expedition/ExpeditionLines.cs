@@ -19,17 +19,16 @@ namespace World.Game
             ReplyWith = "reply_with", ReplyFight = "reply_fight", ReplyNotYet = "reply_not_yet", ReplyIfLose = "reply_if_lose",
             ReplySet = "reply_set", ReplyWait = "reply_wait", ReplyLeadOut = "reply_lead_out";
 
-        // Ids the game asks for that the authored pack does not have (14 Nov 2026).
+        // Ids the game asks for that the authored pack lacked until the integration (15 Nov 2026: now in authored_v1/lines.json).
         public const string ReplyComing = "reply_coming", ReplyGoDown = "reply_go_down",
             MiraCall = "mira_call", MiraGoOn = "mira_go_on", MiraDeclined = "mira_declined", MiraLeave = "mira_leave",
             MiraRejoin = "mira_rejoin", MiraNotYet = "mira_not_yet", MiraTowerWait = "mira_tower_wait", MiraRetreat = "mira_retreat",
             MiraDraw = "mira_draw", MiraAway = "mira_away_here", MiraNothing = "mira_nothing_open",
             MiraWhyGeneric = "mira_why", MiraWrong = "mira_wrong_answer", CueFellBehind = "cue_fell_behind", CueHowToRejoin = "cue_rejoin",
             MiraLeadOut = "mira_lead_out", CompanionFallen = "companion_fallen",
-            MiraWaitScout = "mira_wait_scout", DuelStandIn = "duel_stand_in",
-            DuelWin = "duel_stand_in_win", DuelLose = "duel_stand_in_lose", DuelClash = "duel_stand_in_clash";
+            MiraWaitScout = "mira_wait_scout";
 
-        /// <summary>Lines the authored pack lacks (id, text with the pack's tokens). Original text.</summary>
+        /// <summary>Fallbacks for a pack without these ids (the authored pack has them all). Original text.</summary>
         public static readonly Dictionary<string, string> Missing = new Dictionary<string, string>
         {
             [ReplyComing] = "Coming",
@@ -52,10 +51,6 @@ namespace World.Game
             [CueFellBehind] = "You fell behind. Mira has gone on without you.",
             [CueHowToRejoin] = "The map (Tab) shows where Mira is. Find her and tap her to rejoin.",
             [CompanionFallen] = "fell here, holding the way out.",
-            [DuelStandIn] = "The duel itself is not in this build yet. How does it end?",
-            [DuelWin] = "Mira wins",
-            [DuelLose] = "Mira loses",
-            [DuelClash] = "Neither breaks",
         };
 
         private static readonly HashSet<string> s_used = new HashSet<string>();

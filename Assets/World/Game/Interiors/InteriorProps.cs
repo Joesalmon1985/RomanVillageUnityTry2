@@ -311,18 +311,20 @@ namespace World.Game
             var stand = Mesh(root, altar ? "Altar" : "Pedestal", mb);
             int face = OpenHeading(m, m.ToCell(md.I, md.J));
             root.rotation = Quaternion.Euler(0, WalkLattice.Yaw(face), 0);
-            var col = ElementColour(d.Definition, md.Crystal);
+            var col = CrystalLook.Glow(d.Definition, md.Crystal);
             var cmb = new MeshBuilder();
-            Crystal(cmb, Vector3.zero, 0.85f, 0.2f, col);
+            var cdef = d.Definition?.Crystal(md.Crystal);
+            CrystalLook.Cluster(cmb, Vector3.zero, 0.7f, cdef != null ? cdef.Element : Element.Earth, 11 + (cdef != null ? (int)cdef.Element : 0));
             var crystal = new GameObject("Crystal").transform;
             crystal.SetParent(root, false);
-            crystal.localPosition = Vector3.up * (altar ? 1.65f : 1.75f);
+            crystal.localPosition = Vector3.up * (altar ? 1.11f : 1.25f); // resting on the stand's top
             var cg = cmb.ToObject("Stone", crystal, MaterialFactory.CreateUnlit(Color.white, "Crystal"));
             cg.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             var halo = LandLook.Part(crystal, "Halo", LightShapes.RadialDisc(true), LightShapes.Glow, false);
-            halo.transform.localScale = Vector3.one * 1.6f;
-            SetGlow(halo, new Color(col.r, col.g, col.b, 0.35f));
-            var cl = WorldLights.Add(crystal, Vector3.zero, col, 1.4f, 9f, 2, "Crystal light");
+            halo.transform.localScale = Vector3.one * 1.3f;
+            halo.transform.localPosition = Vector3.up * 0.35f;
+            SetGlow(halo, new Color(col.r, col.g, col.b, 0.25f));
+            var cl = WorldLights.Add(crystal, Vector3.up * 0.4f, col, 1.1f, 8f, 2, "Crystal light");
             cl.DayLevel = 1f; cl.GroundGlow = 0f; cl.Halo = 0f; cl.Sparks = false; cl.Look = FireLight.Style.Steady;
             var view = root.gameObject.AddComponent<CrystalStandView>();
             view.Crystal = crystal; view.CrystalLight = cl; view.Halo = halo.transform;
@@ -636,6 +638,8 @@ namespace World.Game
         public bool Altar;
         /// <summary>The crystal is shown on this stand now.</summary>
         public bool HasCrystal { get; private set; }
+        /// <summary>True while another view draws the campaign's crystals (the expedition director): the stand then shows none of its own.</summary>
+        public static bool DrawnElsewhere;
 
         public void Sync(WorldState s)
         {
@@ -648,15 +652,13 @@ namespace World.Game
                 show = v != null && v.At == Ref && (Altar ? v.Custody == Custody.AtRivalAltar : v.Custody == Custody.AtSite);
             }
             HasCrystal = show;
-            if (Crystal.gameObject.activeSelf != show) Crystal.gameObject.SetActive(show);
+            bool drawn = show && !DrawnElsewhere; // the expedition (I6) draws the crystal itself: one body per crystal
+            if (Crystal.gameObject.activeSelf != drawn) Crystal.gameObject.SetActive(drawn);
         }
 
         private void Update()
         {
             if (!HasCrystal) return;
-            float t = Time.time;
-            Crystal.localRotation = Quaternion.Euler(0, t * 14f, 0);
-            Crystal.localPosition = new Vector3(0, Crystal.localPosition.y + Mathf.Sin(t * 1.3f) * 0.0006f, 0);
             if (Halo != null && Camera.main != null) Halo.rotation = Quaternion.LookRotation(Halo.position - Camera.main.transform.position, Vector3.up);
         }
     }
