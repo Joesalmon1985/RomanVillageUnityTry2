@@ -48,6 +48,7 @@ namespace World.Game.Tests
         public void TearDown()
         {
             Time.timeScale = 1f;
+            PrinceInstaller.Disabled = false;
             SaveSystem.PathOverride = null;
             SaveSystem.TestPauseOnLoad = null;
             if (MapScreen.IsOpen) { MapScreen.ClearTarget(); MapScreen.Close(); }
@@ -285,6 +286,8 @@ namespace World.Game.Tests
         [UnityTest, Timeout(420000)]
         public IEnumerator GoOnAhead_CuesMapAndHud_ThenImWithYou_AndFallingBehind()
         {
+            // H1-4: in a developer Historic start the prince now speaks after the handover and his lines hold Mira's cues until she has arrived; this test is about Mira.
+            PrinceInstaller.Disabled = true;
             yield return StartCampaign(ExpeditionDev.AuthoredPack, d => d.Rival.Steps[0].MarchCost = 60000);
             yield return Until(() => Dir.AskKind == ExpeditionDirector.AskOpening, 120f, "Mira's question");
             yield return Tap("reply_ahead");
