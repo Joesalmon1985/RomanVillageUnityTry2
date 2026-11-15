@@ -60,9 +60,9 @@ namespace World.Game
                     LandShapes.Pennant(mb, new Vector3(1.6f, 0, 3.6f), 3.0f, faction);
                     break;
                 case BuildingType.RockHeap:
-                    Wall(mb, new Vector3(-3.0f, 0, -3.0f), new Vector3(3.0f, 0, -3.0f), 0.7f);
-                    Wall(mb, new Vector3(-3.0f, 0, -3.0f), new Vector3(-3.0f, 0, 1.2f), 0.7f);
-                    Wall(mb, new Vector3(3.0f, 0, -3.0f), new Vector3(3.0f, 0, 0.0f), 0.7f);
+                    Wall(mb, new Vector3(-2.8f, 0, -2.8f), new Vector3(2.8f, 0, -2.8f), 0.7f);
+                    Wall(mb, new Vector3(-2.8f, 0, -2.8f), new Vector3(-2.8f, 0, 1.2f), 0.7f);
+                    Wall(mb, new Vector3(2.8f, 0, -2.8f), new Vector3(2.8f, 0, 0.0f), 0.7f);
                     for (int i = 0; i < 14; i++) { float a = rnd.Range(0, 360f), d = rnd.Range(0f, 1.4f); mb.Rock(Quaternion.Euler(0, a, 0) * Vector3.forward * d + new Vector3(0, i > 8 ? 0.5f : 0f, -1.3f), rnd.Range(0.35f, 0.6f), LandLook.Stone * rnd.Range(0.85f, 1.1f), rnd.Next); }
                     Bricks(mb, new Vector3(-2.2f, 0, -0.5f), 3, 3, 0.45f, LandLook.Stone * 1.1f);
                     Crane(mb, new Vector3(1.9f, 0, -0.9f), 3.0f, -20f);
@@ -82,23 +82,22 @@ namespace World.Game
                     mb.Box(new Vector3(0.3f, 0.02f, 0.3f), new Vector3(3.2f, 0.04f, 2.4f), new Color(0.32f, 0.17f, 0.10f));
                     for (int i = 0; i < 9; i++) { mb.Box(new Vector3(-1.5f + i * 0.4f, 0.15f, -0.95f), new Vector3(0.38f, 0.3f, 0.4f), Foot * (0.92f + 0.08f * (i % 2))); mb.Box(new Vector3(-1.5f + i * 0.4f, 0.15f, 1.55f), new Vector3(0.38f, 0.3f, 0.4f), Foot * (0.92f + 0.08f * (i % 2))); }
                     for (int i = 0; i < 4; i++) mb.Box(new Vector3(-1.2f + i * 0.9f, 0.07f, 0.3f), new Vector3(0.1f, 0.05f, 2.2f), wood);
-                    Hall(mb, new Vector3(-0.6f, 0, -2.8f), 0, 2.1f, 0.9f, 1.5f, 0.9f, Plank, Shingle, false);
-                    for (int i = 0; i < 6; i++) mb.Box(new Vector3(-2.0f + i * 0.8f, 0.3f, -2.8f), new Vector3(0.6f, 0.5f, 0.45f), LandLook.ClayRed * 1.1f);
+                    Hall(mb, new Vector3(-0.4f, 0, -2.7f), 0, 1.7f, 0.8f, 1.5f, 0.9f, Plank, Shingle, true);
                     Barrow(mb, new Vector3(2.7f, 0, 0.0f), -60f);
                     Bricks(mb, new Vector3(-3.1f, 0, 0.5f), 3, 2, 0.4f, LandLook.ClayRed);
-                    LandShapes.Pennant(mb, new Vector3(3.2f, 0, -2.2f), 3.2f, faction);
+                    LandShapes.Pennant(mb, new Vector3(2.8f, 0, -2.0f), 3.2f, faction);
                     break;
                 case BuildingType.Farm:
-                    Hall(mb, new Vector3(-1.7f, 0, -2.0f), 0, 1.6f, 1.2f, 1.5f, 1.1f, Plaster, Tile, true);
-                    Chimney(mb, new Vector3(-2.5f, 1.7f, -2.2f), 1.8f);
-                    Hall(mb, new Vector3(1.8f, 0, -2.0f), 0, 1.4f, 1.3f, 1.8f, 1.2f, Plank, Shingle, true);
+                    Hall(mb, new Vector3(-1.4f, 0, -1.9f), 0, 1.4f, 1.1f, 1.5f, 1.1f, Plaster, Tile, true);
+                    Chimney(mb, new Vector3(-2.1f, 1.7f, -2.1f), 1.8f);
+                    Hall(mb, new Vector3(1.6f, 0, -1.8f), 0, 1.1f, 1.1f, 1.8f, 1.2f, Plank, Shingle, true);
                     FenceRect(mb, -3.2f, 2.4f, -0.2f, 2.5f, 0.9f, 0.9f, 0f);
                     for (int i = 0; i < 6; i++) { mb.Box(new Vector3(-2.4f + i * 0.9f, 0.08f, 1.3f), new Vector3(0.35f, 0.16f, 2.0f), LandLook.Earth * 1.2f); for (int k = 0; k < 4; k++) mb.Cone(new Vector3(-2.4f + i * 0.9f, 0.1f, 0.5f + k * 0.55f), 0.12f, 0.4f, 4, new Color(0.45f, 0.62f, 0.25f)); }
                     LandShapes.Pennant(mb, new Vector3(-3.6f, 0, -0.3f), 3.4f, faction);
                     break;
                 case BuildingType.ShepherdHut:
-                    Hall(mb, new Vector3(-1.9f, 0, -1.7f), 0, 1.5f, 1.2f, 1.4f, 1.0f, Plank, OldThatch, true);
-                    Chimney(mb, new Vector3(-2.6f, 1.6f, -2.0f), 1.7f);
+                    Hall(mb, new Vector3(-1.7f, 0, -1.6f), 0, 1.3f, 1.1f, 1.4f, 1.0f, Plank, OldThatch, true);
+                    Chimney(mb, new Vector3(-2.3f, 1.6f, -1.9f), 1.7f);
                     FenceRect(mb, 0.5f, 3.4f, -2.2f, 2.3f, 1.0f, 0.8f, 0f);
                     mb.Box(new Vector3(2.0f, 0.4f, -1.5f), new Vector3(1.6f, 0.3f, 0.5f), wood);
                     mb.Cone(new Vector3(2.6f, 0, -0.2f), 0.7f, 0.9f, 8, LandLook.Thatch);
@@ -156,10 +155,10 @@ namespace World.Game
                     LandShapes.Rack(mb, new Vector3(2.4f, 0, -0.6f), 90f, 2.4f, 1.7f, WareC(Ware.Meat));
                     LandShapes.Rack(mb, new Vector3(-1.2f, 0, 1.6f), 0f, 2.2f, 1.6f, WareC(Ware.Meat));
                     LandShapes.LogStack(mb, new Vector3(-3.4f, 0, -1.6f), 90f, 2, 1.4f, 0.16f, wood);
-                    LandShapes.Pennant(mb, new Vector3(2.9f, 0, -2.6f), 3.8f, faction);
+                    LandShapes.Pennant(mb, new Vector3(2.4f, 0, -2.4f), 3.8f, faction);
                     break;
                 case BuildingType.Stonecutter:
-                    Hall(mb, new Vector3(-1.4f, 0, -2.3f), 0, 1.8f, 1.2f, 1.7f, 1.0f, Foot * 1.05f, Shingle, true);
+                    Hall(mb, new Vector3(-1.0f, 0, -2.2f), 0, 1.5f, 1.0f, 1.7f, 1.0f, Foot * 1.05f, Shingle, true);
                     mb.Box(new Vector3(0.7f, 0.5f, 0.0f), new Vector3(2.6f, 0.15f, 1.0f), wood);
                     foreach (float x in new[] { -0.4f, 1.8f }) mb.Box(new Vector3(x, 0.22f, 0.0f), new Vector3(0.25f, 0.44f, 0.9f), Timber);
                     mb.Box(new Vector3(0.4f, 0.8f, 0.0f), new Vector3(0.7f, 0.45f, 0.6f), WareC(Ware.CutStone));

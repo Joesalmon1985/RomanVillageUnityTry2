@@ -68,6 +68,7 @@ namespace World.Game.Tests
         [Test]
         public void EachType_Grade1_DiffersFromGrade0_AndStaysInItsFootprint()
         {
+            var tooBig = new List<string>();
             int types = Enum.GetValues(typeof(BuildingType)).Length;
             Assert.GreaterOrEqual(types, 16);
             for (int t = 0; t < 16; t++)
@@ -80,12 +81,13 @@ namespace World.Game.Tests
                 Assert.Greater(mb.vertexCount, ma.vertexCount * 0.9f, type + ": at least as rich");
                 Assert.AreNotEqual(ma.bounds, mb.bounds, type + ": different shape");
                 float worst = 0; foreach (var v in mb.vertices) worst = Mathf.Max(worst, new Vector2(v.x, v.z).magnitude);
-                Assert.LessOrEqual(worst, HistoricShapes.Radius, type + " fits its plot (" + worst.ToString("0.00") + " m)");
+                if (worst > HistoricShapes.Radius) tooBig.Add(type + " " + worst.ToString("0.00") + " m");
                 Assert.Greater(mb.bounds.max.y, 1.5f, type + " has height");
                 var c = new MeshBuilder(); HistoricShapes.Build(c, type, 1);
                 Assert.AreEqual(mb.vertexCount, c.ToMesh("g1b").vertexCount, type + ": the other people's model has the same shape");
                 UnityEngine.Object.Destroy(ma); UnityEngine.Object.Destroy(mb);
             }
+            CollectionAssert.IsEmpty(tooBig, "models outside the " + HistoricShapes.Radius + " m footprint: " + string.Join(", ", tooBig));
         }
 
         // ---------------- upgrade: scaffold, goods, completion, cancel, inspect, rebuild ----------------
