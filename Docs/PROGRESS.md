@@ -555,3 +555,21 @@ Not done or not verified:
 - The map's side text in a Historic game still speaks of falling to an overrun ("they fall in 33 s"), which is a setback there, not a defeat; the overrun wording is H1-4's or H2-7's.
 - `follow_prince` was run once (no repeat at 10, 20, 30 s delays).
 - The window-size registry key written by one windowed run of the refactor build (made to capture the version-4 save) could not be deleted from this session: the owner's next double-click may open in a 1280 x 720 window. Delete `HKCU\Software\Joe Salmon\WorldMVP` to restore full screen.
+
+## Crystals I7: the campaign duel (15 Nov 2026, branch `cry/i7`, tag `cry-I7`)
+
+- `CampaignDuel` is real: a per-scene driver stages every `EncounterCommitted` through the `EncounterHost` (`ward_campaign`), mode, profile, attempt, seed, names and stage read from the definition (surface markers, interior markers through `InteriorSpace`, the finale at the tower the party stands at); exactly one `ResolveEncounter` per attempt at the duel's end event, then one clock step, then `Resolved`; a pending attempt without a duel (after a load, or a duel left without surrender) continues by `RestartAttempt`. Friendly and practice requests never touch the campaign; a practice request is the shipped practice duel.
+- `WardDuelEncounter` reads the request: Mira (factory body with her id) casts, the opponent faces her with its profile's timing, pool and tempo, the volunteer stands by beside Mira; stakes card first in lethal mode; no rematch; presentation hold (1.6 s on a break, 3 s on a lethal loss while the volunteer steps into the gap); the confirmed "Leave encounter" surrenders (one added line in `Hud.cs`). Struck cues name whose Ward was hit with totals only. Phone layout `DuelLayout` (compact below 700 px, inside the safe area, 44 px targets, expandable history). Details: `Docs/ENCOUNTERS_UI.md`, "Campaign duel".
+
+Ran (15 Nov, editor wt-cry-i7):
+
+- `dotnet test DotNet`: 450 passed (8 min 6 s). (It rewrites the three proof documents with other line endings only; they were restored.)
+- Unity PlayMode: **89 passed** (79 before plus 10 in `CampaignDuelTests`, 11.6 min). Console: 0 errors from game code. Unity EditMode was not rerun (no simulation or EditMode file changed; the same sources passed under `dotnet test`).
+- AutoPlay in the editor: `duel_dance` OK (1920 x 1080); `duel_keeper_win` OK at 1920 x 1080 and at 844 x 390 (dev.historic, authored pack, the Deepstone stolen by DevRivalNextStep, leads followed to the Tally Vault threshold at tick 15366, Victory after 2 casts by Mira and 1 by Dolm, one resolve, Deepstone carried); `duel_keeper_loss` OK at 844 x 390 (and earlier at 1080 on the first build of this package): Dolm breaks the Ward in 3 casts, Garrick dies once, +900, save and load at once: still one death, one resolved attempt, nothing pending, no restart; `duel_friendly` OK at 1920 x 1080 and 844 x 390 (two Orrin duels, nothing recorded, the clock did not move).
+- Captures (`Evidence/screenshots/i7_*_1920x1080.png`, `i7_*_844x390.png`) looked at: see the hand-off report.
+
+Not done or not verified:
+
+- Nobody played it by hand; the packaged build was not built. 932 x 430 is covered by the layout test only (no capture).
+- The duel stages from interior markers through I5's `InteriorSpace`; in this worktree that is the I0 stub, so the Tally Vault duel stands near the board centre on the surface. A stage at a far-east interior spot is covered by a test with a hand-made request.
+- I6 must hide its own party bodies while a campaign duel runs (`CampaignDuel.Staged`, `EncounterHost.Ended`); I8 writes the checkpoint on `CampaignDuel.Resolved` (saving during an encounter is still refused by `SaveSystem`).
