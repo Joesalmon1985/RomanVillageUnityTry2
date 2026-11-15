@@ -29,7 +29,7 @@ namespace World.Game
     /// <item><c>prince_captures</c>: screenshots for checking by eye (Evidence/screenshots, n_*.png).</item>
     /// </list>
     /// </summary>
-    public static class PrinceScripts
+    public static partial class PrinceScripts
     {
         /// <summary>Settings for editor runs (the command line overrides them).</summary>
         public static float Delay = 3f;
@@ -55,6 +55,7 @@ namespace World.Game
             AutoPlayScripts.Register("prompt_game", () => FollowPrince("prompt_game", true));
             AutoPlayScripts.Register("ignore_prince", IgnorePrince);
             AutoPlayScripts.Register("prince_captures", Captures);
+            AutoPlayScripts.Register("handover", Handover);
         }
 
         private static WorldBootstrap B => WorldBootstrap.Instance;
@@ -75,9 +76,9 @@ namespace World.Game
         private static float ArgF(string name, float fallback) =>
             float.TryParse(Arg(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : fallback;
 
-        private static void ApplyTimeScale()
+        private static void ApplyTimeScale(float defaultScale = -1f)
         {
-            float ts = ArgF("-timescale", TimeScale);
+            float ts = ArgF("-timescale", defaultScale > 0f ? defaultScale : TimeScale);
             Time.timeScale = Mathf.Clamp(ts, 0.1f, 32f);
             // Enough ticks per frame for the scale at 30 fps or more.
             B.Clock.MaxTicksPerFrame = Mathf.Max(5, Mathf.CeilToInt(Time.timeScale * WorldSim.TicksPerSecond / 30f) + 2);
@@ -312,9 +313,9 @@ namespace World.Game
             return s;
         }
 
-        private static IEnumerator FollowRoutine(AutoPlay a, string name, bool prompt)
+        private static IEnumerator FollowRoutine(AutoPlay a, string name, bool prompt, Func<bool> until = null)
         {
-            ApplyTimeScale();
+            ApplyTimeScale(until != null ? 6f : -1f);
             float delay = prompt ? 0f : ArgF("-princeDelay", Delay);
             string modeArg = Arg("-princeMode");
             bool direct = modeArg != null ? modeArg.Equals("direct", StringComparison.OrdinalIgnoreCase) : Direct;
@@ -331,7 +332,7 @@ namespace World.Game
             float walkedAtCast = 0f;
             int directFor = -1;
             float lastCastAt = Now, stallLogAt = 0f; s_stalls = 0;
-            while (!FactionApi.Outcome(S).GameOver && Now < maxMinutes * 60f)
+            while (!FactionApi.Outcome(S).GameOver && Now < maxMinutes * 60f && (until == null || !until()))
             {
                 walked += BoardSpace.Flat(W.Position - last); last = W.Position;
                 if (d.Casts.Count > castsBefore)
@@ -406,6 +407,7 @@ namespace World.Game
                 }
                 yield return null;
             }
+            if (until != null) { W.StopAuto(); yield break; } // H1-4: the caller reports
             // Report.
             var o = FactionApi.Outcome(S);
             LastOutcome = o.Outcome;
