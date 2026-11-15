@@ -214,6 +214,9 @@ namespace World.Game
             int index = -1;
             if (replies != null) for (int i = 0; i < replies.Count; i++) if (replies[i] == replyText) index = i;
             if (index < 0) { a.Fail("no reply \"" + replyText + "\" on the bubble \"" + SpeechBubbles.TextOf(handle) + "\" (" + (replies != null ? string.Join(" / ", replies) : "none") + ")"); yield break; }
+            // A question waits behind a line its speaker is still saying.
+            float shownBy = Time.realtimeSinceStartup + 20f;
+            while (SpeechBubbles.IsOpen(handle) && !SpeechBubbles.IsShowing(handle) && Time.realtimeSinceStartup < shownBy) yield return null;
             for (int frame = 0; frame < 45 && SpeechBubbles.IsOpen(handle); frame++)
             {
                 var r = SpeechBubbles.ReplyRectOf(handle, index);

@@ -85,13 +85,15 @@ namespace World.Game
         {
             if (_scriptHandle != 0 && SpeechBubbles.IsOpen(_scriptHandle)) return;
             _scriptHandle = 0;
+            // Out of earshot: the journal keeps what happened (and nothing waits behind a line nobody can hear).
+            while (_script.Count > 0 && !Hears(SpeakerNpc(_script[0].Speaker))) _script.RemoveAt(0);
             if (_script.Count == 0 || PrinceBusy()) return;
             while (_script.Count > 0)
             {
                 var line = _script[0];
                 _script.RemoveAt(0);
                 var npc = SpeakerNpc(line.Speaker);
-                if (!Hears(npc)) continue; // out of earshot: the journal keeps what happened
+                if (!Hears(npc)) continue;
                 _scriptHandle = SpeechBubbles.Say(npc, line.Text, Real(ExpeditionLines.Seconds(line.Text)));
                 Record(line.Speaker, line.Text);
                 if (npc != Mira && Walker != null) npc.FaceTowards(Walker.Position);
@@ -248,7 +250,9 @@ namespace World.Game
             if (_awaySince < 0f) { _awaySince = Now; return; }
             if (Now - _awaySince < AwaySeconds) return;
             LeaveCompany(false);
-            Cue(ExpeditionLines.Get(S, ExpeditionLines.CueFellBehind));
+            // About the player, now: ahead of any other word that is waiting.
+            string fell = ExpeditionLines.Get(S, ExpeditionLines.CueFellBehind);
+            if (!string.IsNullOrEmpty(fell)) _cueQueue.Insert(0, fell);
         }
 
         private string _enteredSpace = "";
@@ -887,6 +891,7 @@ namespace World.Game
 
         private void OpenMenu()
         {
+            ClearScript(); // a tap interrupts whatever was being said: her answer comes at once
             var p = C.Party;
             bool under = MiraSpace.Length > 0;
             var replies = new List<string>();

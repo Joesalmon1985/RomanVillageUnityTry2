@@ -20,24 +20,22 @@ namespace World.Game
             ReplySet = "reply_set", ReplyWait = "reply_wait", ReplyLeadOut = "reply_lead_out";
 
         // Ids the game asks for that the authored pack does not have (14 Nov 2026).
-        public const string ReplyComing = "reply_coming", ReplyJournal = "reply_journal", ReplyGoDown = "reply_go_down",
+        public const string ReplyComing = "reply_coming", ReplyGoDown = "reply_go_down",
             MiraCall = "mira_call", MiraGoOn = "mira_go_on", MiraDeclined = "mira_declined", MiraLeave = "mira_leave",
             MiraRejoin = "mira_rejoin", MiraNotYet = "mira_not_yet", MiraTowerWait = "mira_tower_wait", MiraRetreat = "mira_retreat",
-            MiraDraw = "mira_draw", MiraLeadAccepted = "mira_lead_accepted", MiraAway = "mira_away_here", MiraNothing = "mira_nothing_open",
+            MiraDraw = "mira_draw", MiraAway = "mira_away_here", MiraNothing = "mira_nothing_open",
             MiraWhyGeneric = "mira_why", MiraWrong = "mira_wrong_answer", CueFellBehind = "cue_fell_behind", CueHowToRejoin = "cue_rejoin",
-            CueWord = "cue_word", MiraBusy = "mira_busy", MiraLeadOut = "mira_lead_out", CompanionFallen = "companion_fallen",
-            MiraWaitScout = "mira_wait_scout", MiraDemons = "mira_demons_fewer", DuelStandIn = "duel_stand_in",
+            MiraLeadOut = "mira_lead_out", CompanionFallen = "companion_fallen",
+            MiraWaitScout = "mira_wait_scout", DuelStandIn = "duel_stand_in",
             DuelWin = "duel_stand_in_win", DuelLose = "duel_stand_in_lose", DuelClash = "duel_stand_in_clash";
 
         /// <summary>Lines the authored pack lacks (id, text with the pack's tokens). Original text.</summary>
         public static readonly Dictionary<string, string> Missing = new Dictionary<string, string>
         {
             [ReplyComing] = "Coming",
-            [ReplyJournal] = "Show me the journal",
             [ReplyGoDown] = "Go down",
             [MiraCall] = "This way! Keep up.",
             [MiraGoOn] = "I'm going on. Catch me up when you can.",
-            [MiraLeadAccepted] = "Stay close, then.",
             [MiraDeclined] = "Not that way, then. Let me think.",
             [MiraLeave] = "Go, then. I'll leave word of where I am.",
             [MiraRejoin] = "Good. Stay close.",
@@ -49,13 +47,10 @@ namespace World.Game
             [MiraNothing] = "Nothing more to chase just now. We wait for word.",
             [MiraWhyGeneric] = "It's the best lead we have.",
             [MiraWrong] = "That wasn't it. We lost time.",
-            [MiraBusy] = "Not now. One thing at a time.",
             [MiraLeadOut] = "The way out is lit. Follow the light.",
             [MiraWaitScout] = "Wait for {companion.tansy.name}. I won't fight with one of us still out there.",
-            [MiraDemons] = "The demons will come less often now.",
             [CueFellBehind] = "You fell behind. Mira has gone on without you.",
             [CueHowToRejoin] = "The map (Tab) shows where Mira is. Find her and tap her to rejoin.",
-            [CueWord] = "Word of Mira:",
             [CompanionFallen] = "fell here, holding the way out.",
             [DuelStandIn] = "The duel itself is not in this build yet. How does it end?",
             [DuelWin] = "Mira wins",

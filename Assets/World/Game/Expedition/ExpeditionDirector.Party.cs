@@ -596,7 +596,14 @@ namespace World.Game
             var thing = ExpeditionSpace.World(S, p.At);
             if (_gestureFor != p.ActingAction) { _gestureFor = p.ActingAction; _nextGesture = 0f; }
             if (BoardSpace.Flat(thing - Mira.transform.position) > 0.4f) Mira.FaceTowards(thing);
-            switch (p.ActingAction)
+            var action = p.ActingAction;
+            if (action == QuestAction.Take)
+            {
+                // Taking from a bare pedestal is looking at a bare pedestal.
+                var here = D.Crystals.Find(x => x.Site == p.At);
+                if (here == null || C.Crystal(here.Element).Custody != Custody.AtSite) action = QuestAction.Examine;
+            }
+            switch (action)
             {
                 case QuestAction.Take:
                 case QuestAction.Restore:

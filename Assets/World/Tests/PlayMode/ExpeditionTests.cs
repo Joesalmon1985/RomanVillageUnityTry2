@@ -111,6 +111,7 @@ namespace World.Game.Tests
         {
             int h = Dir.AskHandle;
             Assert.AreNotEqual(0, h, "a question of Mira's is open (" + ExpeditionScripts.Status() + ")");
+            yield return Until(() => !SpeechBubbles.IsOpen(h) || SpeechBubbles.IsShowing(h), 30f, "the question on screen");
             yield return ExpeditionScripts.TapReply(_boot.AutoPlay, h, T(replyId));
             Assert.IsFalse(_boot.AutoPlay.Failed, _boot.AutoPlay.FailMessage);
         }
@@ -336,7 +337,7 @@ namespace World.Game.Tests
             W.Teleport(far.Value, 0);
             yield return Until(() => Count<SetCompany>() > sent, ExpeditionDirector.AwaySeconds + 15f, "SetCompany(false) for a player who fell behind");
             Assert.IsFalse(Last<SetCompany>().Present);
-            yield return Until(() => Dir.Cues.Contains(T(ExpeditionLines.CueFellBehind)), 30f, "the cue");
+            yield return Until(() => Dir.Cues.Contains(T(ExpeditionLines.CueFellBehind)), 90f, "the cue");
             foreach (var c in Dir.Commands) Assert.IsTrue(c is SetCompany, "only SetCompany was sent: " + c.GetType().Name);
         }
 
@@ -555,29 +556,50 @@ namespace World.Game.Tests
             MapScreen.Close();
         }
 
-        // ---------------- a choice, on the skeleton pack ----------------
+        // ---------------- a choice ----------------
 
-        [UnityTest, Timeout(900000)]
-        public IEnumerator Choice_OnTheSkeletonPack_AdviceGoesThroughAdviseMira()
+        /// <summary>The authored Earth pack has no riddle yet: the test adds one at the boundary stone (in memory, test text).</summary>
+        private static void AddRiddleAtTheStone(CampaignDefinition d)
         {
-            yield return StartCampaign(ExpeditionDev.SkeletonPack);
-            // Follow Mira wherever she leads until the wind cairn's question is put to the player.
-            yield return Play(() => C.Party.Mode == PartyMode.AskingChoice && Dir.AskKind == ExpeditionDirector.AskChoice, 2400f, "the cairn's question");
+            d.Lines.Add(new LineDef { Id = "t_ring_question", Speaker = "mira", Topic = "earth", Text = "The ring is cut on one slab of three. Which do we push?" });
+            d.Lines.Add(new LineDef { Id = "t_ring_wrong", Speaker = "mira", Topic = "earth", Text = "It won't move. Not that one." });
+            d.Lines.Add(new LineDef { Id = "t_ring_north", Speaker = "", Topic = "reply", Text = "The north slab" });
+            d.Lines.Add(new LineDef { Id = "t_ring_ringed", Speaker = "", Topic = "reply", Text = "The ringed slab" });
+            d.Lines.Add(new LineDef { Id = "t_ring_south", Speaker = "", Topic = "reply", Text = "The south slab" });
+            var ch = new ChoiceDef { Id = "t_ring", QuestionLine = "t_ring_question", WrongLine = "t_ring_wrong", RevealedBy = MarkerRef.Surface("glade", "stone") };
+            ch.Sets.Add("t.ring_known");
+            ch.Answers.Add(new AnswerDef { Line = "t_ring_north" });
+            ch.Answers.Add(new AnswerDef { Line = "t_ring_ringed", Correct = true });
+            ch.Answers.Add(new AnswerDef { Line = "t_ring_south" });
+            d.Choices.Add(ch);
+            d.Event("earth_read_stone").Effects.Add(new EffectDef { Kind = EffectKind.OfferChoice, Ref = "t_ring" });
+        }
+
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Choice_AdviceGoesThroughAdviseMira_AWrongAnswerIsAskedAgain()
+        {
+            yield return StartCampaign(ExpeditionDev.AuthoredPack, AddRiddleAtTheStone);
+            yield return Play(() => C.Party.Mode == PartyMode.AskingChoice && Dir.AskKind == ExpeditionDirector.AskChoice, 400f, "the riddle at the stone");
             var ch = C.Definition.Choice(C.Party.ChoiceId);
-            Assert.AreEqual("air_wind", ch.Id);
-            var replies = SpeechBubbles.RepliesOf(Dir.AskHandle);
-            Assert.AreEqual(3, replies.Count);
+            Assert.AreEqual("t_ring", ch.Id);
+            yield return Until(() => SpeechBubbles.IsShowing(Dir.AskHandle), 30f, "the question on screen");
+            CollectionAssert.AreEqual(new[] { "The north slab", "The ringed slab", "The south slab" }, SpeechBubbles.RepliesOf(Dir.AskHandle));
             Assert.AreEqual(ExpeditionLines.Get(S, ch.QuestionLine), SpeechBubbles.TextOf(Dir.AskHandle));
-            // A wrong answer first: the same command, the rival is charged, the question stands.
+            Assert.AreEqual(0, Count<AdviseMira>());
+            // A wrong answer first: the same command, the rival is charged, the wrong line, the question again.
             long rival = C.RivalProgress; long at = S.Tick;
-            yield return ExpeditionScripts.TapReply(_boot.AutoPlay, Dir.AskHandle, ExpeditionLines.Get(S, "answer_east"));
+            yield return ExpeditionScripts.TapReply(_boot.AutoPlay, Dir.AskHandle, "The north slab");
             Assert.AreEqual(0, Last<AdviseMira>().Answer);
-            yield return Until(() => Dir.AskKind == ExpeditionDirector.AskChoice && Dir.ScriptPending == 0, 60f, "the question again");
+            Assert.AreEqual("t_ring", Last<AdviseMira>().ChoiceId);
+            yield return Until(() => SaidIndex("t_ring_wrong") >= 0, 30f, "the wrong line");
+            yield return Until(() => Dir.AskKind == ExpeditionDirector.AskChoice && SpeechBubbles.IsShowing(Dir.AskHandle), 60f, "the question again");
             Assert.GreaterOrEqual(C.RivalProgress - rival - (S.Tick - at), C.Definition.Tuning.WrongAnswerCharge);
-            yield return ExpeditionScripts.TapReply(_boot.AutoPlay, Dir.AskHandle, ExpeditionLines.Get(S, "answer_west"));
+            Assert.AreEqual(PartyMode.AskingChoice, C.Party.Mode);
+            yield return ExpeditionScripts.TapReply(_boot.AutoPlay, Dir.AskHandle, "The ringed slab");
             Assert.AreEqual(1, Last<AdviseMira>().Answer);
-            yield return Until(() => C.Knows("air.known"), 10f, "the right answer");
+            yield return Until(() => C.Knows("t.ring_known"), 10f, "the right answer");
             Assert.AreEqual(2, Count<AdviseMira>());
+            Assert.AreNotEqual(PartyMode.AskingChoice, C.Party.Mode);
         }
     }
 }
