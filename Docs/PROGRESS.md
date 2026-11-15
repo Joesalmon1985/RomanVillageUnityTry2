@@ -573,3 +573,25 @@ Not done or not verified:
 - Nobody played it by hand; the packaged build was not built. 932 x 430 is covered by the layout test only (no capture).
 - The duel stages from interior markers through I5's `InteriorSpace`; in this worktree that is the I0 stub, so the Tally Vault duel stands near the board centre on the surface. A stage at a far-east interior spot is covered by a test with a hand-made request.
 - I6 must hide its own party bodies while a campaign duel runs (`CampaignDuel.Staged`, `EncounterHost.Ended`); I8 writes the checkpoint on `CampaignDuel.Resolved` (saving during an encounter is still refused by `SaveSystem`).
+
+## Crystals I6: the expedition director and views (15 Nov 2026, branch `cry/i6`, from `historic-base`)
+
+Mira's expedition in play (`PRD_CRYSTALS` 5.5 to 5.7, appendix B, package I6). The reference is `Docs/EXPEDITION_UI.md`.
+
+- `Game/Expedition/**`: the director (Mira and the six as bodies placed where the sim says, legs walked in the leg's ticks, formation, gestures, the retreat with one staying, the fallen), her conversation in bubbles (opening, leads, calls, choices, thresholds, the tower, the tap menu), company (`SetCompany` on leaving, falling behind, rejoining), cues while away, sites and towers (stone, stair lid, Ash cut, four towers with the restoration effect, pedestals, altars, crystals, keepers, way-posts for the unwritten sites), the Ash runners, the journal on the map and the HUD line, the map layer, AutoPlay scripts, dev helpers.
+- Interiors are package I5's. Until it is merged the party's interior cells are laid out far east of the island with a plain floor and walls, and a player in Mira's company is led there (the walker cannot step off the board). The duel is package I7's: until `CampaignDuel.Start` does something a stand-in bubble asks how the duel ends and sends `ResolveEncounter`.
+- One hook outside the package: `PrinceDirector.Hush` (no new pitch, a pitch withdrawn, no tagging along while Mira has the player's ear; an overrun warning still gets through). Tooling: `AgentScripts/ExpeditionDrive.cs`.
+
+Ran (15 Nov, editor, other editors busy on the same machine):
+
+- `dotnet test DotNet`: 450 passed (the sim is untouched).
+- Unity console: 0 errors from game code (the editor's own search indexer logs an exception at start).
+- PlayMode: 88 tests (79 from the base and 9 in `ExpeditionTests`). The last full run passed 87; the one failure was a check in `ExpeditionTests` that expected one of two possible cues, corrected afterwards, and `ExpeditionTests` then passed 9 of 9 (6 min 43 s). In an earlier full run `DanceTests.Drums_LightForTheRightPads_AtCueMinusFall_AutoplayAllPerfect` failed once on its frame-timing check (0.31 s late against 0.1 s, the machine was loaded); alone it passed, and it passed in the last full run.
+- AutoPlay in the editor at time scale 3 (game-minute timings do not depend on it), seed 20261113, the Ash march on the Deepstone 3:09: `earth_first` OK (Deepstone taken 2:30, restored 6:03), `earth_stolen` OK (as `expedition_captures`: threshold 7:19, loss 7:28, win 10:28, restored 12:24), `earth_stolen_win` OK (win 7:28, restored 9:24), `mira_alone` OK (she takes the Deepstone alone at 6:18, waits at the tower from 10:45, restored 11:58), `ash_runners` OK (seized 3:38, word 4:08). Captures at night in `Evidence/screenshots/i6_*.png` (not committed).
+
+Not done or not verified:
+
+- Nobody played it by hand. No packaged build, no phone-sized window pass (I8).
+- Not run against real interiors (I5) or the real duel (I7): `Interiors.Enter`, `Interiors.LeadOut` and `CampaignDuel.Start` are called but were never exercised.
+- No dialogue to suggest a scout (Mira sends Tansy herself when a belief is stale; the scout is shown in the world and on the map). The finale and the endings are Slice 2: an ending's lines are only cued.
+- Lines the authored pack lacks are stand-ins in `ExpeditionLines.Missing` (listed in the hand-off).
