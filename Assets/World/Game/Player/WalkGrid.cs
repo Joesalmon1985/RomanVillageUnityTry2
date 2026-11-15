@@ -16,6 +16,9 @@ namespace World.Game
     /// stay walkable, so the player can stand on them to cast);</item>
     /// <item>within a registered static blocker (mountain peaks, the dance fire and drums).</item>
     /// </list>
+    /// Open regions (package I5, interiors far to the east): a cell beyond the board is walkable only when a region
+    /// lists it as floor (<see cref="AddOpenRegion"/>); a region cell can be shut (<see cref="SetCellBlocked"/>, doors)
+    /// and stairs are avoided by paths unless they are the goal (<see cref="SetCellAvoided"/>).
     /// Trees, crops and people never block; main roads and hex-edge lines stay walkable. The state-derived part is read
     /// from <c>WorldBootstrap.Instance.Sim.State</c> (read only) and cached per tick; "within r" is strict, so with 5 m
     /// steps a settlement or building blocks exactly its own cell.
@@ -42,7 +45,74 @@ namespace World.Game
         {
             _static.Clear(); _solids.Clear(); _stateBlocked.Clear(); _stateCentres.Clear(); _stateRadii.Clear();
             _cachedFor = null; _cachedTick = -1; _cachedCounts = -1; StateOverride = null;
+            _region.Clear(); _regionBlocked.Clear(); _avoided.Clear();
         }
+
+        // ---------------- open regions (PRD_CRYSTALS appendix B, package I5) ----------------
+
+        private struct RegionCell { public string Owner; public float FloorY; }
+        private static readonly Dictionary<Cell, RegionCell> _region = new Dictionary<Cell, RegionCell>();
+        private static readonly Dictionary<Cell, string> _regionBlocked = new Dictionary<Cell, string>();
+        private static readonly Dictionary<Cell, string> _avoided = new Dictionary<Cell, string>();
+
+        /// <summary>
+        /// Open region cells beyond the board (interiors, PRD_CRYSTALS 5.10): each listed cell is walkable floor at
+        /// <paramref name="floorY"/>, even beyond the board's edge; every other cell beyond the board stays blocked. A cell
+        /// already listed by another owner is taken over. Static blockers still apply inside a region.
+        /// </summary>
+        public static void AddOpenRegion(string owner, IEnumerable<Cell> floor, float floorY)
+        {
+            if (floor == null) return;
+            foreach (var c in floor) _region[c] = new RegionCell { Owner = owner, FloorY = floorY };
+        }
+
+        /// <summary>Removes every open region cell of an owner, with its blocked and avoided cells.</summary>
+        public static void RemoveOpenRegions(string owner)
+        {
+            RemoveWhere(_region, owner, r => r.Owner);
+            RemoveWhere(_regionBlocked, owner, o => o);
+            RemoveWhere(_avoided, owner, o => o);
+        }
+
+        private static void RemoveWhere<T>(Dictionary<Cell, T> d, string owner, System.Func<T, string> ownerOf)
+        {
+            List<Cell> gone = null;
+            foreach (var kv in d) if (ownerOf(kv.Value) == owner) (gone ??= new List<Cell>()).Add(kv.Key);
+            if (gone != null) foreach (var c in gone) d.Remove(c);
+        }
+
+        /// <summary>Blocks or frees one cell (an interior door, the flooded causeway). WhyBlocked reports the owner.</summary>
+        public static void SetCellBlocked(string owner, Cell c, bool blocked)
+        {
+            if (blocked) _regionBlocked[c] = owner;
+            else if (_regionBlocked.TryGetValue(c, out var o) && o == owner) _regionBlocked.Remove(c);
+        }
+
+        /// <summary>
+        /// A walkable cell that paths avoid unless it is their goal (a stair or exit: stepping on it takes the walker
+        /// elsewhere, so an auto-walk never crosses one by accident). Keys still step onto it.
+        /// </summary>
+        public static void SetCellAvoided(string owner, Cell c, bool avoided)
+        {
+            if (avoided) _avoided[c] = owner;
+            else if (_avoided.TryGetValue(c, out var o) && o == owner) _avoided.Remove(c);
+        }
+
+        public static bool IsAvoided(Cell c) => _avoided.ContainsKey(c);
+
+        /// <summary>True when the cell is open region floor (an interior cell), with its floor height.</summary>
+        public static bool TryRegionFloor(Cell c, out float floorY)
+        {
+            if (_region.TryGetValue(c, out var r)) { floorY = r.FloorY; return true; }
+            floorY = BoardSpace.GroundY;
+            return false;
+        }
+
+        /// <summary>The owner of the open region holding the cell, or null.</summary>
+        public static string RegionOwner(Cell c) => _region.TryGetValue(c, out var r) ? r.Owner : null;
+
+        /// <summary>Number of open region cells (tests, diagnostics).</summary>
+        public static int RegionCellCount => _region.Count;
 
         private static WorldState State
         {
@@ -60,6 +130,13 @@ namespace World.Game
         public static string WhyBlocked(Cell c)
         {
             var p = WalkLattice.ToWorld(c);
+            if (_regionBlocked.TryGetValue(c, out var shut)) return shut ?? "door";
+            if (_region.ContainsKey(c))
+            {
+                foreach (var b in _static)
+                    if (BoardSpace.Flat(p - b.Centre) < b.Radius) return b.Owner ?? "static";
+                return null;
+            }
             if (BoardSpace.Flat(p) > BoardSpace.BoardRadius + BoardMargin) return "edge";
             foreach (var b in _static)
                 if (BoardSpace.Flat(p - b.Centre) < b.Radius) return b.Owner ?? "static";
@@ -180,7 +257,7 @@ namespace World.Game
                 {
                     var n = cur.c + WalkLattice.Dir(h);
                     if (closed.Contains(n)) continue;
-                    if (n != to && IsBlocked(n)) continue;
+                    if (n != to && (IsBlocked(n) || _avoided.ContainsKey(n))) continue;
                     if (SolidBetween(cur.c, n) != null) continue;
                     int ng = gc + 1;
                     if (g.TryGetValue(n, out int old) && old <= ng) continue;
