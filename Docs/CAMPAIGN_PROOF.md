@@ -10,11 +10,11 @@ The prompt player (answers every lead, question and "Set it" at once) on the aut
 
 | Seed | Glade known | Set out | Stone read, stair open | Underground | Marks read | Deepstone taken | Back on the surface | At the Rooted Tower | Restored | Rival's march to the quarry done at | Duels |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | 0:00 | 0:00 | 0:38 | 0:52 | 1:24 | 1:48 | 2:21 | 4:45 | 5:15 | 2:59 | 0 |
-| 2 | 0:00 | 0:00 | 0:38 | 0:52 | 1:24 | 1:48 | 2:21 | 4:45 | 5:15 | 3:12 | 0 |
-| 3 | 0:00 | 0:00 | 0:38 | 0:52 | 1:24 | 1:48 | 2:21 | 4:45 | 5:15 | 4:26 | 0 |
-| 4 | 0:00 | 0:00 | 0:38 | 0:52 | 1:24 | 1:48 | 2:21 | 4:45 | 5:15 | 3:43 | 0 |
-| 5 | 0:00 | 0:00 | 0:38 | 0:52 | 1:24 | 1:48 | 2:21 | 4:45 | 5:15 | 2:55 | 0 |
+| 1 | 0:00 | 0:00 | 0:38 | 0:52 | 1:24 | 1:48 | 2:21 | 4:45 | 5:15 | 3:44 | 0 |
+| 2 | 0:00 | 0:00 | 0:38 | 0:52 | 1:24 | 1:48 | 2:21 | 4:45 | 5:15 | 3:57 | 0 |
+| 3 | 0:00 | 0:00 | 0:38 | 0:52 | 1:24 | 1:48 | 2:21 | 4:45 | 5:15 | 5:11 | 0 |
+| 4 | 0:00 | 0:00 | 0:38 | 0:52 | 1:24 | 1:48 | 2:21 | 4:45 | 5:15 | 4:28 | 0 |
+| 5 | 0:00 | 0:00 | 0:38 | 0:52 | 1:24 | 1:48 | 2:21 | 4:45 | 5:15 | 3:40 | 0 |
 
 Checked on every seed: custody went AtSite, Carried, Restored; no lethal duel; the Deepstone was taken before the Ash expedition's march to the quarry ended (the march is drawn per seed, section H); the restore event fired and the player was paid `crystal:earth`. The glade is known at 0:00 because Odo reads the foresters' marks on sight (the sawyer is the fallback), and the expedition's opening is known at once, so Mira runs to the glade. The journal of seed 1:
 
@@ -30,8 +30,8 @@ Checked on every seed: custody went AtSite, Carried, Restored; no lethal duel; t
 | 1:48 | There you are. Heavier than it looks. |
 | 1:48 | Mira took the Deepstone from its pedestal at the Old Quarry. |
 | 1:48 | Mira took the Deepstone from its pedestal in the Old Quarry. |
-| 3:28 | Word came: Ash runners are searching the Old Quarry. |
-| 3:58 | Word came: Ash runners were seen heading for the Cold Kiln. |
+| 4:13 | Word came: Ash runners are searching the Old Quarry. |
+| 4:43 | Word came: Ash runners were seen heading for the Cold Kiln. |
 | 4:45 | Mira is waiting for you at the Rooted Tower to set the Deepstone. |
 | 5:15 | Mira set the Deepstone in the Rooted Tower. The tower is lit. |
 | 5:15 | Stone to stone. Hold still, all of you. |
@@ -43,47 +43,47 @@ The reluctant player answers "Not that way" to every Earth lead until word comes
 
 | Seed | Seized (truth) | Word reaches the party | Bare pedestal seen | Tally read | Vault known | At Dolm's threshold | Duel won | Out by the Ash cut | Restored | Ash points | Player points |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | 2:58 | 3:28 | 6:30 | 6:30 | 7:28 | 17:45 | 17:45 | 18:15 | 19:34 | 3 | 1 |
-| 2 | 3:11 | 3:41 | 6:30 | 6:30 | 7:28 | 9:55 | 9:55 | 10:25 | 11:43 | 2 | 1 |
-| 3 | 4:26 | 4:56 | 7:32 | 7:32 | 8:30 | 18:47 | 18:47 | 19:17 | 20:36 | 3 | 1 |
-| 4 | 4:13 | 4:43 | 7:32 | 7:32 | 8:30 | 10:57 | 10:57 | 11:27 | 12:45 | 1 | 1 |
-| 5 | 2:54 | 3:24 | 6:30 | 6:30 | 7:28 | 9:55 | 9:55 | 10:25 | 11:43 | 2 | 1 |
+| 1 | 3:43 | 4:13 | 7:32 | 7:32 | 8:30 | 18:47 | 18:47 | 19:17 | 20:36 | 3 | 1 |
+| 2 | 3:56 | 4:26 | 7:32 | 7:32 | 8:30 | 10:57 | 10:57 | 11:27 | 12:45 | 2 | 1 |
+| 3 | 5:11 | 5:41 | 8:34 | 8:34 | 9:32 | 15:19 | 15:19 | 15:49 | 17:08 | 3 | 1 |
+| 4 | 4:58 | 5:28 | 8:34 | 8:34 | 9:32 | 11:59 | 11:59 | 12:29 | 13:47 | 1 | 1 |
+| 5 | 3:39 | 4:09 | 7:32 | 7:32 | 8:30 | 10:57 | 10:57 | 11:27 | 12:45 | 2 | 1 |
 
 Checked on every seed: custody went AtSite, RivalTransit, AtRivalAltar, Carried, Restored; the steps came in this order; the Ash cut opened; the Ash Clan was paid `crystal:earth` when the Deepstone reached its altar and the player when it was restored. The journal of seed 1:
 
 | Time | Journal |
 |---|---|
 | 0:00 | Word came: Ash runners were seen heading for the Old Quarry. |
-| 3:28 | Word came: smoke at the Old Quarry. The Ash Clan has taken the Deepstone. |
-| 4:58 | Word came: a light was carried into the Tally Vault. the Deepstone is on an Ash altar. |
-| 4:58 | Word came: Ash runners were seen heading for the Cold Kiln. |
-| 5:20 | Three cuts and a ring. Surveyors' marks, older than the camps. |
-| 5:20 | Mira read the boundary stone in the Stonemark Glade and found the stair. |
-| 5:34 | Mind your feet. The stair we came down stays lit, and any of us can lead you back to it. |
-| 6:06 | Double cuts, all pointing up the right-hand branch. |
-| 6:06 | Mira read the survey marks in the Old Quarry. The double cuts lead to the Root Chamber. |
-| 6:30 | Bare. Someone was quicker. |
-| 6:30 | The pedestal in the Old Quarry was bare. An Ash tally stick lay beside it. |
-| 6:50 | The pedestal at the Old Quarry was empty. The Deepstone is gone. |
-| 7:28 | Five notches, then a cross. Five turnings, then the place they stopped. |
-| 7:28 | Mira counted the tally's turnings down the old stair to the Tally Vault. |
+| 4:13 | Word came: smoke at the Old Quarry. The Ash Clan has taken the Deepstone. |
+| 5:43 | Word came: a light was carried into the Tally Vault. the Deepstone is on an Ash altar. |
+| 5:43 | Word came: Ash runners were seen heading for the Cold Kiln. |
+| 6:22 | Three cuts and a ring. Surveyors' marks, older than the camps. |
+| 6:22 | Mira read the boundary stone in the Stonemark Glade and found the stair. |
+| 6:36 | Mind your feet. The stair we came down stays lit, and any of us can lead you back to it. |
+| 7:08 | Double cuts, all pointing up the right-hand branch. |
+| 7:08 | Mira read the survey marks in the Old Quarry. The double cuts lead to the Root Chamber. |
+| 7:32 | Bare. Someone was quicker. |
+| 7:32 | The pedestal in the Old Quarry was bare. An Ash tally stick lay beside it. |
+| 7:52 | The pedestal at the Old Quarry was empty. The Deepstone is gone. |
+| 8:30 | Five notches, then a cross. Five turnings, then the place they stopped. |
+| 8:30 | Mira counted the tally's turnings down the old stair to the Tally Vault. |
 | 9:05 | The Ash Clan overran one of your camps. Mira turned the party back to the home camp. |
-| 9:26 | Word came: smoke at the Cold Kiln. The Ash Clan has taken the Kilnheart. |
-| 9:55 | Every stone taken is a notch on my stick. Come to be counted? |
-| 9:56 | Word came: a light was carried into the Black Forge. the Kilnheart is on an Ash altar. |
-| 9:56 | Word came: Ash runners were seen heading for the Low Causeway. |
-| 14:34 | Word came: smoke at the Low Causeway. The Ash Clan has taken the Tideglass. |
+| 9:35 | Word came: smoke at the Cold Kiln. The Ash Clan has taken the Kilnheart. |
+| 10:41 | Word came: a light was carried into the Black Forge. the Kilnheart is on an Ash altar. |
+| 10:41 | Word came: Ash runners were seen heading for the Low Causeway. |
+| 10:57 | Every stone taken is a notch on my stick. Come to be counted? |
+| 15:19 | Word came: smoke at the Low Causeway. The Ash Clan has taken the Tideglass. |
 | 15:35 | The Ash Clan overran another of your camps. Mira pressed on. |
-| 16:04 | Word came: a light was carried into the Old Cistern. the Tideglass is on an Ash altar. |
-| 16:04 | Word came: Ash runners were seen heading for the Bare Shoulder. |
-| 17:45 | Dolm the Tally-Keeper stands before the party at the Tally Vault. |
-| 17:45 | Mira broke the Ward of Dolm the Tally-Keeper at the Tally Vault. |
-| 17:45 | Mira took the Deepstone from the Ash altar at the Tally Vault. |
-| 17:45 | Mira beat Dolm in the Tally Vault and took the Deepstone from the Ash altar. |
-| 19:03 | Mira is waiting for you at the Rooted Tower to set the Deepstone. |
-| 19:34 | Mira set the Deepstone in the Rooted Tower. The tower is lit. |
-| 19:34 | Stone to stone. Hold still, all of you. |
-| 19:34 | Mira set the Deepstone in the Rooted Tower. The tower is lit. |
+| 16:05 | Word came: a light was carried into the Old Cistern. the Tideglass is on an Ash altar. |
+| 16:05 | Word came: Ash runners were seen heading for the Bare Shoulder. |
+| 18:47 | Dolm the Tally-Keeper stands before the party at the Tally Vault. |
+| 18:47 | Mira broke the Ward of Dolm the Tally-Keeper at the Tally Vault. |
+| 18:47 | Mira took the Deepstone from the Ash altar at the Tally Vault. |
+| 18:47 | Mira beat Dolm in the Tally Vault and took the Deepstone from the Ash altar. |
+| 20:05 | Mira is waiting for you at the Rooted Tower to set the Deepstone. |
+| 20:36 | Mira set the Deepstone in the Rooted Tower. The tower is lit. |
+| 20:36 | Stone to stone. Hold still, all of you. |
+| 20:36 | Mira set the Deepstone in the Rooted Tower. The tower is lit. |
 
 **Real duels against Dolm (`keeper_earth`).** At Dolm's threshold of each seed the duel was committed and staged again 199 times (`RestartAttempt`, each a new seed from the campaign's random stream), and every one of those 200 attempt seeds was played as a real Ward duel by the scripted first-timer and by the competent player:
 
@@ -104,9 +104,9 @@ From Dolm's threshold of section B: the first duel is lost (injected `Defeat`), 
 
 | Seed | Volunteer | Fell | Party placed at | Rival charge | Rival (phase step/progress): before, after the loss | Retry volunteer | Won | Restored | Duplicate resolutions refused | Final state equal, reloaded vs unbroken |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1 | garrick | garrick | the Old Quarry | +900 | Marching 3/1914, Marching 3/2815 | ivo | 20:28 | 22:16 | 2 of 2 | yes |
-| 2 | garrick | garrick | the Old Quarry | +900 | Carrying 1/325, Marching 2/326 | ivo | 12:37 | 14:26 | 2 of 2 | yes |
-| 3 | garrick | garrick | the Old Quarry | +900 | Marching 3/1466, Marching 3/2367 | ivo | 21:30 | 23:18 | 2 of 2 | yes |
+| 1 | garrick | garrick | the Old Quarry | +900 | Marching 3/2084, Marching 3/2985 | ivo | 21:30 | 23:18 | 2 of 2 | yes |
+| 2 | garrick | garrick | the Old Quarry | +900 | Carrying 1/495, Marching 2/496 | ivo | 13:39 | 15:28 | 2 of 2 | yes |
+| 3 | garrick | garrick | the Old Quarry | +900 | Marching 2/2068, Carrying 2/137 | ivo | 18:02 | 19:50 | 2 of 2 | yes |
 
 Checked: Garrick (volunteer order 1) holds the way out and dies, once; the party is placed in the survey gallery in the same tick; the Ash expedition is charged +900 there and then (its plan step and progress before and after are shown: by then the Deepstone is on the altar and the expedition is marching on the next crystal, so the loss moves it 900 ticks further along its plan); Ivo is the next volunteer; the second attempt wins and the Deepstone is restored. On the reloaded path the save was written and loaded with a duel pending and again after each resolution; each resolution was sent a second time after its load and refused with `already_resolved`; the final state (campaign and faction game) equals the unbroken run's byte for byte, with one casualty and one point.
 
@@ -260,7 +260,7 @@ Checked for every order: the finale's threshold is the tower of the fourth cryst
 
 ## H. The race
 
-**What changed (the race tuning, `sim-H1-cry-S1-tuned`).** The party, not the player's glide, sets the clock. A lattice step is 5 m. Mira and the companions walk at 2.5 m/s on the surface (`PartyTicksPerStep` 20, was 7) and 1.7 m/s underground by lamp light (`InteriorTicksPerStep` 30); she runs at 7.1 m/s (`PartyRunTicksPerStep` 7) only on surface legs of 4 steps or more toward a crystal the party still believes on its pedestal while the newest word says Ash runners are heading there, and says so in the journal. A stair, exit or door takes 12 s, reading a marker or talking 20 s, searching 30 s, taking a crystal 15 s, setting it in its tower 30 s. With you she waits 120 s for "Lead the way" and an answer, and at a lethal threshold she waits for "Fight" or "Not yet" with no limit; alone she waits 90 s before each lead and 90 s at a threshold. The expedition's opening is known at once (`OpeningReportDelay` 0) and is drawn per seed: on the authored pack it always opens with the Deepstone, its march drawn in 2:45 to 4:45 (was 8:00); every later march in 4:00 to 6:00 (was 6:00), carry 1:30. An overrun of your camps charges 1:00 (was 3:00) and turns the party home only when a camp is lost and no overrun did so in the last 20:00; an Ash camp lost stops the expedition for 0:30 (was 1:30). The full list with before and after is in `PRD_CRYSTALS` A.6.
+**What changed (the race tuning, `sim-H1-cry-S1-tuned`).** The party, not the player's glide, sets the clock. A lattice step is 5 m. Mira and the companions walk at 2.5 m/s on the surface (`PartyTicksPerStep` 20, was 7) and 1.7 m/s underground by lamp light (`InteriorTicksPerStep` 30); she runs at 7.1 m/s (`PartyRunTicksPerStep` 7) only on surface legs of 4 steps or more toward a crystal the party still believes on its pedestal while the newest word says Ash runners are heading there, and says so in the journal. A stair, exit or door takes 12 s, reading a marker or talking 20 s, searching 30 s, taking a crystal 15 s, setting it in its tower 30 s. With you she waits 120 s for "Lead the way" and an answer, and at a lethal threshold she waits for "Fight" or "Not yet" with no limit; alone she waits 90 s before each lead and 90 s at a threshold. The expedition's opening is known at once (`OpeningReportDelay` 0) and is drawn per seed: on the authored pack it always opens with the Deepstone, its march drawn in 3:30 to 5:30 (was 8:00); every later march in 4:00 to 6:00 (was 6:00), carry 1:30. An overrun of your camps charges 1:00 (was 3:00) and turns the party home only when a camp is lost and no overrun did so in the last 20:00; an Ash camp lost stops the expedition for 0:30 (was 1:30). The full list with before and after is in `PRD_CRYSTALS` A.6.
 
 Players: **prompt** (decides at once), **45 s** and **90 s** (each decision, "Lead the way", "Fight", "Set it", an answer, taken that long after it is offered), and **with the prince** ("Go on without me" at the start; on the Earth slice never back; in the whole campaign back 60 s after Mira starts to wait for them at a tower or a threshold, prompt while there, and off again as soon as she sets out). Seeds 1 to 11, real Ward duels by the scripted first-timer on each attempt's own seed. Every run is also played as a **twin** from the same start with the overruns' effect on the expedition clock removed (`CampOverrunCharge` and `AshCampLostPause` 0; the overruns and the retreats still happen): a crystal is **decided by an overrun** when its outcome (first or stolen) differs between the run and its twin.
 
@@ -270,69 +270,69 @@ Each run lasts until the Deepstone is restored or 40 game minutes. "Ash at the q
 
 | Player | Seed | Drawn march | Ash at the quarry | Deepstone | Taken at | Margin | Seized at | Restored at | Duels | Deaths | Overruns of you / of the Ash | Decided by an overrun |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| prompt | 1 | 2:59 | 2:58 | first | 1:48 | +1:10 | - | 5:15 | 0 | 0 | 0 / 0 | no |
-| prompt | 2 | 3:12 | 3:11 | first | 1:48 | +1:23 | - | 5:15 | 0 | 0 | 0 / 0 | no |
-| prompt | 3 | 4:26 | 4:26 | first | 1:48 | +2:37 | - | 5:15 | 0 | 0 | 0 / 0 | no |
-| prompt | 4 | 3:43 | 4:13 | first | 1:48 | +2:25 | - | 5:15 | 0 | 0 | 0 / 1 | no |
-| prompt | 5 | 2:55 | 2:54 | first | 1:48 | +1:06 | - | 5:15 | 0 | 0 | 0 / 0 | no |
-| prompt | 6 | 4:44 | 4:44 | first | 1:48 | +2:55 | - | 5:15 | 0 | 0 | 0 / 0 | no |
-| prompt | 7 | 3:55 | 3:55 | first | 1:48 | +2:07 | - | 5:15 | 0 | 0 | 0 / 0 | no |
-| prompt | 8 | 4:01 | 4:31 | first | 1:48 | +2:43 | - | 5:15 | 0 | 0 | 0 / 1 | no |
-| prompt | 9 | 3:41 | 4:11 | first | 1:48 | +2:22 | - | 5:15 | 0 | 0 | 0 / 1 | no |
-| prompt | 10 | 2:54 | 3:24 | first | 1:48 | +1:35 | - | 5:15 | 0 | 0 | 0 / 1 | no |
-| prompt | 11 | 3:38 | 4:08 | first | 1:48 | +2:19 | - | 5:15 | 0 | 0 | 0 / 1 | no |
-| 45 s | 1 | 2:59 | 2:58 | stolen | - | - | 2:58 | 21:43 | 1 (W) | 0 | 2 / 0 | no |
-| 45 s | 2 | 3:12 | 3:11 | stolen | - | - | 3:11 | 17:14 | 2 (LW) | 1 | 0 / 2 | no |
-| 45 s | 3 | 4:26 | 4:26 | first | 4:03 | +0:22 | - | 9:00 | 0 | 0 | 0 / 0 | no |
-| 45 s | 4 | 3:43 | 4:13 | first | 4:03 | +0:10 | - | 9:00 | 0 | 0 | 0 / 2 | yes (twin: stolen) |
-| 45 s | 5 | 2:55 | 2:54 | stolen | - | - | 2:54 | 13:02 | 1 (W) | 0 | 0 / 1 | no |
-| 45 s | 6 | 4:44 | 4:44 | first | 4:03 | +0:40 | - | 9:00 | 0 | 0 | 0 / 0 | no |
-| 45 s | 7 | 3:55 | 3:55 | first | 4:03 | -0:07 | - | 9:00 | 0 | 0 | 0 / 1 | no |
-| 45 s | 8 | 4:01 | 4:31 | first | 4:03 | +0:28 | - | 9:00 | 0 | 0 | 0 / 2 | no |
-| 45 s | 9 | 3:41 | 4:11 | first | 4:03 | +0:07 | - | 9:00 | 0 | 0 | 0 / 1 | yes (twin: stolen) |
-| 45 s | 10 | 2:54 | 3:24 | stolen | - | - | 3:24 | 13:02 | 1 (W) | 0 | 0 / 2 | no |
-| 45 s | 11 | 3:38 | 4:08 | first | 4:03 | +0:04 | - | 9:00 | 0 | 0 | 0 / 2 | yes (twin: stolen) |
-| 90 s | 1 | 2:59 | 2:58 | stolen | - | - | 2:58 | 22:16 | 1 (W) | 0 | 3 / 0 | no |
-| 90 s | 2 | 3:12 | 3:11 | stolen | - | - | 3:11 | 24:44 | 2 (LW) | 1 | 0 / 3 | no |
-| 90 s | 3 | 4:26 | 4:26 | stolen | - | - | 4:26 | 22:48 | 1 (W) | 0 | 3 / 0 | no |
-| 90 s | 4 | 3:43 | 4:13 | stolen | - | - | 4:13 | 19:02 | 1 (W) | 0 | 0 / 3 | no |
-| 90 s | 5 | 2:55 | 2:54 | stolen | - | - | 2:54 | 19:02 | 1 (W) | 0 | 0 / 2 | no |
-| 90 s | 6 | 4:44 | 4:44 | stolen | - | - | 4:44 | 28:22 | 1 (W) | 0 | 3 / 0 | no |
-| 90 s | 7 | 3:55 | 3:55 | stolen | - | - | 3:55 | 19:02 | 1 (W) | 0 | 0 / 2 | no |
-| 90 s | 8 | 4:01 | 4:31 | stolen | - | - | 4:31 | 19:02 | 1 (W) | 0 | 0 / 3 | no |
-| 90 s | 9 | 3:41 | 4:11 | stolen | - | - | 4:11 | 19:02 | 1 (W) | 0 | 0 / 3 | no |
-| 90 s | 10 | 2:54 | 3:24 | stolen | - | - | 3:24 | 19:02 | 1 (W) | 0 | 0 / 3 | no |
-| 90 s | 11 | 3:38 | 4:08 | stolen | - | - | 4:08 | 19:02 | 1 (W) | 0 | 0 / 3 | no |
-| with the prince | 1 | 2:59 | 2:58 | stolen | - | - | 2:58 | - | 0 | 0 | 5 / 0 | no |
-| with the prince | 2 | 3:12 | 3:11 | stolen | - | - | 3:11 | - | 0 | 0 | 0 / 6 | no |
-| with the prince | 3 | 4:26 | 4:26 | stolen | - | - | 4:26 | - | 0 | 0 | 5 / 0 | no |
-| with the prince | 4 | 3:43 | 4:13 | stolen | - | - | 4:13 | - | 0 | 0 | 0 / 6 | no |
-| with the prince | 5 | 2:55 | 2:54 | stolen | - | - | 2:54 | - | 0 | 0 | 0 / 5 | no |
-| with the prince | 6 | 4:44 | 4:44 | stolen | - | - | 4:44 | - | 0 | 0 | 5 / 0 | no |
-| with the prince | 7 | 3:55 | 3:55 | stolen | - | - | 3:55 | - | 0 | 0 | 0 / 6 | no |
-| with the prince | 8 | 4:01 | 4:31 | stolen | - | - | 4:31 | - | 0 | 0 | 0 / 6 | no |
-| with the prince | 9 | 3:41 | 4:11 | stolen | - | - | 4:11 | - | 0 | 0 | 0 / 6 | no |
-| with the prince | 10 | 2:54 | 3:24 | stolen | - | - | 3:24 | - | 0 | 0 | 0 / 6 | no |
-| with the prince | 11 | 3:38 | 4:08 | stolen | - | - | 4:08 | - | 0 | 0 | 0 / 6 | no |
+| prompt | 1 | 3:44 | 3:43 | first | 1:48 | +1:55 | - | 5:15 | 0 | 0 | 0 / 0 | no |
+| prompt | 2 | 3:57 | 3:56 | first | 1:48 | +2:08 | - | 5:15 | 0 | 0 | 0 / 0 | no |
+| prompt | 3 | 5:11 | 5:11 | first | 1:48 | +3:22 | - | 5:15 | 0 | 0 | 0 / 0 | no |
+| prompt | 4 | 4:28 | 4:58 | first | 1:48 | +3:10 | - | 5:15 | 0 | 0 | 0 / 1 | no |
+| prompt | 5 | 3:40 | 3:39 | first | 1:48 | +1:51 | - | 5:15 | 0 | 0 | 0 / 0 | no |
+| prompt | 6 | 5:29 | - | first | 1:48 | - | - | 5:15 | 0 | 0 | 0 / 0 | no |
+| prompt | 7 | 4:40 | 4:40 | first | 1:48 | +2:52 | - | 5:15 | 0 | 0 | 0 / 0 | no |
+| prompt | 8 | 4:46 | - | first | 1:48 | - | - | 5:15 | 0 | 0 | 0 / 1 | no |
+| prompt | 9 | 4:26 | 4:56 | first | 1:48 | +3:07 | - | 5:15 | 0 | 0 | 0 / 1 | no |
+| prompt | 10 | 3:39 | 4:09 | first | 1:48 | +2:20 | - | 5:15 | 0 | 0 | 0 / 1 | no |
+| prompt | 11 | 4:23 | 4:53 | first | 1:48 | +3:04 | - | 5:15 | 0 | 0 | 0 / 1 | no |
+| 45 s | 1 | 3:44 | 3:43 | stolen | - | - | 3:43 | 21:43 | 1 (W) | 0 | 2 / 0 | no |
+| 45 s | 2 | 3:57 | 3:56 | first | 4:03 | -0:06 | - | 9:00 | 0 | 0 | 0 / 1 | no |
+| 45 s | 3 | 5:11 | 5:11 | first | 4:03 | +1:07 | - | 9:00 | 0 | 0 | 0 / 0 | no |
+| 45 s | 4 | 4:28 | 4:58 | first | 4:03 | +0:55 | - | 9:00 | 0 | 0 | 0 / 2 | no |
+| 45 s | 5 | 3:40 | 3:39 | stolen | - | - | 3:39 | 13:02 | 1 (W) | 0 | 0 / 1 | no |
+| 45 s | 6 | 5:29 | 5:29 | first | 4:03 | +1:25 | - | 9:00 | 0 | 0 | 0 / 0 | no |
+| 45 s | 7 | 4:40 | 4:40 | first | 4:03 | +0:37 | - | 9:00 | 0 | 0 | 0 / 1 | no |
+| 45 s | 8 | 4:46 | 5:16 | first | 4:03 | +1:13 | - | 9:00 | 0 | 0 | 0 / 2 | no |
+| 45 s | 9 | 4:26 | 4:56 | first | 4:03 | +0:52 | - | 9:00 | 0 | 0 | 0 / 1 | no |
+| 45 s | 10 | 3:39 | 4:09 | first | 4:03 | +0:05 | - | 9:00 | 0 | 0 | 0 / 1 | yes (twin: stolen) |
+| 45 s | 11 | 4:23 | 4:53 | first | 4:03 | +0:49 | - | 9:00 | 0 | 0 | 0 / 2 | no |
+| 90 s | 1 | 3:44 | 3:43 | stolen | - | - | 3:43 | 22:16 | 1 (W) | 0 | 3 / 0 | no |
+| 90 s | 2 | 3:57 | 3:56 | stolen | - | - | 3:56 | 24:44 | 2 (LW) | 1 | 0 / 3 | no |
+| 90 s | 3 | 5:11 | 5:11 | stolen | - | - | 5:11 | 22:48 | 1 (W) | 0 | 3 / 0 | no |
+| 90 s | 4 | 4:28 | 4:58 | stolen | - | - | 4:58 | 19:02 | 1 (W) | 0 | 0 / 3 | no |
+| 90 s | 5 | 3:40 | 3:39 | stolen | - | - | 3:39 | 19:02 | 1 (W) | 0 | 0 / 2 | no |
+| 90 s | 6 | 5:29 | 5:29 | stolen | - | - | 5:29 | 28:22 | 1 (W) | 0 | 3 / 0 | no |
+| 90 s | 7 | 4:40 | 4:40 | stolen | - | - | 4:40 | 19:02 | 1 (W) | 0 | 0 / 2 | no |
+| 90 s | 8 | 4:46 | 5:16 | stolen | - | - | 5:16 | 19:02 | 1 (W) | 0 | 0 / 3 | no |
+| 90 s | 9 | 4:26 | 4:56 | stolen | - | - | 4:56 | 19:02 | 1 (W) | 0 | 0 / 3 | no |
+| 90 s | 10 | 3:39 | 4:09 | stolen | - | - | 4:09 | 19:02 | 1 (W) | 0 | 0 / 3 | no |
+| 90 s | 11 | 4:23 | 4:53 | stolen | - | - | 4:53 | 19:02 | 1 (W) | 0 | 0 / 3 | no |
+| with the prince | 1 | 3:44 | 3:43 | stolen | - | - | 3:43 | - | 0 | 0 | 5 / 0 | no |
+| with the prince | 2 | 3:57 | 3:56 | stolen | - | - | 3:56 | - | 0 | 0 | 0 / 6 | no |
+| with the prince | 3 | 5:11 | 5:11 | stolen | - | - | 5:11 | - | 0 | 0 | 5 / 0 | no |
+| with the prince | 4 | 4:28 | 4:58 | stolen | - | - | 4:58 | - | 0 | 0 | 0 / 6 | no |
+| with the prince | 5 | 3:40 | 3:39 | stolen | - | - | 3:39 | - | 0 | 0 | 0 / 5 | no |
+| with the prince | 6 | 5:29 | 5:29 | stolen | - | - | 5:29 | - | 0 | 0 | 5 / 0 | no |
+| with the prince | 7 | 4:40 | 4:40 | stolen | - | - | 4:40 | - | 0 | 0 | 0 / 6 | no |
+| with the prince | 8 | 4:46 | 5:16 | stolen | - | - | 5:16 | - | 0 | 0 | 0 / 6 | no |
+| with the prince | 9 | 4:26 | 4:56 | stolen | - | - | 4:56 | - | 0 | 0 | 0 / 6 | no |
+| with the prince | 10 | 3:39 | 4:09 | stolen | - | - | 4:09 | - | 0 | 0 | 0 / 6 | no |
+| with the prince | 11 | 4:23 | 4:53 | stolen | - | - | 4:53 | - | 0 | 0 | 0 / 6 | no |
 
 | Player | Deepstone first | Stolen | Median margin when first | Median taken at | Median restored at | Lethal duels | Deaths | Decided by an overrun |
 |---|---|---|---|---|---|---|---|---|
-| prompt | 11 of 11 | 0 | 2:19 | 1:48 | 5:15 | 0 | 0 | 0 |
-| 45 s | 7 of 11 | 4 | 0:10 | 4:03 | 9:00 | 5 | 1 | 3 |
+| prompt | 11 of 11 | 0 | 2:52 | 1:48 | 5:15 | 0 | 0 | 0 |
+| 45 s | 9 of 11 | 2 | 0:52 | 4:03 | 9:00 | 2 | 0 | 1 |
 | 90 s | 0 of 11 | 11 | - | - | 19:02 | 12 | 1 | 0 |
 | with the prince | 0 of 11 | 11 | - | - | - | 0 | 0 | 0 |
 
 Asserted on the Earth slice:
 
 - **Met.** The prompt party reaches the Deepstone first on most seeds (at least 9 of 11): 11 of 11.
-- **Met.** Not by a mile: the prompt party's median margin is under 3:00: 2:19 (it was 7:21 before the tuning).
+- **Met.** Not by a mile: the prompt party's median margin is under 3:00: 2:52 (it was 7:21 before the tuning).
 - **Met.** Followed promptly and not stolen, the Earth route takes 5 to 7 minutes from the opening to the restoration: 5:15 to 5:15.
 - **Met.** Followed promptly with the theft trail and the duel (the "Ash got there first" start, seed 1, duel won), it takes 6 to 11 minutes of game time: Dolm's threshold and the duel at 5:13, restored at 7:02. Game time does not run during the duel; with a duel of one to two minutes of play the player's own time is about 8 to 9 minutes.
-- **Met.** The 45 s player's race is close to even: stolen on 4 of 11 (3 to 8 asserted).
+- **Met.** The 45 s player's race is contested: stolen on 2 of 11 (2 to 8 asserted; 3 to 8 before the 45 s opening delay of I8).
 - **Met.** The 90 s player loses it on most seeds: stolen on 11 of 11.
 - **Met.** The player who stays with the prince finds it taken: stolen on 11 of 11.
 - **Met.** Arriving first means no lethal duel for that crystal: every first arrival had no duel; every lethal duel above was fought for a stolen Deepstone.
-- **Met.** The expedition's opening march differs by seed within its authored bounds (2:45 to 4:45): 11 different marches in 11 seeds, 2:54 to 4:44.
+- **Met.** The expedition's opening march differs by seed within its authored bounds (3:30 to 5:30): 11 different marches in 11 seeds, 3:39 to 5:29.
 - **Met.** The prince builds and casts in every run (he is autonomous).
 
 ### H2. The slow players at a lethal threshold
@@ -349,63 +349,63 @@ The skeleton is the only Complete pack, and its routes are one step each. For th
 
 | Player | Seed | Expedition opens with | Ending | Minutes | Crystals first | Stolen | Lethal duels | Deaths | Overruns of you / of the Ash | Clock added by overruns | An overrun decided a crystal |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| prompt | 1 | earth 3:17 | restored | 34.6 | 2 | 2 | 4 (WLWW) | 1 | 4 / 0 | +4:00, 0 pause(s) | no |
-| prompt | 2 | fire 4:37 | restored | 22.7 | 4 | 0 | 1 (W) | 0 | 0 / 3 | +0:00, 3 pause(s) | no |
-| prompt | 3 | water 2:58 | restored | 38.2 | 3 | 1 | 2 (WW) | 0 | 5 / 0 | +5:00, 0 pause(s) | no |
-| prompt | 4 | fire 3:48 | restored | 23.7 | 4 | 0 | 1 (W) | 0 | 0 / 4 | +0:00, 4 pause(s) | no |
-| prompt | 5 | water 4:12 | restored | 22.3 | 4 | 0 | 1 (W) | 0 | 0 / 2 | +0:00, 2 pause(s) | no |
-| prompt | 6 | earth 4:27 | restored | 37.1 | 2 | 2 | 4 (WWLW) | 1 | 4 / 0 | +4:00, 0 pause(s) | no |
-| prompt | 7 | fire 3:28 | restored | 22.7 | 4 | 0 | 1 (W) | 0 | 0 / 3 | +0:00, 3 pause(s) | no |
-| prompt | 8 | air 4:33 | restored | 20.4 | 4 | 0 | 1 (W) | 0 | 0 / 3 | +0:00, 3 pause(s) | no |
-| prompt | 9 | fire 3:01 | restored | 22.7 | 4 | 0 | 1 (W) | 0 | 0 / 4 | +0:00, 4 pause(s) | no |
-| prompt | 10 | water 2:49 | restored | 21.5 | 4 | 0 | 1 (W) | 0 | 0 / 3 | +0:00, 3 pause(s) | yes |
-| prompt | 11 | water 4:17 | restored | 22.3 | 4 | 0 | 1 (W) | 0 | 0 / 4 | +0:00, 4 pause(s) | no |
-| 45 s | 1 | earth 3:17 | restored | 62.3 | 1 | 3 | 6 (WLWWLW) | 2 | 9 / 0 | +9:00, 0 pause(s) | yes |
-| 45 s | 2 | fire 4:37 | restored | 47.7 | 2 | 2 | 8 (LWWLLLLW) | 5 | 0 / 7 | +0:00, 7 pause(s) | yes |
-| 45 s | 3 | water 2:58 | restored | 63.6 | 1 | 3 | 8 (WWLLLWLW) | 4 | 9 / 0 | +9:00, 0 pause(s) | yes |
-| 45 s | 4 | fire 3:48 | restored | 40.5 | 2 | 2 | 4 (WLWW) | 1 | 0 / 7 | +0:00, 7 pause(s) | yes |
-| 45 s | 5 | water 4:12 | restored | 45.2 | 2 | 2 | 5 (WWLLW) | 2 | 0 / 6 | +0:00, 6 pause(s) | no |
-| 45 s | 6 | earth 4:27 | restored | 59.7 | 1 | 3 | 5 (WWLWW) | 1 | 8 / 0 | +8:00, 0 pause(s) | yes |
-| 45 s | 7 | fire 3:28 | restored | 35.8 | 2 | 2 | 3 (WWW) | 0 | 0 / 5 | +0:00, 5 pause(s) | yes |
-| 45 s | 8 | air 4:33 | restored | 38.2 | 3 | 1 | 3 (WLW) | 1 | 0 / 6 | +0:00, 6 pause(s) | yes |
-| 45 s | 9 | fire 3:01 | restored | 42.1 | 2 | 2 | 3 (WWW) | 0 | 0 / 7 | +0:00, 7 pause(s) | yes |
-| 45 s | 10 | water 2:49 | restored | 49.0 | 1 | 3 | 5 (WWWLW) | 1 | 0 / 8 | +0:00, 8 pause(s) | no |
-| 45 s | 11 | water 4:17 | restored | 51.5 | 2 | 2 | 7 (WLWLLLW) | 4 | 0 / 8 | +0:00, 8 pause(s) | yes |
-| 90 s | 1 | earth 3:17 | restored | 89.7 | 0 | 4 | 6 (WLWWWW) | 1 | 13 / 0 | +13:00, 0 pause(s) | no |
-| 90 s | 2 | fire 4:37 | restored | 77.7 | 1 | 3 | 8 (LWWLWLLW) | 4 | 0 / 11 | +0:00, 11 pause(s) | no |
-| 90 s | 3 | water 2:58 | restored | 93.7 | 0 | 4 | 8 (WWLLLWWW) | 3 | 13 / 0 | +13:00, 0 pause(s) | no |
-| 90 s | 4 | fire 3:48 | restored | 58.5 | 2 | 2 | 4 (WLWW) | 1 | 0 / 9 | +0:00, 9 pause(s) | yes |
-| 90 s | 5 | water 4:12 | restored | 80.0 | 1 | 3 | 5 (WWLWW) | 1 | 0 / 11 | +0:00, 11 pause(s) | no |
-| 90 s | 6 | earth 4:27 | restored | 82.0 | 1 | 3 | 5 (WWLWW) | 1 | 11 / 0 | +11:00, 0 pause(s) | no |
-| 90 s | 7 | fire 3:28 | restored | 76.2 | 1 | 3 | 6 (WWLWLW) | 2 | 0 / 10 | +0:00, 10 pause(s) | no |
-| 90 s | 8 | air 4:33 | restored | 64.8 | 2 | 2 | 3 (WWW) | 0 | 0 / 10 | +0:00, 10 pause(s) | yes |
-| 90 s | 9 | fire 3:01 | restored | 95.6 | 0 | 4 | 9 (WWWWLLLLW) | 4 | 0 / 15 | +0:00, 15 pause(s) | no |
-| 90 s | 10 | water 2:49 | restored | 78.1 | 1 | 3 | 5 (WWWLW) | 1 | 0 / 12 | +0:00, 12 pause(s) | no |
-| 90 s | 11 | water 4:17 | restored | 89.9 | 1 | 3 | 7 (WLWLLWW) | 3 | 0 / 14 | +0:00, 14 pause(s) | yes |
-| with the prince | 1 | earth 3:17 | restored | 83.1 | 0 | 4 | 6 (WLWWWW) | 1 | 12 / 0 | +12:00, 0 pause(s) | no |
-| with the prince | 2 | fire 4:37 | restored | 78.0 | 1 | 3 | 8 (LWWLWLLW) | 4 | 0 / 11 | +0:00, 11 pause(s) | no |
-| with the prince | 3 | water 2:58 | restored | 94.8 | 0 | 4 | 8 (WWLLLWWW) | 3 | 13 / 0 | +13:00, 0 pause(s) | no |
-| with the prince | 4 | fire 3:48 | restored | 58.0 | 2 | 2 | 4 (WLWW) | 1 | 0 / 9 | +0:00, 9 pause(s) | yes |
-| with the prince | 5 | water 4:12 | restored | 74.7 | 1 | 3 | 5 (WWLWW) | 1 | 0 / 11 | +0:00, 11 pause(s) | no |
-| with the prince | 6 | earth 4:27 | restored | 80.1 | 1 | 3 | 5 (WWLWW) | 1 | 11 / 0 | +11:00, 0 pause(s) | no |
-| with the prince | 7 | fire 3:28 | restored | 71.8 | 1 | 3 | 6 (WWLWLW) | 2 | 0 / 9 | +0:00, 9 pause(s) | no |
-| with the prince | 8 | air 4:33 | restored | 86.8 | 1 | 3 | 9 (WWLLLWLLW) | 5 | 0 / 14 | +0:00, 14 pause(s) | yes |
-| with the prince | 9 | fire 3:01 | restored | 92.3 | 0 | 4 | 9 (WWWWLLLLW) | 4 | 0 / 14 | +0:00, 14 pause(s) | no |
-| with the prince | 10 | water 2:49 | restored | 74.4 | 1 | 3 | 5 (WWWLW) | 1 | 0 / 12 | +0:00, 12 pause(s) | no |
-| with the prince | 11 | water 4:17 | restored | 70.7 | 2 | 2 | 7 (WLWLLLW) | 4 | 0 / 11 | +0:00, 11 pause(s) | yes |
+| prompt | 1 | earth 4:02 | restored | 33.5 | 2 | 2 | 4 (WLWW) | 1 | 4 / 0 | +4:00, 0 pause(s) | yes |
+| prompt | 2 | fire 5:22 | restored | 23.7 | 4 | 0 | 1 (W) | 0 | 0 / 3 | +0:00, 3 pause(s) | no |
+| prompt | 3 | water 3:43 | restored | 39.7 | 3 | 1 | 2 (WW) | 0 | 5 / 0 | +5:00, 0 pause(s) | no |
+| prompt | 4 | fire 4:33 | restored | 23.7 | 4 | 0 | 1 (W) | 0 | 0 / 4 | +0:00, 4 pause(s) | no |
+| prompt | 5 | water 4:57 | restored | 22.3 | 4 | 0 | 1 (W) | 0 | 0 / 2 | +0:00, 2 pause(s) | no |
+| prompt | 6 | earth 5:12 | restored | 37.1 | 2 | 2 | 4 (WWLW) | 1 | 4 / 0 | +4:00, 0 pause(s) | no |
+| prompt | 7 | fire 4:13 | restored | 23.7 | 4 | 0 | 1 (W) | 0 | 0 / 3 | +0:00, 3 pause(s) | no |
+| prompt | 8 | air 5:18 | restored | 23.3 | 4 | 0 | 1 (W) | 0 | 0 / 4 | +0:00, 4 pause(s) | yes |
+| prompt | 9 | fire 3:46 | restored | 22.7 | 4 | 0 | 1 (W) | 0 | 0 / 4 | +0:00, 4 pause(s) | no |
+| prompt | 10 | water 3:34 | restored | 22.3 | 4 | 0 | 1 (W) | 0 | 0 / 3 | +0:00, 3 pause(s) | yes |
+| prompt | 11 | water 5:02 | restored | 22.3 | 4 | 0 | 1 (W) | 0 | 0 / 4 | +0:00, 4 pause(s) | no |
+| 45 s | 1 | earth 4:02 | restored | 54.4 | 2 | 2 | 4 (WLWW) | 1 | 7 / 0 | +7:00, 0 pause(s) | no |
+| 45 s | 2 | fire 5:22 | restored | 48.3 | 2 | 2 | 8 (LWWLLLLW) | 5 | 0 / 7 | +0:00, 7 pause(s) | no |
+| 45 s | 3 | water 3:43 | restored | 56.1 | 1 | 3 | 8 (WWLLLWLW) | 4 | 8 / 0 | +8:00, 0 pause(s) | yes |
+| 45 s | 4 | fire 4:33 | restored | 34.1 | 3 | 1 | 3 (WLW) | 1 | 0 / 6 | +0:00, 6 pause(s) | yes |
+| 45 s | 5 | water 4:57 | restored | 48.3 | 2 | 2 | 5 (WWLLW) | 2 | 0 / 6 | +0:00, 6 pause(s) | no |
+| 45 s | 6 | earth 5:12 | restored | 50.0 | 2 | 2 | 4 (WWLW) | 1 | 6 / 0 | +6:00, 0 pause(s) | no |
+| 45 s | 7 | fire 4:13 | restored | 34.1 | 3 | 1 | 3 (WLW) | 1 | 0 / 5 | +0:00, 5 pause(s) | yes |
+| 45 s | 8 | air 5:18 | restored | 39.8 | 2 | 2 | 3 (WWW) | 0 | 0 / 6 | +0:00, 6 pause(s) | no |
+| 45 s | 9 | fire 3:46 | restored | 40.5 | 3 | 1 | 2 (WW) | 0 | 0 / 6 | +0:00, 6 pause(s) | yes |
+| 45 s | 10 | water 3:34 | restored | 41.7 | 3 | 1 | 3 (WLW) | 1 | 0 / 6 | +0:00, 6 pause(s) | no |
+| 45 s | 11 | water 5:02 | restored | 32.0 | 3 | 1 | 2 (WW) | 0 | 0 / 5 | +0:00, 5 pause(s) | yes |
+| 90 s | 1 | earth 4:02 | restored | 87.7 | 1 | 3 | 6 (WLWWLW) | 2 | 13 / 0 | +13:00, 0 pause(s) | no |
+| 90 s | 2 | fire 5:22 | restored | 71.3 | 2 | 2 | 8 (LWWLLLLW) | 5 | 0 / 10 | +0:00, 10 pause(s) | yes |
+| 90 s | 3 | water 3:43 | restored | 94.4 | 0 | 4 | 8 (WWLLLWWW) | 3 | 13 / 0 | +13:00, 0 pause(s) | no |
+| 90 s | 4 | fire 4:33 | restored | 59.2 | 2 | 2 | 4 (WLWW) | 1 | 0 / 9 | +0:00, 9 pause(s) | yes |
+| 90 s | 5 | water 4:57 | restored | 78.8 | 1 | 3 | 5 (WWLWW) | 1 | 0 / 11 | +0:00, 11 pause(s) | no |
+| 90 s | 6 | earth 5:12 | restored | 83.1 | 1 | 3 | 5 (WWLWW) | 1 | 11 / 0 | +11:00, 0 pause(s) | no |
+| 90 s | 7 | fire 4:13 | restored | 55.8 | 2 | 2 | 3 (WWW) | 0 | 0 / 8 | +0:00, 8 pause(s) | no |
+| 90 s | 8 | air 5:18 | restored | 96.4 | 1 | 3 | 9 (WWLLLWLLW) | 5 | 0 / 15 | +0:00, 15 pause(s) | yes |
+| 90 s | 9 | fire 3:46 | restored | 70.6 | 1 | 3 | 4 (WWWW) | 0 | 0 / 11 | +0:00, 11 pause(s) | yes |
+| 90 s | 10 | water 3:34 | restored | 78.9 | 1 | 3 | 5 (WWWLW) | 1 | 0 / 12 | +0:00, 12 pause(s) | no |
+| 90 s | 11 | water 5:02 | restored | 77.8 | 1 | 3 | 7 (WLWLLWW) | 3 | 0 / 12 | +0:00, 12 pause(s) | no |
+| with the prince | 1 | earth 4:02 | restored | 97.1 | 1 | 3 | 6 (WLWWLW) | 2 | 14 / 0 | +14:00, 0 pause(s) | no |
+| with the prince | 2 | fire 5:22 | restored | 71.7 | 2 | 2 | 8 (LWWLLLLW) | 5 | 0 / 10 | +0:00, 10 pause(s) | yes |
+| with the prince | 3 | water 3:43 | restored | 91.7 | 0 | 4 | 8 (WWLLLWWW) | 3 | 13 / 0 | +13:00, 0 pause(s) | no |
+| with the prince | 4 | fire 4:33 | restored | 58.7 | 2 | 2 | 4 (WLWW) | 1 | 0 / 9 | +0:00, 9 pause(s) | yes |
+| with the prince | 5 | water 4:57 | restored | 61.9 | 1 | 3 | 5 (WWLWW) | 1 | 0 / 8 | +0:00, 8 pause(s) | no |
+| with the prince | 6 | earth 5:12 | restored | 75.5 | 1 | 3 | 5 (WWLWW) | 1 | 10 / 0 | +10:00, 0 pause(s) | no |
+| with the prince | 7 | fire 4:13 | restored | 57.1 | 2 | 2 | 3 (WWW) | 0 | 0 / 8 | +0:00, 8 pause(s) | no |
+| with the prince | 8 | air 5:18 | restored | 88.2 | 1 | 3 | 9 (WWLLLWLLW) | 5 | 0 / 14 | +0:00, 14 pause(s) | yes |
+| with the prince | 9 | fire 3:46 | restored | 64.1 | 1 | 3 | 4 (WWWW) | 0 | 0 / 10 | +0:00, 10 pause(s) | yes |
+| with the prince | 10 | water 3:34 | restored | 75.2 | 1 | 3 | 5 (WWWLW) | 1 | 0 / 12 | +0:00, 12 pause(s) | no |
+| with the prince | 11 | water 5:02 | restored | 70.9 | 2 | 2 | 7 (WLWLLLW) | 4 | 0 / 11 | +0:00, 11 pause(s) | no |
 
 Per player type (11 campaigns each). Expected values use the first-timer's measured win rates: 71% against a keeper (section B) and 53% against the Unweaver (1000 seeds of `finale_unweaver`). A stolen crystal costs on average 1/p lethal duels and (1 - p)/p deaths before it is won back; the finale 1/q and (1 - q)/q.
 
 | Player | Crystals first / stolen (of 44) | Median stolen per campaign | Lethal duels (median, mean) | Expected lethal duels | Deaths (median, mean, range) | Expected deaths | Campaigns with 1 to 3 deaths | Terminal defeats | Minutes (median, range) | Campaigns in 30 to 50 minutes | Campaigns where an overrun decided a crystal |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| prompt | 39 / 5 | 0 | 1, 1.6 | 2.5 | 0, 0.2, 0 to 1 | 1.1 | 2 | 0 | 22.7, 20.4 to 38.2 | 3 | 1 |
-| 45 s | 19 / 25 | 2 | 5, 5.2 | 5.1 | 1, 1.9, 0 to 5 | 1.8 | 6 | 0 | 47.7, 35.8 to 63.6 | 7 | 9 |
-| 90 s | 10 / 34 | 3 | 6, 6.0 | 6.2 | 1, 1.9, 0 to 4 | 2.1 | 8 | 0 | 80.0, 58.5 to 95.6 | 0 | 3 |
-| with the prince | 10 / 34 | 3 | 6, 6.5 | 6.2 | 2, 2.5, 1 to 5 | 2.1 | 7 | 0 | 78.0, 58.0 to 94.8 | 0 | 3 |
+| prompt | 39 / 5 | 0 | 1, 1.6 | 2.5 | 0, 0.2, 0 to 1 | 1.1 | 2 | 0 | 23.7, 22.3 to 39.7 | 3 | 3 |
+| 45 s | 26 / 18 | 2 | 3, 4.1 | 4.2 | 1, 1.5, 0 to 5 | 1.5 | 6 | 0 | 41.7, 32.0 to 56.1 | 9 | 5 |
+| 90 s | 13 / 31 | 3 | 5, 5.8 | 5.8 | 1, 2.0, 0 to 5 | 2.0 | 7 | 0 | 78.8, 55.8 to 96.4 | 0 | 4 |
+| with the prince | 14 / 30 | 3 | 5, 5.8 | 5.7 | 1, 2.1, 0 to 5 | 2.0 | 6 | 0 | 71.7, 57.1 to 97.1 | 0 | 4 |
 
 Asserted on the whole campaign:
 
-- **Met.** The 45 s player's median campaign lasts 30 to 50 minutes: 47.7 (7 of 11 campaigns in the band; see the overruns below for the others).
+- **Met.** The 45 s player's median campaign lasts 30 to 50 minutes: 41.7 (9 of 11 campaigns in the band; see the overruns below for the others).
 - **Met.** A prompt first-timer loses none or one companion: median 0, at most 1; median crystals stolen 0.
 - **Met.** A middling (45 s) first-timer loses some crystals and wins them back by duel: median 2 stolen and 1 companion(s) dead per campaign; 6 of 11 campaigns lose 1 to 3.
 - **Met.** The player who stays with the prince finds crystals taken: median 3 of 4 stolen.
@@ -418,29 +418,29 @@ The faction game runs with its default balance and nobody helps the prince. In t
 
 | Player | Overruns of you / of the Ash (44 campaigns) | Clock added by overruns (total) | Expedition pauses | Campaigns where an overrun decided a crystal | Campaign minutes, seeds where you were overrun (median) | Campaign minutes, other seeds (median) |
 |---|---|---|---|---|---|---|
-| prompt | 13 / 26 | +13:00 | 26 | 1 of 11 | 37.1 | 22.3 |
-| 45 s | 26 / 54 | +26:00 | 54 | 9 of 11 | 62.3 | 42.1 |
-| 90 s | 37 / 92 | +37:00 | 92 | 3 of 11 | 89.7 | 77.7 |
-| with the prince | 36 / 91 | +36:00 | 91 | 3 of 11 | 83.1 | 74.4 |
+| prompt | 13 / 27 | +13:00 | 27 | 3 of 11 | 37.1 | 22.7 |
+| 45 s | 21 / 47 | +21:00 | 47 | 5 of 11 | 54.4 | 39.8 |
+| 90 s | 37 / 88 | +37:00 | 88 | 4 of 11 | 87.7 | 71.3 |
+| with the prince | 37 / 82 | +37:00 | 82 | 4 of 11 | 91.7 | 64.1 |
 
-An overrun decided at least one crystal in 16 of 44 whole campaigns (the twin with the overruns' clock effect removed had another outcome for some crystal; after the first difference the two runs part ways, so only the first is counted) and the Deepstone in 3 of 44 Earth-slice runs (in both directions: an Ash camp lost can save a crystal, a camp of yours lost can cost one). Where the Ash Clan wins the faction game the campaign is longer for every player type (the table above), because each overrun moves the expedition on and the retreats cost the walk home.
+An overrun decided at least one crystal in 16 of 44 whole campaigns (the twin with the overruns' clock effect removed had another outcome for some crystal; after the first difference the two runs part ways, so only the first is counted) and the Deepstone in 1 of 44 Earth-slice runs (in both directions: an Ash camp lost can save a crystal, a camp of yours lost can cost one). Where the Ash Clan wins the faction game the campaign is longer for every player type (the table above), because each overrun moves the expedition on and the retreats cost the walk home.
 
 ## I. Conservation and idempotence
 
-Every run of this report (254 runs, 4,462,216 ticks) was checked on every tick by the driver, and none broke a rule:
+Every run of this report (254 runs, 4,310,577 ticks) was checked on every tick by the driver, and none broke a rule:
 
 - **Custody in exactly one state.** Each of the four crystals is always in one of the five custody states, at the place that state means (on its site while AtSite or RivalTransit, on its plan step's altar while AtRivalAltar, at its tower when Restored), and only changes through a `CrystalCustodyChanged` whose `From` is the state it was in. Nothing leaves Restored; a carried crystal only becomes Restored (never lost, even in the retreats and overruns of these runs). Four crystals in every state: none lost.
 - **Attempts resolved once.** No attempt id is recorded or resolved twice; every second `ResolveEncounter` sent in sections C and D was refused with `already_resolved`.
 - **Points.** The player's points always equal the crystals restored, the Ash Clan's the crystals ever set on an altar (paid once even when a crystal goes back to an altar); no run unlocked the Modern roster (the ledger holds only crystal keys in H1: at most 4 each, below the 10-point threshold).
-- **The dead never speak.** Every 600 ticks (7406 checks) every line whose speaker is a fallen companion was asked for through `CampaignApi.Line` and came back empty; the faction game's own invariants (`SimTestKit.CheckInvariants`: wares, sites, carriers) held at the same moments.
+- **The dead never speak.** Every 600 ticks (7155 checks) every line whose speaker is a fallen companion was asked for through `CampaignApi.Line` and came back empty; the faction game's own invariants (`SimTestKit.CheckInvariants`: wares, sites, carriers) held at the same moments.
 - **Essential clues with zero companions.** All six were killed on the first tick, and the companions' own clues were taken out of the run's copy of the pack (a companion's clue is given on the opening tick, before any command can kill them; this is the state of a party that lost everyone before learning anything): the authored Earth route still reaches the glade through the sawyer (Odo's shortcut gone) and the Deepstone is restored at 5:39; the stolen Deepstone is recovered with nobody to hold the way out (the keeper duel is fought with no volunteer and won) and restored at 7:25; the skeleton reaches its fire site through the elder (Petra's shortcut gone) and ends `restored` at 6:50.
 
 ## Known weaknesses
 
 - **The authored pack has one route.** Sections A to C, F and H1 run Earth only. The whole-campaign numbers of H3 come from a race-sized copy of the skeleton (`ProofStarts.RaceSkeleton`: the authored tuning and expedition, one more reading per route, the expedition opening with any crystal); they are an estimate of the real campaign until the Slice 2 routes exist, and H3 must be rerun with them.
 - **The shipped skeleton keeps its old, fast numbers.** Sections D, F3 and G run it as shipped, because they check the state machine (orders, deaths, endings), not the pace; only H3's copy takes the race tuning. A developer start on the skeleton therefore plays at the pre-tuning pace.
-- **Where the Ash Clan wins the faction game the campaign is long.** Nobody helps the prince in these runs, and the faction game settles into one overrun about every 6:30. On seeds 1, 3, 6 it is your camps that fall, and the 45 s player's campaign then takes 62.3 minutes (median), above the 30 to 50 target, which holds on the median of all seeds and in 7 of 11 campaigns. Before the tuning each such overrun cost +3:00 and a walk home, and a first measurement with those numbers left the campaign unfinished after 100 minutes; it is now +1:00 and a walk home at most once in 20 minutes. The faction balance was not touched (out of scope). A player who helps the prince would avoid most of it; no scripted player does.
-- **Overruns that decide a crystal** are counted by twins with the overruns' clock effect removed. The retreats still happen in the twin, and after the first crystal whose outcome differs the two runs part ways, so H counts campaigns with at least one decided crystal, not crystals. 1036 overruns happened across all runs of this report; an overrun at a threshold or underground mid-route is proven in `CampaignSeamTests` with a forced warning.
+- **Where the Ash Clan wins the faction game the campaign is long.** Nobody helps the prince in these runs, and the faction game settles into one overrun about every 6:30. On seeds 1, 3, 6 it is your camps that fall, and the 45 s player's campaign then takes 54.4 minutes (median), above the 30 to 50 target, which holds on the median of all seeds and in 9 of 11 campaigns. Before the tuning each such overrun cost +3:00 and a walk home, and a first measurement with those numbers left the campaign unfinished after 100 minutes; it is now +1:00 and a walk home at most once in 20 minutes. The faction balance was not touched (out of scope). A player who helps the prince would avoid most of it; no scripted player does.
+- **Overruns that decide a crystal** are counted by twins with the overruns' clock effect removed. The retreats still happen in the twin, and after the first crystal whose outcome differs the two runs part ways, so H counts campaigns with at least one decided crystal, not crystals. 1002 overruns happened across all runs of this report; an overrun at a threshold or underground mid-route is proven in `CampaignSeamTests` with a forced warning.
 - **The stolen Earth path is a little short of the 8 to 11 minutes asked for.** Followed promptly it takes 7:02 of game time to the restoration (H1); the duel itself adds the player's minutes of play with the world clock stopped. The Tally Vault was given a longer way down with five turnings (it was 11 steps from the stair to Dolm's threshold, it is now 45) and interiors are walked at 1.7 m/s; lengthening it further means authoring more trail.
 - **The prompt Earth route sits at the low end of its band** (5:15 against 5 to 7 minutes). Slower reading or a longer walk to the Rooted Tower would centre it; it was left there to keep the prompt party's lead over the expedition.
 - **Owner decision 6 is replaced by tuned numbers.** "8 minutes to the first crystal and about 7 for each one after" is now a first march drawn per seed in 2:45 to 4:45 and later marches drawn in 4:00 to 6:00 (with the 1:30 carry, 5:30 to 7:30 a stolen crystal). The owner should confirm.
