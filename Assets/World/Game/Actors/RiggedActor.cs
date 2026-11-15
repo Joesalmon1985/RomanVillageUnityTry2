@@ -55,6 +55,8 @@ namespace World.Game
         public static float NearLod = 25f;
         /// <summary>Beyond this (or off screen) the graph runs every fourth frame.</summary>
         public static float FarLod = 60f;
+        /// <summary>Off: every actor animates every frame with face, gaze and cloth (tests, captures).</summary>
+        public static bool LodEnabled = true;
         /// <summary>Turn rate while walking and for small turns standing (degrees per second).</summary>
         public float WalkTurnRate = 420f, StandTurnRate = 220f;
         /// <summary>Acceleration used to reach the walker's speed after the start clip and to slow to a walk before a stop (m/s^2).</summary>
@@ -591,6 +593,7 @@ namespace World.Game
 
         private void UpdateLod()
         {
+            if (!LodEnabled) { _faceOn = true; _lodStep = 1; return; }
             if (Time.time < _lodCheckAt) return;
             _lodCheckAt = Time.time + 0.25f;
             var cam = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.ActiveCamera : Camera.main;
@@ -661,6 +664,9 @@ namespace World.Game
                         {
                             a = i; b = i + 1;
                             w = Mathf.InverseLerp(_gaits[i].Clip.NativeSpeed, _gaits[i + 1].Clip.NativeSpeed, v);
+                            // A narrow cross-over: a single gait played at the matching rate plants its feet exactly
+                            // (the phase follows the ground covered); a half-and-half blend of two gaits does not.
+                            w = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.35f, 0.65f, w));
                             break;
                         }
                 float cycA = _gaits[a].Clip.NativeSpeed * _gaits[a].Clip.Length, cycB = _gaits[b].Clip.NativeSpeed * _gaits[b].Clip.Length;

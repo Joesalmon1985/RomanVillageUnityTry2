@@ -157,7 +157,7 @@ namespace World.Game
             // Behind the shoulder: do not crank round (the body turn is the caller's job); look ahead.
             if (has && Mathf.Abs(yaw) > maxYaw + 30f) has = false;
             float want = has ? WantWeight : 0f;
-            _gazeWeight = Mathf.MoveTowards(_gazeWeight, want, dt * 3f);
+            _gazeWeight = Mathf.MoveTowards(_gazeWeight, want, dt * 6f);
             if (!has) { yaw = 0f; pitch = 0f; }
             yaw = Mathf.Clamp(yaw, -maxYaw, maxYaw);
             pitch = Mathf.Clamp(pitch, -(t.HeadPitch + t.EyePitch), t.HeadPitch + t.EyePitch);
