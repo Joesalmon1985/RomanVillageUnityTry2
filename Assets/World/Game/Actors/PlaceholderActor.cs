@@ -11,8 +11,19 @@ namespace World.Game
             Cheer = AnimationKeys.Cheer, Clap = AnimationKeys.Clap, Surprise = AnimationKeys.Surprise,
             Stretch = AnimationKeys.Stretch, Cast = "cast",
             /// <summary>Package N: a come-here wave (calling the player over) and a builder's hammering.</summary>
-            Beckon = "beckon", Hammer = "hammer";
+            Beckon = "beckon", Hammer = "hammer",
+            /// <summary>Both arms overhead, clapping (the council's supporters).</summary>
+            ClapHigh = "clapHigh";
     }
+
+    /// <summary>
+    /// Held body-language poses with large silhouettes (readable at 20 px tall). Default <see cref="None"/> changes nothing.
+    /// Cheer: both arms overhead waving slowly, bouncing. Joining: one arm waving high while walking. Listen: leaning well
+    /// forward, a hand to the ear or chin, shifting, now and then glancing back. Doubt: arms folded or hands on hips, weight
+    /// back, now and then shaking the head. Address: arms spread, addressing a half-circle. Dismiss: one arm thrown out.
+    /// Droop: shoulders and head down (walks with the normal swing). Offer: right arm held out in front.
+    /// </summary>
+    public enum ActorPose { None, Cheer, Joining, Listen, Doubt, Address, Dismiss, Droop, Offer }
 
     /// <summary>
     /// Default character body: capsule-ish torso in a hide wrap tinted with the villager's colour, a fur mantle and
@@ -40,6 +51,64 @@ namespace World.Game
         /// <summary>Sits on the ground (legs forward, body lowered). Used by the council village's crowds.</summary>
         public bool Seated;
         private float _pointBlend;
+        /// <summary>The held pose (default None). Blends in and out over about a third of a second.</summary>
+        public ActorPose Pose;
+        /// <summary>Varies the phase and the variant of a pose between people.</summary>
+        public int PoseSeed;
+        private ActorPose _poseShown = ActorPose.None, _poseOld = ActorPose.None; private float _poseBlend, _poseMix = 1f;
+        /// <summary>The arm pivot (a hand-sized thing can hang at its local (0, -0.62, 0.05)).</summary>
+        public Transform Arm(bool right) => right ? _armR : _armL;
+
+        private struct PV { public Vector3 armL, armR; public bool keepL, keepR; public float pitch, roll, headPitch, headYaw, lift; }
+
+        private PV PoseValues(ActorPose p, float t)
+        {
+            float ph = PoseSeed * 1.37f; var v = new PV();
+            switch (p)
+            {
+                case ActorPose.Cheer:
+                {
+                    float s = Mathf.Sin(t * 2.4f + ph), s2 = Mathf.Sin(t * 2.4f + ph + 1.6f);
+                    v.armL = new Vector3(s * 22f, 0, -(158f + s * 16f)); v.armR = new Vector3(s2 * 22f, 0, 158f + s2 * 16f);
+                    v.pitch = -7f; v.headPitch = -12f; v.lift = Mathf.Abs(Mathf.Sin(t * 2.6f + ph)) * 0.10f;
+                    break;
+                }
+                case ActorPose.Joining:
+                    v.keepL = true; v.armR = new Vector3(0, 0, 150f + Mathf.Sin(t * 10f + ph) * 22f); v.pitch = 4f; v.headPitch = -8f;
+                    break;
+                case ActorPose.Listen:
+                {
+                    v.pitch = 26f; v.roll = Mathf.Sin(t * 0.9f + ph) * 6f; v.headPitch = -8f;
+                    float g = Mathf.Clamp01((Mathf.Sin(t * 0.4f + ph) - 0.55f) * 4f);
+                    v.headYaw = g * ((PoseSeed & 1) == 0 ? 48f : -48f);
+                    if ((PoseSeed & 1) == 0) { v.armR = new Vector3(-15f, 0, 148f); v.armL = new Vector3(-25f, 0, -6f); }
+                    else { v.armR = new Vector3(-118f, 0, -28f); v.armL = new Vector3(-30f, 0, -8f); }
+                    break;
+                }
+                case ActorPose.Doubt:
+                {
+                    v.pitch = -10f; v.headPitch = -5f; v.roll = Mathf.Sin(t * 0.5f + ph) * 2f;
+                    if (PoseSeed % 3 == 2) { v.armL = new Vector3(0, 0, -46f); v.armR = new Vector3(0, 0, 46f); }
+                    else { v.armL = new Vector3(-72f, 0, 42f); v.armR = new Vector3(-86f, 0, -42f); }
+                    if ((PoseSeed & 1) == 1) v.headYaw = Mathf.Sin(t * 7f + ph) * 26f * Mathf.Clamp01((Mathf.Sin(t * 0.35f + ph) - 0.4f) * 4f);
+                    break;
+                }
+                case ActorPose.Address:
+                    v.armL = new Vector3(-30f, 0, -(102f + Mathf.Sin(t * 1.2f) * 18f)); v.armR = new Vector3(-30f, 0, 102f + Mathf.Sin(t * 1.2f + 1.5f) * 18f);
+                    v.pitch = 8f; v.headYaw = Mathf.Sin(t * 0.8f) * 30f; v.lift = 0.02f;
+                    break;
+                case ActorPose.Dismiss:
+                    v.armR = new Vector3(-80f, 0, 78f); v.armL = new Vector3(0, 0, -10f); v.pitch = 3f; v.headPitch = 6f; v.headYaw = -28f;
+                    break;
+                case ActorPose.Droop:
+                    v.keepL = true; v.keepR = true; v.pitch = 17f; v.headPitch = 24f;
+                    break;
+                case ActorPose.Offer:
+                    v.keepL = true; v.armR = new Vector3(-84f, 0, -4f); v.pitch = 5f; v.headPitch = -4f;
+                    break;
+            }
+            return v;
+        }
 
         /// <summary>The head pivot (accessories such as the prince's circlet hang here).</summary>
         public Transform HeadPivot => _head;
@@ -142,6 +211,7 @@ namespace World.Game
                 case ActorKeys.Stretch: len = 2.0f; break;
                 case ActorKeys.Beckon: len = 1.4f; break;
                 case ActorKeys.Hammer: len = 0.9f; break;
+                case ActorKeys.ClapHigh: len = 1.6f; break;
                 default: return false;
             }
             _oneShot = key; _oneShotT = 0; _oneShotLen = len;
@@ -191,7 +261,24 @@ namespace World.Game
             float swing = Mathf.Sin(_phase) * 32f * _walkBlend;
             float bob = Mathf.Sin(t * 2.1f) * 0.012f * (1 - _walkBlend) + Mathf.Abs(Mathf.Sin(_phase)) * 0.04f * _walkBlend;
             Vector3 armL = new Vector3(swing * 0.8f, 0, -6f), armR = new Vector3(-swing * 0.8f, 0, 6f);
-            float bodyPitch = 0, headPitch = Mathf.Sin(t * 0.7f) * 2f, lift = 0;
+            float bodyPitch = 0, headPitch = Mathf.Sin(t * 0.7f) * 2f, lift = 0, roll = 0, headYaw = 0;
+
+            // held pose (additive; None changes nothing)
+            if (Pose != ActorPose.None && Pose != _poseShown) { _poseOld = _poseBlend > 0.02f ? _poseShown : Pose; _poseShown = Pose; _poseMix = _poseOld == Pose ? 1f : 0f; }
+            _poseBlend = Mathf.MoveTowards(_poseBlend, Pose != ActorPose.None ? 1f : 0f, dt * 3.5f);
+            _poseMix = Mathf.MoveTowards(_poseMix, 1f, dt * 3.5f);
+            if (_poseBlend > 0.001f)
+            {
+                var pn = PoseValues(_poseShown, t); var po = _poseMix < 1f ? PoseValues(_poseOld, t) : pn;
+                float m = Mathf.SmoothStep(0, 1, _poseMix), w = Mathf.SmoothStep(0, 1, _poseBlend);
+                Vector3 aL = pn.keepL ? armL : pn.armL, aR = pn.keepR ? armR : pn.armR;
+                Vector3 oL = po.keepL ? armL : po.armL, oR = po.keepR ? armR : po.armR;
+                aL = Vector3.Lerp(oL, aL, m); aR = Vector3.Lerp(oR, aR, m);
+                armL = Vector3.Lerp(armL, aL, w); armR = Vector3.Lerp(armR, aR, w);
+                bodyPitch = Mathf.Lerp(po.pitch, pn.pitch, m) * w; roll = Mathf.Lerp(po.roll, pn.roll, m) * w;
+                headPitch += Mathf.Lerp(po.headPitch, pn.headPitch, m) * w; headYaw = Mathf.Lerp(po.headYaw, pn.headYaw, m) * w;
+                lift = Mathf.Lerp(po.lift, pn.lift, m) * w;
+            }
 
             if (_oneShot != null)
             {
@@ -242,6 +329,14 @@ namespace World.Game
                         armR = Vector3.Lerp(armR, new Vector3(-80f + Mathf.Sin(_oneShotT * 11f) * 35f, 0, 12f), Mathf.Clamp01(env * 2f));
                         headPitch -= 4f * env;
                         break;
+                    case ActorKeys.ClapHigh:
+                    {
+                        float c = Mathf.Abs(Mathf.Sin(_oneShotT * 10f));
+                        armL = Vector3.Lerp(armL, new Vector3(0, 0, -(150f + 26f * c)), Mathf.Clamp01(env * 2f));
+                        armR = Vector3.Lerp(armR, new Vector3(0, 0, 150f + 26f * c), Mathf.Clamp01(env * 2f));
+                        lift = Mathf.Max(lift, Mathf.Abs(Mathf.Sin(_oneShotT * 5f)) * 0.07f * env);
+                        break;
+                    }
                     case ActorKeys.Hammer:
                     {
                         float k = Mathf.Abs(Mathf.Sin(u * Mathf.PI * 2f));
@@ -270,8 +365,8 @@ namespace World.Game
                 armR = Vector3.Lerp(armR, pose, _pointBlend);
             }
             _body.localPosition = new Vector3(0, bob + lift - (Seated ? 0.42f : 0f), 0);
-            _body.localRotation = Quaternion.Euler(bodyPitch, 0, 0);
-            _head.localRotation = Quaternion.Euler(headPitch, 0, 0);
+            _body.localRotation = Quaternion.Euler(bodyPitch, 0, roll);
+            _head.localRotation = Quaternion.Euler(headPitch, headYaw, 0);
             _armL.localRotation = Quaternion.Euler(armL);
             _armR.localRotation = Quaternion.Euler(armR);
             if (Seated) { _legL.localRotation = Quaternion.Euler(-88f, 4f, 0); _legR.localRotation = Quaternion.Euler(-80f, -6f, 0); }
