@@ -33,6 +33,10 @@ namespace World.Game
         public float AwayUntil, NextPleased, Speed = 3f;
         public Vector3 AwayPoint;
         public bool Arrived;
+        // presentation of the three states
+        public float LiftCur, AwayStart;
+        public bool Jog, HasVia; public Vector3 Via; public float ViaUntil;
+        public GameObject Note;
     }
 
     /// <summary>A dispute location: its objective, its people and the spots the crowd uses.</summary>
@@ -43,9 +47,22 @@ namespace World.Game
         public Person[] P;
         public Transform Root;
         public float ReactUntil;
-        public Vector3 ListenSpot => C - Fwd * (0.55f * R) - Right * (0.45f * R);
-        public Vector3 SettledSpot => C - Fwd * (0.35f * R) + Right * (0.45f * R);
+        /// <summary>Settled supporters: a tight tiered block on the tower side of the prop, to the left as seen from the tower.</summary>
+        public Vector3 SettledSpot => C - Right * (0.6f * R + 1.8f) - Fwd * (0.1f * R);
+        /// <summary>The catspaw's spot: a clear patch to the right of the prop; its listeners stand in a half-circle on the prop side.</summary>
+        public Vector3 ListenSpot => C + Right * (0.6f * R + 4.8f) - Fwd * (0.1f * R);
+        /// <summary>The undecided stand behind the prop, spread out.</summary>
+        public Vector3 BehindSpot => C + Fwd * (0.55f * R + 2.6f);
         public Vector3 Prop => C;
+        public Person Recipient; public GameObject NoteObj;
+        public static int ColsFor(int len) => len <= 3 ? 3 : (len == 7 || len == 11) ? 4 : 5;
+        public const float StepH = 0.28f;
+        /// <summary>0 = settled block, 1 = the catspaw's patch, 2 = behind the prop: the zone nearest to a ground position.</summary>
+        public int ZoneOf(Vector3 pos)
+        {
+            float a = (pos - SettledSpot).sqrMagnitude, b = (pos - ListenSpot).sqrMagnitude, c = (pos - BehindSpot).sqrMagnitude;
+            return a <= b && a <= c ? 0 : (b <= c ? 1 : 2);
+        }
     }
 
     /// <summary>One thing the player can tap, in screen pixels (origin bottom-left).</summary>
@@ -72,7 +89,7 @@ namespace World.Game
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() => Current = null;
 
-        public const float TowerH = 5.4f;
+        public const float TowerH = 7.2f;
         public int SettlementId { get; private set; }
         public CouncilSite Site { get; private set; }
         public Transform Root { get; private set; }
@@ -209,6 +226,8 @@ namespace World.Game
         {
             for (int i = 0; i < 11; i++)
             {
+                var pz = _places[i];
+                foreach (var z in new[] { pz.SettledSpot, pz.ListenSpot, pz.BehindSpot }) LandViews.AddClearing(z.x, z.z, 4.5f);
                 var c = Site.Loc[i]; float r = _places[i].R + 2.5f;
                 LandViews.AddClearing(c.x, c.z, r);
                 float fr = r * 0.7f;
@@ -237,47 +256,44 @@ namespace World.Game
             {
                 var pl = _places[t - 2]; int len = CouncilRules.Length(t);
                 pl.P = new Person[len];
-                var homes = new List<Vector3>();
                 var rnd = new PropRandom(t * 131 + 7);
+                int n = len - 1;
                 for (int i = 0; i < len; i++)
                 {
                     bool lead = i == len - 1;
-                    Vector3 home = pl.C;
-                    if (lead) home = pl.C + pl.Right * (0.35f * pl.R) + pl.Fwd * (0.65f * pl.R);
+                    Vector3 home;
+                    if (lead) home = pl.C + pl.Fwd * (0.55f * pl.R + 3.9f);
                     else
                     {
-                        for (int tries = 0; tries < 30; tries++)
-                        {
-                            float alpha = Mathf.Lerp(-95f, 22f, rnd.Next());
-                            float rr = pl.R * Mathf.Lerp(0.32f, 1.0f, Mathf.Sqrt(rnd.Next()));
-                            var c = pl.C + Dir(pl, alpha) * rr;
-                            bool ok = (c - pl.C).magnitude > 1.2f;
-                            foreach (var h in homes) if ((h - c).magnitude < 1.0f) { ok = false; break; }
-                            if (ok || tries == 29) { home = c; break; }
-                        }
+                        // undecided: two loose rows in an arc behind the prop
+                        int row = i % 2, k = i / 2, cnt = Mathf.CeilToInt((n - row) / 2f);
+                        float tt = (k + 0.5f * row) / Mathf.Max(1f, cnt - 0.5f);
+                        float alpha = Mathf.Clamp(-45f + 90f * tt, -45f, 45f);
+                        float rr = 0.55f * pl.R + 2.4f + 1.4f * row + rnd.Range(-0.12f, 0.12f);
+                        home = pl.C + Dir(pl, alpha) * rr;
                     }
-                    homes.Add(home);
                     var tunic = lead ? CouncilLayout.LeadTunic(t) : Cloth[(int)(rnd.Next() * Cloth.Length) % Cloth.Length];
                     float scale = Mathf.Lerp(0.93f, 1.06f, rnd.Next());
                     var a = Actor("res" + t + "_" + i, tunic, new Vector3(home.x, pl.Ground, home.z), 180f, scale);
                     a.name = lead ? "Lead " + t : "Villager " + t + "." + i;
+                    a.PoseSeed = t * 7 + i;
                     var p = new Person { A = a, Track = t, Index = i, IsLead = lead, Home = home, S = PState.Undecided, Speed = Mathf.Lerp(2.8f, 3.4f, rnd.Next()), NextPleased = Time.time + rnd.Range(1f, 9f) };
                     if (lead) p.Speaker = Speak(a, "lead" + t, sc != null && sc.Disputes.Count > t - 2 ? sc.Disputes[t - 2].LeadName : "Lead");
-                    p.SitsAtHome = !lead && i % 4 == 2;
+                    p.SitsAtHome = !lead && i % 5 == 3;
                     p.Target = home;
                     pl.P[i] = p;
                 }
-                // varied facing: pairs talk to each other, the rest look at the objective or off to the side
+                // undecided face side-on (some away) so arms folded or on the hips read in profile
                 for (int i = 0; i < len; i++)
                 {
                     var p = pl.P[i];
-                    if (p.IsLead) { p.HomeYaw = YawTo(p.Home, pl.C - pl.Right * 3f + pl.Fwd * 0.5f); }
-                    else if (i % 3 == 0 && i + 1 < len - 1) p.HomeYaw = YawTo(p.Home, pl.P[i + 1].Home);
-                    else if (i % 3 == 1 && i - 1 >= 0) p.HomeYaw = YawTo(p.Home, pl.P[i - 1].Home);
-                    else p.HomeYaw = YawTo(p.Home, pl.C) + rnd.Range(-70f, 70f);
+                    if (p.IsLead) p.HomeYaw = YawTo(p.Home, Site.Position);
+                    else if (i % 5 == 0) p.HomeYaw = YawTo(Vector3.zero, pl.Fwd) + rnd.Range(-25f, 25f);
+                    else p.HomeYaw = YawTo(Vector3.zero, pl.Right * (i % 2 == 0 ? 1f : -1f) + pl.Fwd * 0.25f) + rnd.Range(-18f, 18f);
                     p.TargetYaw = p.HomeYaw;
                     p.A.transform.rotation = Quaternion.Euler(0, p.HomeYaw, 0);
                     p.A.Seated = p.SitsAtHome;
+                    p.A.Pose = p.IsLead ? ActorPose.None : ActorPose.Doubt;
                 }
             }
         }
@@ -330,7 +346,15 @@ namespace World.Game
             Sync(sc, dt);
         }
 
-        int ShownSeat(ElectionState e) => e.Phase == ElectionPhase.Complete && e.Winner >= 0 ? e.Winner : e.Active;
+        int _holdSeat = -1; float _holdUntil;
+        /// <summary>After a bank or a bust the village keeps showing that candidate for a few seconds so the moment can be seen before the turn passes.</summary>
+        public void HoldShown(int seat, float seconds) { _holdSeat = seat; _holdUntil = Time.time + seconds; }
+        int ShownSeat(ElectionState e)
+        {
+            if (e.Phase == ElectionPhase.Complete && e.Winner >= 0) return e.Winner;
+            if (_holdSeat >= 0 && Time.time < _holdUntil && e.Phase != ElectionPhase.Complete) return _holdSeat;
+            return e.Active;
+        }
 
         /// <summary>How many of a place's people stand with the shown candidate: settled (banked, or the dispute secured), and listening (won this sitting, not yet banked).</summary>
         public void Expected(ElectionState e, int track, out int settled, out int listening)
@@ -363,40 +387,50 @@ namespace World.Game
             SyncProposals(sc, e);
         }
 
+        static readonly int[] RowCap = { 5, 8, 11 };
+        static readonly float[] RowRad = { 1.9f, 3.0f, 4.0f };
+        static readonly int[] CenterOut = { 0, 1, -1, 2, -2 };
+
+        /// <summary>Ground position of the i-th settled person: a tight tiered block, filled front row first, each row from the middle out.</summary>
+        public Vector3 SettledSlot(Place pl, int i, out int row)
+        {
+            int cols = Place.ColsFor(pl.P.Length); row = i / cols; int col = i % cols;
+            float off = CenterOut[col] * 0.72f + (row % 2) * 0.36f * (cols % 2 == 0 ? 1f : 1f) - 0.18f;
+            return pl.SettledSpot + pl.Right * off + pl.Fwd * (row * 0.8f);
+        }
+
         void SyncPlace(Place pl, ElectionState e, int shown, bool seatChanged, float now, float dt)
         {
             Expected(e, pl.Track, out int settled, out int listening);
             int len = pl.P.Length;
-            // listeners: rows of up to 5, 7, 9 round the catspaw's spot, on the side away from the settled group
             var O = pl.ListenSpot;
-            var rowCount = new[] { 0, 0, 0 };
-            int[] rowCap = { 5, 7, 9 }; int left = listening;
-            for (int r = 0; r < 3; r++) { rowCount[r] = Mathf.Min(rowCap[r], left); left -= rowCount[r]; }
-            var S0 = pl.SettledSpot; if (settled > 8) S0 = pl.C - pl.Fwd * (0.2f * pl.R) + pl.Right * (0.2f * pl.R);
+            var rowCount = new[] { 0, 0, 0 }; int left = listening;
+            for (int r = 0; r < 3; r++) { rowCount[r] = Mathf.Min(RowCap[r], left); left -= rowCount[r]; }
             bool react = now < pl.ReactUntil;
+            var lead = pl.P[len - 1];
+            Person newRecipient = null;
+            if (pl.Recipient != null && (pl.Recipient.S != PState.Settled || seatChanged)) CancelHandover(pl);
             for (int i = 0; i < len; i++)
             {
                 var p = pl.P[i];
                 var ns = i < settled ? PState.Settled : (i < settled + listening ? PState.Listening : PState.Undecided);
-                if (p.S == PState.Away && now < p.AwayUntil && ns == PState.Undecided) ns = PState.Away;
+                if (p.S == PState.Away && ns == PState.Undecided && now < p.AwayUntil && !(p.Arrived && now > p.AwayStart + 1.0f)) ns = PState.Away;
                 if (!seatChanged && p.S == PState.Listening && ns == PState.Undecided)
                 {
-                    // a bust (or the sitting ending without a bank): the unsettled listeners walk back and away
-                    ns = PState.Away; p.AwayUntil = now + 3.2f;
-                    var d = p.A.transform.position - pl.C; d.y = 0;
-                    if (d.sqrMagnitude < 0.5f) d = pl.Fwd;
-                    p.AwayPoint = p.Home + d.normalized * (pl.R * 0.55f + 1f);
-                    p.A.PlayOneShot(ActorKeys.Surprise);
+                    // a bust (or the sitting ending without a bank): the unsettled listeners straighten, throw a dismissive arm, turn their backs and walk off behind the prop
+                    ns = PState.Away; p.AwayUntil = now + 9f; p.AwayStart = now;
                 }
-                if (!seatChanged && p.S != PState.Listening && ns == PState.Listening && p.A != null) p.A.PlayOneShot(ActorKeys.Greet);
+                if (!seatChanged && p.S == PState.Listening && ns == PState.Settled && !p.IsLead && newRecipient == null && pl.Recipient == null && lead != null) newRecipient = p;
+                if (ns == PState.Settled && p.S != PState.Settled) p.Jog = true;
+                if ((ns != PState.Settled || seatChanged) && p.Note != null) { Destroy(p.Note); p.Note = null; }
                 p.S = ns;
+                float lift = 0f; float yaw; Vector3 target;
                 switch (ns)
                 {
                     case PState.Settled:
                     {
-                        int k = i, row = k / 4, col = k % 4;
-                        p.Target = S0 + pl.Right * ((col - 1.5f) * 0.85f + (row % 2) * 0.4f - 0.2f) + pl.Fwd * (row * 0.8f);
-                        p.TargetYaw = YawTo(p.Target, Site.Position) + Mathf.Sin(i * 1.9f) * 12f;
+                        target = SettledSlot(pl, i, out int row); lift = row * Place.StepH;
+                        yaw = YawTo(target, Site.Position) + Mathf.Sin(i * 1.9f) * 8f;
                         break;
                     }
                     case PState.Listening:
@@ -404,27 +438,83 @@ namespace World.Game
                         int j = i - settled, r = 0, before = 0;
                         while (r < 2 && j >= before + rowCount[r]) { before += rowCount[r]; r++; }
                         int m = j - before, c = Mathf.Max(1, rowCount[r]);
-                        float rad = 1.25f + 0.85f * r;
-                        float step = Mathf.Min(40f, 0.85f / rad * Mathf.Rad2Deg);
-                        float phi = -25f + step * (m - (c - 1) * 0.5f);
-                        p.Target = O + (Quaternion.Euler(0, phi, 0) * pl.Fwd) * rad;
-                        p.TargetYaw = YawTo(p.Target, O);
+                        float a = c == 1 ? 0f : 72f * ((m + 0.5f) / c * 2f - 1f);
+                        target = O + (-pl.Right * Mathf.Cos(a * Mathf.Deg2Rad) + pl.Fwd * Mathf.Sin(a * Mathf.Deg2Rad)) * RowRad[r];
+                        yaw = YawTo(target, O);
                         break;
                     }
                     case PState.Away:
-                        p.Target = p.AwayPoint; p.TargetYaw = YawTo(p.AwayPoint, p.AwayPoint + (p.AwayPoint - pl.C));
+                        target = p.Home; yaw = now - p.AwayStart < 0.9f ? YawTo(O, p.A.transform.position) : YawTo(p.A.transform.position, p.Home);
                         break;
                     default:
-                        p.Target = p.Home; p.TargetYaw = react && !p.IsLead ? YawTo(p.Home, Site.Position) : p.HomeYaw;
+                        target = p.Home; yaw = react && !p.IsLead ? YawTo(p.Home, Site.Position) : p.HomeYaw;
                         break;
                 }
-                bool moving = MoveActor(p.A.transform, p.Target, p.TargetYaw, p.Speed, dt, pl.Ground);
+                if (p.HasVia && ns == PState.Settled)
+                {
+                    target = lead.Home - pl.Fwd * 1.0f; yaw = YawTo(target, lead.Home); lift = 0f;
+                    if (now > p.ViaUntil) Handover(pl, p);
+                }
+                p.LiftCur = Mathf.MoveTowards(p.LiftCur, lift, dt * 0.9f);
+                float spd = p.Speed * (p.Jog ? 1.6f : 1f);
+                bool moving = false;
+                if (ns == PState.Away && now - p.AwayStart < 0.9f)
+                {
+                    // the dismissive moment: turn the back first, then go
+                    p.A.transform.rotation = Quaternion.Euler(0, Mathf.MoveTowardsAngle(p.A.transform.eulerAngles.y, yaw, 420f * dt), 0);
+                    moving = true;
+                }
+                else moving = MoveActor(p.A.transform, target, yaw, spd, dt, pl.Ground + p.LiftCur);
                 p.Arrived = !moving;
                 if (moving) MoversBusy++;
+                if (p.HasVia && !moving) Handover(pl, p);
+                if (!moving && !p.HasVia) p.Jog = false;
                 p.A.Seated = ns == PState.Undecided && p.SitsAtHome && !moving;
-                if (ns == PState.Settled && !moving && now >= p.NextPleased) { p.A.PlayOneShot(i % 2 == 0 ? ActorKeys.Clap : ActorKeys.Greet); p.NextPleased = now + UnityEngine.Random.Range(6f, 13f); }
+                switch (ns)
+                {
+                    case PState.Settled: p.A.Pose = (moving || p.HasVia) && p.Jog ? ActorPose.Joining : ActorPose.Cheer; break;
+                    case PState.Listening: p.A.Pose = ActorPose.Listen; break;
+                    case PState.Away: p.A.Pose = now - p.AwayStart < 0.9f ? ActorPose.Dismiss : ActorPose.Droop; break;
+                    default: p.A.Pose = p.IsLead ? ActorPose.None : ActorPose.Doubt; break;
+                }
+                if (ns == PState.Settled && !moving && !p.HasVia && now >= p.NextPleased) { p.A.PlayOneShot(ActorKeys.ClapHigh); p.NextPleased = now + UnityEngine.Random.Range(5f, 10f); }
             }
+            if (newRecipient != null)
+            {
+                // the lead holds out a small folded note; the first banked listener comes over to take it, then joins the block
+                pl.Recipient = newRecipient; newRecipient.HasVia = true; newRecipient.ViaUntil = now + 8f;
+                pl.NoteObj = CouncilShapes.Make("Handed note", lead.A.Arm(true), CouncilShapes.FoldedNote(Color.white), new Vector3(0, -0.60f, 0.07f), 0.75f);
+                pl.NoteObj.transform.localRotation = Quaternion.Euler(60f, 0, 0);
+            }
+            if (pl.Recipient != null) lead.A.Pose = ActorPose.Offer;
         }
+
+        void CancelHandover(Place pl)
+        {
+            if (pl.Recipient != null) pl.Recipient.HasVia = false;
+            if (pl.NoteObj != null) Destroy(pl.NoteObj);
+            pl.NoteObj = null; pl.Recipient = null;
+        }
+
+        void Handover(Place pl, Person p)
+        {
+            p.HasVia = false;
+            if (pl.NoteObj != null)
+            {
+                pl.NoteObj.transform.SetParent(p.A.Arm(true), false);
+                pl.NoteObj.transform.localPosition = new Vector3(0, -0.60f, 0.07f);
+                pl.NoteObj.transform.localRotation = Quaternion.Euler(60f, 0, 0);
+                if (p.Note != null) Destroy(p.Note);
+                p.Note = pl.NoteObj; NotesHanded++;
+            }
+            pl.NoteObj = null; pl.Recipient = null;
+        }
+
+        /// <summary>Notes handed over by leads to banked listeners since the village was built.</summary>
+        public int NotesHanded { get; private set; }
+        /// <summary>People currently holding a handed note at a place.</summary>
+        public int NotesHeld(int track) { int n = 0; foreach (var p in _places[track - 2].P) if (p.Note != null) n++; return n; }
+        public bool HandoverPending(int track) => _places[track - 2].Recipient != null;
 
         /// <summary>Moves a figure towards a spot on the ground and turns it, pushing it out of solid props. True while it is still walking or turning.</summary>
         bool MoveActor(Transform t, Vector3 target, float yaw, float speed, float dt, float ground)
@@ -477,8 +567,11 @@ namespace World.Game
             {
                 var pl = _places[kv.Key - 2];
                 var spot = pl.ListenSpot;
-                bool mv = MoveActor(kv.Value.A.transform, spot, YawTo(spot, pl.C + pl.Fwd), 11f, dt, pl.Ground);
+                // stands on a low plinth in the clear patch, facing the half-circle, arms spread
+                float dd = (kv.Value.A.transform.position - spot).magnitude;
+                bool mv = MoveActor(kv.Value.A.transform, spot, YawTo(spot, spot - pl.Right), 11f, dt, pl.Ground + 0.2f * Mathf.Clamp01(1f - dd / 1.5f));
                 if (mv) MoversBusy++;
+                kv.Value.A.Pose = mv ? ActorPose.None : ActorPose.Address;
             }
             for (int i = _leaving.Count - 1; i >= 0; i--)
             {
@@ -509,8 +602,8 @@ namespace World.Game
             var res = new Vector3(tp.x + flat.x, 0, tp.z + flat.z); res.y = GroundAt(res); return res;
         }
 
-        Vector3 CandidateAnchor => AnchorOnGround(0.15f, 0.83f, 5f, 14f);
-        Vector3 AideAnchor => AnchorOnGround(0.86f, 0.83f, 5f, 14f);
+        Vector3 CandidateAnchor => AnchorOnGround(0.15f, 0.86f, 5f, 17f);
+        Vector3 AideAnchor => AnchorOnGround(0.86f, 0.86f, 5f, 17f);
 
         void SyncCandidate(SettlementCouncil sc, ElectionState e, int shown, float dt)
         {
@@ -722,24 +815,32 @@ namespace World.Game
             float mn = 999f, mx = -999f, dsum = 0f; int n = 0; float refB = float.NaN;
             void Take(int t)
             {
-                var d = Site.Loc[t - 2] - cp; d.y = 0;
-                float dist = Mathf.Max(8f, d.magnitude);
-                float b = YawTo(cp, Site.Loc[t - 2]);
-                if (float.IsNaN(refB)) refB = b;
-                b = refB + Mathf.DeltaAngle(refB, b);
-                float hw = Mathf.Atan(_places[t - 2].R / dist) * Mathf.Rad2Deg + 2f;
-                mn = Mathf.Min(mn, b - hw); mx = Mathf.Max(mx, b + hw); dsum += dist; n++;
+                var pl = _places[t - 2];
+                var d = pl.C - cp; d.y = 0;
+                dsum += Mathf.Max(8f, d.magnitude); n++;
+                // the settled block (left of the prop) and the catspaw's patch (right) must both be in frame
+                foreach (var off in new[] { -(0.6f * pl.R + 3.6f), 0.6f * pl.R + 5.8f })
+                {
+                    float b = YawTo(cp, pl.C + pl.Right * off);
+                    if (float.IsNaN(refB)) refB = b;
+                    b = refB + Mathf.DeltaAngle(refB, b);
+                    mn = Mathf.Min(mn, b); mx = Mathf.Max(mx, b);
+                }
             }
             if (tracks == null || tracks.Count == 0) for (int t = 2; t <= 12; t++) Take(t);
             else foreach (var t in tracks) Take(t);
             yaw = (mn + mx) * 0.5f;
-            float hfov = (mx - mn) + 16f;
-            hfov = Mathf.Clamp(hfov, 40f, 100f);
-            vfov = 2f * Mathf.Atan(Mathf.Tan(hfov * 0.5f * Mathf.Deg2Rad) / Mathf.Max(0.5f, aspect)) * Mathf.Rad2Deg;
-            vfov = Mathf.Clamp(vfov, 26f, 50f);
+            float hfov = Mathf.Clamp((mx - mn) + 5f, 26f, 100f);
+            float asp = Mathf.Max(0.5f, aspect);
+            vfov = 2f * Mathf.Atan(Mathf.Tan(hfov * 0.5f * Mathf.Deg2Rad) / asp) * Mathf.Rad2Deg;
+            float h = TowerH + 1.2f;
             float dm = dsum / Mathf.Max(1, n);
-            pitchDown = Mathf.Atan((TowerH + 1.2f) / dm) * Mathf.Rad2Deg + 0.12f * vfov;
-            pitchDown = Mathf.Clamp(pitchDown, 8f, 40f);
+            // the candidate stands up to 17 m out at the bottom of the picture; the places must sit in the upper part of it
+            float bottom = Mathf.Atan(h / 17f) * Mathf.Rad2Deg + 5f;
+            float aPlace = Mathf.Atan((h - 1f) / dm) * Mathf.Rad2Deg;
+            vfov = Mathf.Max(vfov, 17f, (bottom - aPlace) / 0.78f);
+            vfov = Mathf.Min(vfov, 50f);
+            pitchDown = Mathf.Clamp(bottom - 0.5f * vfov, 6f, 40f);
         }
 
         // ================================================================== views for tests

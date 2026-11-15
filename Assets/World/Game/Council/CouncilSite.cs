@@ -33,17 +33,17 @@ namespace World.Game
         /// <summary>Slots (lateral x, forward z in metres from the tower, in the fan's frame) of each track.</summary>
         public static readonly Vector2[] Slots =
         {
-            new Vector2(-9, 62),  // 2 crossing (water's edge)
+            new Vector2(-10, 56),  // 2 crossing (water's edge)
             new Vector2(0, 40),   // 3 boundary
-            new Vector2(-22, 50), // 4 forest edge
-            new Vector2(-25, 38), // 5 timber workyard
-            new Vector2(-21, 26), // 6 herbs, healer's shelter
+            new Vector2(-22, 43), // 4 forest edge
+            new Vector2(-25, 33), // 5 timber workyard
+            new Vector2(-21, 23), // 6 herbs, healer's shelter
             new Vector2(0, 28),   // 7 grain: the storehouse beside the fire (placed from the hearth)
-            new Vector2(21, 26),  // 8 tools, quarry face
-            new Vector2(25, 38),  // 9 shares, mill stone
-            new Vector2(22, 50),  // 10 water, spring
-            new Vector2(0, 52),   // 11 witness, the track
-            new Vector2(9, 62),   // 12 deed, keeper's post
+            new Vector2(21, 23),  // 8 tools, quarry face
+            new Vector2(25, 33),  // 9 shares, mill stone
+            new Vector2(22, 43),  // 10 water, spring
+            new Vector2(0, 49),   // 11 witness, the track
+            new Vector2(10, 56),  // 12 deed, keeper's post
         };
 
         /// <summary>

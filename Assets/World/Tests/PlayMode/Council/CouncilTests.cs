@@ -169,7 +169,7 @@ namespace World.Game.Tests
                 while (hold != null && hold != root) { if (hold.name.StartsWith("Note") || hold.name == "Belt seal" || hold.name == "Petition" || hold.name == "Bench lantern") held = true; hold = hold.parent; }
                 if (held) continue;
                 Assert.IsFalse(r.name.Contains("Marker") || r.name.Contains("Banner") || r.name.Contains("Emblem"), "no floating marks: " + r.name);
-                Assert.Less(r.bounds.min.y - Enc.Scene.GroundY, 6.0f, r.name + " stands on the ground, not in the air");
+                Assert.Less(r.bounds.min.y - Enc.Scene.GroundY, 9.0f, r.name + " stands on the ground, not in the air");
             }
         }
 
@@ -259,6 +259,43 @@ namespace World.Game.Tests
             Assert.Greater(settled, 0);
         }
 
+        [UnityTest, Timeout(180000)]
+        public IEnumerator States_ReadFromPoseAndZone_BankHandsOverANote_ListenersEndAtZero()
+        {
+            yield return Stage();
+            Enc.TapTarget("note 0"); yield return WaitReady();
+            yield return Until(() => Enc.Scene.ViewMismatch(Sc) == null, 10f, "after the advance");
+            int listeners = 0, undecided = 0;
+            for (int t = 2; t <= 12; t++)
+            {
+                var pl = Enc.Scene.PlaceOf(t);
+                foreach (var p in Enc.Scene.People(t))
+                {
+                    if (p.S == PState.Listening) { listeners++; Assert.AreEqual(ActorPose.Listen, p.A.Pose, "listener pose at " + t); Assert.AreEqual(1, pl.ZoneOf(p.A.transform.position), "listener in the catspaw's patch at " + t); }
+                    else if (p.S == PState.Undecided && !p.IsLead) { undecided++; Assert.AreEqual(ActorPose.Doubt, p.A.Pose, "undecided pose at " + t); Assert.AreEqual(2, pl.ZoneOf(p.A.transform.position), "undecided behind the prop at " + t); }
+                }
+                var paw = Enc.Scene.Catspaw(t);
+                if (paw != null) { Assert.AreEqual(ActorPose.Address, paw.Pose, "the catspaw addresses its listeners"); Assert.AreEqual(1, pl.ZoneOf(paw.transform.position)); }
+            }
+            Assert.AreEqual(2, listeners); Assert.Greater(undecided, 40);
+            int handed0 = Enc.Scene.NotesHanded;
+            CouncilEncounter.AiDelay = 600f;
+            Assert.IsTrue(Enc.TapTarget("seal"));
+            yield return Until(() => Enc.Scene.NotesHanded >= handed0 + 2, 8f, "each lead handed a note to a banked listener");
+            yield return Until(() => Enc.Scene.Settled, 10f, "settled");
+            int notes = 0, settled = 0;
+            for (int t = 2; t <= 12; t++)
+            {
+                Enc.Scene.Counts(t, out int s, out int l, out _);
+                Assert.AreEqual(0, l, "a bank ends with zero listeners at " + t);
+                notes += Enc.Scene.NotesHeld(t); settled += s;
+                var pl = Enc.Scene.PlaceOf(t);
+                foreach (var p in Enc.Scene.People(t))
+                    if (p.S == PState.Settled) { Assert.AreEqual(ActorPose.Cheer, p.A.Pose, "supporters cheer"); Assert.AreEqual(0, pl.ZoneOf(p.A.transform.position), "supporters in the block at " + t); }
+            }
+            Assert.AreEqual(2, settled); Assert.AreEqual(2, notes, "the note was handed over at both places");
+        }
+
         // ---------------------------------------------------------------- bust, petition
 
         IEnumerator PressOnUntil(Func<bool> done, int max = 400)
@@ -301,6 +338,7 @@ namespace World.Game.Tests
             Assert.AreEqual(0, listening, "the unsettled listeners are gone");
             int expectSettled = 0; for (int t = 2; t <= 12; t++) { Enc.Scene.Expected(E, t, out int es, out _); expectSettled += es; }
             Assert.AreEqual(expectSettled, settledNow, "a bust returns only the unsettled: everyone settled for the candidate shown stays settled");
+            for (int t = 2; t <= 12; t++) foreach (var p in Enc.Scene.People(t)) if (p.S == PState.Settled) Assert.That(p.A.Pose, Is.EqualTo(ActorPose.Cheer).Or.EqualTo(ActorPose.Joining), "the settled block keeps cheering after a bust");
         }
 
         [UnityTest, Timeout(300000)]

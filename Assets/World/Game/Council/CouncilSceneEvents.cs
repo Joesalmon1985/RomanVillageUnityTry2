@@ -66,17 +66,17 @@ namespace World.Game
                     }
                     break;
                 case CouncilBanked b:
-                    Press("seal");
-                    foreach (var p in b.Places) { Pleased(p.Track, true, true, 0.12f); }
+                    Press("seal"); HoldShown(b.Seat, 5f);
+                    foreach (var p in b.Places) { Pleased(p.Track, false, true, 0.12f); }
                     break;
                 case CouncilTrackClaimed c:
-                    foreach (var p in _places[c.Track - 2].P) { p.A.PlayOneShot(ActorKeys.Cheer); }
+                    foreach (var p in _places[c.Track - 2].P) { p.A.PlayOneShot(ActorKeys.ClapHigh); }
                     SayLead(c.Track, CouncilApi.DisputeLine(sc, c.Track, CouncilContent.AgreementLine, _lineCounter++, c.Seat, c.Seat), 4.2f);
                     break;
                 case CouncilBust bust:
+                    HoldShown(bust.Seat, 4.5f);
                     if (bust.Lost.Count > 0)
                     {
-                        Lead(bust.Lost[0].Track).A.PlayOneShot(ActorKeys.Surprise);
                         SayLead(bust.Lost[0].Track, CouncilApi.DisputeLine(sc, bust.Lost[0].Track, CouncilContent.SetbackLine, _lineCounter++, bust.Seat, -1));
                     }
                     break;
@@ -88,7 +88,7 @@ namespace World.Game
                     break;
                 case CouncilElectionWon w:
                     if (ActiveSeatShown >= 0) _cand[ActiveSeatShown].PlayOneShot(ActorKeys.Cheer);
-                    for (int t = 2; t <= 12; t++) foreach (var p in _places[t - 2].P) if (p.S == PState.Settled) p.A.PlayOneShot(ActorKeys.Cheer);
+                    for (int t = 2; t <= 12; t++) foreach (var p in _places[t - 2].P) if (p.S == PState.Settled) p.A.PlayOneShot(ActorKeys.ClapHigh);
                     break;
             }
         }

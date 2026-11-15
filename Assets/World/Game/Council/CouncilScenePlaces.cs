@@ -34,6 +34,16 @@ namespace World.Game
                 var pr = go.transform;
                 // trodden ground under the gathering
                 Cyl(pr, "Ground", V(0, 0.015f, 0), V(pl.R * 2.2f, 0.015f, pl.R * 2.2f), new Color(0.37f, 0.29f, 0.19f));
+                // the supporters' stepped block (left), the catspaw's clear patch with a low plinth (right)
+                {
+                    int cols = Place.ColsFor(CouncilRules.Length(t)), rows = Mathf.CeilToInt(CouncilRules.Length(t) / (float)cols);
+                    float bx = -(0.6f * pl.R + 1.8f), bz = -0.1f * pl.R;
+                    for (int rw = 1; rw < rows; rw++)
+                        Cube(pr, "Step", V(bx, Place.StepH * rw * 0.5f, bz + 0.8f * rw), V(cols * 0.72f + 0.9f, Place.StepH * rw, 0.85f), Earth * 1.05f);
+                    float ox = 0.6f * pl.R + 4.8f;
+                    Cyl(pr, "Patch", V(ox - 1.2f, 0.035f, bz), V(7.4f, 0.015f, 7.4f), new Color(0.52f, 0.44f, 0.30f));
+                    Cyl(pr, "Plinth", V(ox, 0.1f, bz), V(1.3f, 0.1f, 1.3f), new Color(0.46f, 0.40f, 0.34f));
+                }
                 switch (t)
                 {
                     case 2: Crossing(pl); break;
@@ -68,7 +78,7 @@ namespace World.Game
                 foreach (var sx in new[] { -1.05f, 1.05f }) Cube(tw, "Brace", V(sx, y, 0), V(0.14f, 0.14f, 2.2f), LWood);
             }
             Cube(tw, "Platform", V(0, TowerH + 0.05f, 0), V(2.5f, 0.2f, 2.5f), LWood);
-            for (int k = 0; k < 8; k++) Cube(tw, "Rung", V(0.4f, 0.25f + k * 0.64f, -1.2f), V(0.6f, 0.08f, 0.1f), LWood);
+            for (int k = 0; k < 11; k++) Cube(tw, "Rung", V(0.4f, 0.25f + k * 0.64f, -1.2f), V(0.6f, 0.08f, 0.1f), LWood);
             Cube(tw, "Ladder side", V(0.1f, TowerH * 0.5f, -1.2f), V(0.08f, TowerH, 0.08f), Wood);
             Cube(tw, "Ladder side", V(0.7f, TowerH * 0.5f, -1.2f), V(0.08f, TowerH, 0.08f), Wood);
             Solid(tw.position, 2.0f);
