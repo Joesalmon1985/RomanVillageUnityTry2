@@ -167,7 +167,7 @@ namespace World.Game
                 Mesh(root, "Stair up", mb);
                 // The light from above: a soft upright glow in the arch and a pale patch on the steps.
                 bool surface = !link.To.IsInterior;
-                var glowCol = surface ? new Color(0.62f, 0.72f, 0.95f, 0.55f) : new Color(1f, 0.70f, 0.38f, 0.45f);
+                var glowCol = surface ? new Color(0.70f, 0.80f, 1f, 0.85f) : new Color(1f, 0.72f, 0.40f, 0.7f);
                 var g = LandLook.Part(root, "Way-up glow", LightShapes.RadialDisc(true), LightShapes.Glow, false);
                 g.transform.position = archAt + Vector3.up * 1.7f - bdir * 0.05f;
                 g.transform.rotation = Quaternion.LookRotation(-bdir, Vector3.up);
@@ -176,10 +176,11 @@ namespace World.Game
                 var pool = LandLook.Part(root, "Way-up pool", LightShapes.RadialDisc(false), LightShapes.Glow, false);
                 pool.transform.position = o + bdir * 0.6f + Vector3.up * 0.05f;
                 pool.transform.localScale = Vector3.one * 2.6f;
-                SetGlow(pool, new Color(glowCol.r, glowCol.g, glowCol.b, 0.28f));
+                SetGlow(pool, new Color(glowCol.r, glowCol.g, glowCol.b, 0.45f));
                 view.Glows = new[] { g.GetComponent<Renderer>(), pool.GetComponent<Renderer>() };
                 // Exits and stairs up are always lit: a brazier beside the foot of the stair.
-                view.Light = Brazier(root, o + side * 1.7f + bdir * 0.3f, false, true, 2);
+                view.Light = Brazier(root, o + side * 1.5f - bdir * 1.1f, false, true, 2); // in front, seen down the passage
+                view.Light.Range = 18f; view.Light.Intensity = 2.4f;
                 if (surface) { view.Light.Color = new Color(1f, 0.70f, 0.42f); }
             }
             else
@@ -373,18 +374,19 @@ namespace World.Game
             }
             Mesh(root, "Scuffs", mb);
             var stick = new MeshBuilder();
-            stick.Box(new Vector3(0, 0.06f, 0), new Vector3(0.08f, 0.08f, 1.05f), new Color(0.55f, 0.47f, 0.34f), 25f);
+            stick.Box(new Vector3(0, 0.08f, 0), new Vector3(0.13f, 0.13f, 1.5f), new Color(0.80f, 0.70f, 0.52f), 25f);
             for (int k = 0; k < 6; k++)
             {
                 // Five notches and a cross.
                 var q = Quaternion.Euler(0, 25f, 0);
-                var p = q * new Vector3(0.045f, 0.09f, -0.4f + 0.13f * k);
-                stick.Box(p, new Vector3(0.03f, 0.03f, k == 5 ? 0.09f : 0.03f), new Color(0.12f, 0.10f, 0.08f), 25f + (k == 5 ? 45f : 0f));
+                var p = q * new Vector3(0.07f, 0.14f, -0.55f + 0.18f * k);
+                stick.Box(p, new Vector3(0.05f, 0.05f, k == 5 ? 0.14f : 0.05f), new Color(0.12f, 0.10f, 0.08f), 25f + (k == 5 ? 45f : 0f));
             }
             // A green Ash rag tied round it.
-            stick.Box(Quaternion.Euler(0, 25f, 0) * new Vector3(0, 0.07f, 0.4f), new Vector3(0.12f, 0.1f, 0.1f), new Color(0.25f, 0.55f, 0.35f), 25f);
+            stick.Box(Quaternion.Euler(0, 25f, 0) * new Vector3(0, 0.1f, 0.6f), new Vector3(0.2f, 0.16f, 0.16f), new Color(0.30f, 0.70f, 0.42f), 25f);
             var stickGo = Mesh(root, "Tally stick", stick);
-            stickGo.transform.localPosition = new Vector3(0.3f, 0, -0.2f);
+            // Laid towards the pedestal, where the lantern finds it.
+            if (stand != null) { var to = m.World(stand.I, stand.J) - root.position; to.y = 0; stickGo.transform.localPosition = to.normalized * 1.3f; }
             var view = root.gameObject.AddComponent<TallyView>();
             view.Stick = stickGo; view.Director = d; view.CrystalId = stand?.Crystal;
             return view;

@@ -212,7 +212,7 @@ namespace World.Game
             var seen = new HashSet<Cell>();
             foreach (var c in Interiors.Explored(m.Id)) seen.Add(m.ToCell(c.I, c.J));
             var floor = new Color(0.62f, 0.55f, 0.44f, 1f);
-            var wall = new Color(0.30f, 0.24f, 0.18f, 1f);
+            var wall = new Color(0.15f, 0.12f, 0.10f, 1f);
             var none = new Color(0, 0, 0, 0);
             var px = new Color[TexSize * TexSize];
             float cellR = WalkLattice.Step * 0.5f;
@@ -227,7 +227,7 @@ namespace World.Game
                     if (seen.Contains(c))
                     {
                         float dc = BoardSpace.Flat(p - WalkLattice.ToWorld(c));
-                        col = floor * (dc > cellR * 0.86f ? 0.86f : 1f);
+                        col = floor * (dc > cellR * 0.9f ? 0.8f : 1f);
                         col.a = 1f;
                         if (WalkGrid.IsBlocked(c)) col = new Color(0.45f, 0.3f, 0.18f, 1f);
                     }

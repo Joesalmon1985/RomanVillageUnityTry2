@@ -13,12 +13,12 @@ namespace World.Game
     [DefaultExecutionOrder(1000)]
     public sealed class InteriorLighting : MonoBehaviour
     {
-        public static readonly Color AmbientSky = new Color(0.040f, 0.040f, 0.048f);
-        public static readonly Color AmbientEquator = new Color(0.032f, 0.030f, 0.032f);
+        public static readonly Color AmbientSky = new Color(0.050f, 0.049f, 0.056f);
+        public static readonly Color AmbientEquator = new Color(0.042f, 0.039f, 0.040f);
         public static readonly Color AmbientGround = new Color(0.020f, 0.018f, 0.017f);
         public static readonly Color FogColour = new Color(0.010f, 0.009f, 0.009f);
         public const float FogStart = 5f, FogEnd = 36f;
-        public const float LanternIntensity = 1.25f, LanternRange = 17f;
+        public const float LanternIntensity = 1.45f, LanternRange = 18f;
 
         public static InteriorLighting Instance { get; private set; }
         /// <summary>True while the underground look is applied (the player is in an interior).</summary>
