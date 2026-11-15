@@ -93,6 +93,8 @@ namespace World.Game
             return where + (_dir.MiraSpace.Length > 0 ? " (below)" : "");
         }
 
+        private readonly List<Rect> _labelRects = new List<Rect>();
+
         private void Add(MapScreenView view, string kind, Vector3 world, Color colour, Texture2D tex, float px, string label, bool bold = false, float pulse = 0f)
         {
             _marks.Add(new Mark { Kind = kind, Label = label ?? "", World = world, Colour = colour });
@@ -101,18 +103,49 @@ namespace World.Game
             GUI.color = colour;
             GUI.DrawTexture(new Rect(p.x - d / 2, p.y - d / 2, d, d), tex);
             GUI.color = Color.white;
-            if (!string.IsNullOrEmpty(label))
-                UiStyle.ShadowLabel(new Rect(p.x + d / 2 + 3, p.y - UiStyle.Px(12), UiStyle.Px(520), UiStyle.Px(24)), label, bold ? _bold : _label);
+            if (string.IsNullOrEmpty(label)) return;
+            // The label goes beside its mark: on the left when it would run off the map's right edge, and a line lower
+            // (or higher) for as long as it would lie on a label already drawn.
+            var style = bold ? _bold : _label;
+            float w = style.CalcSize(new GUIContent(label)).x + 4f, h = UiStyle.Px(24);
+            var map = view.MapRect;
+            float x = p.x + d / 2 + 3;
+            if (x + w > map.xMax - 4f) x = Mathf.Max(map.x + 2f, p.x - d / 2 - 3 - w);
+            var r = new Rect(x, p.y - h / 2, w, h);
+            for (int tries = 1; tries <= 6 && Overlaps(r); tries++)
+                r.y = p.y - h / 2 + ((tries + 1) / 2) * h * (tries % 2 == 1 ? 1f : -1f);
+            _labelRects.Add(r);
+            UiStyle.ShadowLabel(r, label, style);
+        }
+
+        private bool Overlaps(Rect r)
+        {
+            foreach (var o in _labelRects) if (o.Overlaps(r)) return true;
+            return false;
         }
 
         public void Draw(MapScreenView view)
         {
             _marks.Clear();
+            _labelRects.Clear();
             var s = S; var c = s.Campaign;
             if (c == null || _dir == null || _dir.Mira == null) return;
             if (MapScreen.Mode != MapMode.Island) return; // inside an interior the map is package I5's
             Ensure();
             var d = c.Definition;
+            // The map's own labels near the player ("You", "Walk here") keep their place.
+            var walker = PlayerWalker.Instance;
+            if (walker != null)
+            {
+                var pg = view.WorldToGui(walker.Position);
+                _labelRects.Add(new Rect(pg.x, pg.y - UiStyle.Px(14), UiStyle.Px(110), UiStyle.Px(42)));
+                var target = MapScreen.Target ?? walker.AutoGoal;
+                if (target.HasValue)
+                {
+                    var tg = view.WorldToGui(WalkLattice.ToWorld(target.Value));
+                    _labelRects.Add(new Rect(tg.x, tg.y - UiStyle.Px(14), UiStyle.Px(150), UiStyle.Px(28)));
+                }
+            }
 
             // Towers: always on the map (they stand on the shore, seen from far off).
             foreach (var td in d.Towers)

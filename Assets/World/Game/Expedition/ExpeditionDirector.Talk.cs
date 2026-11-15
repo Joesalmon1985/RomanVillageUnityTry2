@@ -229,6 +229,12 @@ namespace World.Game
                 }
             }
             _wasNearBeforeLink = PlayerNear(45f);
+            if (_refollowWhenMoving && (!present || Railed)) _refollowWhenMoving = false;
+            if (_refollowWhenMoving && p.Mode == PartyMode.Travelling && _leg != null && !_leg.Link && _miraSpeed > 0.5f)
+            {
+                _refollowWhenMoving = false;
+                if (PlayerSpace == MiraSpace) Walker.Follow(Mira);
+            }
             if (!StandInInteriors && _following && present && PlayerSpace == MiraSpace && !ReferenceEquals(Walker.Following, Mira) && _enteredSpace != MiraSpace)
             {
                 // Arrived in her interior: take up the file again.
@@ -771,7 +777,8 @@ namespace World.Game
                 if (Hears(m.Npc) || Railed)
                 {
                     SpeechBubbles.Say(m.Npc, text, Real(4f));
-                    Record(sc.Volunteer, text);
+                    // His last words belong to the tick he fell on (the scene plays a frame or two after it).
+                    _said.Add(new Line { Tick = C.Companion(sc.Volunteer)?.FellTick ?? S.Tick, Speaker = sc.Volunteer, Text = text });
                 }
             }
         }

@@ -382,14 +382,18 @@ namespace World.Game
                 LandShapes.Beam(hole, new Vector3(1.2f, 0, 1.5f), new Vector3(1.2f, 2.3f, 1.5f), 0.14f, 6, LandLook.DarkWood);
                 LandShapes.Beam(hole, new Vector3(-1.5f, 2.3f, 1.5f), new Vector3(1.5f, 2.3f, 1.5f), 0.16f, 6, LandLook.DarkWood);
                 hole.Box(new Vector3(0, 1.1f, 1.7f), new Vector3(2.6f, 2.2f, 0.2f), dark);
-                var turf = new Color(0.24f, 0.36f, 0.18f);
-                hole.Cylinder(new Vector3(0, 0, 7.1f), 5.2f, 3.4f, 2.5f, 9, turf);
-                hole.Cylinder(new Vector3(0, 2.5f, 7.1f), 3.4f, 1.2f, 0.9f, 9, turf * 1.08f);
+                var raw = LandLook.Earth * 1.15f;
+                hole.Cylinder(new Vector3(0, 0, 7.6f), 5.8f, 3.8f, 3.0f, 9, raw);
+                hole.Cylinder(new Vector3(0, 3.0f, 7.6f), 3.8f, 1.4f, 1.0f, 9, new Color(0.26f, 0.40f, 0.20f));
+                hole.Box(new Vector3(-1.2f, 1.15f, 1.45f), new Vector3(0.3f, 2.3f, 0.3f), LandLook.Wood);
+                hole.Box(new Vector3(1.2f, 1.15f, 1.45f), new Vector3(0.3f, 2.3f, 0.3f), LandLook.Wood);
+                hole.Box(new Vector3(0, 2.4f, 1.45f), new Vector3(3.1f, 0.32f, 0.36f), LandLook.Wood);
                 var rr = new PropRandom(r.ToString().GetHashCode());
                 for (int i = 0; i < 7; i++)
                     hole.Rock(new Vector3((i % 2 == 0 ? -1f : 1f) * rr.Range(1.7f, 3.4f), 0, rr.Range(0.6f, 2.6f)), rr.Range(0.5f, 1.0f), LandLook.Earth * rr.Range(0.8f, 1.1f), rr.Next);
             }
             var holeGo = hole.ToObject("Hole", go.transform, Lit);
+            LightShapes.Apply(holeGo.GetComponent<Renderer>(), LightShapes.Read.Prop);
             // The lid: a ring-marked slab (the glade), or the bar across the cut.
             var lid = new MeshBuilder();
             if (cut)
@@ -425,6 +429,8 @@ namespace World.Game
                 var dir = pos - safe; dir.y = 0;
                 if (dir.sqrMagnitude > 0.5f) go.transform.rotation = Quaternion.Euler(0, BoardSpace.YawOf(dir), 0);
             }
+            // The hump behind a cut is solid: nobody stands inside the hillside.
+            if (cut) WalkGrid.AddSolid(go.transform.TransformPoint(new Vector3(0, 0, 7.6f)), 5.2f, SolidOwner);
         }
 
         private void BuildTower(LocationDef loc, Transform root, Vector3 anchor)

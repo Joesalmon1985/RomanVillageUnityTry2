@@ -140,8 +140,15 @@ namespace World.Game
             if (restored == 0) return "";
             if (restored >= 4) return "All four towers burn. The demons are gone.";
             int now = s.Demons != null && s.Demons.Tuning != null ? s.Demons.Tuning.SevensPerDraw : 0;
-            return restored + " of four towers lit. Demons now come once in every " + now + " sevens rolled (it was every " + c.BaseSevensPerDraw + ").";
+            int onAltars = 0;
+            foreach (var st in c.Crystals) if (st.Custody == Custody.AtRivalAltar) onAltars++;
+            string lit = restored + " of four towers lit.";
+            if (now > c.BaseSevensPerDraw) return lit + " The demons come less often: " + Sevens(now) + " (it was " + Sevens(c.BaseSevensPerDraw) + ").";
+            if (now < c.BaseSevensPerDraw) return lit + " But " + onAltars + " on Ash altars: the demons come more often, " + Sevens(now) + " (it was " + Sevens(c.BaseSevensPerDraw) + ").";
+            return lit + (onAltars > 0 ? " But " + onAltars + " on Ash altars: the demons come as often as before." : " The demons come as often as before.");
         }
+
+        private static string Sevens(int n) => n <= 1 ? "on every seven rolled" : "once in every " + n + " sevens rolled";
 
         /// <summary>The whole compact journal text (rich text), top to bottom.</summary>
         public static string CompactText(WorldState s, int entries)
@@ -164,10 +171,24 @@ namespace World.Game
             if (journal.Count > 0 && entries > 0)
             {
                 sb.Append("\n<b>Latest</b>\n");
-                for (int i = Mathf.Max(0, journal.Count - entries); i < journal.Count; i++)
-                    sb.Append("<color=#BBB0A0>").Append(Clock(journal[i].Tick - c.StartTick)).Append("</color>  ").Append(journal[i].Text).Append('\n');
+                var latest = Distinct(journal);
+                for (int i = Mathf.Max(0, latest.Count - entries); i < latest.Count; i++)
+                    sb.Append("<color=#BBB0A0>").Append(Clock(latest[i].Tick - c.StartTick)).Append("</color>  ").Append(latest[i].Text).Append('\n');
             }
             return sb.ToString();
+        }
+
+        /// <summary>The journal without a sentence written twice on one tick (the runtime and the pack both record some deeds).</summary>
+        private static List<JournalEntry> Distinct(IReadOnlyList<JournalEntry> journal)
+        {
+            var list = new List<JournalEntry>();
+            foreach (var j in journal)
+            {
+                bool twice = false;
+                for (int k = list.Count - 1; k >= 0 && list[k].Tick == j.Tick; k--) if (list[k].Text == j.Text) { twice = true; break; }
+                if (!twice) list.Add(j);
+            }
+            return list;
         }
 
         /// <summary>The line for the HUD: where Mira is, and the newest thing in the journal.</summary>
@@ -261,7 +282,7 @@ namespace World.Game
         public static string FullEntries(WorldState s)
         {
             var c = s.Campaign;
-            var journal = CampaignApi.Journal(s);
+            var journal = Distinct(CampaignApi.Journal(s));
             var sb = new StringBuilder();
             for (int i = journal.Count - 1; i >= 0; i--)
                 sb.Append("<color=#BBB0A0>").Append(Clock(journal[i].Tick - c.StartTick)).Append("</color>  ").Append(journal[i].Text).Append('\n');

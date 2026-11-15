@@ -65,6 +65,8 @@ namespace World.Game
                 // A roof over all of it: no sky, no moonlight underground.
                 var centre = (min + max) * 0.5f; var size = max - min;
                 rock.Box(new Vector3(centre.x, WallHeight + 0.4f, centre.z), new Vector3(size.x + 16f, 0.8f, size.z + 16f), rockCol * 0.6f);
+                // And bedrock under all of it: no sea showing through between the cells.
+                floor.Box(new Vector3(centre.x, -0.5f, centre.z), new Vector3(size.x + 16f, 0.3f, size.z + 16f), rockCol * 0.5f);
                 floor.ToObject("Floor", root, LandLook.Lit);
                 rock.ToObject("Rock", root, LandLook.Lit);
                 foreach (var m in InteriorMaps.Markers(map))

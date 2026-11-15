@@ -901,19 +901,21 @@ namespace World.Game
         private Vector3 ClearSpotNear(Vector3 centre, Vector3 lookAt)
         {
             var away = centre - lookAt; away.y = 0;
-            if (away.sqrMagnitude < 0.05f) away = -Mira.transform.forward;
-            float baseYaw = BoardSpace.YawOf(away);
-            foreach (float dist in new[] { 5f, 3.5f })
-                for (int k = 0; k < 12; k++)
+            float baseYaw = away.sqrMagnitude < 0.05f ? 0f : BoardSpace.YawOf(away);
+            foreach (float dist in new[] { 5.5f, 4.5f, 3.5f })
+                for (int k = 0; k < 24; k++)
                 {
-                    // 0, +30, -30, +60, -60 ... degrees round from the preferred side.
-                    float yaw = baseYaw + ((k + 1) / 2) * 30f * (k % 2 == 0 ? 1f : -1f);
+                    // 0, +15, -15, +30, -30 ... degrees round from the preferred side.
+                    float yaw = baseYaw + ((k + 1) / 2) * 15f * (k % 2 == 0 ? 1f : -1f);
                     var dir = BoardSpace.DirOf(yaw);
-                    if (ExpeditionSpace.OnFloor(D, MiraSpace, centre + dir * dist) && ExpeditionSpace.OnFloor(D, MiraSpace, centre + dir * dist * 0.5f)
-                        && ExpeditionSpace.OnFloor(D, MiraSpace, centre + dir * (dist + 1.2f))) return centre + dir * dist;
+                    if (ExpeditionSpace.OnFloor(D, MiraSpace, centre + dir * dist) && ExpeditionSpace.OnFloor(D, MiraSpace, centre + dir * dist * 0.5f)) return centre + dir * dist;
                 }
-            return centre - Mira.transform.forward * 2f;
+            return centre - Mira.transform.forward * 2.5f;
         }
+
+        private bool _refollowWhenMoving;
+        private Vector3? _clearSpot;
+        private MarkerRef _clearSpotFor;
 
         private void StartRail()
         {
@@ -947,7 +949,18 @@ namespace World.Game
             if (!StandInInteriors) { if (Railed) EndRail(null); return; }
             bool under = MiraSpace.Length > 0;
             if (!Railed) return;
-            if (!under) { EndRail(Mira.transform.position); if (_following && Walker != null) Walker.Follow(Mira); return; }
+            if (!under)
+            {
+                // Up again: beside the way out, on the side the place is approached from (its safe point).
+                var at = C.Party.Mode == PartyMode.Travelling && C.Party.Leg != null ? C.Party.Leg.To : C.Party.At;
+                var loc = D.Location(at.Location);
+                Vector3 near = Mira.transform.position;
+                if (loc != null && !string.IsNullOrEmpty(loc.SafePoint) && !at.IsInterior) near = ExpeditionSpace.World(S, MarkerRef.Surface(loc.Id, loc.SafePoint));
+                EndRail(near);
+                // The player takes up the file again once the party walks on (not while it is still climbing out).
+                _refollowWhenMoving = _following;
+                return;
+            }
             if (Walker == null) return;
             Vector3 pos, look;
             var p = C.Party;
@@ -983,7 +996,16 @@ namespace World.Game
                 if (_retreat != null) look = Vector3.Lerp(look, _retreat.Gap, 0.5f);
                 else if (p.Mode != PartyMode.Travelling && _hasStand) look = Vector3.Lerp(look, ExpeditionSpace.World(S, p.At), 0.35f);
                 // No way walked here yet (placed by a duel's outcome, a load): a clear spot of floor a few paces from her.
-                if (BoardSpace.Flat(pos - Mira.transform.position) < 3f) pos = ClearSpotNear(Mira.transform.position, look);
+                if (BoardSpace.Flat(pos - Mira.transform.position) < 3f)
+                {
+                    // Chosen once per place: she turns to whoever she talks to, and the view must not circle her.
+                    if (!_clearSpot.HasValue || _clearSpotFor != p.At || BoardSpace.Flat(_clearSpot.Value - Mira.transform.position) > 9f)
+                    {
+                        _clearSpot = ClearSpotNear(Mira.transform.position, look);
+                        _clearSpotFor = p.At;
+                    }
+                    pos = _clearSpot.Value;
+                }
             }
             var d = look - pos; d.y = 0;
             float yaw = d.sqrMagnitude > 0.5f ? BoardSpace.YawOf(d) : _railYaw;

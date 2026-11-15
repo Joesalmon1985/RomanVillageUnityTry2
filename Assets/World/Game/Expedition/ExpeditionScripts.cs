@@ -262,6 +262,8 @@ namespace World.Game
             public Func<bool> When;
             public float Delay;
             public bool Done;
+            /// <summary>Turn to Mira before the capture (a player looks at the party coming up out of the ground).</summary>
+            public bool LookAtMira;
         }
 
         private static IEnumerator Capture(AutoPlay a, string name)
@@ -290,7 +292,13 @@ namespace World.Game
                     if (m.Capture != null && Captures)
                     {
                         if (m.Delay > 0f) yield return a.DoWait(m.Delay / Mathf.Max(1f, Time.timeScale));
+                        if (m.LookAtMira && !Dir.Railed)
+                        {
+                            W.StopAuto();
+                            yield return a.DoFace(() => Dir.Mira.transform.position);
+                        }
                         yield return Capture(a, m.Capture);
+                        if (m.LookAtMira && !Dir.Railed && C.Party.PlayerPresent) W.Follow(Dir.Mira);
                     }
                 }
                 if (until()) yield break;
@@ -435,7 +443,7 @@ namespace World.Game
             plan.On("the retreat", () => Dir.RetreatPlaying, "retreat", 1.6f);
             plan.On("back in the survey gallery", () => Dir.RetreatsPlayed > 0 && !Dir.RetreatPlaying, "after_loss", 3f);
             plan.On("Dolm beaten, the Deepstone recovered", () => Knows("earth.recovered"), "recovered", 3f);
-            plan.On("out by the Ash cut", () => Knows("earth.recovered") && Dir.MiraSpace.Length == 0, "ash_cut", 2f);
+            plan.On("out by the Ash cut", () => Knows("earth.recovered") && Dir.MiraSpace.Length == 0, "ash_cut", 6f).LookAtMira = true;
             plan.On("at the Rooted Tower", () => C.Party.At.Location == "tower_earth" && C.Party.Mode == PartyMode.WaitingForPlayer);
             plan.On("setting it", () => C.Party.Mode == PartyMode.Acting && C.Party.ActingAction == QuestAction.Restore, "setting", 14f);
             yield return Drive(a, plan, () => C.Crystal(Element.Earth).Custody == Custody.Restored, 2400f, "the Deepstone recovered and restored");
@@ -497,12 +505,18 @@ namespace World.Game
             if (a.Failed) yield break;
             Stamp("the player waits at the glade");
             var watch = new Plan();
-            watch.On("Ash runners in sight", () => Dir.Ash.Visible, "ash_marching", 2f);
+            watch.On("Ash runners in sight", () => Dir.Ash.Visible);
             watch.On("the Deepstone seized", () => C.Crystal(Element.Earth).Custody == Custody.RivalTransit);
+            // They come on towards the glade: turn to them when they are near.
+            yield return Drive(a, watch, () => Dir.Ash.Visible && BoardSpace.Flat(Dir.Ash.Position - W.Position) < 55f || Dir.Ash.CarryingShown, 600f, "the Ash runners near the glade");
+            if (a.Failed) yield break;
+            Stamp("Ash runners " + BoardSpace.Flat(Dir.Ash.Position - W.Position).ToString("0") + " m away");
+            yield return a.DoFace(() => Dir.Ash.Position);
+            yield return Capture(a, "ash_marching");
             yield return Drive(a, watch, () => Dir.Ash.CarryingShown, 600f, "the runners carrying the Deepstone");
             if (a.Failed) yield break;
             Stamp("runners carrying the Deepstone in sight");
-            yield return a.DoWait(5f / Mathf.Max(1f, Time.timeScale));
+            yield return a.DoWait(9f / Mathf.Max(1f, Time.timeScale));
             yield return a.DoFace(() => Dir.Ash.Position);
             yield return Capture(a, "ash_carrying");
             Check(a, Dir.Ash.Visible && Dir.Ash.CarryingShown, "the runners with the crystal are not drawn");

@@ -56,6 +56,7 @@ public static class ExpeditionDrive
     public static string EarthStolenWin() => Run("earth_stolen_win");
     public static string MiraAlone() => Run("mira_alone");
     public static string CaptureRun() => Run("expedition_captures");
+    public static string AshRunners() => Run("ash_runners");
 
     public static string Status()
     {
