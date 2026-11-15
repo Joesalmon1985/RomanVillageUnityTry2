@@ -258,6 +258,12 @@ namespace World.Game
 
         internal static void RaiseResolved(int attemptId, DuelResult result) => Resolved?.Invoke(attemptId, result);
 
+        /// <summary>
+        /// A new world (a scene built from a new game, a load or a developer start) or a new campaign: attempt ids start
+        /// again, so the attempts resolved before are forgotten (I8: a pending attempt of a loaded save must be staged).
+        /// </summary>
+        public static void ForgetResolved() => s_resolved.Clear();
+
         /// <summary>True when this attempt was already resolved by this game session.</summary>
         public static bool WasResolved(int attemptId) => s_resolved.Contains(attemptId);
 
@@ -353,6 +359,7 @@ namespace World.Game
         private void Start()
         {
             _boot = GetComponent<WorldBootstrap>();
+            CampaignDuel.ForgetResolved();
             if (_boot != null && _boot.Clock != null) _boot.Clock.Ticked += OnTicked;
         }
 
@@ -363,6 +370,8 @@ namespace World.Game
 
         private void OnTicked(IReadOnlyList<SimEvent> events)
         {
+            foreach (var ev in events)
+                if (ev is CampaignStarted) CampaignDuel.ForgetResolved();
             if (!CampaignDuel.AutoStage) return;
             foreach (var ev in events)
                 if (ev is EncounterCommitted ec) CampaignDuel.Start(ec);
