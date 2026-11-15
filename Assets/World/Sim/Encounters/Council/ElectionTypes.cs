@@ -63,7 +63,7 @@ namespace World.Sim.Encounters.Council
         public int FastMs = 1500;
         public int SlowMs = 4000;
         /// <summary>Bursts that may be started per election while no petition is earned.</summary>
-        public int MaxBursts = 3;
+        public int MaxBursts = 2;
 
         public ListeningTuning Copy() => (ListeningTuning)MemberwiseClone();
     }
