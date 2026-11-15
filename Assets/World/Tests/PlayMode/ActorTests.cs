@@ -264,7 +264,8 @@ namespace World.Game.Tests
             {
                 yield return null;
                 moved = Mathf.Max(moved, Vector3.Distance(start, torch.position));
-                Assert.AreEqual(0f, Vector3.Distance(sock.TransformPoint(new Vector3(0, 0.1f, 0)), torch.position), 1e-3f, "prop stays on the socket");
+                Assert.AreEqual(0f, Vector3.Distance(sock.position + sock.rotation * new Vector3(0, 0.1f, 0), torch.position), 1e-3f, "prop stays on the socket, 0.1 m along its axis");
+                Assert.AreEqual(0.05f, torch.lossyScale.x, 1e-3f, "prop keeps its world size");
             }
             Assert.Greater(moved, 0.15f, "the prop moved with the hand");
             foreach (var s in new[] { "Sock.Hand.L", "Sock.StaffTip", "Sock.SpellOrigin", "Sock.Back", "Sock.Hip.R", "Sock.HeadTop", "Sock.Foot.L", "Sock.Foot.R" })

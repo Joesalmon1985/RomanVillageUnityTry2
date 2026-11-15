@@ -332,13 +332,32 @@ namespace World.Game
 
         public bool Attach(Transform prop, string socket, Vector3 localPosition = default, Quaternion? localRotation = null)
         {
-            var s = Socket(socket);
-            if (s == null || prop == null) return false;
-            prop.SetParent(s, false);
+            var mount = Mount(socket);
+            if (mount == null || prop == null) return false;
+            prop.SetParent(mount, false);
             prop.localPosition = localPosition;
             prop.localRotation = localRotation ?? Quaternion.identity;
             if (!_props.Contains(prop)) _props.Add(prop);
             return true;
+        }
+
+        /// <summary>
+        /// A child of the socket with world scale 1 (the imported armature carries a scale of 100 with bone offsets in
+        /// hundredths, so a prop parented straight to a bone would be 100 times too big). Its axes are the socket's.
+        /// </summary>
+        public Transform Mount(string socket)
+        {
+            var s = Socket(socket);
+            if (s == null) return null;
+            var m = s.Find("Mount");
+            if (m == null)
+            {
+                m = new GameObject("Mount").transform;
+                m.SetParent(s, false);
+                var ls = s.lossyScale;
+                m.localScale = new Vector3(1f / Mathf.Max(1e-6f, ls.x), 1f / Mathf.Max(1e-6f, ls.y), 1f / Mathf.Max(1e-6f, ls.z));
+            }
+            return m;
         }
 
         public void DetachAll(string socket = null)
@@ -347,7 +366,8 @@ namespace World.Game
             {
                 var p = _props[i];
                 if (p == null) { _props.RemoveAt(i); continue; }
-                if (socket != null && (p.parent == null || p.parent.name != socket)) continue;
+                var sock = p.parent != null && p.parent.name == "Mount" ? p.parent.parent : p.parent;
+                if (socket != null && (sock == null || sock.name != socket)) continue;
                 _props.RemoveAt(i);
                 Destroy(p.gameObject);
             }
@@ -403,7 +423,7 @@ namespace World.Game
             var oldChildren = new List<Transform>();
             foreach (Transform c in transform) if (!_props.Contains(c)) oldChildren.Add(c);
             var keepProps = new List<(Transform prop, string socket)>();
-            foreach (var p in _props) if (p != null && p.parent != null) keepProps.Add((p, p.parent.name));
+            foreach (var p in _props) if (p != null && p.parent != null) keepProps.Add((p, p.parent.name == "Mount" ? p.parent.parent.name : p.parent.name));
             foreach (var kp in keepProps) kp.prop.SetParent(null, true);
             var moved = new List<Transform>();
             foreach (Transform c in tmp.transform) moved.Add(c);
@@ -582,6 +602,7 @@ namespace World.Game
             UpdateFacing(dt, dist);
             UpdateTalk();
             UpdateLod();
+            AdoptCarriedLight();
             UpdateWeights(dt, dist);
             _pendingDt += dt;
             if (_frame % _lodStep != 0) return;
@@ -589,6 +610,48 @@ namespace World.Game
             _pendingDt = 0f;
             UpdateFaceAndGaze(dt * _lodStep);
             if (_faceOn) _cloth.Tick(dt * _lodStep);
+        }
+
+        private float _lightCheckAt; private bool _torchDone;
+
+        /// <summary>
+        /// The lighting package gives the prince a carried light floating beside his head (made for the placeholder);
+        /// on a rigged body it would wash out his face. It is put on a small torch in his left hand instead, so the
+        /// light moves with the hand and lights the face from below and the side.
+        /// </summary>
+        private void AdoptCarriedLight()
+        {
+            if (_torchDone || Time.time < _lightCheckAt) return;
+            _lightCheckAt = Time.time + 0.5f;
+            FireLight carried = null;
+            foreach (Transform c in transform) { var f = c.GetComponent<FireLight>(); if (f != null) { carried = f; break; } }
+            var hand = Mount("Sock.Hand.L");
+            if (carried == null || hand == null) return;
+            _torchDone = true;
+            var torch = new GameObject("Torch").transform;
+            torch.SetParent(hand, false);
+            torch.localPosition = Vector3.zero;
+            // Held upright and a little forward of the body, whatever the hand bone's own axes are.
+            torch.rotation = transform.rotation * Quaternion.Euler(-14f, 0f, 0f);
+            var stick = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            Destroy(stick.GetComponent<Collider>());
+            stick.name = "Stick"; stick.transform.SetParent(torch, false);
+            stick.transform.localPosition = new Vector3(0, 0.12f, 0); stick.transform.localScale = new Vector3(0.035f, 0.26f, 0.035f);
+            stick.GetComponent<Renderer>().sharedMaterial = NightVariant(MaterialFactory.Shared(new Color(0.30f, 0.20f, 0.12f)), "leather");
+            var head = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            Destroy(head.GetComponent<Collider>());
+            head.name = "Wrap"; head.transform.SetParent(torch, false);
+            head.transform.localPosition = new Vector3(0, 0.38f, 0); head.transform.localScale = new Vector3(0.06f, 0.05f, 0.06f);
+            head.GetComponent<Renderer>().sharedMaterial = MaterialFactory.Shared(new Color(0.18f, 0.12f, 0.08f));
+            var flame = new GameObject("Flame");
+            flame.transform.SetParent(torch, false);
+            flame.transform.localPosition = new Vector3(0, 0.42f, 0);
+            flame.AddComponent<MeshFilter>().sharedMesh = LightShapes.Flame();
+            flame.AddComponent<MeshRenderer>().sharedMaterial = MaterialFactory.SharedUnlit(Color.white);
+            carried.transform.SetParent(torch, false);
+            carried.transform.localPosition = new Vector3(0, 0.5f, 0.05f);
+            if (carried.Flame == null) { carried.Flame = flame.transform; carried.FlameScale = new Vector3(0.09f, 0.16f, 0.09f); }
+            flame.transform.localScale = new Vector3(0.09f, 0.16f, 0.09f);
         }
 
         private void UpdateLod()
