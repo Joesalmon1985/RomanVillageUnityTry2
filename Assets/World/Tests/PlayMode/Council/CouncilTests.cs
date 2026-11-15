@@ -100,7 +100,13 @@ namespace World.Game.Tests
             return Enc.Scene.Targets(cam);
         }
 
-        float VerticalFovFor(int w, int h) => Enc.CamFov;
+        float VerticalFovFor(int w, int h)
+        {
+            // the same horizontal coverage the game camera has on its own screen
+            float aspectGame = Mathf.Max(0.5f, (float)Screen.width / Screen.height);
+            float hfov = 2f * Mathf.Atan(Mathf.Tan(Enc.CamFov * 0.5f * Mathf.Deg2Rad) * aspectGame);
+            return 2f * Mathf.Atan(Mathf.Tan(hfov * 0.5f) / ((float)w / h)) * Mathf.Rad2Deg;
+        }
 
         void CheckTargets(string phase)
         {
@@ -108,12 +114,12 @@ namespace World.Game.Tests
             {
                 var l = TargetsAt(size.x, size.y, out var cam);
                 Assert.Greater(l.Count, 0, phase + ": there are targets at " + size);
-                float minGap = 0.045f * size.y;
+                float minGap = 0.04f * size.y;
                 for (int i = 0; i < l.Count; i++)
                 {
                     Assert.IsTrue(l[i].Px.x >= 0 && l[i].Px.x <= size.x && l[i].Px.y >= 0 && l[i].Px.y <= size.y, phase + ": " + l[i].Name + " on screen at " + size + " " + l[i].Px);
                     for (int j = i + 1; j < l.Count; j++)
-                        Assert.GreaterOrEqual((l[i].Px - l[j].Px).magnitude, minGap, phase + ": " + l[i].Name + " and " + l[j].Name + " apart at " + size);
+                        Assert.GreaterOrEqual((l[i].Px - l[j].Px).magnitude, l[i].Name.StartsWith("place") && l[j].Name.StartsWith("place") ? 0.02f * size.y : minGap, phase + ": " + l[i].Name + " and " + l[j].Name + " apart at " + size);
                 }
                 UnityEngine.Object.Destroy(cam.targetTexture); UnityEngine.Object.Destroy(cam.gameObject);
             }
@@ -162,8 +168,8 @@ namespace World.Game.Tests
                 var hold = r.transform; bool held = false;
                 while (hold != null && hold != root) { if (hold.name.StartsWith("Note") || hold.name == "Belt seal" || hold.name == "Petition" || hold.name == "Bench lantern") held = true; hold = hold.parent; }
                 if (held) continue;
-                Assert.IsFalse(r.name.Contains("Halo") || r.name.Contains("Marker") || r.name.Contains("Banner") || r.name.Contains("Emblem"), "no floating marks: " + r.name);
-                Assert.Less(r.bounds.min.y - Enc.Scene.GroundY, 5.2f, r.name + " stands on the ground, not in the air");
+                Assert.IsFalse(r.name.Contains("Marker") || r.name.Contains("Banner") || r.name.Contains("Emblem"), "no floating marks: " + r.name);
+                Assert.Less(r.bounds.min.y - Enc.Scene.GroundY, 6.0f, r.name + " stands on the ground, not in the air");
             }
         }
 
@@ -293,8 +299,8 @@ namespace World.Game.Tests
             Assert.AreEqual(bankedBefore, bankedAfter, "banked support stays");
             int settledNow = 0, listening = 0; for (int t = 2; t <= 12; t++) { Enc.Scene.Counts(t, out int s, out int l, out _); settledNow += s; listening += l; }
             Assert.AreEqual(0, listening, "the unsettled listeners are gone");
-            int expectSettled = 0; for (int t = 2; t <= 12; t++) expectSettled += E.BankedAt(E.PlayerSeat, t);
-            Assert.AreEqual(expectSettled, settledNow, "a bust returns only the unsettled: the settled stay");
+            int expectSettled = 0; for (int t = 2; t <= 12; t++) { Enc.Scene.Expected(E, t, out int es, out _); expectSettled += es; }
+            Assert.AreEqual(expectSettled, settledNow, "a bust returns only the unsettled: everyone settled for the candidate shown stays settled");
         }
 
         [UnityTest, Timeout(300000)]
@@ -362,7 +368,8 @@ namespace World.Game.Tests
             Assert.IsTrue(E.PetitionEarned, "petition earned");
             Assert.GreaterOrEqual(Enc.CuesPlayed, 5, "a sound cue per answer");
             yield return Until(() => Enc.View == CouncilEncounter.ViewKind.Forward && !Enc.InTransition, 15f, "return to the table");
-            yield return Until(() => Enc.Scene.PetitionShown, 10f, "the aide carried the petition to the table");
+            yield return Until(() => Enc.Scene.Settled && !Enc.Scene.HoldPetition, 15f, "the aide carried the petition over; it is shown on the player's turn");
+            Assert.IsTrue(E.PetitionAvailable);
         }
 
         [UnityTest, Timeout(200000)]

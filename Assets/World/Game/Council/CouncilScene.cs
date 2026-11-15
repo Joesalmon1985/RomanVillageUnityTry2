@@ -243,7 +243,7 @@ namespace World.Game
                 {
                     bool lead = i == len - 1;
                     Vector3 home = pl.C;
-                    if (lead) home = pl.C - pl.Right * 1.3f - pl.Fwd * 0.4f;
+                    if (lead) home = pl.C + pl.Right * (0.35f * pl.R) + pl.Fwd * (0.65f * pl.R);
                     else
                     {
                         for (int tries = 0; tries < 30; tries++)
@@ -433,6 +433,7 @@ namespace World.Game
             pos.y = ground;
             var d = to - pos; float dist = d.magnitude;
             bool moving = dist > 0.12f;
+            var before = pos;
             if (moving)
             {
                 float step = Mathf.Min(dist, speed * dt);
@@ -444,6 +445,8 @@ namespace World.Game
                 }
             }
             t.position = pos;
+            // a figure the solid props keep from its spot does not count as still walking
+            if (moving && dist < 1.5f && (pos - before).magnitude < 0.004f) moving = false;
             float want = moving && dist > 0.5f ? YawTo(pos, to) : yaw;
             float cur = t.eulerAngles.y;
             t.rotation = Quaternion.Euler(0, Mathf.MoveTowardsAngle(cur, want, 420f * dt), 0);
@@ -518,20 +521,20 @@ namespace World.Game
             {
                 var anchor = CandidateAnchor;
                 if ((c.transform.position - anchor).magnitude > 25f) c.transform.position = anchor;
-                bool mv = MoveActor(c.transform, anchor, camYaw + 40f, 9f, dt, anchor.y);
-                if (mv) MoversBusy++;
+                MoveActor(c.transform, anchor, camYaw + 40f, 9f, dt, anchor.y);
                 bool mine = e.PlayerSeat >= 0 && e.Active == e.PlayerSeat;
                 if (mine && e.Phase == ElectionPhase.Ready && Time.time >= _beckonAt) { c.PlayOneShot(ActorKeys.Beckon); _beckonAt = Time.time + 3.4f; }
                 // belt seal and petition roll ride on the candidate
                 _seal.SetActive(true);
                 var tr = c.transform;
-                _seal.transform.position = tr.position + tr.up * 0.95f - tr.right * 0.36f + tr.forward * 0.2f;
-                _seal.transform.rotation = tr.rotation;
+                var cr = ViewCamera.transform.right; cr.y = 0; cr.Normalize();
+                _seal.transform.position = tr.position + Vector3.up * 0.95f - cr * 0.42f;
+                _seal.transform.rotation = Quaternion.Euler(0, ViewCamera.transform.eulerAngles.y, 0);
                 bool sealOn = (e.Phase == ElectionPhase.Ready && e.HasAdvanced && mine) || (e.Phase == ElectionPhase.BustPending && mine);
                 var sm = _seal.GetComponent<MeshFilter>(); var want = CouncilShapes.HeavySeal(sealOn); if (sm.sharedMesh != want) sm.sharedMesh = want;
                 bool petVisible = e.PetitionAvailable && _carryT < 0f && !HoldPetition && mine;
                 if (_petition.activeSelf != petVisible) _petition.SetActive(petVisible);
-                if (petVisible) { _petition.transform.position = tr.position + tr.up * 0.95f + tr.right * 0.36f + tr.forward * 0.2f; _petition.transform.rotation = tr.rotation * Quaternion.Euler(0, 0, 80f); }
+                if (petVisible) { _petition.transform.position = tr.position + Vector3.up * 0.95f + cr * 0.45f; _petition.transform.rotation = Quaternion.Euler(0, ViewCamera.transform.eulerAngles.y, 80f); }
             }
             else { _seal.SetActive(false); _petition.SetActive(false); }
             // the aide with the lantern: on a rival's turn (the way to the listening bench) and while carrying a petition
@@ -549,7 +552,7 @@ namespace World.Game
                     MoversBusy++;
                     if (_carryT >= 1f) { _carryT = -1f; HoldPetition = false; }
                 }
-                else { var an = AideAnchor; bool mv = MoveActor(_aide.transform, an, camYaw - 40f, 9f, dt, an.y); if (mv) MoversBusy++; }
+                else { var an = AideAnchor; MoveActor(_aide.transform, an, camYaw - 40f, 9f, dt, an.y); }
             }
         }
 
@@ -628,7 +631,8 @@ namespace World.Game
                 bool on = k < Proposals.Count;
                 if (_notes[k].activeSelf != on) { _notes[k].SetActive(on); if (on) StampNote(_notes[k], Proposals[k]); }
                 if (!on) continue;
-                var pos = ct.position + ct.up * (1.25f + 0.5f * (k / 3)) - ct.right * (0.55f + 0.5f * (k % 3)) + ct.forward * 0.25f;
+                var camR = ViewCamera.transform.right; camR.y = 0; camR.Normalize();
+                var pos = ct.position + Vector3.up * (1.35f + 0.55f * (k / 3)) + camR * (0.7f + 0.6f * (k % 3));
                 _notes[k].transform.position = pos;
                 var toCam = (ViewCamera.transform.position - pos).normalized;
                 _notes[k].transform.rotation = Quaternion.FromToRotation(Vector3.up, toCam) * Quaternion.Euler(0, ViewCamera.transform.eulerAngles.y, 0);
@@ -673,7 +677,8 @@ namespace World.Game
             var c = _cand[ActiveSeatShown];
             if (mine && e.Phase == ElectionPhase.Ready && c != null)
             {
-                Add("hand", c.transform.position + Vector3.up * 1.45f + c.transform.right * 0.5f, 0.45f);
+                var chr = cam.transform.right; chr.y = 0; chr.Normalize();
+                Add("hand", c.transform.position + Vector3.up * 1.75f + chr * 0.85f, 0.45f);
                 foreach (var kv in _agents) Add("paw " + kv.Key, kv.Value.A.transform.position + Vector3.up * 1.0f, 0.7f);
                 if (e.HasAdvanced)
                 {

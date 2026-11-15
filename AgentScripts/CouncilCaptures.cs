@@ -80,6 +80,10 @@ public static class CouncilCaptures
                     gv.GetType().GetProperty("selectedSizeIndex", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic).SetValue(gv, idx);
                     return "size " + w + "x" + h + " idx " + idx;
                 }
+            case "settemp":
+                { var e = CouncilApi.Get(boot.Sim.State, home).Election; e.Temp[int.Parse(a[1]) - 2] = int.Parse(a[2]); return "temp set"; }
+            case "setbank":
+                { var e = CouncilApi.Get(boot.Sim.State, home).Election; e.Banked[int.Parse(a[3]) * 11 + int.Parse(a[1]) - 2] = int.Parse(a[2]); return "bank set"; }
             case "near":
                 {
                     var sb = new StringBuilder("near tower: ");
