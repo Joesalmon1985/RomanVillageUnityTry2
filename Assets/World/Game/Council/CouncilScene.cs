@@ -283,6 +283,7 @@ namespace World.Game
                     p.Target = home;
                     pl.P[i] = p;
                 }
+                ClearHomes(pl);
                 // undecided face side-on (some away) so arms folded or on the hips read in profile
                 for (int i = 0; i < len; i++)
                 {
@@ -516,6 +517,45 @@ namespace World.Game
         public int NotesHeld(int track) { int n = 0; foreach (var p in _places[track - 2].P) if (p.Note != null) n++; return n; }
         public bool HandoverPending(int track) => _places[track - 2].Recipient != null;
 
+        /// <summary>
+        /// The arc behind a prop can reach into the place's own scenery (the crossing's pool, the quarry face, the healer's
+        /// shelter, the workyard stacks). A home inside a solid can never be reached: the figure is pushed out every frame
+        /// and keeps walking on the spot, so the scene never settles. Nudge the homes out of the solids (with a body's
+        /// width to spare) and apart from each other, a few rounds, so the crowd stands round the scenery instead.
+        /// </summary>
+        void ClearHomes(Place pl)
+        {
+            const float body = 0.45f, gap = 0.8f;
+            var h = new Vector3[pl.P.Length];
+            for (int i = 0; i < h.Length; i++) { h[i] = pl.P[i].Home; h[i].y = 0f; }
+            for (int round = 0; round < 12; round++)
+            {
+                for (int i = 0; i < h.Length; i++)
+                    for (int j = i + 1; j < h.Length; j++)
+                    {
+                        var o = h[j] - h[i]; float m = o.magnitude;
+                        if (m >= gap) continue;
+                        var dir = m > 1e-3f ? o / m : pl.Right;
+                        h[i] -= dir * ((gap - m) * 0.5f); h[j] += dir * ((gap - m) * 0.5f);
+                    }
+                foreach (var s in _solids)
+                    for (int i = 0; i < h.Length; i++)
+                    {
+                        var o = h[i] - s.Key; o.y = 0f; float m = o.magnitude, need = s.Value + body;
+                        if (m >= need) continue;
+                        var dir = m > 1e-3f ? o / m : -pl.Fwd;
+                        h[i] = s.Key + dir * need;
+                    }
+            }
+            for (int i = 0; i < h.Length; i++)
+            {
+                var p = pl.P[i];
+                var home = new Vector3(h[i].x, p.Home.y, h[i].z);
+                p.Home = home; p.Target = home;
+                p.A.transform.position = new Vector3(home.x, pl.Ground, home.z);
+            }
+        }
+
         /// <summary>Moves a figure towards a spot on the ground and turns it, pushing it out of solid props. True while it is still walking or turning.</summary>
         bool MoveActor(Transform t, Vector3 target, float yaw, float speed, float dt, float ground)
         {
@@ -524,9 +564,10 @@ namespace World.Game
             var d = to - pos; float dist = d.magnitude;
             bool moving = dist > 0.12f;
             var before = pos;
+            float step = 0f;
             if (moving)
             {
-                float step = Mathf.Min(dist, speed * dt);
+                step = Mathf.Min(dist, speed * dt);
                 pos += d / dist * step;
                 foreach (var s in _solids)
                 {
@@ -535,8 +576,9 @@ namespace World.Game
                 }
             }
             t.position = pos;
-            // a figure the solid props keep from its spot does not count as still walking
-            if (moving && dist < 1.5f && (pos - before).magnitude < 0.004f) moving = false;
+            // a figure the solid props keep from its spot (it makes almost none of its step) does not count as still
+            // walking, however far the spot is: otherwise the scene would never settle
+            if (moving && step > 0f && (pos - before).magnitude < 0.1f * step) moving = false;
             float want = moving && dist > 0.5f ? YawTo(pos, to) : yaw;
             float cur = t.eulerAngles.y;
             t.rotation = Quaternion.Euler(0, Mathf.MoveTowardsAngle(cur, want, 420f * dt), 0);
@@ -602,8 +644,11 @@ namespace World.Game
             var res = new Vector3(tp.x + flat.x, 0, tp.z + flat.z); res.y = GroundAt(res); return res;
         }
 
-        Vector3 CandidateAnchor => AnchorOnGround(0.15f, 0.86f, 5f, 17f);
-        Vector3 AideAnchor => AnchorOnGround(0.86f, 0.86f, 5f, 17f);
+        /// <summary>Where the candidate (left) and the aide (right) stand: the ground under these screen fractions (u from the
+        /// left, v from the top), between <see cref="AnchorNear"/> and <see cref="AnchorFar"/> metres from the tower.</summary>
+        const float CandidateU = 0.15f, AideU = 0.86f, AnchorV = 0.86f, AnchorNear = 5f, AnchorFar = 17f;
+        Vector3 CandidateAnchor => AnchorOnGround(CandidateU, AnchorV, AnchorNear, AnchorFar);
+        Vector3 AideAnchor => AnchorOnGround(AideU, AnchorV, AnchorNear, AnchorFar);
 
         void SyncCandidate(SettlementCouncil sc, ElectionState e, int shown, float dt)
         {
@@ -756,7 +801,11 @@ namespace World.Game
         {
             var l = new List<TapTarget>();
             var sc = Council; var e = sc?.Election;
-            if (cam == null || e == null || ActiveSeatShown < 0) return l;
+            if (cam == null || e == null || ActiveSeatShown < 0)
+            {
+                Debug.Log("[CouncilDiag2] Targets early-return cam=" + (cam != null) + " e=" + (e != null) + " ActiveSeatShown=" + ActiveSeatShown);
+                return l;
+            }
             bool mine = e.PlayerSeat >= 0 && e.Active == e.PlayerSeat;
             float minR = Mathf.Max(18f, cam.pixelHeight * 0.06f);
             void Add(string name, Vector3 world, float worldRadius)
@@ -768,9 +817,15 @@ namespace World.Game
                 l.Add(new TapTarget { Name = name, Px = new Vector2(sp.x, sp.y), RadiusPx = r, World = world });
             }
             var c = _cand[ActiveSeatShown];
+            if (mine && e.Phase == ElectionPhase.Ready && c == null)
+                Debug.Log("[CouncilDiag2] Targets: mine+Ready but candidate seat " + ActiveSeatShown + " is null");
             if (mine && e.Phase == ElectionPhase.Ready && c != null)
             {
                 var chr = cam.transform.right; chr.y = 0; chr.Normalize();
+                var handWorld = c.transform.position + Vector3.up * 1.75f + chr * 0.85f;
+                var handSp = cam.WorldToScreenPoint(handWorld);
+                if (handSp.z <= 0.1f || handSp.x < 0f || handSp.x > cam.pixelWidth || handSp.y < 0f || handSp.y > cam.pixelHeight)
+                    Debug.Log("[CouncilDiag2] hand off-frustum: sp=" + handSp + " pixelWH=" + cam.pixelWidth + "x" + cam.pixelHeight + " candPos=" + c.transform.position + " camPos=" + cam.transform.position + " camRot=" + cam.transform.rotation.eulerAngles + " fov=" + cam.fieldOfView + " active=" + c.gameObject.activeSelf);
                 Add("hand", c.transform.position + Vector3.up * 1.75f + chr * 0.85f, 0.45f);
                 foreach (var kv in _agents) Add("paw " + kv.Key, kv.Value.A.transform.position + Vector3.up * 1.0f, 0.7f);
                 if (e.HasAdvanced)
@@ -836,11 +891,28 @@ namespace World.Game
             float h = TowerH + 1.2f;
             float dm = dsum / Mathf.Max(1, n);
             // the candidate stands up to 17 m out at the bottom of the picture; the places must sit in the upper part of it
-            float bottom = Mathf.Atan(h / 17f) * Mathf.Rad2Deg + 5f;
+            float bottom = Mathf.Atan(h / AnchorFar) * Mathf.Rad2Deg + 5f;
             float aPlace = Mathf.Atan((h - 1f) / dm) * Mathf.Rad2Deg;
             vfov = Mathf.Max(vfov, 17f, (bottom - aPlace) / 0.78f);
             vfov = Mathf.Min(vfov, 50f);
             pitchDown = Mathf.Clamp(bottom - 0.5f * vfov, 6f, 40f);
+            // That pitch puts a point 17 m out straight ahead in the picture, but the candidate and the aide stand in the
+            // lower corners. In a wide view (all eleven places, or a phone's aspect) the corner rays run far off-axis and
+            // meet the ground well beyond 17 m; the anchor is then pulled back towards the tower, which is below the
+            // bottom edge, and the candidate's hand, seal and notes leave the screen with it (nothing to tap). Tilt down
+            // until both corner rays meet the ground within reach.
+            for (int k = 0; k < 80 && pitchDown < 40f && Mathf.Max(CornerReach(CandidateU, pitchDown, yaw, vfov, asp), CornerReach(AideU, pitchDown, yaw, vfov, asp)) > AnchorFar - 1f; k++)
+                pitchDown = Mathf.Min(40f, pitchDown + 0.5f);
+        }
+
+        /// <summary>Flat distance from the tower at which the ray through screen fraction (u, <see cref="AnchorV"/>) of a
+        /// camera at <see cref="CamPos"/> with this pitch, yaw, vertical field of view and aspect meets the tower's ground.</summary>
+        static float CornerReach(float u, float pitchDown, float yaw, float vfov, float aspect)
+        {
+            float tv = Mathf.Tan(vfov * 0.5f * Mathf.Deg2Rad);
+            var d = Quaternion.Euler(pitchDown, yaw, 0f) * new Vector3((2f * u - 1f) * tv * aspect, (1f - 2f * AnchorV) * tv, 1f);
+            if (d.y > -1e-4f) return float.PositiveInfinity;
+            return (TowerH + 1.2f) / -d.y * new Vector2(d.x, d.z).magnitude;
         }
 
         // ================================================================== views for tests

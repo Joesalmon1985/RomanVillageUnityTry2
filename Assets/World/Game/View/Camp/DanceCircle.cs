@@ -441,8 +441,21 @@ namespace World.Game
             _embers.Clear();
         }
 
+        /// <summary>True when the circle's built state is gone. That happens only in the editor, when scripts are reloaded
+        /// during Play Mode: Unity keeps the component but not its drums, dancers or layout (plain C# objects it does not
+        /// serialize), and <see cref="Current"/> is reset. Nothing can be rebuilt safely mid-play, so the circle stops
+        /// animating (one warning) instead of throwing every frame; the next Play Mode builds it afresh.</summary>
+        private bool StateLost()
+        {
+            if (_drums[1] != null) return false;
+            Debug.LogWarning("[DanceCircle] built state lost (scripts reloaded during Play Mode); the circle stops animating until Play Mode restarts.");
+            enabled = false;
+            return true;
+        }
+
         private void Update()
         {
+            if (StateLost()) return;
             float now = Time.unscaledTime, dt = Time.unscaledDeltaTime;
             float since = now - EffectStarted;
             bool flare = LastEffect == Effect.FireLeap && since < 2.2f;
@@ -541,6 +554,7 @@ namespace World.Game
 
         private void LateUpdate()
         {
+            if (StateLost()) return;
             float now = Time.unscaledTime;
             _v.Clear(); _c.Clear(); _t.Clear(); _cv.Clear(); _cc.Clear(); _ct.Clear();
 

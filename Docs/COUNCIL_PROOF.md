@@ -30,17 +30,17 @@ Pushes per sitting: 3.87. Bust rate: 8.2% of pushes, 31.6% of sittings end in a 
 |---|---|---|---|
 | 1 | Acorn | 520 | 26.0% |
 | 2 | Arrowhead | 491 | 24.6% |
-| 3 | Hearthstone | 483 | 24.1% |
+| 3 | Hearthstone | 483 | 24.2% |
 | 4 | Willow leaf | 506 | 25.3% |
 
 By turn position (0 = the candidate chosen to start, then clockwise):
 
 | Position | Win rate |
 |---|---|
-| 0 | 30.6% |
+| 0 | 30.7% |
 | 1 | 24.8% |
 | 2 | 22.4% |
-| 3 | 22.1% |
+| 3 | 22.2% |
 
 ## B. Listening bursts on their own (4000 scripted bursts per row)
 
@@ -51,7 +51,7 @@ A scripted listener answers each comparison correctly with a fixed chance and a 
 | 50% | 3000 | 15.2% | 3.3% | 53.9 |
 | 70% | 3000 | 43.6% | 16.9% | 74.4 |
 | 80% | 1200 | 74.2% | 31.6% | 91.5 |
-| 80% | 2500 | 73.4% | 33.2% | 86.3 |
+| 80% | 2500 | 73.4% | 33.3% | 86.3 |
 | 80% | 4500 | 34.2% | 33.4% | 80.8 |
 | 90% | 1200 | 92.4% | 59.2% | 97.6 |
 | 90% | 2500 | 91.2% | 58.8% | 94.0 |
