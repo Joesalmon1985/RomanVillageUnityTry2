@@ -10,6 +10,29 @@ Written 12 Nov 2026; rewritten 14 Nov 2026 when the prehistoric refactor was fin
 - **Not done:** nobody has played it by hand or listened to the dance; characters are block figures; the fine graph is still in `BoardTopology` (unused by the rules); the Sims 2 character layer (`Assets/RomanVillage/Probe`, `Assets/Bedsit`, `Assets/ThirdParty/OpenTS2`) is still optional and unused by the game.
 - **Next:** `Docs/NEXT_START_HERE.md` (the ages, the crystals campaign, characters). Do not start it without the owner.
 
+## Session handoff (paused 17 Nov 2026, mid-task — read this first if you're picking up council work)
+
+Owner asked to finish all remaining work, get it onto one branch, and deliver a single exe plus playtest/economy docs. Paused mid-session (owner going to sleep) with real work in flight. Exact state, so the next agent doesn't rediscover any of this:
+
+- **`ages/h1-5` → `historic/main` (in `WorldMVP`, not this worktree): DONE and verified.** Clean merge, commit `b0e58c3`. EditMode 538/538, PlayMode 132/132, both 0 failed. Build to `Builds/Next/WorldMVP.exe` succeeded. 7/8 AutoPlay smoke scripts passed (`council_full` correctly skipped, council not merged yet). `Docs/PROGRESS.md` updated, committed `328c07e`. Not pushed.
+- **Council gestures/readability pass (this worktree, `wt-council`, branch `council/main`): IN PROGRESS, paused, NOT finished.** Three agents worked this in sequence (two Sonnet, one Opus); here's what's real:
+  - `World.Sim.Tests` (EditMode): 519/519 passing, solid.
+  - `World.Game.Tests` (PlayMode) had **11 real failures**, all `CouncilTests`, one connected root cause: rival-turn tap-target/catspaw/lead-state handling going missing. Last known-good AutoPlay check (`council_full`) was observed **passing** again just before work was paused — the fix looks real but the full PlayMode suite had not finished re-running to confirm 0 failures.
+  - A second, separate, genuine bug was found and fixed: `DanceCircle.LateUpdate()` threw `NullReferenceException` when the circle's built state (drums/dancers/layout — plain C# fields, not serialized) was lost to a script reload during Play Mode. This crashed the PlayMode test runner's `ExitPlayModeTask` and broke the whole suite/session every time it happened — fix is `StateLost()` guard added in commit `ffa82c5` (see below), plus a new `Assets/World/Editor/PlayModeReloadGuard.cs`.
+  - **Current HEAD: `ffa82c5`**, a WIP safety commit ("DanceCircle play-mode-reload guard, council tap-target fix in progress") on top of `f281183`. It is NOT finished: `CouncilScene.cs`/`CouncilEncounter.cs` still carry `[CouncilDiag]`/`[CouncilDiag2]` debug logging added while chasing the 11 failures — **strip this before any final commit**, it's not meant to ship.
+  - **Still to do, in order:** (1) re-run PlayMode to a clean 0/109 failures, confirming the tap-target fix is actually complete, not just `council_full`; (2) strip the diagnostic logging; (3) build `Builds/Windows/CouncilPlaytest.exe` (`AgentScripts/BuildWindows.cs` → `RunCouncilPlaytest`); (4) run all 3 AutoPlay smoke scripts (`council_fixture`, `council_full`, `council_decline`) against it; (5) take and review captures at 844x390 and 1920x1080; (6) write the honest readability verdict into `Docs/COUNCIL_UI.md` under "Readability pass (bigger gestures)"; (7) commit for real (don't amend `f281183` or this WIP commit, make a fresh one).
+  - **Owner has approved** merging `council/content` (the workbook dispute-text branch, separate worktree) into `council/main` once the above is done — do that next.
+  - **Then** merge the combined `council/main` into `historic/main` in `WorldMVP`, re-run the full suite there including `council_full` this time, rebuild.
+- **After that**, the owner wants: in-game debug shortcuts for testing each minigame (rhythm party, council election, Ward duel, crystal/earth quest), a single packaged exe, a short Word document with a manual test plan, and a plain-language economy explainer doc. None of this has been started.
+- **Explicitly NOT started, and NOT to be started without the owner:** Crystals Slice 2, characters, full faction economy/military, Modern/Future age missions/worlds (modern and futurist ages don't exist yet at all — don't imply otherwise in anything written for the owner).
+- **CLI gotchas worth knowing before you re-derive them the hard way:**
+  - `unity command test status` always falsely reports `{"status":"no_tests"}` for a `--detach`'d job. Use the top-level `unity job status <job-id>` / `unity job wait <job-id> --timeout <seconds>` instead.
+  - PlayMode runs need `--async-tests true`; after the domain reload, the job id can go invalid ("Job Not Found") even with tracking. If so, poll `unity command console get --tail <N>` for the `[TestResultCollector] Run finished: X passed, Y failed` line instead of re-polling the job.
+  - A plain `unity command test run --mode editor` with no filter has been observed to actually run the PlayMode/`World.Game.Tests` assembly, not `World.Sim.Tests` — always pass `--filter-type assembly --filter "World.Sim.Tests"` explicitly for a real EditMode run and sanity-check which assembly ran.
+  - If a PlayMode run crashes the test runner (as the `DanceCircle` bug did), the editor's test-runner session can stay broken afterward (`Test tree is not available`, `This cannot be used during play mode` errors) — close and reopen the editor rather than trying to push through it.
+  - Stray `Assets/InitTestScene*.unity[.meta]` files are harmless Test Runner scratch artifacts from a crashed/interrupted run — safe to delete, never commit.
+- **Permission system note:** `reg delete` (clearing the remembered window-size registry key) and killing/deleting stuck Unity processes/files directly have both been denied by the permission classifier in this project before. Don't fight it; leave it and tell the owner.
+
 ## Build and run
 
 ```bash
