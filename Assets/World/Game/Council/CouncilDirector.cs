@@ -65,6 +65,21 @@ namespace World.Game
             if (Boot == null) Boot = WorldBootstrap.Instance;
             Boot.Clock.Ticked += OnTicked;
             HomeSettlement = FindHome();
+            bool councilNow =
+#if COUNCIL_PLAYTEST_BUILD
+                true;
+#else
+                Array.IndexOf(Environment.GetCommandLineArgs(), "-councilnow") >= 0;
+#endif
+            if (councilNow)
+            {
+                // Playtest shortcut: skip the approach and drop straight into the brief's example election
+                // (same as the F1 tool's "Stage the example trays" button). Never used by normal play.
+                Disabled = true;
+                CouncilFixture.StageExample(Boot.Sim.State, HomeSettlement, 0);
+                ViewSwitcher.Instance?.SetView(ViewMode.FirstPerson);
+                EncounterDirectory.TryStart(CouncilEncounter.Id, null, HomeSettlement);
+            }
         }
 
         void OnDestroy()
