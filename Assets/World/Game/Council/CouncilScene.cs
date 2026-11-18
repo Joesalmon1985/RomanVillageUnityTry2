@@ -801,11 +801,7 @@ namespace World.Game
         {
             var l = new List<TapTarget>();
             var sc = Council; var e = sc?.Election;
-            if (cam == null || e == null || ActiveSeatShown < 0)
-            {
-                Debug.Log("[CouncilDiag2] Targets early-return cam=" + (cam != null) + " e=" + (e != null) + " ActiveSeatShown=" + ActiveSeatShown);
-                return l;
-            }
+            if (cam == null || e == null || ActiveSeatShown < 0) return l;
             bool mine = e.PlayerSeat >= 0 && e.Active == e.PlayerSeat;
             float minR = Mathf.Max(18f, cam.pixelHeight * 0.06f);
             void Add(string name, Vector3 world, float worldRadius)
@@ -817,15 +813,9 @@ namespace World.Game
                 l.Add(new TapTarget { Name = name, Px = new Vector2(sp.x, sp.y), RadiusPx = r, World = world });
             }
             var c = _cand[ActiveSeatShown];
-            if (mine && e.Phase == ElectionPhase.Ready && c == null)
-                Debug.Log("[CouncilDiag2] Targets: mine+Ready but candidate seat " + ActiveSeatShown + " is null");
             if (mine && e.Phase == ElectionPhase.Ready && c != null)
             {
                 var chr = cam.transform.right; chr.y = 0; chr.Normalize();
-                var handWorld = c.transform.position + Vector3.up * 1.75f + chr * 0.85f;
-                var handSp = cam.WorldToScreenPoint(handWorld);
-                if (handSp.z <= 0.1f || handSp.x < 0f || handSp.x > cam.pixelWidth || handSp.y < 0f || handSp.y > cam.pixelHeight)
-                    Debug.Log("[CouncilDiag2] hand off-frustum: sp=" + handSp + " pixelWH=" + cam.pixelWidth + "x" + cam.pixelHeight + " candPos=" + c.transform.position + " camPos=" + cam.transform.position + " camRot=" + cam.transform.rotation.eulerAngles + " fov=" + cam.fieldOfView + " active=" + c.gameObject.activeSelf);
                 Add("hand", c.transform.position + Vector3.up * 1.75f + chr * 0.85f, 0.45f);
                 foreach (var kv in _agents) Add("paw " + kv.Key, kv.Value.A.transform.position + Vector3.up * 1.0f, 0.7f);
                 if (e.HasAdvanced)

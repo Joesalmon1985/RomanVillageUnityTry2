@@ -31,6 +31,8 @@ Owner asked to finish all remaining work, get it onto one branch, and deliver a 
   - A plain `unity command test run --mode editor` with no filter has been observed to actually run the PlayMode/`World.Game.Tests` assembly, not `World.Sim.Tests` — always pass `--filter-type assembly --filter "World.Sim.Tests"` explicitly for a real EditMode run and sanity-check which assembly ran.
   - If a PlayMode run crashes the test runner (as the `DanceCircle` bug did), the editor's test-runner session can stay broken afterward (`Test tree is not available`, `This cannot be used during play mode` errors) — close and reopen the editor rather than trying to push through it.
   - Stray `Assets/InitTestScene*.unity[.meta]` files are harmless Test Runner scratch artifacts from a crashed/interrupted run — safe to delete, never commit.
+  - `--filter-type` only accepts `testName`, `assembly` or `category`. Anything else (e.g. `test`) makes a `--detach`'d job "complete" instantly with 0 tests; the real error ("Invalid filterType") shows only in `unity job status <id> --json`. One test: `--filter-type testName --filter "World.Game.Tests.CouncilTests.<Name>"`.
+  - Old `[TestResultCollector] Run finished: ...` lines stay in the console across runs, so a grep of `console get --tail N` can match a previous run's result. Always check the entry's `timestampUtc` is after the run's own `Run started` line.
 - **Permission system note:** `reg delete` (clearing the remembered window-size registry key) and killing/deleting stuck Unity processes/files directly have both been denied by the permission classifier in this project before. Don't fight it; leave it and tell the owner.
 
 ## Build and run

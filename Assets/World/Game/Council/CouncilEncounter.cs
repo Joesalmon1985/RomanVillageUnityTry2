@@ -256,14 +256,7 @@ namespace World.Game
             string target;
             if (View == ViewKind.Forward) target = CouncilScene.Pick(Scene.Targets(_cam), screenBL);
             else target = LeftTargetAt(L.ToSafe(screenBL, Screen.width, Screen.height));
-            if (target == null)
-            {
-                var dbgT = Scene.Targets(_cam);
-                Debug.Log("[CouncilDiag] TapScreen miss at " + screenBL + " view=" + View + " cam=" + (_cam != null) +
-                    " camPixelWH=" + (_cam != null ? _cam.pixelWidth + "x" + _cam.pixelHeight : "-") +
-                    " inTransition=" + InTransition + " targetsCount=" + dbgT.Count + " names=[" + string.Join(",", dbgT.ConvertAll(t => t.Name)) + "]");
-                return false;
-            }
+            if (target == null) return false;
             LastTarget = target;
             float now = Time.unscaledTime;
             if (now < _lockUntil || InTransition || Hud.MenuOpen) return true; // swallowed: a held tap or a tap during a camera turn
@@ -325,9 +318,7 @@ namespace World.Game
         {
             if (View == ViewKind.Forward)
             {
-                var dbgT2 = Scene.Targets(_cam);
-                foreach (var t in dbgT2) if (t.Name == name) return TapScreen(t.Px);
-                Debug.Log("[CouncilDiag] TapTarget \"" + name + "\" not in list, count=" + dbgT2.Count + " names=[" + string.Join(",", dbgT2.ConvertAll(t => t.Name)) + "]");
+                foreach (var t in Scene.Targets(_cam)) if (t.Name == name) return TapScreen(t.Px);
                 return false;
             }
             Rect r = default; bool found = false;

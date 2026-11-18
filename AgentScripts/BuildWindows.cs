@@ -24,11 +24,12 @@ public static class BuildWindows
     /// </summary>
     public const string CouncilOutput = "Builds/Windows/CouncilPlaytest.exe";
 
-    public static string RunCouncilPlaytest() => Run(CouncilOutput, "Council Playtest", new[] { "COUNCIL_PLAYTEST_BUILD" });
+    public static string RunCouncilPlaytest() => Build(CouncilOutput, "Council Playtest", new[] { "COUNCIL_PLAYTEST_BUILD" });
 
-    public static string Run() => Run(Output, "WorldMVP", null);
+    public static string Run() => Build(Output, "WorldMVP", null);
 
-    private static string Run(string output, string productName, string[] extraDefines)
+    // not an overload of Run: the CLI's script runner refuses overloaded entry points
+    private static string Build(string output, string productName, string[] extraDefines)
     {
         string prevProductName = PlayerSettings.productName;
         PlayerSettings.productName = productName;

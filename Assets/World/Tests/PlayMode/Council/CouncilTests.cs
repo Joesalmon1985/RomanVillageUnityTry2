@@ -252,10 +252,18 @@ namespace World.Game.Tests
             yield return Until(() => E.Active == E.PlayerSeat && E.Phase != ElectionPhase.Complete, 60f, "the player's turn again");
             CouncilEncounter.AiDelay = 600f;
             yield return WaitReady();
-            yield return Until(() => Enc.Scene.ViewMismatch(Sc) == null, 15f, "the village re-formed for the player");
-            int settled = 0; for (int t = 2; t <= 12; t++) { Enc.Scene.Counts(t, out int s, out _, out _); settled += s; }
-            int banked = 0; for (int t = 2; t <= 12; t++) banked += E.BankedAt(0, t);
-            Assert.AreEqual(banked, settled, "as many people stand with the candidate as the banked places");
+            // after a rival's bank the village holds that rival's standing for a few seconds (HoldShown) before it turns back
+            yield return Until(() => Enc.Scene.ActiveSeatShown == E.PlayerSeat && Enc.Scene.ViewMismatch(Sc) == null, 15f, "the village re-formed for the player");
+            // a rival may have secured a dispute (banked a whole track) between the player's turns; a secured place shows
+            // everyone settled whoever holds it (CouncilScene.Expected), so only the unclaimed places measure banked support
+            int settled = 0, banked = 0;
+            for (int t = 2; t <= 12; t++)
+            {
+                if (E.Claimed[t - 2] >= 0) continue;
+                Enc.Scene.Counts(t, out int s, out _, out _); settled += s;
+                banked += E.BankedAt(E.PlayerSeat, t);
+            }
+            Assert.AreEqual(banked, settled, "as many people stand with the candidate as the banked places (unclaimed)");
             Assert.Greater(settled, 0);
         }
 
