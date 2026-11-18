@@ -1,0 +1,112 @@
+"""Generates the plague graph of Docs/PRD_GODBOARD.md (PL-1 to PL-4, Appendix B).
+
+Self-contained: hex coordinates are axial (q, r) as in Assets/World/Sim/Board/BoardGenerator.cs, world X = 103.923 (q + r/2),
+Z = 90 r (metres, island centre at 0, 0). Regions, two-node hexes and crossings are authored tables below; only the trails
+inside each region are generated (seeded). Run:  python -I Tools/godboard/plague_graph.py
+Writes Docs/godboard_plague_graph.json and prints the Appendix B markdown.
+"""
+import json, math, os, random
+
+ELEMENTS = ["Earth", "Fire", "Water", "Air"]
+# The 38 resource hexes by region (owner Q-2, 18 Nov 2026: the Air route's north-east mountains belong to Air).
+REGIONS = {
+    0: [(-3, -1), (-2, -1), (-1, -1), (-1, -2), (-3, 0), (-2, 0), (-1, 0), (-3, 1), (-3, 2), (-3, 3)],
+    1: [(3, -3), (3, -2), (3, -1), (2, -1), (3, 0), (2, 0), (1, 0), (0, 1)],
+    2: [(2, -4), (0, -3), (1, -3), (0, -2), (1, -2), (2, -2), (1, -1), (0, 0)],
+    3: [(-2, 1), (-1, 1), (1, 1), (2, 1), (-2, 2), (-1, 2), (0, 2), (1, 2), (-2, 3), (-1, 3), (0, 3), (-2, 4)],
+}
+# Hexes that carry two nodes, so that every region has 12.
+DOUBLE = [(1, 0), (2, 0), (3, 0), (2, -1), (0, 0), (1, -1), (1, -2), (0, -2), (-1, -1), (-3, 0)]
+# Crossings between regions: (hex a, hex b, kind) with kind 1 = pass, 2 = tunnel. Every pair of regions is joined.
+CROSSINGS = [
+    ((2, -1), (2, -2), 1),   # Fire-Water
+    ((0, -2), (-1, -2), 1),  # Water-Earth, south
+    ((0, 0), (-1, 0), 1),    # Water-Earth, centre
+    ((-2, 0), (-2, 1), 1),   # Earth-Air, by the Ash Clan
+    ((3, 0), (2, 1), 1),     # Fire-Air, onto the mountain shoulder
+    ((0, 0), (-1, 1), 1),    # Water-Air, centre
+    ((-1, -1), (1, 0), 2),   # Earth-Fire, the Old Quarry tunnel under the home camp
+]
+SEED, TARGET_TRAILS_INSIDE = 11, 66
+
+
+def xz(q, r):
+    return 103.923 * (q + r / 2), 90.0 * r
+
+
+def main():
+    region_of = {h: k for k, hs in REGIONS.items() for h in hs}
+    assert len(region_of) == 38
+    nodes = []
+    for k in range(4):
+        for q, r in REGIONS[k]:
+            x, z = xz(q, r)
+            if (q, r) in DOUBLE:
+                a = math.atan2(z, x) + math.pi / 2 if (q, r) != (0, 0) else 0.0
+                for s in (-1, 1):
+                    nodes.append(dict(q=q, r=r, k=k, x=x + s * 20 * math.cos(a), z=z + s * 20 * math.sin(a)))
+            else:
+                nodes.append(dict(q=q, r=r, k=k, x=x, z=z))
+    for k in range(4):
+        assert sum(1 for n in nodes if n["k"] == k) == 12, k
+    n = len(nodes)
+    dist = lambda i, j: math.hypot(nodes[i]["x"] - nodes[j]["x"], nodes[i]["z"] - nodes[j]["z"])
+    rng = random.Random(SEED)
+    cand = sorted((dist(i, j) * (1 + .25 * rng.random()), i, j) for i in range(n) for j in range(i + 1, n)
+                  if nodes[i]["k"] == nodes[j]["k"] and dist(i, j) < 140)
+    par = list(range(n))
+
+    def find(a):
+        while par[a] != a:
+            par[a] = par[par[a]]
+            a = par[a]
+        return a
+    edges, deg = [], [0] * n
+    for _, i, j in cand:
+        if find(i) != find(j):
+            par[find(i)] = find(j)
+            edges.append((i, j, 0)); deg[i] += 1; deg[j] += 1
+    for _, i, j in cand:
+        if len(edges) >= TARGET_TRAILS_INSIDE:
+            break
+        if any(a == i and b == j for a, b, _ in edges) or deg[i] >= 4 or deg[j] >= 4:
+            continue
+        if (deg[i] == 1 or deg[j] == 1) and rng.random() < .6:
+            continue
+        edges.append((i, j, 0)); deg[i] += 1; deg[j] += 1
+    for ha, hb, kind in CROSSINGS:
+        ia = [i for i, m in enumerate(nodes) if (m["q"], m["r"]) == ha]
+        ib = [i for i, m in enumerate(nodes) if (m["q"], m["r"]) == hb]
+        i, j = min(((i, j) for i in ia for j in ib), key=lambda p: dist(*p))
+        edges.append((i, j, kind)); deg[i] += 1; deg[j] += 1
+    par = list(range(n))
+    for i, j, _ in edges:
+        par[find(i)] = find(j)
+    assert len({find(i) for i in range(n)}) == 1, "graph not connected"
+    out = {"nodes": [dict(id=i + 1, element=ELEMENTS[m["k"]], q=m["q"], r=m["r"], x=round(m["x"], 1), z=round(m["z"], 1))
+                     for i, m in enumerate(nodes)],
+           "trails": [dict(a=i + 1, b=j + 1, kind=["trail", "pass", "tunnel"][k]) for i, j, k in edges]}
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    with open(os.path.join(root, "Docs", "godboard_plague_graph.json"), "w", encoding="utf-8", newline="\n") as f:
+        json.dump(out, f, indent=1)
+    dead = sum(1 for x in deg if x == 1)
+    print(f"<!-- nodes {n}, trails {len(edges)} ({len(edges) - len(CROSSINGS)} inside, {len(CROSSINGS)} crossings), "
+          f"degree {min(deg)}-{max(deg)}, dead ends {dead} -->")
+    rows = [f"| {i + 1} | {ELEMENTS[m['k']]} | ({m['q']}, {m['r']}) | {m['x']:.1f} | {m['z']:.1f} " for i, m in enumerate(nodes)]
+    print("| Node | Element | Hex | X | Z | Node | Element | Hex | X | Z |\n|---|---|---|---|---|---|---|---|---|---|")
+    for i in range(24):
+        print(rows[i] + rows[i + 24] + "|")
+    inside = sorted((min(i, j) + 1, max(i, j) + 1) for i, j, k in edges if k == 0)
+    print(f"\n**Trails inside regions ({len(inside)}):** " + ", ".join(f"{a}-{b}" for a, b in inside) + ".\n")
+    print(f"**Crossings ({len(CROSSINGS)}):**\n")
+    for i, j, k in edges:
+        if k:
+            a, b = nodes[i], nodes[j]
+            print(f"- {ELEMENTS[a['k']]}–{ELEMENTS[b['k']]} {'tunnel (Old Quarry)' if k == 2 else 'pass'}: "
+                  f"node {i + 1} on ({a['q']}, {a['r']}) to node {j + 1} on ({b['q']}, {b['r']}).")
+    print("\nHexes with two nodes: " + ", ".join(f"({q}, {r})" for q, r in DOUBLE) + ".")
+    print(f"\nDead ends: {dead}.")
+
+
+if __name__ == "__main__":
+    main()
