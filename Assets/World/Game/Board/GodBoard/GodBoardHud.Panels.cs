@@ -297,7 +297,7 @@ namespace World.Game
         {
             var offers = IncomingOffers();
             var own = OwnOpenOffer();
-            const float CW = 226f, CH = 78f;
+            const float CW = 226f, CH = 84f;
             float y = 390f - 6f - CH;
             if (_u > 0f) { }
             int shown = Mathf.Min(2, offers.Count);
@@ -313,13 +313,13 @@ namespace World.Game
                 FillNoHit(new Rect(r.x + 8f * _u, r.y + 3f * _u, (r.width - 12f * _u) * frac, 4f * _u), frac > 0.3f ? new Color(0.95f, 0.72f, 0.30f) : new Color(0.9f, 0.3f, 0.2f));
                 Text(new Rect(r.x + 10f * _u, r.y + 8f * _u, r.width - 50f * _u, 16f * _u), _d.PeopleShort(o.From) + " offer a trade", 11f, UiStyle.TextColor, true);
                 Text(new Rect(r.xMax - 44f * _u, r.y + 8f * _u, 40f * _u, 16f * _u), Mathf.CeilToInt(o.TicksLeft / (float)WorldSim.TicksPerSecond) + " s", 10f, Soft, false, TextAnchor.MiddleRight);
-                Text(new Rect(r.x + 10f * _u, r.y + 24f * _u, 44f * _u, 16f * _u), "You get", 10f, Soft);
-                GoodsRow(new Rect(r.x + 56f * _u, r.y + 24f * _u, 170f * _u, 16f * _u), o.Give, 10f);
-                Text(new Rect(r.x + 10f * _u, r.y + 40f * _u, 44f * _u, 16f * _u), "You give", 10f, Soft);
-                GoodsRow(new Rect(r.x + 56f * _u, r.y + 40f * _u, 170f * _u, 16f * _u), o.Get, 10f);
+                Text(new Rect(r.x + 10f * _u, r.y + 22f * _u, 44f * _u, 16f * _u), "You get", 10f, Soft);
+                GoodsRow(new Rect(r.x + 56f * _u, r.y + 22f * _u, 170f * _u, 16f * _u), o.Give, 10f);
+                Text(new Rect(r.x + 10f * _u, r.y + 37f * _u, 44f * _u, 16f * _u), "You give", 10f, Soft);
+                GoodsRow(new Rect(r.x + 56f * _u, r.y + 37f * _u, 170f * _u, 16f * _u), o.Get, 10f);
                 bool afford = TableRules.CanPay(t.Peoples[_d.Human].Hand, o.Get);
-                if (Button(new Rect(r.x + 10f * _u, r.y + 50f * _u, 98f * _u, 26f * _u), afford ? "Accept" : "Cannot pay", afford && !GameOverShown, 11f)) AnswerOffer(o.Id, true);
-                if (Button(new Rect(r.x + 114f * _u, r.y + 50f * _u, 98f * _u, 26f * _u), "Decline", !GameOverShown, 11f)) AnswerOffer(o.Id, false);
+                if (Button(new Rect(r.x + 10f * _u, r.y + 55f * _u, 98f * _u, 26f * _u), afford ? "Accept" : "Cannot pay", afford && !GameOverShown, 11f)) AnswerOffer(o.Id, true);
+                if (Button(new Rect(r.x + 114f * _u, r.y + 55f * _u, 98f * _u, 26f * _u), "Decline", !GameOverShown, 11f)) AnswerOffer(o.Id, false);
                 y -= CH + 4f;
             }
             if (offers.Count > shown)
