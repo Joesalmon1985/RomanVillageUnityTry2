@@ -22,7 +22,7 @@ namespace World.Game
         /// <summary>Why the last start failed (sentence), or null.</summary>
         public static string LastError { get; private set; }
         /// <summary>The starts that can be built now.</summary>
-        public static IReadOnlyList<string> Ids => ScenarioStarts.Ids;
+        public static IReadOnlyList<string> Ids { get { var l = new List<string>(ScenarioStarts.Ids); l.Add(GodBoardStart.Id); return l; } }
 
         private static WorldSim s_pending;
         private static string s_pendingId;
@@ -64,7 +64,7 @@ namespace World.Game
             var sim = s_pending;
             Current = sim != null ? s_pendingId : null;
             s_pending = null; s_pendingId = null;
-            if (sim != null) Debug.Log("[DevStart] " + Current + ": tick " + sim.State.Tick + ", era " + AgesApi.Current(sim.State) + ", mode " + AgesApi.Mode(sim.State));
+            if (sim != null) Debug.Log("[DevStart] " + Current + ": tick " + sim.State.Tick + ", era " + AgesApi.Current(sim.State) + ", mode " + AgesApi.Mode(sim.State) + ", ruleset " + sim.State.Ruleset);
             return sim;
         }
 
@@ -74,7 +74,7 @@ namespace World.Game
             try
             {
                 float t0 = Time.realtimeSinceStartup;
-                var sim = ScenarioStarts.Create(id, seed);
+                var sim = id == GodBoardStart.Id ? GodBoardStart.Create(seed) : ScenarioStarts.Create(id, seed);
                 if (sim == null) { LastError = "There is no developer start called \"" + id + "\"."; return null; }
                 Debug.Log("[DevStart] built " + id + " (seed " + seed + ") in " + (Time.realtimeSinceStartup - t0).ToString("0.0") + " s");
                 return sim;
