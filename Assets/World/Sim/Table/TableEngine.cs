@@ -634,7 +634,13 @@ namespace World.Sim.Table
         }
 
         /// <summary>After any change on the board: longest road, points, and the end of the age (TU-6, TU-7).</summary>
-        private void AfterChange(WorldState s, EventBuffer ev)
+        private void AfterChange(WorldState s, EventBuffer ev) => AfterChange(s, ev, Seams);
+
+        /// <summary>
+        /// Static form for callers without an engine (TableGrants). With seams null, OnAgeEnded is not invoked: a grant that
+        /// ends the age must be followed by the GodBoard wiring's own age-end handling (see Docs/progress/INTEGRATION.md).
+        /// </summary>
+        internal static void AfterChange(WorldState s, EventBuffer ev, TableSeams seams)
         {
             var t = s.Table;
             var tu = t.Tuning;
@@ -676,7 +682,7 @@ namespace World.Sim.Table
                 t.Phase = TablePhase.Ended;
                 ExpireOffers(t, ev);
                 ev.Add(new AgeEnded { Winner = top, Points = topPts });
-                Seams.OnAgeEnded?.Invoke(s, top, ev);
+                seams?.OnAgeEnded?.Invoke(s, top, ev);
             }
         }
 

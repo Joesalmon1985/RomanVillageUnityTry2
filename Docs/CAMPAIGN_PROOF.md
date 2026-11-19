@@ -187,7 +187,7 @@ The absent player says "Go on without me" at the start and stays away until Mira
 | 19:13 | Stone to stone. Hold still, all of you. |
 | 19:13 | Mira set the Deepstone in the Rooted Tower. The tower is lit. |
 
-**F2, the Deepstone stolen (the "Ash got there first" test start: `DevRivalNextStep` at the start, seed 1).** Mira followed the trail alone to Dolm's threshold at 13:17, waited, and withdrew to the survey gallery at 14:47 (90 s later). With no other lead open she went back and held at the threshold from 21:41 ("Mira stands ready at the Tally Vault."). Tansy was sent out 8 time(s) while the player was away. The player rejoined at 22:11; the fight was committed at 24:12, won, and the Deepstone restored at 26:00.
+**F2, the Deepstone stolen (the "Ash got there first" test start: `DevRivalNextStep` at the start, seed 1).** Mira followed the trail alone to Dolm's threshold at 13:17, waited, and withdrew to the survey gallery at 14:47 (90 s later). With no other lead open she went back and held at the threshold from 21:41 ("Mira stands ready at the Tally Vault."). Tansy was sent out 8 time(s) while the player was away. The player rejoined at 22:11; the fight was committed at 24:29, won, and the Deepstone restored at 26:17.
 
 **F3, the riddle (skeleton, seed 1).** At the wind cairn the question was put with nobody to answer it. Mira went to look for the answer at 5:28, studied the carving (5:49), came back and answered correctly by herself (`ByPlayer = False`). She took 4 unguarded crystals alone, restored none, and waited ("Mira is waiting for you at the Whistling Tower."); the player rejoined at 7:30 (expedition progress 4510) and the run went on to `restored` at 14:40.
 
@@ -427,7 +427,7 @@ An overrun decided at least one crystal in 16 of 44 whole campaigns (the twin wi
 
 ## I. Conservation and idempotence
 
-Every run of this report (254 runs, 4,310,577 ticks) was checked on every tick by the driver, and none broke a rule:
+Every run of this report (254 runs, 4,310,745 ticks) was checked on every tick by the driver, and none broke a rule:
 
 - **Custody in exactly one state.** Each of the four crystals is always in one of the five custody states, at the place that state means (on its site while AtSite or RivalTransit, on its plan step's altar while AtRivalAltar, at its tower when Restored), and only changes through a `CrystalCustodyChanged` whose `From` is the state it was in. Nothing leaves Restored; a carried crystal only becomes Restored (never lost, even in the retreats and overruns of these runs). Four crystals in every state: none lost.
 - **Attempts resolved once.** No attempt id is recorded or resolved twice; every second `ResolveEncounter` sent in sections C and D was refused with `already_resolved`.
