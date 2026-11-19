@@ -7,18 +7,18 @@ using World.Sim.Table;
 namespace World.Game
 {
     /// <summary>
-    /// The god board's on-screen controls (GB-3), the start of G1-6: the turn ribbon with points per people, the player's hand
-    /// (counts per good with icons, never numbers on hexes), the hourglass as a shrinking bar, "End turn" and "Return to the
-    /// world", the adviser switch, zoom buttons, the event feed and a status line. IMGUI, laid out for a 390 px tall phone
-    /// landscape (844 x 390) and scaled by Screen.height / 390; all targets are at least 28 design pixels tall (about 28 px at
-    /// 844 x 390). Mouse and touch both work (IMGUI takes touches as presses).
-    /// G1-6 fills <see cref="TradePanel"/> (trade panel, offer cards, cost card) into <see cref="TradeArea"/>.
+    /// The god board's on-screen controls (G1-6b layout, from <c>Docs/GODBOARD_UI.md</c>): people panels across the top with a
+    /// points badge and the hourglass ring on the active one, the hand as a fan of goods cards at the bottom centre, the
+    /// costs card and spare-piece stacks at the bottom left, one big round hourglass button at the bottom right, small round
+    /// icon buttons along the top right, a collapsible log at the bottom left, toasts and big moment cards. The trade and
+    /// discard modals, offer cards and the end panel are in the other parts. IMGUI in design pixels, scaled by
+    /// Screen.height / 390; touch and mouse both work. No numbers on hexes, no odds.
     /// </summary>
     public sealed partial class GodBoardHud : MonoBehaviour
     {
-        /// <summary>The free region (design pixels from the right and bottom edges) reserved for the trade panel and offer cards (G1-6).</summary>
+        /// <summary>The free region (design pixels from the right and bottom edges) reserved for other components' controls (kept for the older hook).</summary>
         public static readonly Vector2 TradeAreaSize = new Vector2(230f, 150f);
-        /// <summary>G1-6 hook: draws the trade panel into the given rect (screen pixels, GUI space). Null until G1-6.</summary>
+        /// <summary>Older hook: draws into the given rect (screen pixels, GUI space). Null unless something sets it.</summary>
         public static Action<Rect> TradePanel;
 
         public static readonly Color[] GoodColours =
@@ -35,13 +35,20 @@ namespace World.Game
 
         /// <summary>The rects drawn last frame (GUI space, y from the top): presses inside them are not board presses.</summary>
         public IReadOnlyList<Rect> Rects => _rects;
-        /// <summary>Texts drawn last frame (tests and captures).</summary>
+        /// <summary>Texts drawn last frame (tests and captures). Buttons appear as [name].</summary>
         public readonly List<string> Texts = new List<string>();
+
+        /// <summary>The log tab (bottom left) is open.</summary>
+        public bool LogOpen { get; private set; }
+        private int _logSeen;
 
         private void Awake() { _d = GetComponent<GodBoardDirector>(); }
 
         /// <summary>Other components' controls on the board (the plague toggle, G2-2): presses inside them are not board presses.</summary>
         public static Func<Vector2, bool> ExtraOver;
+        /// <summary>The plague overlay's toggle (G2-2), drawn here as a round icon at slot 2 when the plague module sets these.</summary>
+        public static Func<bool> PlagueIsOn;
+        public static Action PlagueToggle;
 
         public bool Over(Vector2 screenPos)
         {
@@ -53,11 +60,17 @@ namespace World.Game
 
         public Rect TradeArea => new Rect(Screen.width - (TradeAreaSize.x + 6f) * _u, Screen.height - (TradeAreaSize.y + 6f) * _u, TradeAreaSize.x * _u, TradeAreaSize.y * _u);
 
+        /// <summary>Slot k of the small round icon buttons along the top-right edge (0 is the rightmost): the same place for the plague toggle.</summary>
+        public static Rect TopIcon(int slot, float u) => new Rect(Screen.width - (6f + 30f + slot * 35f) * u, 6f * u, 30f * u, 30f * u);
+
+        public void SetLogOpen(bool open) { LogOpen = open; if (open) _logSeen = _d.FeedTotal; }
+
         // ---------------------------------------------------------------- drawing helpers (design pixels)
 
         private Rect R(float x, float y, float w, float h) => new Rect(x * _u, y * _u, w * _u, h * _u);
         private Rect RR(float fromRight, float y, float w, float h) => new Rect(Screen.width - (fromRight + w) * _u, y * _u, w * _u, h * _u);
         private Rect RB(float x, float fromBottom, float w, float h) => new Rect(x * _u, Screen.height - (fromBottom + h) * _u, w * _u, h * _u);
+        private Rect RRB(float fromRight, float fromBottom, float w, float h) => new Rect(Screen.width - (fromRight + w) * _u, Screen.height - (fromBottom + h) * _u, w * _u, h * _u);
 
         private void Styles()
         {
@@ -78,15 +91,17 @@ namespace World.Game
             FillNoHit(new Rect(r.x, r.y, th, r.height), c); FillNoHit(new Rect(r.xMax - th, r.y, th, r.height), c);
         }
 
-        private void Text(Rect r, string s, float size, Color c, bool bold = false, TextAnchor a = TextAnchor.MiddleLeft)
+        private void Text(Rect r, string s, float size, Color c, bool bold = false, TextAnchor a = TextAnchor.MiddleLeft, bool wrap = false)
         {
             var st = bold ? _bold : _label;
             st.fontSize = Mathf.Max(8, Mathf.RoundToInt(size * _u));
             st.alignment = a;
-            st.normal.textColor = new Color(0, 0, 0, 0.9f);
+            st.wordWrap = wrap;
+            st.normal.textColor = new Color(0, 0, 0, 0.9f * c.a);
             GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), s, st);
             st.normal.textColor = c;
             GUI.Label(r, s, st);
+            st.wordWrap = false;
             Texts.Add(s);
         }
 
@@ -99,6 +114,13 @@ namespace World.Game
             GUI.enabled = old;
             Texts.Add("[" + s + "]");
             return hit;
+        }
+
+        /// <summary>An invisible press area over a rect (it still blocks board presses).</summary>
+        private bool Tap(Rect r, bool enabled = true, bool force = false)
+        {
+            _rects.Add(r);
+            return GUI.Button(r, GUIContent.none, GUIStyle.none) && enabled && (!_under || force);
         }
 
         // ---------------------------------------------------------------- icons
@@ -162,7 +184,7 @@ namespace World.Game
             return _icons[g];
         }
 
-        private void OnDestroy() { if (_icons != null) foreach (var t in _icons) if (t != null) Destroy(t); }
+        private void OnDestroy() { if (_icons != null) foreach (var t in _icons) if (t != null) Destroy(t); ArtDestroy(); }
 
         // ---------------------------------------------------------------- the HUD
 
@@ -176,42 +198,90 @@ namespace World.Game
             var s = _d.S; var t = _d.T;
             float W = Screen.width / _u;
             _under = DiscardVisible || GameOverShown;
-            Ribbon(s, t);
-            Status(s, t);
-            Controls(t, W);
-            Hand(s, t);
-            Feed();
+            if (LogOpen) _logSeen = _d.FeedTotal;
+            People(s, t);
+            Status(s, t, W);
+            IconRow(t);
+            Costs(s, t);
+            Stacks(s, t);
+            Hand(s, t, W);
+            HourglassButton(t);
+            Toasts(W);
+            LogTab();
             OfferCards(s, t);
             if (TradeOpen && !GameOverShown) TradeModal(s, t, W);
             if (DiscardVisible) DiscardModal(s, t, W);
-            EpidemicBanner(W);
+            MomentCardDraw(W);
             if (GameOverShown) GameOverModal(s, t, W);
             if (TradePanel != null) TradePanel(TradeArea);
         }
 
-        private void Ribbon(WorldState s, TableState t)
+        // ---------------------------------------------------------------- people panels
+
+        private const float PanelW = 156f, PanelH = 42f;
+
+        private int SoldiersOf(WorldState s, int p)
+        {
+            int n = 0;
+            var l = s.War != null ? s.War.Soldiers : null;
+            if (l != null) foreach (var x in l) if (x.People == p) n++;
+            return n;
+        }
+
+        private void People(WorldState s, TableState t)
         {
             var order = new List<int>();
             if (t.Phase == TablePhase.Main || t.Phase == TablePhase.Discard) order.AddRange(t.TurnOrder);
             if (order.Count == 0) for (int p = 0; p < t.PeopleCount; p++) order.Add(p);
-            float x = 6f;
             for (int i = 0; i < order.Count; i++)
             {
                 int p = order[i];
-                var r = R(x, 6f, 98f, 32f);
-                Fill(r, new Color(0.08f, 0.07f, 0.06f, 0.78f));
-                People pe = null; foreach (var q in s.Peoples) if (q.Id == p) pe = q;
-                var col = pe != null ? TempleView.PeopleColour(pe) : Color.white;
-                FillNoHit(R(x, 6f, 7f, 32f), col);
-                bool current = t.Current == p && !t.Paused && t.Phase != TablePhase.NotOpened;
-                if (current) Frame(r, new Color(1f, 0.85f, 0.3f), Mathf.Max(2f, 2f * _u));
-                Text(R(x + 10f, 7f, 86f, 15f), _d.PeopleShort(p), 11f, UiStyle.TextColor, true);
-                int pts = p < _d.Points.Length ? _d.Points[p] : 0;
+                bool current = t.Current == p && !t.Paused && t.Phase != TablePhase.NotOpened && t.Phase != TablePhase.Ended;
+                float x = 6f + i * (PanelW + 3f), y = current ? 2f : 8f, h = current ? PanelH + 5f : PanelH;
+                var r = R(x, y, PanelW, h);
+                var col = PeopleCol(p);
+                Fill(r, new Color(0.08f, 0.07f, 0.06f, current ? 0.92f : 0.78f));
+                FillNoHit(new Rect(r.x, r.y, r.width, 4f * _u), col);
+                FillNoHit(new Rect(r.x, r.y, 4f * _u, r.height), col);
+                if (current) Frame(r, Gold, Mathf.Max(2f, 2f * _u));
+                // emblem: a banner disc with the first letter
+                var em = Sub(r, _u, 8f, 10f, 22f, 22f);
+                Disc(new Rect(em.x - _u, em.y - _u, em.width + 2f * _u, em.height + 2f * _u), new Color(0.96f, 0.92f, 0.82f));
+                Disc(em, col);
+                string nm = _d.PeopleShort(p);
+                Text(em, nm.Length > 0 ? nm.Substring(0, 1) : "?", 12f, Color.white, true, TextAnchor.MiddleCenter);
+                Text(Sub(r, _u, 34f, 4f, 56f, 15f), nm, 11f, UiStyle.TextColor, true);
+                // small counters: cards held, longest road, soldiers
                 int cards = TableRules.HandSize(t.Peoples[p].Hand);
-                string sub = p == _d.Human ? pts + " pts" : pts + " pts, " + cards + " cards";
-                Text(R(x + 10f, 22f, 86f, 15f), sub, 10f, new Color(0.9f, 0.86f, 0.75f));
-                x += 100f;
+                float cx = 34f, cy = 22f + (current ? 3f : 0f);
+                Counter(r, cx, cy, GCard, cards.ToString());
+                Counter(r, cx + 29f, cy, GRoad, t.Peoples[p].RoadLength.ToString());
+                Counter(r, cx + 58f, cy, GHelmet, SoldiersOf(s, p).ToString());
+                // the points badge with the hourglass ring round it
+                var bc = new Vector2(r.xMax - 22f * _u, r.y + (current ? 25f : 22f) * _u);
+                float br = 16f * _u;
+                if (current)
+                {
+                    float frac = t.Current == _d.Human && t.Phase == TablePhase.Main ? Mathf.Clamp01(t.Sand / (float)t.Tuning.TurnCapTicks) : 1f;
+                    Arc(bc, br + 3.5f * _u, 3.5f * _u, 1f, new Color(0.25f, 0.22f, 0.16f));
+                    Arc(bc, br + 3.5f * _u, 3.5f * _u, frac, frac > 0.3f ? Gold : new Color(0.95f, 0.3f, 0.2f));
+                }
+                Disc(new Rect(bc.x - br - _u, bc.y - br - _u, 2f * br + 2f * _u, 2f * br + 2f * _u), new Color(0.96f, 0.92f, 0.82f));
+                Disc(new Rect(bc.x - br, bc.y - br, 2f * br, 2f * br), Color.Lerp(col, Color.black, 0.25f));
+                Text(new Rect(bc.x - br, bc.y - br, 2f * br, 2f * br), PointsOf(p).ToString(), 18f, Color.white, true, TextAnchor.MiddleCenter);
+                if (t.LongestRoadHolder == p)
+                {
+                    var m = new Rect(r.x + 18f * _u, r.yMax - 13f * _u, 18f * _u, 18f * _u);
+                    Disc(m, Gold);
+                    GlyphAt(new Rect(m.x + 2f * _u, m.y + 2f * _u, 14f * _u, 14f * _u), GRoad, new Color(0.2f, 0.12f, 0.04f));
+                }
             }
+        }
+
+        private void Counter(Rect panel, float dx, float dy, int glyph, string n)
+        {
+            GlyphAt(Sub(panel, _u, dx, dy, 13f, 13f), glyph, new Color(0.92f, 0.86f, 0.72f));
+            Text(Sub(panel, _u, dx + 13f, dy - 1f, 15f, 15f), n, 10f, UiStyle.TextColor, true);
         }
 
         public string StatusLine(WorldState s, TableState t)
@@ -226,72 +296,272 @@ namespace World.Game
                 return t.SetupCorner < 0 ? "Place a settlement: tap a gold spot." : "Now a road beside it: tap a gold bar.";
             }
             if (t.Phase == TablePhase.Discard) return DiscardVisible ? "Sickness: choose the cards to give up." : "Sickness: cards are discarded.";
-            if (t.Current == _d.Human) return "Your turn: build, or end it.";
+            if (t.Current == _d.Human)
+            {
+                if (_d.BuildMode == BuildKind.Road) return "Tap a gold bar to lay a road.";
+                if (_d.BuildMode == BuildKind.Settlement) return "Tap a gold spot to found a camp.";
+                if (_d.BuildMode == BuildKind.City) return "Tap one of your camps to make it a city.";
+                return "Your turn: build, or end it.";
+            }
             return who + ".";
         }
 
-        private void Status(WorldState s, TableState t)
+        private void Status(WorldState s, TableState t, float W)
         {
             string line = _d.HasMessage ? _d.Message : StatusLine(s, t);
-            var r = R(6f, 42f, 320f, 20f);
+            float w = 300f;
+            var r = R((W - w) * 0.5f + 40f, 55f, w, 18f);
             FillNoHit(r, new Color(0.08f, 0.07f, 0.06f, 0.55f));
-            Text(new Rect(r.x + 4f * _u, r.y, r.width, r.height), line, 11f, _d.HasMessage ? new Color(1f, 0.7f, 0.55f) : UiStyle.TextColor, _d.HasMessage);
+            Text(r, line, 11f, _d.HasMessage ? new Color(1f, 0.7f, 0.55f) : UiStyle.TextColor, _d.HasMessage, TextAnchor.MiddleCenter);
         }
 
-        private void Controls(TableState t, float W)
+        // ---------------------------------------------------------------- icon row (top right)
+
+        private void IconRow(TableState t)
         {
-            bool main = t.Phase == TablePhase.Main && t.Current == _d.Human && !t.Paused;
-            // The hourglass: a bar that shrinks as the sand falls.
-            var bar = RR(6f, 6f, 132f, 12f);
-            Fill(bar, new Color(0.08f, 0.07f, 0.06f, 0.78f));
-            float frac = main ? Mathf.Clamp01(t.Sand / (float)t.Tuning.TurnCapTicks) : 0f;
-            if (main)
+            var dark = new Color(0.16f, 0.13f, 0.10f, 0.95f);
+            if (RoundButton(TopIcon(0, _u), GHouse, "Return to the world", dark, true, false, true)) _d.Leave();
+            if (RoundButton(TopIcon(1, _u), GBulb, GodBoardDirector.AdviserOn ? "Hint: on" : "Hint: off", dark, true, GodBoardDirector.AdviserOn)) GodBoardDirector.AdviserOn = !GodBoardDirector.AdviserOn;
+            if (PlagueToggle != null)
             {
-                var c = frac > 0.3f ? new Color(0.95f, 0.72f, 0.30f) : new Color(0.9f, 0.3f, 0.2f);
-                FillNoHit(new Rect(bar.x + 2, bar.y + 2, (bar.width - 4) * frac, bar.height - 4), c);
+                bool on = PlagueIsOn != null && PlagueIsOn();
+                if (RoundButton(TopIcon(2, _u), GDroplet, on ? "Plague: on" : "Plague", dark, true, on)) PlagueToggle();
             }
-            Text(RR(6f, 18f, 132f, 12f), main ? Mathf.CeilToInt(t.Sand / (float)WorldSim.TicksPerSecond) + " s of sand" : (t.Phase == TablePhase.Setup ? "No hourglass in setup" : "Hourglass waits"), 9f, new Color(0.9f, 0.86f, 0.75f), false, TextAnchor.MiddleRight);
-            if (Button(RR(6f, 32f, 132f, 34f), "End turn", main, 13f)) _d.EndTurn();
-            if (Button(RR(6f, 70f, 132f, 34f), "Return to the world", true, 12f, true)) _d.Leave();
-            if (Button(RR(6f, 108f, 132f, 28f), GodBoardDirector.AdviserOn ? "Hint: on" : "Hint: off", true, 11f)) GodBoardDirector.AdviserOn = !GodBoardDirector.AdviserOn;
-            if (Button(RR(6f, 140f, 64f, 28f), "Zoom -", true, 11f)) _d.Zoom(1f / 1.4f);
-            if (Button(RR(74f, 140f, 64f, 28f), "Zoom +", true, 11f)) _d.Zoom(1.4f);
-            if (Button(RR(6f, 172f, 132f, 30f), TradeOpen ? "Close trade" : "Trade", true, 12f)) { if (TradeOpen) CloseTrade(); else OpenTrade(); }
+            if (RoundButton(TopIcon(3, _u), GPlus, "Zoom in", dark, true)) _d.Zoom(1.4f);
+            if (RoundButton(TopIcon(4, _u), GMinus, "Zoom out", dark, true)) _d.Zoom(1f / 1.4f);
         }
 
-        private void Hand(WorldState s, TableState t)
+        // ---------------------------------------------------------------- hand, costs, stacks, hourglass
+
+        private void Hand(WorldState s, TableState t, float W)
         {
             int me = _d.Human;
             var hand = t.Peoples[me].Hand;
-            float x = 6f;
+            const float CW = 46f, CH = 64f, Rad = 200f;
+            float cx = W * 0.5f - 4f, baseY = 346f;
+            var pivot = new Vector2(cx * _u, (baseY + Rad) * _u);
+            var centres = new Vector2[Wares.RawCount];
+            var angles = new float[Wares.RawCount];
             for (int g = 0; g < Wares.RawCount; g++)
             {
-                var r = RB(x, 6f, 52f, 44f);
-                Fill(r, new Color(GoodColours[g].r * 0.35f, GoodColours[g].g * 0.35f, GoodColours[g].b * 0.35f, 0.88f));
-                FillNoHit(new Rect(r.x, r.y, r.width, 3f * _u), GoodColours[g]);
-                GUI.DrawTexture(new Rect(r.x + 4f * _u, r.y + 10f * _u, 22f * _u, 22f * _u), IconOf(g));
-                Text(new Rect(r.x + 28f * _u, r.y + 8f * _u, 22f * _u, 26f * _u), hand[g].ToString(), 17f, UiStyle.TextColor, true, TextAnchor.MiddleCenter);
-                x += 54f;
+                float a = (g - 2) * 11f;
+                angles[g] = a;
+                float rad = a * Mathf.Deg2Rad;
+                bool lift = (BankGive == g && TradeOpen && TradeTab == 0) || OfferGive[g] > 0 || DiscardPick[g] > 0;
+                centres[g] = new Vector2(pivot.x + Rad * _u * Mathf.Sin(rad), pivot.y - Rad * _u * Mathf.Cos(rad) - (lift ? 12f * _u : 0f));
             }
-            Text(RB(x + 4f, 30f, 150f, 14f), "Roads left " + TableRules.RoadsLeft(t, me), 10f, new Color(0.9f, 0.86f, 0.75f));
-            Text(RB(x + 4f, 18f, 150f, 14f), "Camps left " + TableRules.SettlementsLeft(t, me) + ", cities " + TableRules.CitiesLeft(t, me), 10f, new Color(0.9f, 0.86f, 0.75f));
+            var old = GUI.matrix;
+            for (int g = 0; g < Wares.RawCount; g++)
+            {
+                bool lift = (BankGive == g && TradeOpen && TradeTab == 0) || OfferGive[g] > 0 || DiscardPick[g] > 0;
+                GUI.matrix = old;
+                GUIUtility.RotateAroundPivot(angles[g], centres[g]);
+                GoodsCard(new Rect(centres[g].x - CW * 0.5f * _u, centres[g].y - CH * 0.5f * _u, CW * _u, CH * _u), g, hand[g], hand[g] == 0, lift, false);
+            }
+            GUI.matrix = old;
+            for (int g = 0; g < Wares.RawCount; g++)
+            {
+                float rad = angles[g] * Mathf.Deg2Rad;
+                var off = new Vector2((CW * 0.5f - 3f) * _u, (-CH * 0.5f + 5f) * _u);
+                var rot = new Vector2(off.x * Mathf.Cos(rad) - off.y * Mathf.Sin(rad), off.x * Mathf.Sin(rad) + off.y * Mathf.Cos(rad));
+                var bp = centres[g] + rot;
+                float b = 16f * _u;
+                var br = new Rect(bp.x - b * 0.5f, bp.y - b * 0.5f, b, b);
+                Disc(new Rect(br.x - _u, br.y - _u, b + 2f * _u, b + 2f * _u), new Color(0.96f, 0.92f, 0.82f));
+                Disc(br, hand[g] > 0 ? new Color(0.14f, 0.12f, 0.10f) : new Color(0.35f, 0.3f, 0.25f));
+                Text(br, hand[g].ToString(), 10f, UiStyle.TextColor, true, TextAnchor.MiddleCenter);
+            }
+            _rects.Add(new Rect((cx - 125f) * _u, (baseY - 36f) * _u, 250f * _u, 80f * _u));
         }
 
-        private void Feed()
+        private static readonly BuildKind[] Kinds = { BuildKind.Road, BuildKind.Settlement, BuildKind.City };
+        private static readonly string[] KindNames = { "Road", "Camp", "City" };
+        private static readonly int[] KindGlyph = { GRoad, GHouse, GCity };
+
+        private bool Affordable(TableState t, int kind)
         {
-            float y = 66f;
-            var feed = _d.Feed;
-            int from = Mathf.Max(0, feed.Count - 4);
-            for (int i = from; i < feed.Count; i++)
+            int me = _d.Human;
+            if (t.Phase != TablePhase.Main || t.Current != me || t.Paused) return false;
+            var hand = t.Peoples[me].Hand;
+            switch (kind)
             {
-                float age = Time.unscaledTime - feed[i].Time;
-                if (age > 14f) continue;
-                float a = Mathf.Clamp01((14f - age) / 4f);
-                var r = R(6f, y, 250f, 15f);
-                FillNoHit(r, new Color(0.08f, 0.07f, 0.06f, 0.5f * a));
-                Text(new Rect(r.x + 3f * _u, r.y, r.width, r.height), feed[i].Text, 10f, new Color(0.96f, 0.93f, 0.86f, a));
-                y += 16f;
+                case 0: return TableRules.RoadsLeft(t, me) > 0 && TableRules.CanPay(hand, TableRules.RoadCost);
+                case 1: return TableRules.SettlementsLeft(t, me) > 0 && TableRules.CanPay(hand, TableRules.SettlementCost);
+                default: return TableRules.CitiesLeft(t, me) > 0 && TableRules.CanPay(hand, TableRules.CityCost);
             }
         }
+
+        private static int[] CostOf(int kind) => kind == 0 ? TableRules.RoadCost : kind == 1 ? TableRules.SettlementCost : TableRules.CityCost;
+
+        private void Costs(WorldState s, TableState t)
+        {
+            var r = RB(6f, 6f, 154f, 100f);
+            Fill(r, new Color(0.08f, 0.07f, 0.06f, 0.85f));
+            Frame(r, new Color(0.96f, 0.92f, 0.82f, 0.6f), Mathf.Max(1f, _u));
+            var mine = PeopleCol(_d.Human);
+            for (int k = 0; k < 3; k++)
+            {
+                var row = Sub(r, _u, 4f, 4f + k * 31f, 146f, 29f);
+                bool ok = Affordable(t, k);
+                bool active = _d.BuildMode == Kinds[k];
+                FillNoHit(row, ok ? new Color(0.36f, 0.30f, 0.12f, 0.95f) : new Color(0.16f, 0.14f, 0.12f, 0.9f));
+                if (active) Frame(row, Gold, Mathf.Max(2f, 2f * _u));
+                else if (ok) Frame(row, new Color(0.9f, 0.75f, 0.3f, 0.8f), Mathf.Max(1f, _u));
+                var pc = ok ? mine : mine * 0.5f; pc.a = 1f;
+                GlyphAt(Sub(row, _u, 3f, 3f, 23f, 23f), KindGlyph[k], pc);
+                float x = 30f;
+                var cost = CostOf(k);
+                for (int g = 0; g < Wares.RawCount; g++)
+                    for (int n = 0; n < cost[g]; n++)
+                    {
+                        var old = GUI.color; GUI.color = ok ? Color.white : new Color(1f, 1f, 1f, 0.5f);
+                        GUI.DrawTexture(Sub(row, _u, x, 6f, 17f, 17f), IconOf(g));
+                        GUI.color = old;
+                        x += 22f;
+                    }
+                if (Tap(row, true, false))
+                {
+                    if (ok) _d.SetBuildMode(Kinds[k]);
+                    else _d.Say(t.Phase == TablePhase.Main && t.Current == _d.Human ? "Not enough goods for a " + KindNames[k].ToLowerInvariant() + " yet." : "Wait for your turn.");
+                }
+                Texts.Add("[" + KindNames[k] + "]");
+            }
+        }
+
+        private void Stacks(WorldState s, TableState t)
+        {
+            int me = _d.Human;
+            int[] left = { TableRules.RoadsLeft(t, me), TableRules.SettlementsLeft(t, me), TableRules.CitiesLeft(t, me) };
+            int[] max = { t.Tuning.MaxRoads, t.Tuning.MaxSettlements, t.Tuning.MaxCities };
+            var col = PeopleCol(me);
+            for (int k = 0; k < 3; k++)
+            {
+                float x = 166f + k * 22f;
+                float chip = 62f / max[k];
+                for (int i = 0; i < Mathf.Min(left[k], max[k]); i++)
+                {
+                    var c = RB(x, 28f + i * chip, 18f, Mathf.Max(2f, chip - 1f));
+                    FillNoHit(c, Color.Lerp(col, Color.black, 0.55f));
+                    FillNoHit(new Rect(c.x + _u, c.y + _u * 0.5f, c.width - 2f * _u, Mathf.Max(1f, c.height - 1.5f * _u)), col);
+                }
+                GlyphAt(RB(x + 1f, 8f, 16f, 16f), KindGlyph[k], new Color(0.92f, 0.86f, 0.72f));
+            }
+        }
+
+        private void HourglassButton(TableState t)
+        {
+            bool main = t.Phase == TablePhase.Main && t.Current == _d.Human && !t.Paused;
+            var r = RRB(8f, 8f, 70f, 70f);
+            float frac = main ? Mathf.Clamp01(t.Sand / (float)t.Tuning.TurnCapTicks) : 0f;
+            var bg = main ? new Color(0.42f, 0.28f, 0.10f, 1f) : new Color(0.16f, 0.13f, 0.10f, 0.95f);
+            bool hit = RoundButton(r, GHourglass, "End turn", bg, main, false);
+            var c = r.center;
+            Arc(c, r.width * 0.5f - 3f * _u, 3.5f * _u, 1f, new Color(0.25f, 0.22f, 0.16f));
+            if (main) Arc(c, r.width * 0.5f - 3f * _u, 3.5f * _u, frac, frac > 0.3f ? Gold : new Color(0.95f, 0.3f, 0.2f));
+            // the sand in the two chambers
+            float pad = r.width * 0.2f, k = (r.width - 2f * pad) / 32f;
+            float gx = r.x + pad, gy = r.yMax - pad; // grid origin at the bottom-left of the glyph
+            var sand = main ? new Color(0.98f, 0.82f, 0.35f) : new Color(0.5f, 0.45f, 0.35f);
+            float top = main ? frac : 0f;
+            FillNoHit(new Rect(gx + 11f * k, gy - (17f + 8f * top) * k, 10f * k, 8f * top * k), sand);
+            FillNoHit(new Rect(gx + 10f * k, gy - (6f + 8f * (1f - top)) * k, 12f * k, 8f * (1f - top) * k), sand);
+            if (hit) _d.EndTurn();
+            // the trade button beside it
+            var tr = RRB(8f + 70f + 8f, 20f, 38f, 38f);
+            if (RoundButton(tr, GSwap, "Trade", new Color(0.16f, 0.13f, 0.10f, 0.95f), true, TradeOpen, true)) { if (TradeOpen) CloseTrade(); else OpenTrade(); }
+        }
+
+        // ---------------------------------------------------------------- toasts, log
+
+        private void Toasts(float W)
+        {
+            var feed = _d.Feed;
+            float y = 78f;
+            int shown = 0;
+            for (int i = feed.Count - 1; i >= 0 && shown < 2; i--)
+            {
+                float age = Time.unscaledTime - feed[i].Time;
+                if (age > 4.5f) break;
+                float a = Mathf.Clamp01((4.5f - age) / 1.2f);
+                var r = R((W - 270f) * 0.5f + 40f, y, 270f, 16f);
+                FillNoHit(r, new Color(0.08f, 0.07f, 0.06f, 0.6f * a));
+                Text(r, feed[i].Text, 10f, new Color(0.96f, 0.93f, 0.86f, a), false, TextAnchor.MiddleCenter);
+                y += 18f; shown++;
+            }
+        }
+
+        private void LogTab()
+        {
+            var feed = _d.Feed;
+            int unread = Mathf.Max(0, _d.FeedTotal - _logSeen);
+            var tab = RB(6f, 110f, 66f, 20f);
+            Fill(tab, new Color(0.12f, 0.10f, 0.08f, 0.92f));
+            Frame(tab, new Color(0.96f, 0.92f, 0.82f, 0.5f), Mathf.Max(1f, _u));
+            GlyphAt(Sub(tab, _u, 4f, 3f, 14f, 14f), GScroll, new Color(0.92f, 0.86f, 0.72f));
+            Text(Sub(tab, _u, 22f, 0f, 40f, 20f), "Log", 11f, UiStyle.TextColor, true);
+            if (GUI.Button(tab, GUIContent.none, GUIStyle.none) && !_under) SetLogOpen(!LogOpen);
+            Texts.Add("[Log]");
+            if (!LogOpen && unread > 0)
+            {
+                var b = new Rect(tab.xMax - 9f * _u, tab.y - 6f * _u, 16f * _u, 16f * _u);
+                Disc(b, new Color(0.85f, 0.25f, 0.18f));
+                Text(b, Mathf.Min(9, unread).ToString() + (unread > 9 ? "+" : ""), 9f, Color.white, true, TextAnchor.MiddleCenter);
+            }
+            if (!LogOpen) return;
+            var p = RB(6f, 132f, 264f, 128f);
+            Fill(p, new Color(0.08f, 0.07f, 0.06f, 0.9f));
+            Frame(p, new Color(0.96f, 0.92f, 0.82f, 0.5f), Mathf.Max(1f, _u));
+            int n = Mathf.Min(8, feed.Count);
+            for (int i = 0; i < n; i++)
+            {
+                var line = feed[feed.Count - n + i];
+                Text(Sub(p, _u, 6f, 4f + i * 15.5f, 254f, 15f), line.Text, 10f, new Color(0.96f, 0.93f, 0.86f));
+            }
+            if (n == 0) Text(Sub(p, _u, 6f, 4f, 250f, 15f), "Nothing yet.", 10f, Soft);
+        }
+
+        // ---------------------------------------------------------------- moment cards
+
+        private void MomentCardDraw(float W)
+        {
+            var m = _d.Moment;
+            if (string.IsNullOrEmpty(m.Kind)) return;
+            float age = Time.unscaledTime - m.Time;
+            if (age < 0f || age > m.Duration) return;
+            float a = age < 0.35f ? age / 0.35f : Mathf.Clamp01((m.Duration - age) / 0.7f);
+            Color tint; int glyph;
+            switch (m.Kind)
+            {
+                case "epidemic": tint = new Color(0.55f, 0.10f, 0.10f); glyph = GDroplet; break;
+                case "crystal": tint = new Color(0.12f, 0.45f, 0.50f); glyph = GCity; break;
+                case "burned": tint = new Color(0.60f, 0.28f, 0.08f); glyph = GHouse; break;
+                default: tint = new Color(0.45f, 0.34f, 0.10f); glyph = GBulb; break;
+            }
+            if (m.Kind == "epidemic") FillNoHit(new Rect(0, 0, Screen.width, Screen.height), new Color(0.12f, 0.02f, 0.02f, 0.45f * a));
+            bool small = m.Kind == "prince";
+            float w = small ? 250f : 290f, h = small ? 54f : 112f;
+            float lift = (1f - a) * 12f;
+            var r = R((W - w) * 0.5f + (small ? 40f : 0f), (small ? 80f : 120f) + lift, w, h);
+            Color Al(Color c) { c.a *= a; return c; }
+            FillNoHit(new Rect(r.x - 3f * _u, r.y - 3f * _u, r.width + 6f * _u, r.height + 6f * _u), Al(new Color(0.96f, 0.92f, 0.82f)));
+            FillNoHit(r, Al(new Color(tint.r * 0.35f, tint.g * 0.35f, tint.b * 0.35f, 1f)));
+            if (small)
+            {
+                var sd = Sub(r, _u, 6f, 6f, 42f, 42f);
+                Disc(sd, Al(tint));
+                GlyphAt(new Rect(sd.x + 8f * _u, sd.y + 8f * _u, sd.width - 16f * _u, sd.height - 16f * _u), glyph, new Color(1f, 0.96f, 0.88f, a));
+                Text(Sub(r, _u, 56f, 4f, w - 62f, 16f), m.Title, 12f, new Color(1f, 0.9f, 0.6f, a), true);
+                Text(Sub(r, _u, 56f, 20f, w - 62f, 32f), m.Text, 11f, new Color(0.96f, 0.93f, 0.86f, a), false, TextAnchor.UpperLeft, true);
+                return;
+            }
+            FillNoHit(new Rect(r.x, r.y, r.width, 30f * _u), Al(tint));
+            Text(Sub(r, _u, 10f, 0f, w - 20f, 30f), m.Title, 18f, new Color(1f, 0.96f, 0.88f, a), true, TextAnchor.MiddleCenter);
+            var disc = Sub(r, _u, 14f, 40f, 58f, 58f);
+            Disc(disc, Al(tint));
+            GlyphAt(new Rect(disc.x + 10f * _u, disc.y + 10f * _u, disc.width - 20f * _u, disc.height - 20f * _u), glyph, new Color(1f, 0.96f, 0.88f, a));
+            Text(Sub(r, _u, 82f, 38f, w - 92f, 66f), m.Text, 12f, new Color(0.96f, 0.93f, 0.86f, a), false, TextAnchor.MiddleLeft, true);
+        }
+
+        private int PointsOf(int p) => p >= 0 && p < _d.Points.Length ? _d.Points[p] : 0;
     }
 }

@@ -31,7 +31,7 @@ namespace World.Game
             public Ware Good;
             public Leg Leg;
             public Vector3 Home, Target;
-            public GameObject Go, Load;
+            public GameObject Go, Load, Halo, Trail;
             public float Delay, Clock;
             public bool Loaded;
             public int Index;
@@ -128,7 +128,31 @@ namespace World.Game
             w.Go = Build(w);
             w.Go.transform.position = home;
             w.Go.SetActive(false);
+            w.Trail = BuildTrail(w);
+            w.Trail.SetActive(false);
             _active.Add(w);
+        }
+
+        /// <summary>G1-6b: a dotted trail on the ground from the settlement to the hex, in the good's colour, so collecting reads from the top view.</summary>
+        private GameObject BuildTrail(Walker w)
+        {
+            var d = w.Target - w.Home; d.y = 0;
+            float len = d.magnitude;
+            var dir = len > 0.01f ? d / len : Vector3.forward;
+            var mb = new MeshBuilder();
+            var gc = PortMarkers.GoodColor(w.Good);
+            float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
+            int n = Mathf.Max(2, Mathf.FloorToInt(len / 20f));
+            for (int i = 0; i < n; i++)
+            {
+                var p = dir * ((i + 0.5f) * len / n);
+                mb.Box(p + Vector3.up * 0.2f, new Vector3(13f, 0.5f, 15f), new Color(0.1f, 0.09f, 0.08f), yaw);
+                mb.Box(p + Vector3.up * 0.7f, new Vector3(9f, 0.5f, 11f), Color.Lerp(gc, Color.white, 0.2f), yaw);
+            }
+            var go = mb.ToObject("Trail " + w.Corner + "->" + w.Hex, _root, _mat);
+            go.transform.position = w.Home + Vector3.up * (BoardSpace.GroundY + 5f);
+            go.layer = 2;
+            return go;
         }
 
         private GameObject Build(Walker w)
@@ -141,6 +165,9 @@ namespace World.Game
             mb.Box(new Vector3(-0.2f, 0.3f, 0), new Vector3(0.28f, 0.6f, 0.3f), col * 0.6f);
             mb.Box(new Vector3(0.2f, 0.3f, 0), new Vector3(0.28f, 0.6f, 0.3f), col * 0.6f);
             mb.Cylinder(new Vector3(0, 2.7f, 0), 1.0f, 1.0f, 0.15f, 10, Color.Lerp(col, Color.white, 0.6f)); // a bright cap, so they read from above
+            // G1-6b: an overhead pin in the good's colour with a dark rim, so the villager reads from the whole-island view
+            mb.Cylinder(new Vector3(0, 3.4f, 0), 1.45f, 1.45f, 0.12f, 14, new Color(0.08f, 0.07f, 0.06f));
+            mb.Cylinder(new Vector3(0, 3.55f, 0), 1.15f, 1.15f, 0.12f, 14, PortMarkers.GoodColor(w.Good));
             var go = mb.ToObject("Collector " + w.People + "/" + w.Corner + "->" + w.Hex, _root, _mat);
             go.transform.localScale = Vector3.one * Scale;
             go.layer = 2;
@@ -171,6 +198,7 @@ namespace World.Game
         {
             var w = _active[i];
             if (w.Go != null) Destroy(w.Go);
+            if (w.Trail != null) Destroy(w.Trail);
             _active.RemoveAt(i);
         }
 
@@ -181,7 +209,7 @@ namespace World.Game
             {
                 case Leg.Waiting:
                     w.Delay -= dt;
-                    if (w.Delay <= 0f) { w.Leg = Leg.Out; w.Go.SetActive(true); }
+                    if (w.Delay <= 0f) { w.Leg = Leg.Out; w.Go.SetActive(true); if (w.Trail != null) w.Trail.SetActive(true); }
                     return;
                 case Leg.Out:
                     if (Walk(w, w.Target, dt)) { w.Leg = Leg.Gathering; w.Clock = 0f; }
