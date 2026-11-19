@@ -84,4 +84,4 @@ Setup: 40 seeds (3000 to 3039), `GameSetup.GodBoard` (dealt board, ports), AI-on
 | Default (above) | 9 / 31 / 0 | 15 | 77.5% | 56.5% | 0 / 4 | 3.6 / 14.5 | 341 of 341 |
 | No war (war stopped from the start; plague only, as in G0-2) | 2 / 38 / 0 | 13.5 | 95.0% | 0.0% | 0 / 0 | 0.0 / 0.0 | 270 of 270 |
 | WA-11 literal tie rule (everyone tied = at war) | 10 / 30 / 0 | 15 | 75.0% | 87.7% | 0 / 4 | 3.6 / 14.5 | 345 of 345 |
-| Player-paced rounds (AiTurnTicks 150: about 600 ticks a round) | 5 / 35 / 0 | 18 | 87.5% | 57.5% | 6.5 / 20 | 8.9 / 32.0 | 507 of 508 |
+| Player-paced rounds (AiTurnTicks 150: about 600 ticks a round) | 5 / 35 / 0 | 18 | 87.5% | 57.5% | 6.5 / 20 | 8.9 / 32.0 | 507 of 507 |

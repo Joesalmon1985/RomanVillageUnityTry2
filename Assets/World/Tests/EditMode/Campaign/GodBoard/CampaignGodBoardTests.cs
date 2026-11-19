@@ -21,12 +21,10 @@ namespace World.Sim.Tests
         /// <summary>A god board game: four peoples, a dealt board, the table (not opened) and the plague.</summary>
         internal static WorldSim GodGame(ulong seed = 7)
         {
+            // Since G0-2/G0-3 the factory wires the table (not opened: the player's seat), the plague and the war itself.
             var sim = WorldSimFactory.CreateNew(seed, GameSetup.GodBoard);
-            var s = sim.State;
-            TableModule.InitState(s, s.PeopleCount, s.Board.StartCorners);
-            TableModule.Register(sim);
-            PlagueModule.InitState(s);
-            PlagueModule.Register(sim);
+            Assert.IsNotNull(sim.State.Table);
+            Assert.IsNotNull(sim.State.Plague);
             return sim;
         }
 

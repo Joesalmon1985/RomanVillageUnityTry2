@@ -152,12 +152,18 @@ namespace World.Sim.Tests
         public void AiOffersToPlayer_PlayerAccepts_OrItExpiresAtTurnEnd()
         {
             int offered = 0;
-            var sim = ToHumanTurn(wire: seams => seams.AiTurn = (s, p, a) =>
+            var sim = ToHumanTurn(wire: seams =>
             {
-                if (s.Table.AiCalls > 1) return; // asked again after the answer (G1-2): offer only once a turn
-                s.Table.Peoples[p].Hand = Cards(sheep: 2);
-                Assert.IsTrue(a.OfferTrade(0, Cards(sheep: 1), Cards(1)).Ok);
-                offered++;
+                // The stand-in offers to the player although everyone is tied (leading); G0-3 closes an AI's offer to a
+                // leading answerer, so this engine test switches TR-4 refusals off like the G1-1 stand-in.
+                seams.AiRefusal = (s, p, from) => null;
+                seams.AiTurn = (s, p, a) =>
+                {
+                    if (s.Table.AiCalls > 1) return; // asked again after the answer (G1-2): offer only once a turn
+                    s.Table.Peoples[p].Hand = Cards(sheep: 2);
+                    Assert.IsTrue(a.OfferTrade(0, Cards(sheep: 1), Cards(1)).Ok);
+                    offered++;
+                };
             });
             var t = T(sim);
             Do(sim, new EndTurn());

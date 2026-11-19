@@ -274,6 +274,88 @@ namespace World.Sim.Tests
             }
         }
 
+        // ---- G2-3 grants (crystal rewards) reach the war and the age's end ----
+
+        [Test]
+        public void Grants_FreeCityAndSettlement_GetTheirGarrisons()
+        {
+            var sim = GodBoard();
+            var s = sim.State;
+            StepUntil(sim, () => s.Table.Round >= 1, MaxTicks);
+            sim.DrainEvents();
+            var t = s.Table;
+            t.Paused = true;
+            int p = 1;
+            int city = TableGrants.BestCityCorner(s, p);
+            int soldiersBefore = s.War.Soldiers.Count;
+            var ev = new EventBuffer();
+            Assert.IsTrue(TableGrants.GrantCity(s, p, city, ev));
+            int corner = TableGrants.BestSettlementCorner(s, p);
+            Assert.IsTrue(TableGrants.GrantSettlement(s, p, corner, ev));
+            Steps(sim, 1);
+            Assert.IsTrue(WarApi.SettlementAt(s, city).IsCity, "WA-4: the free city is a city in the war");
+            var st = WarApi.SettlementAt(s, corner);
+            Assert.IsNotNull(st, "the free settlement is in the war");
+            Assert.AreEqual(p, st.People);
+            Assert.AreEqual(1, WarApi.PresentAt(s, corner, p), "its start soldier");
+            Assert.AreEqual(soldiersBefore + 2, s.War.Soldiers.Count, "+1 for the city, +1 for the settlement");
+            Assert.AreEqual(t.Peoples[p].Points, s.War.Points[p], "the war state follows the grant");
+            Assert.IsTrue(GodBoardModule.WarInSync(s));
+        }
+
+        [Test]
+        public void Grants_ReachingTenPoints_EndTheAge_WithTheSameHandling()
+        {
+            var sim = GodBoard();
+            var s = sim.State;
+            StepUntil(sim, () => s.Table.Round >= 1, MaxTicks);
+            sim.DrainEvents();
+            var t = s.Table;
+            int p = 2;
+            // Settlements and cities until one more grant reaches 10 points.
+            var ev = new EventBuffer();
+            for (int i = 0; i < 20 && TableRules.Points(s, p) < 9; i++)
+                if (!TableGrants.GrantCityOrSettlement(s, p, ev).Granted) break;
+            Assert.AreEqual(TablePhase.Main, t.Phase);
+            if (TableRules.Points(s, p) < 9) Assert.Inconclusive("could not grant up to 9 points");
+            Steps(sim, 1);
+            Assert.IsFalse(s.Plague.Ended);
+            var ev2 = new EventBuffer();
+            while (t.Phase != TablePhase.Ended && TableGrants.GrantCityOrSettlement(s, p, ev2).Granted) { }
+            Assert.AreEqual(TablePhase.Ended, t.Phase, "a grant ended the age");
+            Assert.AreEqual(p, t.Winner);
+            Assert.IsFalse(s.Plague.Ended, "the hook did not run (static AfterChange)");
+            var log = Steps(sim, 1);
+            Assert.IsTrue(s.Plague.Ended, "HI-8: the plague ends");
+            Assert.AreEqual(1, log.OfType<PlagueEnded>().Count());
+            CollectionAssert.Contains(s.Eras.ReadyChapters, Eras.ChapterIds.Historic);
+            Assert.IsTrue(log.OfType<Eras.ChapterReady>().Any(e => e.Chapter == Eras.ChapterIds.Historic));
+            Assert.IsFalse(t.IslandFell);
+            Assert.AreEqual(0, Steps(sim, 50).OfType<PlagueEnded>().Count(), "once only");
+        }
+
+        // ---- TR-4 with points changing while an offer is open (a burning or a grant) ----
+
+        [Test]
+        public void Tr4_AnAiOffer_IsClosedToAnAnswererThatBecameLeading()
+        {
+            var sim = TableTestKit.ToHumanTurn(wire: seams => { TableTestKit.IdleAi(seams); seams.AiRefusal = TableAi.Refusal; });
+            var t = TableTestKit.T(sim);
+            var s = sim.State;
+            // An open offer from AI seat 1 to the player, made while points were level...
+            var o = new TradeOffer { Id = t.NextOfferId++, From = 1, To = 0, Give = TableTestKit.Cards(sheep: 1), Get = TableTestKit.Cards(1), TicksLeft = 100 };
+            t.Offers.Add(o);
+            TableTestKit.SetHand(t, 0, 1, 0, 0, 0, 0);
+            TableTestKit.SetHand(t, 1, 0, 0, 0, 1, 0);
+            // ...then the player alone leads (people 1 lost a settlement, as after a burning).
+            int lostCorner = Enumerable.Range(0, t.CornerOwner.Length).First(c => t.CornerOwner[c] == 1 && c != t.Peoples[1].StartCorner);
+            t.CornerOwner[lostCorner] = -1; t.CornerLevel[lostCorner] = 0;
+            Assert.IsTrue(TableAi.IsLeading(s, 0) && !TableAi.IsLeading(s, 1));
+            TableTestKit.Refused(sim, new AnswerOffer { OfferId = o.Id, Accept = true }, TableRefusals.OfferClosed);
+            // Declining is still allowed.
+            Assert.IsTrue(TableTestKit.Submit(sim, new AnswerOffer { OfferId = o.Id, Accept = false }).Ok);
+        }
+
         // ---- 3. The island falls (PL-10) ----
 
         private static void PrimeOutbreaks(WorldState s)

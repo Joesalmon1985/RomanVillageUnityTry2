@@ -202,8 +202,12 @@ namespace World.Sim.GodBoard
             {
                 var t = s.Table;
                 var w = s.War;
-                if (t == null || w == null) return;
+                if (t == null) return;
                 CheckIslandFell(s, _seams, ev);
+                // G2-3 grants (TableGrants) change the board and may end the age without the seams: catch up here.
+                CatchUpAgeEnded(s, ev);
+                if (w == null) return;
+                if (!WarInSync(s)) SyncBoard(s, ev);
                 if (t.Phase == TablePhase.Ended || _seams.Engine == null) return;
                 for (int i = 0; i < w.Ruins.Count; i++)
                 {
@@ -225,6 +229,48 @@ namespace World.Sim.GodBoard
         /// </summary>
         public static void WireAi(TableSeams seams)
         {
+        }
+
+        /// <summary>
+        /// G0-3: the age ended without <see cref="TableSeams.OnAgeEnded"/> (a free grant from the campaign, TableGrants, ends
+        /// it through the seamless AfterChange): run the same age-end handling once. Detected by a won table (not fallen)
+        /// whose plague has not ended. Called each tick by the sync system, so at most one tick late.
+        /// </summary>
+        public static void CatchUpAgeEnded(WorldState s, EventBuffer ev)
+        {
+            var t = s?.Table;
+            if (t == null || t.Phase != TablePhase.Ended || t.IslandFell || t.Winner < 0) return;
+            if (s.Plague == null || s.Plague.Ended) return;
+            AgeEnded(s, t.Winner, ev);
+        }
+
+        /// <summary>
+        /// G0-3: true when every table settlement and city has its war settlement (same people, same level), no war settlement
+        /// is left without its table piece, and the war's points are the table's. Cheap; read each tick by the sync system.
+        /// </summary>
+        public static bool WarInSync(WorldState s)
+        {
+            var t = s?.Table;
+            var w = s?.War;
+            if (t == null || w == null || w.Stopped) return true;
+            int owned = 0;
+            for (int c = 0; c < t.CornerOwner.Length; c++)
+            {
+                int owner = t.CornerOwner[c];
+                if (owner < 0) continue;
+                owned++;
+                var st = WarApi.SettlementAt(s, c);
+                if (st == null)
+                {
+                    if (WarApi.IsRuin(s, c)) { owned--; continue; } // burned this tick: the sync takes it off the table
+                    return false;
+                }
+                if (st.People != owner || st.IsCity != (t.CornerLevel[c] == 2)) return false;
+            }
+            if (owned != w.Settlements.Count) return false;
+            if (w.Points == null || w.Points.Length != t.PeopleCount) return false;
+            for (int p = 0; p < t.PeopleCount; p++) if (w.Points[p] != t.Peoples[p].Points) return false;
+            return true;
         }
 
         /// <summary>HI-8 and HI-1: the plague ends, and the Historic chapter becomes ready for the step.</summary>

@@ -214,6 +214,13 @@ namespace World.Sim.Table
             string code = Refusal(s, c);
             // TR-4: an AI seat that will not trade with the offerer refuses an offer addressed to it outright.
             if (code == null && c is OfferTrade ot && ot.To >= 0 && ot.To != s.Table.HumanSeat) code = Seams.AiRefusal?.Invoke(s, ot.To, c.PlayerId);
+            // G0-3, TR-4: points can now change while an offer is open (a burning, a grant). An AI seat's offer cannot be
+            // accepted by a people that has become leading since it was made: the offer is closed to it.
+            if (code == null && c is AnswerOffer ao && ao.Accept)
+            {
+                var o = FindOffer(s.Table, ao.OfferId);
+                if (o != null && o.From != s.Table.HumanSeat && Seams.AiRefusal?.Invoke(s, o.From, c.PlayerId) != null) code = TableRefusals.OfferClosed;
+            }
             return code == null ? CommandResult.Accept() : No(code);
         }
 
@@ -762,7 +769,7 @@ namespace World.Sim.Table
                 ev.Add(new AgeEnded { Winner = top, Points = topPts });
                 seams?.OnAgeEnded?.Invoke(s, top, ev);
             }
-            Seams.OnBoardChanged?.Invoke(s, ev);
+            seams?.OnBoardChanged?.Invoke(s, ev);
         }
 
         // =====================================================================================================
