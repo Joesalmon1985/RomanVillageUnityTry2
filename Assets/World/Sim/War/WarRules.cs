@@ -28,7 +28,7 @@ namespace World.Sim.War
                 st.Huts.Add(new Hut { Good = g, BuildLeft = WarData.HutBuildTicks, CycleLeft = WarData.HutCycleTicks });
             w.Settlements.Add(st);
             if (isHome) w.Lodges.Add(new Lodge { People = people, Corner = corner });
-            NewSoldier(w, people, corner, false, null);
+            for (int k = 0; k < WarData.SettlementSoldiers; k++) NewSoldier(w, people, corner, false, null);
             if (isCity) NewSoldier(w, people, corner, false, null);
             return true;
         }

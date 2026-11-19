@@ -13,12 +13,16 @@ namespace World.Sim.Plague
     public static class PlagueRules
     {
         /// <summary>Rate track (PL-7).</summary>
-        public static readonly int[] RateTrack = { 1, 1, 2, 2, 2, 3, 3, 3, 4 };
-        public const int GraceRounds = 6;
+        // G1-3: these are static fields (not constants) only so the board proof can run named tuning variants; the defaults below
+        // are the rules and nothing but the proof (GodBoardVirtualProof) ever sets them, always restoring them afterwards.
+        public static int[] RateTrack = { 1, 1, 2, 2, 2, 3, 3, 3, 4 };
+        public static int GraceRounds = 6;
         public const int BanishCooldownTicks = 300;
         public const int MaxDemons = 3;
-        public const int OutbreaksToFall = 8;
-        public const int EpidemicDemons = 3;
+        public static int OutbreaksToFall = 8;
+        public static int EpidemicDemons = 3;
+        /// <summary>Infection draw every N-th round (1 = every round, the rule). Proof variants only; read by GodBoardModule.</summary>
+        public static int InfectEvery = 1;
 
         /// <summary>The once-per-round draw (PL-5): rate cards, 1 demon each (2 for a strengthened kind, none for a cured one).</summary>
         public static bool InfectRound(WorldState s, EventBuffer ev)
