@@ -177,6 +177,29 @@ namespace World.Game.Tests
         }
 
         [UnityTest, Timeout(240000)]
+        public IEnumerator CostsCard_BuildMode_LightsOnlyThatKindOfSpot()
+        {
+            yield return ToMyTurn();
+            var hand = S.Table.Peoples[0].Hand;
+            for (int g = 0; g < hand.Length; g++) hand[g] = 5;
+            _d.SetBuildMode(BuildKind.Road);
+            yield return null; yield return null;
+            Assert.AreEqual(BuildKind.Road, _d.BuildMode);
+            Assert.Greater(_d.EdgeSpots.Count, 0, "road spots lit");
+            Assert.AreEqual(0, _d.CornerSpots.Count, "no camp spots while in road mode");
+            Assert.AreEqual(0, _d.UpgradeSpots.Count);
+            _d.SetBuildMode(BuildKind.Settlement);
+            yield return null; yield return null;
+            Assert.AreEqual(0, _d.EdgeSpots.Count, "no road spots while in camp mode");
+            _d.SetBuildMode(BuildKind.Settlement);
+            Assert.AreEqual(BuildKind.None, _d.BuildMode, "tapping the same row again puts it out");
+            _d.SetBuildMode(BuildKind.Road);
+            Assert.IsTrue(_d.EndTurn().Ok);
+            Step(2); yield return null;
+            Assert.AreEqual(BuildKind.None, _d.BuildMode, "the mode ends with the turn");
+        }
+
+        [UnityTest, Timeout(240000)]
         public IEnumerator TradePanel_BankTrade_ChangesTheHand()
         {
             yield return ToMyTurn();

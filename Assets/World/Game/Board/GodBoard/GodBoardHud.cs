@@ -218,7 +218,7 @@ namespace World.Game
 
         // ---------------------------------------------------------------- people panels
 
-        private const float PanelW = 134f, PanelH = 42f;
+        private const float PanelW = 156f, PanelH = 42f;
 
         private int SoldiersOf(WorldState s, int p)
         {
@@ -236,8 +236,8 @@ namespace World.Game
             for (int i = 0; i < order.Count; i++)
             {
                 int p = order[i];
-                bool current = t.Current == p && !t.Paused && t.Phase != TablePhase.NotOpened;
-                float x = 6f + i * (PanelW + 4f), y = current ? 2f : 8f, h = current ? PanelH + 5f : PanelH;
+                bool current = t.Current == p && !t.Paused && t.Phase != TablePhase.NotOpened && t.Phase != TablePhase.Ended;
+                float x = 6f + i * (PanelW + 3f), y = current ? 2f : 8f, h = current ? PanelH + 5f : PanelH;
                 var r = R(x, y, PanelW, h);
                 var col = PeopleCol(p);
                 Fill(r, new Color(0.08f, 0.07f, 0.06f, current ? 0.92f : 0.78f));
@@ -255,8 +255,8 @@ namespace World.Game
                 int cards = TableRules.HandSize(t.Peoples[p].Hand);
                 float cx = 34f, cy = 22f + (current ? 3f : 0f);
                 Counter(r, cx, cy, GCard, cards.ToString());
-                Counter(r, cx + 28f, cy, GRoad, t.Peoples[p].RoadLength.ToString());
-                Counter(r, cx + 56f, cy, GHelmet, SoldiersOf(s, p).ToString());
+                Counter(r, cx + 29f, cy, GRoad, t.Peoples[p].RoadLength.ToString());
+                Counter(r, cx + 58f, cy, GHelmet, SoldiersOf(s, p).ToString());
                 // the points badge with the hourglass ring round it
                 var bc = new Vector2(r.xMax - 22f * _u, r.y + (current ? 25f : 22f) * _u);
                 float br = 16f * _u;
@@ -337,14 +337,14 @@ namespace World.Game
         {
             int me = _d.Human;
             var hand = t.Peoples[me].Hand;
-            const float CW = 44f, CH = 62f, Rad = 170f;
-            float cx = W * 0.5f - 4f, baseY = 350f;
+            const float CW = 46f, CH = 64f, Rad = 200f;
+            float cx = W * 0.5f - 4f, baseY = 346f;
             var pivot = new Vector2(cx * _u, (baseY + Rad) * _u);
             var centres = new Vector2[Wares.RawCount];
             var angles = new float[Wares.RawCount];
             for (int g = 0; g < Wares.RawCount; g++)
             {
-                float a = (g - 2) * 9f;
+                float a = (g - 2) * 11f;
                 angles[g] = a;
                 float rad = a * Mathf.Deg2Rad;
                 bool lift = (BankGive == g && TradeOpen && TradeTab == 0) || OfferGive[g] > 0 || DiscardPick[g] > 0;
@@ -371,7 +371,7 @@ namespace World.Game
                 Disc(br, hand[g] > 0 ? new Color(0.14f, 0.12f, 0.10f) : new Color(0.35f, 0.3f, 0.25f));
                 Text(br, hand[g].ToString(), 10f, UiStyle.TextColor, true, TextAnchor.MiddleCenter);
             }
-            _rects.Add(new Rect((cx - 100f) * _u, (baseY - 34f) * _u, 200f * _u, 74f * _u));
+            _rects.Add(new Rect((cx - 125f) * _u, (baseY - 36f) * _u, 250f * _u, 80f * _u));
         }
 
         private static readonly BuildKind[] Kinds = { BuildKind.Road, BuildKind.Settlement, BuildKind.City };
@@ -538,12 +538,22 @@ namespace World.Game
                 default: tint = new Color(0.45f, 0.34f, 0.10f); glyph = GBulb; break;
             }
             if (m.Kind == "epidemic") FillNoHit(new Rect(0, 0, Screen.width, Screen.height), new Color(0.12f, 0.02f, 0.02f, 0.45f * a));
-            float w = 290f, h = 112f;
+            bool small = m.Kind == "prince";
+            float w = small ? 250f : 290f, h = small ? 54f : 112f;
             float lift = (1f - a) * 12f;
-            var r = R((W - w) * 0.5f, 120f + lift, w, h);
+            var r = R((W - w) * 0.5f + (small ? 40f : 0f), (small ? 80f : 120f) + lift, w, h);
             Color Al(Color c) { c.a *= a; return c; }
             FillNoHit(new Rect(r.x - 3f * _u, r.y - 3f * _u, r.width + 6f * _u, r.height + 6f * _u), Al(new Color(0.96f, 0.92f, 0.82f)));
             FillNoHit(r, Al(new Color(tint.r * 0.35f, tint.g * 0.35f, tint.b * 0.35f, 1f)));
+            if (small)
+            {
+                var sd = Sub(r, _u, 6f, 6f, 42f, 42f);
+                Disc(sd, Al(tint));
+                GlyphAt(new Rect(sd.x + 8f * _u, sd.y + 8f * _u, sd.width - 16f * _u, sd.height - 16f * _u), glyph, new Color(1f, 0.96f, 0.88f, a));
+                Text(Sub(r, _u, 56f, 4f, w - 62f, 16f), m.Title, 12f, new Color(1f, 0.9f, 0.6f, a), true);
+                Text(Sub(r, _u, 56f, 20f, w - 62f, 32f), m.Text, 11f, new Color(0.96f, 0.93f, 0.86f, a), false, TextAnchor.UpperLeft, true);
+                return;
+            }
             FillNoHit(new Rect(r.x, r.y, r.width, 30f * _u), Al(tint));
             Text(Sub(r, _u, 10f, 0f, w - 20f, 30f), m.Title, 18f, new Color(1f, 0.96f, 0.88f, a), true, TextAnchor.MiddleCenter);
             var disc = Sub(r, _u, 14f, 40f, 58f, 58f);
