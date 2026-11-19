@@ -696,3 +696,17 @@ Merged `council/main` (readability pass `814874a`, with `council/content`'s disp
 - **Branches now consolidated onto `historic/main`:** `ages/h1-5`, `council/main`, and `council/content` are all in. `council/main` and `council/content` worktrees are unaffected and can be cleaned up by the owner whenever convenient; nothing further is planned on them.
 - **Still to do, not started here:** in-game debug shortcuts for jumping to each minigame, a final single packaged exe for the owner, and a short Word document with a manual test plan. The economy explainer is already delivered (`wt-docs/Economy_Explained.docx`).
 - **Not pushed.** Commit is local only; the owner has not yet been asked.
+
+## In-game debug shortcuts for Ward duel and the rhythm party (19 Nov 2026)
+
+Added `Assets/World/Game/UI/God/PlaytestDevTool.cs`, a new F1 developer tool ("Playtest", hotkey `J`, registered in `DevToolsInstaller.cs` beside `CampaignDevTool`), following the existing `CouncilDevTool`/`CampaignDevTool` pattern exactly: it is only reachable from the F1 God View toolbar, like the Council and Campaign tools already are, and it never mutates sim state — it only calls `EncounterDirectory.TryStart`, the same entry point normal dialogue uses.
+
+- **How to reach each minigame now (F1 God View, then the Playtest panel):**
+  - **F1 → Playtest (or press `J`) → "Ward duel with Mira"**: starts the Ward duel at once, from wherever the player is standing. No campaign needed.
+  - **F1 → Playtest → "Rhythm party with Sol"**: starts the dance/rhythm minigame at once, from wherever the player is standing.
+  - **Council election** and the **crystal/earth quest** already had their own F1 tools before this session ("Council", and "Campaign" — the latter starts the Earth route on `dev.historic`/the authored pack, per `CampaignDevTool.cs`); nothing new was needed for those two.
+- **Verified in Play Mode** (`unity command editor.playmode start` + `unity command script eval`, calling the exact same `EncounterDirectory.TryStart` line the new panel's buttons call): Ward duel starts `WardDuelEncounter`; after `EncounterHost.Instance.Abort()` to end it, the rhythm party starts `RhythmPartyEncounter`. Both confirmed by reading back `EncounterHost.Instance.Current`'s type, not just a return value.
+- **EditMode** re-run after adding the tool: 519 passed, 0 failed, 0 skipped — no regression.
+- **Build.** `AgentScripts/BuildNext.cs` into `Builds/Next/WorldMVP.exe`: succeeded, size 123 MB, 0 errors, 4 warnings, build time ~11.3 s. The shortcuts are in this build.
+- **Not done:** no new automated test was added for the Playtest panel itself (it is a thin debug-only wrapper over an already-tested entry point; the manual Play Mode check above stands in for one). No PlayMode smoke script exercises it either, since it is a developer convenience, not a player-facing path.
+- **Not pushed.** Commit is local only; the owner has not yet been asked.
