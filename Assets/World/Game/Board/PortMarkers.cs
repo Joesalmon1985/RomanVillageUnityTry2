@@ -63,18 +63,18 @@ namespace World.Game
             mb.Box(bc + Vector3.up * 8f + side * 0.1f, new Vector3(0.25f, 5.5f, 8f), new Color(0.93f, 0.88f, 0.74f), yaw);
             // Sign on a post at the shore end, a flat board facing the sea so the god camera reads it.
             // G1-6b: a big round token past the boat, readable from the top view: the good's picture for 2:1, a ring of the five goods for 3:1.
-            var tc = start + dir * (length + 16f);
-            mb.Cylinder(tc + Vector3.up * 1.0f, 17.5f, 17.5f, 1.2f, 20, new Color(0.30f, 0.20f, 0.10f));
-            mb.Cylinder(tc + Vector3.up * 2.0f, 15.5f, 15.5f, 1.2f, 20, new Color(0.95f, 0.91f, 0.80f));
+            var tc = start + dir * (length + 24f);
+            mb.Cylinder(tc + Vector3.up * 1.0f, 28f, 28f, 1.2f, 24, new Color(0.30f, 0.20f, 0.10f));
+            mb.Cylinder(tc + Vector3.up * 2.0f, 25f, 25f, 1.2f, 24, new Color(0.95f, 0.91f, 0.80f));
             var tt = tc + Vector3.up * 3.3f;
-            if (good.HasValue) Icon(mb, tt, good.Value, 5.2f, yaw);
+            if (good.HasValue) Icon(mb, tt, good.Value, 8.5f, yaw);
             else
             {
                 var all = new[] { Ware.Wood, Ware.Clay, Ware.Grain, Ware.Sheep, Ware.Stone };
                 for (int k = 0; k < 5; k++)
                 {
                     float a = k * Mathf.PI * 2f / 5f;
-                    Icon(mb, tt + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * 8.2f, all[k], 2.3f, yaw + k * 20f);
+                    Icon(mb, tt + new Vector3(Mathf.Cos(a), 0, Mathf.Sin(a)) * 13f, all[k], 3.7f, yaw + k * 20f);
                 }
             }
             var sp = start + side * 6f;

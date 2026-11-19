@@ -142,15 +142,15 @@ namespace World.Game
             var mb = new MeshBuilder();
             var gc = PortMarkers.GoodColor(w.Good);
             float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
-            int n = Mathf.Max(2, Mathf.FloorToInt(len / 9f));
+            int n = Mathf.Max(2, Mathf.FloorToInt(len / 20f));
             for (int i = 0; i < n; i++)
             {
                 var p = dir * ((i + 0.5f) * len / n);
-                mb.Box(p + Vector3.up * 0.2f, new Vector3(3.2f, 0.5f, 5f), new Color(0.1f, 0.09f, 0.08f), yaw);
-                mb.Box(p + Vector3.up * 0.55f, new Vector3(2.2f, 0.5f, 3.8f), Color.Lerp(gc, Color.white, 0.2f), yaw);
+                mb.Box(p + Vector3.up * 0.2f, new Vector3(13f, 0.5f, 15f), new Color(0.1f, 0.09f, 0.08f), yaw);
+                mb.Box(p + Vector3.up * 0.7f, new Vector3(9f, 0.5f, 11f), Color.Lerp(gc, Color.white, 0.2f), yaw);
             }
             var go = mb.ToObject("Trail " + w.Corner + "->" + w.Hex, _root, _mat);
-            go.transform.position = w.Home + Vector3.up * (BoardSpace.GroundY + 0.8f);
+            go.transform.position = w.Home + Vector3.up * (BoardSpace.GroundY + 5f);
             go.layer = 2;
             return go;
         }
@@ -165,8 +165,9 @@ namespace World.Game
             mb.Box(new Vector3(-0.2f, 0.3f, 0), new Vector3(0.28f, 0.6f, 0.3f), col * 0.6f);
             mb.Box(new Vector3(0.2f, 0.3f, 0), new Vector3(0.28f, 0.6f, 0.3f), col * 0.6f);
             mb.Cylinder(new Vector3(0, 2.7f, 0), 1.0f, 1.0f, 0.15f, 10, Color.Lerp(col, Color.white, 0.6f)); // a bright cap, so they read from above
-            mb.Cylinder(new Vector3(0, 0.02f, 0), 1.4f, 1.4f, 0.1f, 14, new Color(0.08f, 0.07f, 0.06f)); // G1-6b: a dark halo under the feet, then a ring in the people's colour
-            mb.Cylinder(new Vector3(0, 0.1f, 0), 1.1f, 1.1f, 0.1f, 14, Color.Lerp(col, Color.white, 0.35f));
+            // G1-6b: an overhead pin in the good's colour with a dark rim, so the villager reads from the whole-island view
+            mb.Cylinder(new Vector3(0, 3.4f, 0), 1.45f, 1.45f, 0.12f, 14, new Color(0.08f, 0.07f, 0.06f));
+            mb.Cylinder(new Vector3(0, 3.55f, 0), 1.15f, 1.15f, 0.12f, 14, PortMarkers.GoodColor(w.Good));
             var go = mb.ToObject("Collector " + w.People + "/" + w.Corner + "->" + w.Hex, _root, _mat);
             go.transform.localScale = Vector3.one * Scale;
             go.layer = 2;

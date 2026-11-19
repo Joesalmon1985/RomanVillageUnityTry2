@@ -48,5 +48,16 @@ public static class GodBoardG16b
     public static string Shot_game_over() { return Shot("g16b_game_over"); }
     public static string Shot_log_open() { return Shot("g16b_log_open"); }
     public static string Shot_log_closed() { return Shot("g16b_log_closed"); }
+    /// <summary>Sends villagers for every hex round the player's start corner, and steps them partway (the table clock may be paused).</summary>
+    public static string Walk()
+    {
+        var b = D.S.Board;
+        var hexes = new System.Collections.Generic.List<int>(b.Topology.VertexHexes(b.StartCorners[0]));
+        int n = D.Collectors.OnProduced(new Produced { Hexes = hexes.ToArray() });
+        D.Collectors.Step(1.3f);
+        return "sent=" + n + " active=" + D.Collectors.Active.Count;
+    }
+    public static string Shot_walkers() { return Shot("g16b_villagers_trail"); }
+    public static string Shot_ports() { return Shot("g16b_port_tokens"); }
     public static string Shot(string name) { ScreenCapture.CaptureScreenshot("Evidence/godboard/" + name + ".png"); return "shot"; }
 }
