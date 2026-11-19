@@ -581,6 +581,7 @@ namespace World.Game
             PlagueViews.Install(boot);
             HistoricDirector.Install(boot); // G4-3: the switch, castles, trees, Historic buildings
             SpireDirector.Install(boot); // G2-4: crystal spires and their rhythm stages
+            WarViews.Install(boot); // G3-3: soldiers, huts, lodge, burning
         }
     }
 }

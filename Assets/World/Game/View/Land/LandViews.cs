@@ -112,6 +112,7 @@ namespace World.Game
             var t = s.Board.Topology;
             var hexRoot = new GameObject("Hexes").transform;
             hexRoot.SetParent(_root, false);
+            HexLandView.HideNumbers = s.Ruleset == Ruleset.GodBoard;
             _hexes = new HexLandView[t.HexCount];
             for (int h = 0; h < t.HexCount; h++)
             {
