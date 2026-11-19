@@ -21,7 +21,7 @@ namespace World.Game
         public const int MaxActive = 90;
         /// <summary>Metres per second on the board scale, seconds between two villagers of one settlement, seconds at the hex.</summary>
         public static float Speed = 36f, Stagger = 0.45f, Gather = 0.6f;
-        public const float Scale = 3.2f;
+        public const float Scale = 14f;
 
         public enum Leg { Waiting, Out, Gathering, Back, Done }
 
@@ -136,10 +136,11 @@ namespace World.Game
             var col = PeopleColour(w.People);
             var skin = new Color(0.88f, 0.70f, 0.52f);
             var mb = new MeshBuilder();
-            mb.Box(new Vector3(0, 1.1f, 0), new Vector3(0.9f, 1.6f, 0.55f), col);
-            mb.Box(new Vector3(0, 2.25f, 0), new Vector3(0.62f, 0.62f, 0.62f), skin);
+            mb.Box(new Vector3(0, 1.1f, 0), new Vector3(1.3f, 1.6f, 0.8f), col);
+            mb.Box(new Vector3(0, 2.25f, 0), new Vector3(0.8f, 0.8f, 0.8f), skin);
             mb.Box(new Vector3(-0.2f, 0.3f, 0), new Vector3(0.28f, 0.6f, 0.3f), col * 0.6f);
             mb.Box(new Vector3(0.2f, 0.3f, 0), new Vector3(0.28f, 0.6f, 0.3f), col * 0.6f);
+            mb.Cylinder(new Vector3(0, 2.7f, 0), 1.0f, 1.0f, 0.15f, 10, Color.Lerp(col, Color.white, 0.6f)); // a bright cap, so they read from above
             var go = mb.ToObject("Collector " + w.People + "/" + w.Corner + "->" + w.Hex, _root, _mat);
             go.transform.localScale = Vector3.one * Scale;
             go.layer = 2;

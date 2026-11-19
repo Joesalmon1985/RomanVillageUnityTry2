@@ -342,7 +342,6 @@ namespace World.Game
                 }
                 if (AdviserOn) Advise(h);
             }
-            PrinceSaysHint();
             var ac = new List<int>(); var ae = new List<int>();
             if (AdviseCorner >= 0) ac.Add(AdviseCorner);
             if (AdviseEdge >= 0) ae.Add(AdviseEdge);
@@ -497,7 +496,7 @@ namespace World.Game
                 ClampFocus();
                 ApplyBoardCamera();
             }
-            if (IsOpen) { Pieces.Sync(); RefreshMarks(false); }
+            if (IsOpen) { Pieces.Sync(); RefreshMarks(false); PrinceSaysHint(); }
         }
 
         private void ApplyCamera(float u, bool rising)
