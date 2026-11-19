@@ -16,7 +16,7 @@ namespace World.Sim.Tests
     {
         private static readonly Dictionary<string, (int q, int r)> Sites = new Dictionary<string, (int, int)>
         {
-            { "glade", (0, -1) }, { "ash_cut", (-2, -2) }, { "kiln", (4, -1) }, { "forge", (-4, 2) },
+            { "glade", (0, -1) }, { "ash_cut", (-2, -2) }, { "kiln", (4, -1) }, { "forge", (4, -3) },
             { "causeway", (1, -4) }, { "cistern", (2, -3) }, { "shoulder", (3, 1) }, { "cliff", (1, 3) },
         };
 
@@ -89,25 +89,39 @@ namespace World.Sim.Tests
             }
         }
 
+        /// <summary>
+        /// PRD_GODBOARD CC-11 (owner, D-15): the Black Forge moved into the Fire region, from the north-west shore to the
+        /// Meadow hex (4, -3) on the south-east shore, beside the Fire region's hexes (3, -3) and (3, -2) and two hexes south
+        /// of the Cold Kiln. Its hex is a pinned campaign Meadow hex (BD-2), so it is Meadow with no number on every deal.
+        /// </summary>
         [Test]
-        public void BlackForge_IsTheWestRimMeadowHexNearestTheAshStart()
+        public void BlackForge_IsInTheFireRegion_TwoHexesFromTheKiln_OnEveryDeal()
         {
-            var b = CampaignPlaces.FixedBoard;
-            var t = b.Topology;
-            int rival = b.StartCorners[1];
-            int best = -1;
-            double bestD = double.MaxValue;
-            for (int h = 0; h < t.HexCount; h++)
+            var d = PackFiles.Load(PackFiles.Authored);
+            var forge = d.Location("forge");
+            Assert.AreEqual((4, -3), (forge.Anchor.Q, forge.Anchor.R));
+            var kiln = d.Location("kiln");
+            var a = new HexCoord(forge.Anchor.Q, forge.Anchor.R);
+            var k = new HexCoord(kiln.Anchor.Q, kiln.Anchor.R);
+            int dist = (Math.Abs(a.Q - k.Q) + Math.Abs(a.R - k.R) + Math.Abs(a.Q + a.R - k.Q - k.R)) / 2;
+            Assert.AreEqual(2, dist, "two hexes from the Cold Kiln");
+            CollectionAssert.Contains(BoardGenerator.CampaignMeadowHexes, a, "a pinned campaign hex");
+            foreach (var (q, r) in new[] { (3, -3), (3, -2) })
             {
-                var c = t.Hex(h);
-                bool rim = Math.Max(Math.Abs(c.Q), Math.Max(Math.Abs(c.R), Math.Abs(c.Q + c.R))) == BoardGenerator.MvpRadius;
-                if (!rim || b.HexTerrain[h] != Terrain.Meadow || t.HexX(h) >= 0) continue;
-                double dx = t.HexX(h) - t.VertexX(rival), dz = t.HexZ(h) - t.VertexZ(rival), dd = Math.Round(Math.Sqrt(dx * dx + dz * dz), 6);
-                if (dd < bestD) { bestD = dd; best = h; }   // ties: lower hex id
+                int pd = (Math.Abs(a.Q - q) + Math.Abs(a.R - r) + Math.Abs(a.Q + a.R - q - r)) / 2;
+                Assert.AreEqual(1, pd, "beside the Fire region's hex " + q + "," + r);
+                int node = Array.FindIndex(Enumerable.Range(0, World.Sim.Plague.PlagueGraphData.NodeCount).ToArray(),
+                    n => World.Sim.Plague.PlagueGraphData.HexQ[n] == q && World.Sim.Plague.PlagueGraphData.HexR[n] == r);
+                Assert.GreaterOrEqual(node, 0, "a plague node stands on " + q + "," + r);
+                Assert.AreEqual((int)Element.Fire, World.Sim.Plague.PlagueGraphData.Element[node], q + "," + r + " is Fire country");
             }
-            Assert.AreEqual(new HexCoord(-4, 2), t.Hex(best));
-            var forge = PackFiles.Load(PackFiles.Authored).Location("forge");
-            Assert.AreEqual((-4, 2), (forge.Anchor.Q, forge.Anchor.R));
+            foreach (ulong seed in new ulong[] { 1, 2, 77, 9001 })
+            {
+                var b = BoardGenerator.CreateDealtBoard(seed);
+                int h = b.Topology.HexIndex(a);
+                Assert.AreEqual(Terrain.Meadow, b.HexTerrain[h], "dealt seed " + seed);
+                Assert.AreEqual(0, b.HexNumber[h], "dealt seed " + seed);
+            }
         }
 
         [Test]

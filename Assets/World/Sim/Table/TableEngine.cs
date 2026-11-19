@@ -582,7 +582,7 @@ namespace World.Sim.Table
         }
 
         /// <summary>After any change on the board: longest road, points, and the end of the age (TU-6, TU-7).</summary>
-        private static void AfterChange(WorldState s, EventBuffer ev)
+        internal static void AfterChange(WorldState s, EventBuffer ev)
         {
             var t = s.Table;
             var tu = t.Tuning;

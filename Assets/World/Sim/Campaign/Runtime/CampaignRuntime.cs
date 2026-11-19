@@ -117,7 +117,7 @@ namespace World.Sim.Campaign
         /// starts, PlayMode.DevStart) is not gated, nor "Begin again" on an island that has already run a campaign.
         /// </summary>
         internal static bool MayStart(WorldState s) =>
-            AgesApi.CampaignMayStart(s) || AgesApi.Mode(s) == PlayMode.DevStart || s.Campaign != null;
+            CampaignRuleset.GodBoard(s) || AgesApi.CampaignMayStart(s) || AgesApi.Mode(s) == PlayMode.DevStart || s.Campaign != null;
 
         private static bool HasLead(CampaignState c, int id) => c.Leads != null && c.Leads.Exists(l => l.Id == id);
 
@@ -470,7 +470,8 @@ namespace World.Sim.Campaign
             c.Phase = outcome;
             c.Leads.Clear();
             Journal(s, c, won ? "The four crystals are home. The island is held." : "The towers are going out.", ev);
-            ev?.Add(new CampaignEnded { Won = won, EndingId = c.EndingId, Record = CampaignApi.Record(s) });
+            // CC-9: on the god board a terminal defeat ends the campaign, not the game.
+            ev?.Add(new CampaignEnded { Won = won, EndingId = c.EndingId, Record = CampaignApi.Record(s), GameGoesOn = CampaignRuleset.GodBoard(s) });
         }
 
         // ---------------------------------------------------------------- restoration (5.7) and the finale (5.8)
@@ -568,7 +569,8 @@ namespace World.Sim.Campaign
         {
             int restored = CountCustody(c, Custody.Restored);
             int onAltar = CountCustody(c, Custody.AtRivalAltar);
-            var demons = s.Demons;
+            // On the god board the plague's cure and strengthening (CC-3) replace the legacy demons' draw rate.
+            var demons = CampaignRuleset.GodBoard(s) ? null : s.Demons;
             if (demons?.Tuning != null)
             {
                 if (restored >= 4)
@@ -632,12 +634,18 @@ namespace World.Sim.Campaign
             st.SinceTick = s.Tick;
             ev?.Add(new CrystalCustodyChanged { Crystal = e, From = from, To = to, At = at });
             string key = "crystal:" + Lower(e);
+            // CC-6: on the god board the crystal keys pay no points (points come only from the board); the reward is the
+            // free city or settlement of CC-4 and the cure or strengthening of CC-3 instead.
+            bool godBoard = CampaignRuleset.GodBoard(s);
+            bool firstAltar = false;
             if (to == Custody.AtRivalAltar && !c.EverOnAltar.Contains(e))
             {
                 c.EverOnAltar.Add(e);
-                LedgerLogic.Award(s, PlayerIds.Rival, key, 1, ev);
+                firstAltar = true;
+                if (!godBoard) LedgerLogic.Award(s, PlayerIds.Rival, key, 1, ev);
             }
-            if (to == Custody.Restored) LedgerLogic.Award(s, PlayerIds.Human, key, 1, ev);
+            if (to == Custody.Restored && !godBoard) LedgerLogic.Award(s, PlayerIds.Human, key, 1, ev);
+            if (godBoard) GodBoardCustody(s, e, to, firstAltar, ev);
             if (from == Custody.AtRivalAltar || to == Custody.AtRivalAltar) ApplyIslandEffects(s, c, ev);
             c.ReplanNow = true;
             return true;
@@ -708,8 +716,13 @@ namespace World.Sim.Campaign
         {
             var c = Run(s);
             if (c == null || c.Phase != CampaignPhase.Running) return;
+            // CC-2: the expedition clock is world time. On the god board it keeps running while the table is paused or the
+            // player is at the board; only a duel and the pause menu (both stop the world clock) stop it.
             c.RivalProgress++;
-            ScanOverruns(s, c, ev);
+            // CC-7: on the god board trouble at home (a burned settlement, an outbreak by the home camp) replaces the
+            // overrun link of PRD_CRYSTALS 5.1 and 5.9.
+            if (CampaignRuleset.GodBoard(s)) ScanHomeTrouble(s, c, ev);
+            else ScanOverruns(s, c, ev);
             if (c.Phase != CampaignPhase.Running) return;
             TickParty(s, c, ev);
             if (c.Phase != CampaignPhase.Running) return;

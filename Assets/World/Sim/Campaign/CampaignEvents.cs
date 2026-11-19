@@ -72,8 +72,11 @@ namespace World.Sim.Campaign
 
     public sealed class JournalAdded : SimEvent { public string Text; }
 
-    /// <summary>The run ended (5.8). Record is the CampaignRecord handed to the later ages (N-6).</summary>
-    public sealed class CampaignEnded : SimEvent { public bool Won; public string EndingId; public CampaignRecord Record; }
+    /// <summary>
+    /// The run ended (5.8). Record is the CampaignRecord handed to the later ages (N-6). GameGoesOn (god board, CC-9): the
+    /// game itself continues whatever the outcome; a view must not end the game on a lost campaign.
+    /// </summary>
+    public sealed class CampaignEnded : SimEvent { public bool Won; public string EndingId; public CampaignRecord Record; public bool GameGoesOn; }
 
     /// <summary>Why codes of RivalAdvanced (the rows of the 5.1 table that are charges).</summary>
     public static class RivalCharges
@@ -82,6 +85,8 @@ namespace World.Sim.Campaign
         public const string Draw = "draw";
         public const string WrongAnswer = "wrong_answer";
         public const string CampOverrun = "camp_overrun";
+        /// <summary>CC-7 (god board): a settlement of yours burned or an outbreak reached the home camp.</summary>
+        public const string HomeTrouble = "home_trouble";
         public const string Dev = "dev";
     }
 }

@@ -37,9 +37,12 @@ namespace World.Sim.Eras
             return list[faction].HandoverTick;
         }
 
-        /// <summary>Crystals PRD N-1: the island is in the Historic age (or later) and the player's people have handed over.</summary>
+        /// <summary>
+        /// Crystals PRD N-1: the island is in the Historic age (or later) and the player's people have handed over. On the
+        /// god board (PRD_GODBOARD CC-1) the gate is gone: Mira may set out from the first minute.
+        /// </summary>
         public static bool CampaignMayStart(WorldState s) =>
-            Current(s) >= Era.Historic && HandoverTick(s, PlayerIds.Human) >= 0;
+            Campaign.CampaignRuleset.GodBoard(s) || (Current(s) >= Era.Historic && HandoverTick(s, PlayerIds.Human) >= 0);
 
         /// <summary>The campaign rules of 4.3 apply (overrun never ends the game, no time limit): Mode is Campaign.</summary>
         public static bool IsCampaign(WorldState s) => Mode(s) == PlayMode.Campaign;

@@ -732,6 +732,31 @@ namespace World.Sim.Campaign
 
         // ---------------------------------------------------------------- the faction game (5.9)
 
+        /// <summary>
+        /// The party drops what it is doing and walks back to the home camp (an uncommitted threshold is abandoned; an open
+        /// choice stays open). The journal line is <paramref name="journalLead"/> followed by the camp's name. Used by the
+        /// overrun link (CR-31) and by trouble at home on the god board (CC-7).
+        /// </summary>
+        internal static void TurnHome(WorldState s, CampaignState c, string why, string journalLead, EventBuffer ev)
+        {
+            var p = c.Party;
+            var home = Home(c.Definition);
+            p.WithdrawnFrom = "";
+            p.EncounterId = "";
+            p.ChoiceId = "";
+            p.HoldAtThreshold = false;
+            ev?.Add(new PartyRetreated { To = home, Why = why });
+            Journal(s, c, journalLead + CampaignTokens.PlaceName(c.Definition, home) + ".", ev);
+            if (!SetOut(s, c, home, RoutePurpose.Retreat, -1, "", QuestAction.Arrive, ev))
+            {
+                p.At = home;
+                p.Leg = null;
+                p.Route.Clear();
+                p.Purpose = RoutePurpose.Retreat;
+                OnFinalArrival(s, c, ev);
+            }
+        }
+
         /// <summary>CampOverrun events raised earlier in this tick (Strength runs before the campaign slot), in order.</summary>
         private static void ScanOverruns(WorldState s, CampaignState c, EventBuffer ev)
         {
@@ -768,21 +793,7 @@ namespace World.Sim.Campaign
                     return;
                 }
                 c.LastOverrunRetreatTick = s.Tick;
-                var home = Home(c.Definition);
-                p.WithdrawnFrom = "";
-                p.EncounterId = "";
-                p.ChoiceId = "";
-                p.HoldAtThreshold = false;
-                ev?.Add(new PartyRetreated { To = home, Why = "camp_overrun" });
-                Journal(s, c, "The Ash Clan overran one of your camps. Mira turned the party back to " + CampaignTokens.PlaceName(c.Definition, home) + ".", ev);
-                if (!SetOut(s, c, home, RoutePurpose.Retreat, -1, "", QuestAction.Arrive, ev))
-                {
-                    p.At = home;
-                    p.Leg = null;
-                    p.Route.Clear();
-                    p.Purpose = RoutePurpose.Retreat;
-                    OnFinalArrival(s, c, ev);
-                }
+                TurnHome(s, c, "camp_overrun", "The Ash Clan overran one of your camps. Mira turned the party back to ", ev);
             }
             else if (defender == PlayerIds.Rival && attacker == PlayerIds.Human)
             {
