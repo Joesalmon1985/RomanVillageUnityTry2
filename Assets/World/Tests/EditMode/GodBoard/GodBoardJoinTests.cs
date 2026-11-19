@@ -328,7 +328,7 @@ namespace World.Sim.Tests
             var log = Steps(sim, 1);
             Assert.IsTrue(s.Plague.Ended, "HI-8: the plague ends");
             Assert.AreEqual(1, log.OfType<PlagueEnded>().Count());
-            CollectionAssert.Contains(s.Eras.ReadyChapters, Eras.ChapterIds.Historic);
+            Assert.AreEqual(Eras.Era.Historic, s.Eras.Current, "G4-2: the island steps into Historic at once (ready, then advanced)");
             Assert.IsTrue(log.OfType<Eras.ChapterReady>().Any(e => e.Chapter == Eras.ChapterIds.Historic));
             Assert.IsFalse(t.IslandFell);
             Assert.AreEqual(0, Steps(sim, 50).OfType<PlagueEnded>().Count(), "once only");
@@ -489,7 +489,7 @@ namespace World.Sim.Tests
             string json = SaveCodec.ToJson(s);
             StringAssert.Contains("\"War\":{", json);
             var b = SaveCodec.Load(json, out var model);
-            Assert.AreEqual(7, model.LoadedVersion);
+            Assert.AreEqual(SaveCodec.CurrentVersion, model.LoadedVersion);
             Assert.AreEqual(SaveCodec.StateJson(s), SaveCodec.StateJson(b.State));
             CollectionAssert.AreEqual(a.Systems.Select(x => x.GetType().Name).Where(n => n != "AutoOpen").ToList(),
                 b.Systems.Select(x => x.GetType().Name).ToList());

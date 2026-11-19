@@ -275,7 +275,7 @@ namespace World.Sim.Tests
             Assert.AreEqual(0, PlagueApi.TotalDemons(s));
             Assert.AreEqual(1, logA.OfType<PlagueEnded>().Count());
             // HI-1: the Historic chapter is ready for the step (the step itself is G1-8's).
-            CollectionAssert.Contains(s.Eras.ReadyChapters, Eras.ChapterIds.Historic);
+            Assert.AreEqual(Eras.Era.Historic, s.Eras.Current, "G4-2: the island steps into Historic at once (ready, then advanced)");
             Assert.IsTrue(logA.OfType<Eras.ChapterReady>().Any(e => e.Chapter == Eras.ChapterIds.Historic));
 
             // No legacy system ran.
