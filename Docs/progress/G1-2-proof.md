@@ -85,3 +85,17 @@ Setup: 60 seeds (1000 to 1059), 4 AI seats on `TableAi`, start corners 70, 97, 5
 | 1057 | 11 | 2 | 6, 3, 10, 2 | 5 / 9 |
 | 1058 | 14 | 1 | 5, 10, 4, 6 | 18 / 23 |
 | 1059 | 13 | 0 | 10, 3, 4, 8 | 13 / 18 |
+
+## With a Quick player in seat 0
+
+Same seeds; seat 0 is a virtual Quick player (PRD 12.1): builds the adviser's target (`TableAi.TargetFor`) when affordable, accepts every offer giving it at least as many cards as it pays, ends its turn at once, makes no offers and no bank trades. A first look for G1-3, not its full proof.
+
+| Measure | Value |
+|---|---|
+| Games that reached 10 points | 60 of 60 |
+| Rounds to 10 points: min / median / max | 6 / 15 / 26 |
+| Quick player wins (PRD target 30-50%) | 0 of 60 (0%) |
+| AI offers to the player / rounds the player started not leading | 1620 / 535 (9.08 per 3 rounds; PRD target at least 1) |
+| Trades the player made with AIs | 727 |
+| Trades between peoples, all (per game) | 16.1 |
+| Trades checked for TR-4 (AI sides) / obeying | 966 / 966 |
