@@ -544,6 +544,7 @@ namespace World.Game
             if (s.Ruleset != Ruleset.GodBoard || s.Table == null) return;
             GodBoardDirector.Install(boot);
             PlagueViews.Install(boot);
+            WarViews.Install(boot);
         }
     }
 }
