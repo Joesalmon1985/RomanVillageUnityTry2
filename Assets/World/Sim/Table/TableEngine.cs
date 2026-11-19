@@ -520,6 +520,7 @@ namespace World.Sim.Table
             var t = s.Table;
             ev.Add(new Epidemic { People = t.Current, Round = t.Round });
             t.Phase = TablePhase.Main;
+            t.TurnTicks = 0; // the wait for discards does not use up an AI's turn
         }
 
         private void EndTurnNow(WorldState s, string reason, EventBuffer ev)
