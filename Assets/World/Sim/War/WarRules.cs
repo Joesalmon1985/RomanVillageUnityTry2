@@ -97,7 +97,7 @@ namespace World.Sim.War
             var leaders = new List<int>();
             for (int i = 0; i < n; i++) if (pts[i] == top) leaders.Add(i);
             bool everyoneTied = leaders.Count == n;
-            if (leaders.Count >= 2 && everyoneTied && w.TiedLeadersFight == TieRule.OnlyWhenNotEveryoneTied)
+            if (leaders.Count >= 2 && (w.TiedLeadersFight == TieRule.NeverWhenTied || (everyoneTied && w.TiedLeadersFight == TieRule.OnlyWhenNotEveryoneTied)))
             {
                 // G0-3 tuning flag: everyone shares the top score, so nobody is at war.
             }

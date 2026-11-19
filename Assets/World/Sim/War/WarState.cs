@@ -50,6 +50,8 @@ namespace World.Sim.War
         Literal = 0,
         /// <summary>Tied leaders fight only when at least one people is below the top score.</summary>
         OnlyWhenNotEveryoneTied = 1,
+        /// <summary>G1-3 option, not the default: peoples tied at the top never fight; only a single leader WarLead ahead is at war.</summary>
+        NeverWhenTied = 2,
     }
 
     public sealed class WarSettlement

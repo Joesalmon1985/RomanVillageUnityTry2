@@ -181,7 +181,7 @@ namespace World.Sim.Tests
         public string Name = "Default (the rules as they stand)";
         public int Grace = 6;
         public int[] Rates = { 1, 1, 2, 2, 2, 3, 3, 3, 4 };
-        public int InfectEvery = 1, WinPoints = 10, WarLead = 2, Soldiers = 1, EpidemicDemons = 3, OutbreaksToFall = 8;
+        public int InfectEvery = 1, RateEvery = 1, WinPoints = 10, WarLead = 2, Soldiers = 1, EpidemicDemons = 3, OutbreaksToFall = 8;
         public TieRule Tie = TieRule.OnlyWhenNotEveryoneTied;
 
         public Knobs Named(string name) { Name = name; return this; }
@@ -189,7 +189,7 @@ namespace World.Sim.Tests
 
         public Knobs Clone() => new Knobs
         {
-            Name = Name, Grace = Grace, Rates = (int[])Rates.Clone(), InfectEvery = InfectEvery, WinPoints = WinPoints, WarLead = WarLead,
+            Name = Name, Grace = Grace, Rates = (int[])Rates.Clone(), InfectEvery = InfectEvery, RateEvery = RateEvery, WinPoints = WinPoints, WarLead = WarLead,
             Soldiers = Soldiers, EpidemicDemons = EpidemicDemons, OutbreaksToFall = OutbreaksToFall, Tie = Tie,
         };
 
@@ -198,6 +198,7 @@ namespace World.Sim.Tests
             var oldGrace = PlagueRules.GraceRounds;
             var oldRates = PlagueRules.RateTrack;
             var oldEvery = PlagueRules.InfectEvery;
+            var oldRateEvery = PlagueRules.RateEvery;
             var oldLead = WarData.WarLead;
             var oldSoldiers = WarData.SettlementSoldiers;
             var oldEpi = PlagueRules.EpidemicDemons;
@@ -207,6 +208,7 @@ namespace World.Sim.Tests
                 PlagueRules.GraceRounds = Grace;
                 PlagueRules.RateTrack = Rates;
                 PlagueRules.InfectEvery = InfectEvery;
+                PlagueRules.RateEvery = RateEvery;
                 WarData.WarLead = WarLead;
                 WarData.SettlementSoldiers = Soldiers;
                 PlagueRules.EpidemicDemons = EpidemicDemons;
@@ -226,6 +228,7 @@ namespace World.Sim.Tests
                 PlagueRules.GraceRounds = oldGrace;
                 PlagueRules.RateTrack = oldRates;
                 PlagueRules.InfectEvery = oldEvery;
+                PlagueRules.RateEvery = oldRateEvery;
                 WarData.WarLead = oldLead;
                 WarData.SettlementSoldiers = oldSoldiers;
                 PlagueRules.EpidemicDemons = oldEpi;
@@ -282,6 +285,7 @@ namespace World.Sim.Tests
             Assert.AreEqual(6, PlagueRules.GraceRounds);
             CollectionAssert.AreEqual(new[] { 1, 1, 2, 2, 2, 3, 3, 3, 4 }, PlagueRules.RateTrack);
             Assert.AreEqual(1, PlagueRules.InfectEvery);
+            Assert.AreEqual(1, PlagueRules.RateEvery);
             Assert.AreEqual(2, WarData.WarLead);
             Assert.AreEqual(1, WarData.SettlementSoldiers);
             Assert.AreEqual(3, PlagueRules.EpidemicDemons);
@@ -324,7 +328,10 @@ namespace World.Sim.Tests
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var rows = new List<(Knobs k, List<GodBoardJoinProof.GameResult> ai)>();
             foreach (var k in StudyVariants()) rows.Add((k, Run(k, VirtualKind.AiSeat)));
-            string report = StudyReport(rows, sw.Elapsed.TotalSeconds);
+            var fin = new List<(Knobs k, List<(VirtualKind kind, List<GodBoardJoinProof.GameResult> rs)> runs)>();
+            foreach (var k in Finalists())
+                fin.Add((k, new[] { VirtualKind.Quick, VirtualKind.Slow, VirtualKind.Absent, VirtualKind.AiSeat }.Select(kind => (kind, Run(k, kind))).ToList()));
+            string report = StudyReport(rows, sw.Elapsed.TotalSeconds) + FinalistReport(fin);
             TestContext.Out.WriteLine(report);
             Write("G1-3-tuning.md", report);
             foreach (var (k, rs) in rows)
@@ -342,6 +349,16 @@ namespace World.Sim.Tests
         // Variants of the study
         // =====================================================================================================
 
+        /// <summary>The option sets run against every virtual player in the study's second table.</summary>
+        public static IEnumerable<Knobs> Finalists()
+        {
+            yield return new Knobs();
+            yield return new Knobs().Named("F1 infect every 3rd round + tied leaders never fight").With(k => { k.InfectEvery = 3; k.Tie = TieRule.NeverWhenTied; });
+            yield return new Knobs().Named("F3 F1 + win 13").With(k => { k.InfectEvery = 3; k.WinPoints = 13; k.Tie = TieRule.NeverWhenTied; });
+            yield return new Knobs().Named("D5 F3 + war lead 3").With(k => { k.InfectEvery = 3; k.WinPoints = 13; k.Tie = TieRule.NeverWhenTied; k.WarLead = 3; });
+            yield return new Knobs().Named("D8 infect every 2nd + grace 10 + win 13 + ties never + lead 3").With(k => { k.Grace = 10; k.InfectEvery = 2; k.WinPoints = 13; k.Tie = TieRule.NeverWhenTied; k.WarLead = 3; });
+        }
+
         private static readonly int[] SlowRates = { 1, 1, 1, 2, 2, 2, 3, 3, 4 };
 
         public static IEnumerable<Knobs> StudyVariants()
@@ -358,12 +375,28 @@ namespace World.Sim.Tests
             yield return new Knobs().Named("S8 WA-11 literal tie rule").With(k => k.Tie = TieRule.Literal);
             yield return new Knobs().Named("S9 epidemic places 2 demons").With(k => k.EpidemicDemons = 2);
             yield return new Knobs().Named("S10 island falls at 10 outbreaks").With(k => k.OutbreaksToFall = 10);
-            // Combinations (the owner's example set and what the single results suggest).
-            yield return new Knobs().Named("C1 S3 + S4 (every 2nd round, win 12)").With(k => { k.InfectEvery = 2; k.WinPoints = 12; });
-            yield return new Knobs().Named("C2 S1 + S2 + S4").With(k => { k.Grace = 10; k.Rates = SlowRates; k.WinPoints = 12; });
-            yield return new Knobs().Named("C3 S3 + S4 + S6 + S7").With(k => { k.InfectEvery = 2; k.WinPoints = 12; k.WarLead = 3; k.Soldiers = 2; });
-            yield return new Knobs().Named("C4 S3 + S5 + S6 + S7").With(k => { k.InfectEvery = 2; k.WinPoints = 13; k.WarLead = 3; k.Soldiers = 2; });
-            yield return new Knobs().Named("C5 S1 + S2 + S3 + S4 + S6 + S7").With(k => { k.Grace = 10; k.Rates = SlowRates; k.InfectEvery = 2; k.WinPoints = 12; k.WarLead = 3; k.Soldiers = 2; });
+            yield return new Knobs().Named("S11 rate track advances every 2nd epidemic").With(k => k.RateEvery = 2);
+            yield return new Knobs().Named("S13 infection every 3rd round").With(k => k.InfectEvery = 3);
+            yield return new Knobs().Named("S14 war lead 4").With(k => k.WarLead = 4);
+            yield return new Knobs().Named("S15 tied leaders never fight (new tie value)").With(k => k.Tie = TieRule.NeverWhenTied);
+            yield return new Knobs().Named("S16 win at 14 points").With(k => k.WinPoints = 14);
+            // Combinations.
+            yield return new Knobs().Named("D1 S13 + win 12").With(k => { k.InfectEvery = 3; k.WinPoints = 12; });
+            yield return new Knobs().Named("D2 S13 + win 13").With(k => { k.InfectEvery = 3; k.WinPoints = 13; });
+            yield return new Knobs().Named("D3 S13 + win 14").With(k => { k.InfectEvery = 3; k.WinPoints = 14; });
+            yield return new Knobs().Named("D4 S13 + win 13 + S15 (ties never fight)").With(k => { k.InfectEvery = 3; k.WinPoints = 13; k.Tie = TieRule.NeverWhenTied; });
+            yield return new Knobs().Named("D5 S13 + win 13 + S15 + lead 3").With(k => { k.InfectEvery = 3; k.WinPoints = 13; k.Tie = TieRule.NeverWhenTied; k.WarLead = 3; });
+            yield return new Knobs().Named("D6 S13 + win 14 + S15 + lead 3").With(k => { k.InfectEvery = 3; k.WinPoints = 14; k.Tie = TieRule.NeverWhenTied; k.WarLead = 3; });
+            yield return new Knobs().Named("D7 every 2nd round + win 13 + S15 + lead 3").With(k => { k.InfectEvery = 2; k.WinPoints = 13; k.Tie = TieRule.NeverWhenTied; k.WarLead = 3; });
+            yield return new Knobs().Named("D8 D7 + grace 10").With(k => { k.Grace = 10; k.InfectEvery = 2; k.WinPoints = 13; k.Tie = TieRule.NeverWhenTied; k.WarLead = 3; });
+            yield return new Knobs().Named("D9 S15 + lead 3 only (war change alone)").With(k => { k.Tie = TieRule.NeverWhenTied; k.WarLead = 3; });
+            yield return new Knobs().Named("F1 S13 + S15 (infect every 3rd round, tied leaders never fight)").With(k => { k.InfectEvery = 3; k.Tie = TieRule.NeverWhenTied; });
+            yield return new Knobs().Named("F2 F1 + win 12").With(k => { k.InfectEvery = 3; k.WinPoints = 12; k.Tie = TieRule.NeverWhenTied; });
+            yield return new Knobs().Named("E1 D6 + grace 10").With(k => { k.Grace = 10; k.InfectEvery = 3; k.WinPoints = 14; k.Tie = TieRule.NeverWhenTied; k.WarLead = 3; });
+            yield return new Knobs().Named("E2 S13 + win 14 + S15 (war lead stays 2)").With(k => { k.InfectEvery = 3; k.WinPoints = 14; k.Tie = TieRule.NeverWhenTied; });
+            yield return new Knobs().Named("E3 every 2nd round + grace 10 + win 14 + S15 + lead 3").With(k => { k.Grace = 10; k.InfectEvery = 2; k.WinPoints = 14; k.Tie = TieRule.NeverWhenTied; k.WarLead = 3; });
+            yield return new Knobs().Named("E4 S13 + win 15 + S15 + lead 3").With(k => { k.InfectEvery = 3; k.WinPoints = 15; k.Tie = TieRule.NeverWhenTied; k.WarLead = 3; });
+            yield return new Knobs().Named("E5 every 2nd round + rate every 2nd epidemic + grace 10 + win 14 + S15 + lead 3").With(k => { k.Grace = 10; k.InfectEvery = 2; k.RateEvery = 2; k.WinPoints = 14; k.Tie = TieRule.NeverWhenTied; k.WarLead = 3; });
         }
 
         // =====================================================================================================
@@ -487,6 +520,30 @@ namespace World.Sim.Tests
                               + " | " + Median(rs.Select(g => g.PointsBurned).ToList()) + " / " + rs.Max(g => g.PointsBurned)
                               + " | " + rs.Average(g => g.Trained).ToString("0.0") + " / " + rs.Average(g => g.Purged).ToString("0.0")
                               + " | " + Pct(rs.Count(g => g.PlayerWon), rs.Count) + " |");
+            }
+            return sb.ToString();
+        }
+
+        private static string FinalistReport(List<(Knobs k, List<(VirtualKind kind, List<GodBoardJoinProof.GameResult> rs)> runs)> fin)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine();
+            sb.AppendLine("## Finalists against every virtual player (same seeds, " + Seeds + " games each)");
+            sb.AppendLine();
+            sb.AppendLine("Cells: rounds to win (median) / island falls / war share of rounds / player wins. Targets: rounds 25-40 (AI seat), falls under 10%, war under 30%, Quick wins 30-50%, Absent under 5%.");
+            sb.AppendLine();
+            sb.AppendLine("| Option set | Quick | Slow | Absent | AI seat |");
+            sb.AppendLine("|---|---|---|---|---|");
+            foreach (var (k, runs) in fin)
+            {
+                sb.Append("| " + k.Name + " |");
+                foreach (var (kind, rs) in runs)
+                {
+                    int fell = rs.Count(g => g.End == "island");
+                    sb.Append(" " + Median(rs.Where(g => g.End == "won").Select(g => g.Rounds).ToList()) + " / " + Pct(fell, rs.Count) + " / "
+                              + Pct(rs.Sum(g => g.RoundsAtWar), rs.Sum(g => g.Rounds)) + " / " + Pct(rs.Count(g => g.PlayerWon), rs.Count) + " |");
+                }
+                sb.AppendLine();
             }
             return sb.ToString();
         }

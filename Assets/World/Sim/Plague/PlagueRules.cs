@@ -23,6 +23,8 @@ namespace World.Sim.Plague
         public static int EpidemicDemons = 3;
         /// <summary>Infection draw every N-th round (1 = every round, the rule). Proof variants only; read by GodBoardModule.</summary>
         public static int InfectEvery = 1;
+        /// <summary>The rate track advances on every N-th epidemic only (1 = every epidemic, the rule). Proof variants only.</summary>
+        public static int RateEvery = 1;
 
         /// <summary>The once-per-round draw (PL-5): rate cards, 1 demon each (2 for a strengthened kind, none for a cured one).</summary>
         public static bool InfectRound(WorldState s, EventBuffer ev)
@@ -48,7 +50,7 @@ namespace World.Sim.Plague
             var p = Live(s);
             if (p == null || p.Rounds < GraceRounds) return false;
             p.Epidemics++;
-            p.RateIndex = Math.Min(p.RateIndex + 1, RateTrack.Length - 1);
+            if (RateEvery <= 1 || (p.Epidemics - 1) % RateEvery == 0) p.RateIndex = Math.Min(p.RateIndex + 1, RateTrack.Length - 1);
             int card = DrawBottom(p);
             p.Discards.Add(card);
             ev?.Add(new Epidemic { Node = card, RateIndex = p.RateIndex, Rate = RateTrack[p.RateIndex] });
