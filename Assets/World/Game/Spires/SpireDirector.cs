@@ -201,6 +201,8 @@ namespace World.Game
             foreach (var o in others) if (BoardSpace.Flat(o.Layout.DanceCircleCentre - p) < 18f) return false;
             var home = DanceCircle.Current;
             if (home != null && BoardSpace.Flat(home.Centre - p) < 16f) return false;
+            var gb = GodBoardDirector.Instance;
+            if (gb != null) foreach (var tv in gb.Temples) if (BoardSpace.Flat(tv.transform.position - p) < footprint + TempleView.Radius + 2f) return false;
             return true;
         }
 
@@ -232,9 +234,9 @@ namespace World.Game
             body.layer = 2;
 
             // The beam: a tall additive cylinder, plus a point light under the crystal.
-            _beamMat = MaterialFactory.CreateGlow(new Color(tint.r, tint.g, tint.b, 0.35f), "Spire beam");
+            _beamMat = MaterialFactory.CreateGlow(new Color(tint.r, tint.g, tint.b, 0.5f), "Spire beam");
             var bm = new MeshBuilder();
-            bm.Cylinder(Vector3.zero, 0.55f, 0.3f, 70f, 10, new Color(1, 1, 1, 0.9f));
+            bm.Cylinder(Vector3.zero, 1.2f, 0.7f, 70f, 10, new Color(1, 1, 1, 0.9f));
             Beam = bm.ToObject("Beam", transform, _beamMat).transform;
             Beam.position = top + Vector3.up * 1.2f;
             Beam.gameObject.layer = 2;
@@ -267,7 +269,7 @@ namespace World.Game
             _clock += Time.deltaTime;
             if (_beamMat != null)
             {
-                float a = 0.30f + 0.08f * Mathf.Sin(_clock * 1.7f + Index);
+                float a = 0.42f + 0.10f * Mathf.Sin(_clock * 1.7f + Index);
                 _beamMat.color = new Color(Colour.r, Colour.g, Colour.b, a);
             }
         }
