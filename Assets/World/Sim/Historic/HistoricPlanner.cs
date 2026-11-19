@@ -109,14 +109,23 @@ namespace World.Sim.Historic
 
         private static HistoricKind? Try(WorldState s, int p, HistoricKind k) => BestHex(s, p, k) >= 0 ? k : (HistoricKind?)null;
 
-        /// <summary>The best hex for a new site of a kind in the people's territory, or -1 when none is worth it.</summary>
+        /// <summary>
+        /// The best hex for a new site of a kind: in the near territory (one ring around the holdings) first, and only when
+        /// nothing there serves, in the far territory (<see cref="HistoricRules.FarRings"/>). -1 when none is worth it.
+        /// </summary>
         public static int BestHex(WorldState s, int p, HistoricKind kind)
+        {
+            int near = BestHex(s, p, kind, 1);
+            return near >= 0 ? near : BestHex(s, p, kind, HistoricRules.FarRings);
+        }
+
+        private static int BestHex(WorldState s, int p, HistoricKind kind, int rings)
         {
             var h = s.Historic;
             var hp = h.Peoples[p];
             var d = HistoricDefs.Get(kind);
             int best = -1, bestScore = int.MinValue;
-            foreach (int hex in HistoricRules.Territory(s, p))
+            foreach (int hex in HistoricRules.Territory(s, p, rings))
             {
                 var r = h.Hexes[hex];
                 if (!HistoricDefs.Allows(d, r.Terrain)) continue;

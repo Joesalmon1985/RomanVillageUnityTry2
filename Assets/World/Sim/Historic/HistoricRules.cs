@@ -145,11 +145,15 @@ namespace World.Sim.Historic
             return best == int.MaxValue ? 0 : best;
         }
 
+        /// <summary>Rings of hexes around a people's holdings its planner may reach out to when nothing nearer serves.</summary>
+        public const int FarRings = 2;
+
         /// <summary>
-        /// The hexes a people may build on: every hex touching one of its table corners (or its castle), and their
-        /// neighbours. Ascending id. Peoples may share hexes (and compete for their trees).
+        /// The hexes a people may build on: every hex touching one of its table corners (or its castle), and
+        /// <paramref name="rings"/> rings of neighbours around them (1 near, <see cref="FarRings"/> far). Ascending id.
+        /// Peoples may share hexes (and compete for their trees).
         /// </summary>
-        public static List<int> Territory(WorldState s, int p)
+        public static List<int> Territory(WorldState s, int p, int rings = 1)
         {
             var b = s.Board;
             var topo = b.Topology;
@@ -159,8 +163,13 @@ namespace World.Sim.Historic
             if (t != null) for (int c = 0; c < t.CornerOwner.Length; c++) if (t.CornerOwner[c] == p) Touch(c);
             var h0 = s.Historic;
             if (h0 != null && p < h0.Peoples.Count) Touch(h0.Peoples[p].StoreCorner);
-            var all = (bool[])near.Clone();
-            for (int h = 0; h < near.Length; h++) if (near[h]) foreach (int n in Neighbours(b, h)) all[n] = true;
+            var all = near;
+            for (int ring = 0; ring < rings; ring++)
+            {
+                var grown = (bool[])all.Clone();
+                for (int h = 0; h < all.Length; h++) if (all[h]) foreach (int n in Neighbours(b, h)) grown[n] = true;
+                all = grown;
+            }
             var list = new List<int>();
             for (int h = 0; h < all.Length; h++) if (all[h]) list.Add(h);
             return list;
@@ -529,7 +538,7 @@ namespace World.Sim.Historic
             if (d == null) return "unknown_kind";
             if (hex < 0 || hex >= h.Hexes.Length) return "invalid_site";
             if (!HistoricDefs.Allows(d, h.Hexes[hex].Terrain)) return "wrong_terrain";
-            if (!Territory(s, p).Contains(hex)) return "out_of_reach";
+            if (!Territory(s, p, FarRings).Contains(hex)) return "out_of_reach";
             int onHex = 0;
             foreach (var b in h.Buildings) if (b.Hex == hex && b.State != HistoricBuildingState.Exhausted) onHex++;
             if (onHex >= h.Tuning.MaxBuildingsPerHex) return "hex_full";
