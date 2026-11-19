@@ -1,0 +1,101 @@
+# G1-2 proof: AI-only god board games
+
+Written by `TableAiProof.AiOnlyGames_ManySeeds_WriteProof_AndObeyTr4` (EditMode, `dotnet test DotNet --filter "FullyQualifiedName~TableAiProof"`).
+Setup: 60 seeds (1000 to 1059), 4 AI seats on `TableAi`, start corners 70, 97, 57, 82, `BoardGenerator.CreateMvpBoard(seed)` (the dealt board has not landed), no ports, no plague.
+
+| Measure | Value |
+|---|---|
+| Games that reached 10 points | 60 of 60 |
+| Rounds to 10 points: min / median / mean / max | 10 / 16 / 16.2 / 26 |
+| Games in the PRD band (25-40 rounds) | 2 of 60 |
+| Ticks per game: median | 2651 |
+| Wins, people 0 (start corner 70) | 23 |
+| Wins, people 1 (start corner 97) | 12 |
+| Wins, people 2 (start corner 57) | 7 |
+| Wins, people 3 (start corner 82) | 18 |
+| Trades between peoples (total / per game) | 677 / 11.3 |
+| Bank and port trades (total / per game) | 1560 / 26.0 |
+| Offers made (total) | 677 |
+| Leader refusals shown (TradeRefused) | 0 |
+| Trades checked for TR-4 / obeying | 677 / 677 (100.0%) |
+| Builds per game: roads / settlements / cities | 15.3 / 6.7 / 11.0 |
+| Sevens per game | 10.3 |
+
+## Per seed
+
+| Seed | Rounds | Winner | Points | Trades (peoples / bank) |
+|---|---|---|---|---|
+| 1000 | 13 | 3 | 8, 5, 5, 10 | 17 / 20 |
+| 1001 | 21 | 0 | 10, 3, 2, 7 | 7 / 12 |
+| 1002 | 19 | 0 | 11, 5, 6, 5 | 7 / 45 |
+| 1003 | 22 | 1 | 9, 11, 6, 8 | 22 / 40 |
+| 1004 | 10 | 0 | 10, 6, 7, 9 | 8 / 16 |
+| 1005 | 16 | 3 | 8, 3, 4, 10 | 13 / 18 |
+| 1006 | 23 | 3 | 4, 5, 2, 10 | 7 / 22 |
+| 1007 | 20 | 3 | 7, 8, 3, 10 | 5 / 29 |
+| 1008 | 13 | 3 | 5, 4, 8, 10 | 11 / 27 |
+| 1009 | 14 | 0 | 10, 2, 3, 9 | 7 / 20 |
+| 1010 | 12 | 2 | 8, 4, 10, 5 | 12 / 37 |
+| 1011 | 23 | 3 | 9, 9, 6, 10 | 14 / 40 |
+| 1012 | 12 | 0 | 10, 2, 4, 4 | 7 / 17 |
+| 1013 | 16 | 1 | 8, 10, 5, 8 | 7 / 41 |
+| 1014 | 12 | 1 | 6, 10, 6, 8 | 15 / 29 |
+| 1015 | 10 | 0 | 10, 7, 5, 9 | 10 / 23 |
+| 1016 | 12 | 1 | 8, 10, 5, 6 | 17 / 33 |
+| 1017 | 25 | 3 | 2, 3, 3, 10 | 4 / 12 |
+| 1018 | 16 | 0 | 10, 3, 8, 9 | 13 / 27 |
+| 1019 | 16 | 3 | 6, 6, 7, 10 | 16 / 31 |
+| 1020 | 11 | 1 | 8, 10, 2, 7 | 11 / 28 |
+| 1021 | 26 | 2 | 6, 5, 11, 6 | 14 / 35 |
+| 1022 | 13 | 0 | 10, 6, 3, 3 | 7 / 25 |
+| 1023 | 15 | 3 | 9, 3, 3, 10 | 9 / 16 |
+| 1024 | 23 | 2 | 3, 7, 11, 7 | 6 / 37 |
+| 1025 | 13 | 1 | 8, 10, 5, 7 | 5 / 25 |
+| 1026 | 17 | 0 | 10, 4, 8, 9 | 14 / 18 |
+| 1027 | 21 | 0 | 10, 5, 2, 6 | 11 / 24 |
+| 1028 | 13 | 1 | 7, 10, 9, 5 | 15 / 21 |
+| 1029 | 18 | 2 | 4, 5, 10, 8 | 9 / 23 |
+| 1030 | 15 | 3 | 7, 6, 3, 10 | 10 / 32 |
+| 1031 | 21 | 0 | 10, 8, 9, 5 | 21 / 33 |
+| 1032 | 18 | 0 | 10, 8, 8, 8 | 21 / 42 |
+| 1033 | 17 | 3 | 5, 9, 6, 10 | 8 / 37 |
+| 1034 | 21 | 3 | 4, 5, 5, 11 | 15 / 27 |
+| 1035 | 18 | 0 | 10, 5, 2, 7 | 9 / 27 |
+| 1036 | 20 | 0 | 10, 5, 7, 5 | 13 / 31 |
+| 1037 | 12 | 3 | 3, 5, 3, 11 | 6 / 22 |
+| 1038 | 20 | 3 | 6, 8, 7, 10 | 15 / 20 |
+| 1039 | 17 | 1 | 9, 10, 5, 8 | 14 / 45 |
+| 1040 | 17 | 1 | 5, 10, 3, 9 | 11 / 26 |
+| 1041 | 13 | 2 | 3, 3, 11, 4 | 4 / 15 |
+| 1042 | 14 | 0 | 10, 3, 4, 6 | 9 / 17 |
+| 1043 | 15 | 3 | 2, 9, 2, 10 | 7 / 12 |
+| 1044 | 11 | 0 | 10, 3, 4, 4 | 10 / 15 |
+| 1045 | 14 | 0 | 10, 2, 3, 8 | 9 / 14 |
+| 1046 | 20 | 3 | 5, 6, 9, 10 | 11 / 37 |
+| 1047 | 12 | 3 | 5, 7, 9, 10 | 15 / 20 |
+| 1048 | 17 | 0 | 10, 6, 8, 9 | 20 / 31 |
+| 1049 | 16 | 2 | 6, 4, 10, 8 | 13 / 20 |
+| 1050 | 16 | 1 | 9, 10, 5, 9 | 8 / 35 |
+| 1051 | 16 | 0 | 10, 9, 9, 9 | 15 / 27 |
+| 1052 | 17 | 0 | 10, 3, 3, 3 | 5 / 19 |
+| 1053 | 18 | 0 | 10, 9, 5, 7 | 13 / 28 |
+| 1054 | 13 | 3 | 4, 6, 6, 10 | 15 / 28 |
+| 1055 | 16 | 1 | 7, 11, 6, 6 | 17 / 22 |
+| 1056 | 16 | 0 | 10, 7, 2, 7 | 7 / 37 |
+| 1057 | 11 | 2 | 6, 3, 10, 2 | 5 / 9 |
+| 1058 | 14 | 1 | 5, 10, 4, 6 | 18 / 23 |
+| 1059 | 13 | 0 | 10, 3, 4, 8 | 13 / 18 |
+
+## With a Quick player in seat 0
+
+Same seeds; seat 0 is a virtual Quick player (PRD 12.1): builds the adviser's target (`TableAi.TargetFor`) when affordable, accepts every offer giving it at least as many cards as it pays, ends its turn at once, makes no offers and no bank trades. A first look for G1-3, not its full proof.
+
+| Measure | Value |
+|---|---|
+| Games that reached 10 points | 60 of 60 |
+| Rounds to 10 points: min / median / max | 6 / 15 / 26 |
+| Quick player wins (PRD target 30-50%) | 0 of 60 (0%) |
+| AI offers to the player / rounds the player started not leading | 1620 / 535 (9.08 per 3 rounds; PRD target at least 1) |
+| Trades the player made with AIs | 727 |
+| Trades between peoples, all (per game) | 16.1 |
+| Trades checked for TR-4 (AI sides) / obeying | 966 / 966 |

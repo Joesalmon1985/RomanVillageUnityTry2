@@ -14,7 +14,7 @@ namespace World.Sim.Tests
 
         private static (WorldSim sim, List<SimEvent> log) PlayOut(ulong seed, int people = 4)
         {
-            var sim = Create(people: people, humanSeat: -1, seed: seed); // default seams: the basic builder on every seat
+            var sim = Create(people: people, humanSeat: -1, seed: seed, wire: BasicAi); // the G1-1 stand-in on every seat
             var log = new List<SimEvent>();
             Assert.IsTrue(StepUntil(sim, () => T(sim).Phase == TablePhase.Ended, MaxTicks, log), "seed " + seed + " never ended");
             return (sim, log);

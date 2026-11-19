@@ -116,6 +116,15 @@ namespace World.Sim.Table
         /// <summary>True once the current AI seat has been asked to play its turn.</summary>
         public bool AiPlayed;
 
+        /// <summary>True when one of the current AI seat's offers was answered or expired: it is asked again (G1-2).</summary>
+        public bool AiReplay;
+
+        /// <summary>How often the current AI seat was asked this turn.</summary>
+        public int AiCalls;
+
+        /// <summary>Peoples the current AI seat has made an offer to this turn (the trade brain asks each at most once).</summary>
+        public List<int> AiAsked = new List<int>();
+
         // ---- Discards on a 7 (TU-10) ----
 
         /// <summary>Cards each people still owes after a 7, index = people.</summary>
