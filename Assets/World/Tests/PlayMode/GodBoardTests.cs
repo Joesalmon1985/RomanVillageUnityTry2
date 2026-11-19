@@ -156,5 +156,124 @@ namespace World.Game.Tests
             Assert.IsFalse(S.Table.Paused);
             Assert.AreEqual(TablePhase.Setup, S.Table.Phase);
         }
+
+        // ---------------------------------------------------------------- G1-6
+
+        /// <summary>Opens the board, places the player's setup, then steps until it is the player's main-phase turn.</summary>
+        private IEnumerator ToMyTurn()
+        {
+            yield return Start();
+            Assert.IsTrue(_d.TrySacrifice(true));
+            Step(2);
+            yield return WaitView(BoardView.Board);
+            yield return null;
+            _d.TapAt(_d.ScreenOfCorner(_d.AdviseCorner)); Step(2); yield return null;
+            _d.TapAt(_d.ScreenOfEdge(_d.EdgeSpots[0])); Step(2); yield return null;
+            int guard = 0;
+            while (!(S.Table.Phase == TablePhase.Main && S.Table.Current == 0 && !S.Table.Paused) && guard++ < 20000) Step(5);
+            Assert.AreEqual(TablePhase.Main, S.Table.Phase, "reached the player's turn");
+            Assert.AreEqual(0, S.Table.Current);
+            yield return null;
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator TradePanel_BankTrade_ChangesTheHand()
+        {
+            yield return ToMyTurn();
+            var hud = _d.GetComponent<GodBoardHud>();
+            var hand = S.Table.Peoples[0].Hand;
+            hand[0] = 8; hand[4] = 0;
+            int rate = hud.BankRate(0);
+            hud.OpenTrade();
+            Assert.IsTrue(hud.TradeOpen);
+            hud.SelectBankGive(0); hud.SelectBankGet(4);
+            int wood = hand[0], stone = hand[4];
+            var r = hud.DoBankTrade();
+            Assert.IsTrue(r.Ok, r.Message);
+            Step(2);
+            Assert.AreEqual(wood - rate, S.Table.Peoples[0].Hand[0]);
+            Assert.AreEqual(stone + 1, S.Table.Peoples[0].Hand[4]);
+            // An offer to everyone from the panel is accepted by the table.
+            hud.SetTab(1); hud.SetOfferTo(-1);
+            hud.AdjustOffer(true, 0, 1); hud.AdjustOffer(false, 2, 1);
+            Assert.IsTrue(hud.DoOffer().Ok);
+            Step(1);
+            Assert.IsNotNull(hud.OwnOpenOffer());
+            // Esc closes the panel first, a second press leaves the board.
+            Assert.IsTrue(_d.PressEscape());
+            Assert.IsFalse(hud.TradeOpen);
+            Assert.AreEqual(BoardView.Board, _d.View);
+            Assert.IsTrue(_d.PressEscape());
+            yield return WaitView(BoardView.Altar);
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator OfferCard_AiOffer_CanBeAccepted()
+        {
+            yield return ToMyTurn();
+            var hud = _d.GetComponent<GodBoardHud>();
+            var t = S.Table;
+            // Make the player not the leader (TR-4), give the AI seat 1 a city and the cards.
+            for (int c = 0; c < t.CornerOwner.Length; c++) if (t.CornerOwner[c] == 1 && t.CornerLevel[c] == 1) { t.CornerLevel[c] = 2; break; }
+            t.Peoples[1].Hand[1] = 3; t.Peoples[0].Hand[3] = 3; int clay0 = t.Peoples[0].Hand[1], sheep0 = t.Peoples[0].Hand[3];
+            var o = new TradeOffer { Id = t.NextOfferId++, From = 1, To = 0, TicksLeft = 150, Status = OfferStatus.Open };
+            o.Give[1] = 1; o.Get[3] = 1;
+            t.Offers.Add(o);
+            yield return null;
+            var list = hud.IncomingOffers();
+            Assert.AreEqual(1, list.Count, "the card is shown");
+            Assert.AreEqual(o.Id, list[0].Id);
+            var r = hud.AnswerOffer(o.Id, true);
+            Assert.IsTrue(r.Ok, r.Message);
+            Step(2);
+            Assert.AreEqual(clay0 + 1, t.Peoples[0].Hand[1]);
+            Assert.AreEqual(sheep0 - 1, t.Peoples[0].Hand[3]);
+            Assert.AreEqual(0, hud.IncomingOffers().Count);
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator DiscardPicker_SendsAValidDiscard()
+        {
+            yield return ToMyTurn();
+            var hud = _d.GetComponent<GodBoardHud>();
+            var t = S.Table;
+            var hand = t.Peoples[0].Hand;
+            hand[0] = 4; hand[1] = 4; hand[2] = 0; hand[3] = 0; hand[4] = 0;
+            t.Phase = TablePhase.Discard;
+            t.DiscardOwed = new int[t.PeopleCount]; t.DiscardOwed[0] = 4;
+            t.DiscardTicksLeft = t.Tuning.DiscardTicks;
+            yield return null;
+            Assert.IsTrue(hud.DiscardVisible);
+            Assert.AreEqual(4, hud.DiscardOwed);
+            Assert.IsFalse(hud.DoDiscard().Ok, "too few cards chosen is refused");
+            hud.AdjustDiscard(0, 1); hud.AdjustDiscard(0, 1); hud.AdjustDiscard(1, 1); hud.AdjustDiscard(1, 1); hud.AdjustDiscard(1, 1);
+            Assert.AreEqual(4, hud.DiscardChosen, "cannot choose more than owed");
+            var r = hud.DoDiscard();
+            Assert.IsTrue(r.Ok, r.Message);
+            Step(2);
+            Assert.AreEqual(2, t.Peoples[0].Hand[0]);
+            Assert.AreEqual(2, t.Peoples[0].Hand[1]);
+            Assert.AreEqual(4, TableRules.HandSize(hand));
+            Assert.IsFalse(hud.DiscardVisible);
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator GameLost_ShowsTheEndPanel_AndTheBoardTakesNoInput()
+        {
+            yield return ToMyTurn();
+            var hud = _d.GetComponent<GodBoardHud>();
+            var t = S.Table;
+            Assert.IsFalse(hud.GameOverShown);
+            TableEngine eng = null;
+            foreach (var sys in _boot.Sim.Systems) if (sys is TableEngine te) eng = te;
+            Assert.IsNotNull(eng, "table engine");
+            Assert.IsTrue(eng.IslandFalls(S, new EventBuffer()));
+            yield return null; yield return null;
+            Assert.IsTrue(t.IslandFell);
+            Assert.IsTrue(hud.GameOverShown);
+            Assert.IsTrue(_d.GameOver);
+            Assert.IsNull(_d.TapAt(new Vector2(Screen.width / 2f, Screen.height / 2f)), "no table input");
+            Assert.IsTrue(hud.Texts.Contains("The island falls."), "texts: " + string.Join("|", hud.Texts));
+        }
     }
 }

@@ -116,7 +116,7 @@ namespace World.Game
             {
                 var topo = BoardSpace.Topo;
                 if (h < 0 || h >= topo.HexCount) continue;
-                if (!Active.TryGetValue(h, out var p))
+                if (!Active.TryGetValue(h, out var p) || p.Ring == null) // a scene reload destroys the rings the static cache still holds
                 {
                     p = new Pulsing();
                     p.Ring = new GameObject("PulseRing " + h);
