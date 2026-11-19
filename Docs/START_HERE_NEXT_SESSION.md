@@ -1,5 +1,7 @@
 # Start here: next session
 
+> **18 Nov 2026:** the owner approved a new plan for the prehistoric age and the move into Historic (god board, plague, war). Read `Docs/START_HERE_GODBOARD.md` first; it says what from this page still comes first (the council queue below) and what follows.
+
 Written 15 Nov 2026 when the owner paused the run. Everything below is pushed to GitHub. Nothing has been played by hand by anyone but the owner.
 
 ## Owner's standing rules for the next session
