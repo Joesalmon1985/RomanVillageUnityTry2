@@ -16,6 +16,7 @@ namespace World.Sim.Save
         private static readonly SortedDictionary<int, Action<WorldState>> Steps = new SortedDictionary<int, Action<WorldState>>
         {
             { 4, V4ToV5 },
+            { 5, V5ToV6 },
         };
 
         /// <summary>Migrates a model read by FromJson in place: LoadedVersion = the file's version, Version = CurrentVersion.</summary>
@@ -44,6 +45,18 @@ namespace World.Sim.Save
             Eras.ErasModule.EnsureState(s);
             Ledger.LedgerModule.EnsureState(s);
             s.Campaign = null;
+        }
+
+        /// <summary>
+        /// v5 (ages) to v6 (god board, G0-2): every older save is a Legacy game. It has no table and no plague; its peoples
+        /// list is filled from the players (<see cref="PeopleDefs.Ensure"/>, also run by CreateSim).
+        /// </summary>
+        private static void V5ToV6(WorldState s)
+        {
+            s.Ruleset = Ruleset.Legacy;
+            s.Table = null;
+            s.Plague = null;
+            PeopleDefs.Ensure(s);
         }
     }
 }

@@ -9,8 +9,12 @@ namespace World.Sim.Economy
         public static void Register(WorldSim sim)
         {
             var hooks = EconomyApi.Hooks(sim);
-            sim.AddSystem(SystemOrder.Dice, new DiceSystem(hooks));
-            sim.AddSystem(SystemOrder.Growth, new GrowthSystem());
+            // G0-2: the god board has no dice clock and no growing hex stock (the table rolls, hidden, PRD 2).
+            if (sim.State.Ruleset == Ruleset.Legacy)
+            {
+                sim.AddSystem(SystemOrder.Dice, new DiceSystem(hooks));
+                sim.AddSystem(SystemOrder.Growth, new GrowthSystem());
+            }
             sim.AddSystem(SystemOrder.Collect, new CollectSystem(hooks));
             sim.AddSystem(SystemOrder.Production, new ProductionSystem());
             sim.AddSystem(SystemOrder.Construction, new ConstructionSystem(hooks));

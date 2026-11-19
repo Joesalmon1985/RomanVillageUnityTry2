@@ -30,7 +30,7 @@ namespace World.Sim.Tests
             var extras = new Dictionary<string, string> { { "walk.i", "3" }, { "hud", "0" } };
             string json = SaveCodec.ToJson(s, pose, extras);
             var model = SaveCodec.FromJson(json);
-            Assert.AreEqual(5, SaveCodec.CurrentVersion);
+            Assert.AreEqual(6, SaveCodec.CurrentVersion);
             Assert.AreEqual(4, SaveCodec.OldestVersion);
             Assert.AreEqual(SaveCodec.CurrentVersion, model.Version);
             Assert.AreEqual(s.Tick, model.Tick);
@@ -75,8 +75,8 @@ namespace World.Sim.Tests
             Assert.Throws<FormatException>(() => SaveCodec.FromJson("{\"Version\":1}"));
             var sim = WorldSimFactory.CreateNew(1);
             string json = SaveCodec.ToJson(sim.State);
-            Assert.Throws<FormatException>(() => SaveCodec.FromJson(json.Replace("\"Version\":5", "\"Version\":99")));
-            var e = Assert.Throws<FormatException>(() => SaveCodec.FromJson(json.Replace("\"Version\":5", "\"Version\":3")));
+            Assert.Throws<FormatException>(() => SaveCodec.FromJson(json.Replace("\"Version\":6", "\"Version\":99")));
+            var e = Assert.Throws<FormatException>(() => SaveCodec.FromJson(json.Replace("\"Version\":6", "\"Version\":3")));
             Assert.AreEqual("The save is from an older version (3) with a different world.", e.Message);
         }
     }

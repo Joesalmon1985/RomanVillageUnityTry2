@@ -3,7 +3,8 @@ namespace World.Sim
     /// <summary>
     /// Builds a new game. Order is fixed: core state and board, then every module's InitState,
     /// then every module's Register, in the order Economy, Factions, Demons (REFACTOR_SPEC A.4), then Eras and
-    /// Ledger (PRD_AGES A.2, A.3).
+    /// Ledger (PRD_AGES A.2, A.3). A game on <see cref="Ruleset.GodBoard"/> then gets the table and the plague
+    /// (<see cref="GodBoard.GodBoardModule"/>); its legacy systems keep their state but are not registered (G0-2).
     /// </summary>
     public static class WorldSimFactory
     {
@@ -24,6 +25,7 @@ namespace World.Sim
                 Tick = 0,
                 Rng = new Rng(seed),
                 Board = setup.Board == BoardKind.Dealt ? BoardGenerator.CreateDealtBoard(seed) : BoardGenerator.CreateMvpBoard(seed),
+                Ruleset = setup.Ruleset,
             };
             s.Peoples = PeopleDefs.FirstN(setup.Peoples);
             for (int id = 0; id < setup.Peoples; id++)
@@ -43,6 +45,8 @@ namespace World.Sim
             // starting state, random streams and first plans are exactly as before.
             Eras.ErasModule.InitState(s);
             Ledger.LedgerModule.InitState(s);
+            // The god board (G0-2): the table and the plague, after every older module so their streams are unchanged.
+            if (s.Ruleset == Ruleset.GodBoard) GodBoard.GodBoardModule.InitState(s, setup.TableHumanSeat);
 
             var sim = Save.SaveCodec.CreateSim(s);
             Campaign.CampaignModule.Register(sim);   // PRD_CRYSTALS I0 (idempotent; loaded saves need the same line in SaveCodec.CreateSim)
@@ -65,11 +69,15 @@ namespace World.Sim
         /// <summary>Number of peoples (1 .. <see cref="PlayerIds.MaxCount"/>). Peoples beyond the board's start corners get no first camp.</summary>
         public int Peoples = PlayerIds.LegacyCount;
         public BoardKind Board = BoardKind.Legacy;
+        /// <summary>The rules the game runs (G0-2).</summary>
+        public Ruleset Ruleset = Ruleset.Legacy;
+        /// <summary>God board only: the seat the player controls at the table, or -1 for an AI-only table (proofs, tests).</summary>
+        public int TableHumanSeat = PlayerIds.Human;
 
         /// <summary>Two peoples on the fixed MVP board: every game before G0-1, and the legacy tests.</summary>
         public static GameSetup Legacy => new GameSetup { Peoples = PlayerIds.LegacyCount, Board = BoardKind.Legacy };
 
         /// <summary>The god board: four peoples (player, Ash Clan, Elves, Orcs) on a dealt board.</summary>
-        public static GameSetup GodBoard => new GameSetup { Peoples = PlayerIds.GodBoardCount, Board = BoardKind.Dealt };
+        public static GameSetup GodBoard => new GameSetup { Peoples = PlayerIds.GodBoardCount, Board = BoardKind.Dealt, Ruleset = Ruleset.GodBoard };
     }
 }

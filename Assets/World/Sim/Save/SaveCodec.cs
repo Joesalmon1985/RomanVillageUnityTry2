@@ -38,6 +38,8 @@ namespace World.Sim.Save
     public static class SaveCodec
     {
         /// <summary>
+        /// 6 = the god board (G0-2): WorldState.Ruleset, Table and Plague (null in a Legacy game), Board.Ports, the peoples
+        /// list. Version 5 loads by migration as a Legacy game.
         /// 5 = the later ages, slice H1 (PRD_AGES A.2-A.5): WorldState.Eras, History, Ledger and Campaign (null = none),
         /// Board.Landmarks, building grades, town fields, advice and handover fields. Version 4 loads by migration
         /// (<see cref="SaveMigrations"/>) as a Prehistoric skirmish.
@@ -46,7 +48,7 @@ namespace World.Sim.Save
         /// StrategyState.DraftNextStep; 24 cards; economy targets and per-terrain batch sizes in the tuning).
         /// 2 = unified economy (14 wares, 20 building types, outbreaks, military comparison). Older saves are refused.
         /// </summary>
-        public const int CurrentVersion = 5;
+        public const int CurrentVersion = 6;
 
         /// <summary>Oldest save version this build reads.</summary>
         public const int OldestVersion = 4;
@@ -103,13 +105,16 @@ namespace World.Sim.Save
             var sim = new WorldSim(loaded);
             Economy.EconomyModule.Register(sim);
             Factions.FactionsModule.Register(sim);
-            Demons.DemonsModule.Register(sim);
+            // G0-2: the legacy demons run only on the legacy ruleset; the god board has the plague instead.
+            if (loaded.Ruleset == Ruleset.Legacy) Demons.DemonsModule.Register(sim);
             Eras.ErasModule.Register(sim);
             Ledger.LedgerModule.Register(sim);
             // The crystal campaign (PRD_CRYSTALS A.5): a loaded save keeps its campaign system and handlers. Idempotent.
             Campaign.CampaignModule.Register(sim);
             // The village council (elections and listening): command handlers only, state is WorldState.Council. Idempotent.
             Encounters.Council.CouncilModule.Register(sim);
+            // The god board (G0-2): the table and the plague, with their seams wired again (they are not saved).
+            if (loaded.Ruleset == Ruleset.GodBoard) GodBoard.GodBoardModule.Register(sim);
             return sim;
         }
 
