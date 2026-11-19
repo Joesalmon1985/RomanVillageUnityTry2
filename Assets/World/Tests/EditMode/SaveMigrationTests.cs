@@ -91,11 +91,11 @@ namespace World.Sim.Tests
         [Test]
         public void Versions_ThreeAndNewerAreRefused_EveryStepExists()
         {
-            string v5 = SaveCodec.ToJson(WorldSimFactory.CreateNew(1).State);
+            string v5 = SaveCodec.ToJson(WorldSimFactory.CreateNew(1).State).Replace("\"Version\":" + SaveCodec.CurrentVersion, "\"Version\":5");
             StringAssert.Contains("\"Version\":5", v5);
             var e = Assert.Throws<FormatException>(() => SaveCodec.FromJson(v5.Replace("\"Version\":5", "\"Version\":3")));
             Assert.AreEqual("The save is from an older version (3) with a different world.", e.Message);
-            Assert.Throws<FormatException>(() => SaveCodec.FromJson(v5.Replace("\"Version\":5", "\"Version\":6")));
+            Assert.Throws<FormatException>(() => SaveCodec.FromJson(v5.Replace("\"Version\":5", "\"Version\":" + (SaveCodec.CurrentVersion + 1))));
             for (int v = SaveCodec.OldestVersion; v < SaveCodec.CurrentVersion; v++)
                 CollectionAssert.Contains(SaveMigrations.StepVersions, v, "a migration step from version " + v);
             var m = SaveCodec.FromJson(v5);

@@ -98,9 +98,13 @@ namespace World.Sim.Tests
         }
 
         [Test]
-        public void GodBoardGame_RunsTenMinutes_AllPeoplesPlan()
+        public void FourPeoplesOnLegacyRules_RunTenMinutes_AllPeoplesPlan()
         {
-            var sim = Four(5);
+            // G0-2: the god board ruleset has no proposals or spells, so the N-people legacy rules are checked on a
+            // four-people game that keeps the legacy ruleset.
+            var setup = GameSetup.GodBoard;
+            setup.Ruleset = Ruleset.Legacy;
+            var sim = WorldSimFactory.CreateNew(5, setup);
             sim.Step(6000);
             sim.DrainEvents();
             var s = sim.State;
