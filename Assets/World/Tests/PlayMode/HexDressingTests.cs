@@ -74,7 +74,11 @@ namespace World.Game.Tests
                 Assert.IsNotNull(v.transform.Find("Ports"));
                 int h = Enumerable.Range(0, b.HexTerrain.Length).First(i => b.HexTerrain[i] != Terrain.Meadow);
                 HexDressingView.Pulse(new[] { h, -5, 9999 });
-                CollectionAssert.AreEqual(new[] { h }, HexDressingView.PulsingNow.ToArray());
+                // Other tests' pulses may still be running (the pulse list is static): check only this call's ids.
+                var now = HexDressingView.PulsingNow.ToArray();
+                CollectionAssert.Contains(now, h);
+                CollectionAssert.DoesNotContain(now, -5);
+                CollectionAssert.DoesNotContain(now, 9999);
             }
             finally { Object.DestroyImmediate(v.gameObject); }
         }
