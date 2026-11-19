@@ -15,6 +15,17 @@ namespace World.Game
     public static class PrinceLines
     {
         // ---- the first scene (REFACTOR_SPEC 2.C.5: exact) ----
+        // God board guide (G1-7)
+        public const string GodGreeting = "Welcome. I'm the prince. Let me show you around: Mira first, then our temple.";
+        public const string GodReplyLead = "Lead the way", GodReplyLater = "Not now";
+        public const string GodLater = "As you like. Find me when you are ready.";
+        public const string GodLead = "This way.";
+        public const string GodWait = "Over here! Do not stray.";
+        public const string GodMira = "This is Mira. When you are ready, ask her to set out for the crystals.";
+        public const string GodTemple = "And there is our temple. Sacrifice a lamb at the altar to open the god board.";
+        public const string GodAdviseSite = "I would settle there.";
+        public const string GodAdviseRoad = "A road there, I think.";
+        public const string GodAdviseBuild = "I would build there.";
         public const string FirstLine = "I'm the prince. Come with me. We're building a woodcutter's hut.";
         public const string ReplyLead = "Lead the way", ReplyWhat = "What's it for?", ReplyCatchUp = "I'll catch up.";
 

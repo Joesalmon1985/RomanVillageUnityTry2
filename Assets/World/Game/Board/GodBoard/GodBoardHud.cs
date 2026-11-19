@@ -218,6 +218,7 @@ namespace World.Game
         {
             if (t.Phase == TablePhase.Ended) return "The god board is closed.";
             if (t.Paused) return "The board is waiting.";
+            if (t.Current < 0 || t.Current >= t.PeopleCount) return t.Phase == TablePhase.NotOpened ? "Sacrifice a lamb at your altar to open the board." : "The peoples are gathering.";
             string who = t.Current == _d.Human ? "Your turn" : _d.PeopleShort(t.Current) + " play";
             if (t.Phase == TablePhase.Setup)
             {

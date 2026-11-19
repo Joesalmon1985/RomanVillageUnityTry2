@@ -557,7 +557,7 @@ namespace World.Game
             _glow.intensity = 6f * Mathf.Sin(Mathf.PI * t);
         }
 
-        private bool MayStartCampaign => StartsCampaign && AgesApi.CampaignMayStart(S) && S.Campaign == null && AgesApi.Mode(S) == World.Sim.Eras.PlayMode.Skirmish;
+        private bool MayStartCampaign => StartsCampaign && AgesApi.CampaignMayStart(S) && S.Campaign == null && (S.Ruleset == Ruleset.GodBoard || AgesApi.Mode(S) == World.Sim.Eras.PlayMode.Skirmish);
 
         private void TryStartCampaign()
         {

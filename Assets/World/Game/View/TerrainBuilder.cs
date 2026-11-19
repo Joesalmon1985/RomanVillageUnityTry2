@@ -138,7 +138,7 @@ namespace World.Game
             for (int h = 0; h < t.HexCount; h++)
             {
                 var terrain = board.HexTerrain[h];
-                string label = board.HexNumber[h] > 0 ? terrain + "\n" + board.HexNumber[h] : terrain.ToString();
+                string label = board.HexNumber[h] > 0 && board.DealTriesUsed == 0 ? terrain + "\n" + board.HexNumber[h] : terrain.ToString();
                 var tm = Signs.FlatText(godViewOnly.transform, label, LabelPoint(BoardSpace.Hex(t, h) + new Vector3(0, 0, -LabelOffset)), 6.5f, new Color(1f, 1f, 0.92f));
                 tm.name = "HexLabel " + h;
                 GodCamera.ScaledLabels.Add(tm.transform);

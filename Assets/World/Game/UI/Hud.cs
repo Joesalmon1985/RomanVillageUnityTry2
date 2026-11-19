@@ -129,7 +129,8 @@ namespace World.Game
             var roll = EconomyApi.LastRoll(s);
             string rolled = s.Economy.Dice.RollCount > 0
                 ? "last roll <b>" + roll.Sum + "</b> (" + roll.D1 + "+" + roll.D2 + ")" : "no roll yet";
-            lines.Add("<b>" + (secs / 60) + ":" + (secs % 60).ToString("00") + "</b>   " + rolled + ", next in " + (EconomyApi.TicksToNextRoll(s) + WorldSim.TicksPerSecond - 1) / WorldSim.TicksPerSecond + " s");
+            lines.Add(s.Ruleset == Ruleset.GodBoard ? "<b>" + (secs / 60) + ":" + (secs % 60).ToString("00") + "</b>" // AB-1: no dice, roll or number text on the god board
+                : "<b>" + (secs / 60) + ":" + (secs % 60).ToString("00") + "</b>   " + rolled + ", next in " + (EconomyApi.TicksToNextRoll(s) + WorldSim.TicksPerSecond - 1) / WorldSim.TicksPerSecond + " s");
             var me = FactionApi.Strength(s, PlayerIds.Human);
             var them = FactionApi.Strength(s, PlayerIds.Rival);
             lines.Add("Strength: your people <b>" + me.Total + "</b>, the Ash Clan <b>" + them.Total + "</b>");

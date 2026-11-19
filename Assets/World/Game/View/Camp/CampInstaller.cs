@@ -37,17 +37,23 @@ namespace World.Game
             foreach (var prop in layout.Dressing)
                 if (prop.Kind != "figure") WalkGrid.AddSolid(prop.Position, prop.Radius * SolidShare, DressingOwner);
 
-            SpawnMira(layout);
+            SpawnMira(layout, boot.Sim.State);
             SpawnSol(layout);
         }
 
-        private static void SpawnMira(CampLayout layout)
+        private static void SpawnMira(CampLayout layout, World.Sim.WorldState state)
         {
             var mira = Npc.Spawn(NpcIds.Mira, "Mira", "Wizard. Practises Ward duels by the home camp.",
                 "Fancy a practice duel? I promise to go easy. Mostly.", new Color(0.45f, 0.25f, 0.70f),
                 layout.MiraSpot, layout.MiraYaw);
             mira.Lines.Add("A Ward is three loci of essence. Guess mine before I guess yours.");
             mira.Lines.Add("Each cast tells you fractures, echoes and fades. Nothing more.");
+            if (state != null && state.Ruleset == World.Sim.Ruleset.GodBoard)
+            {
+                // CC-1: in a god board game Mira offers the expedition from the first minute (the handover gate is gone).
+                MiraOffer.Wire(mira);
+                return;
+            }
             mira.Options.Add(DialogueOption.Encounter("Practice duel", EncounterDirectory.WardMira));
             mira.Options.Add(DialogueOption.Leave("Maybe later"));
         }
