@@ -119,7 +119,7 @@ namespace World.Sim.Economy
             if (st == null) return "a camp";
             var starts = s.Board.StartCorners ?? new int[0];
             bool home = st.Faction < starts.Length && starts[st.Faction] == st.Corner;
-            string owner = st.Faction == PlayerIds.Rival ? "the Ash Clan's " : "the ";
+            string owner = st.Faction == PlayerIds.Human || !s.IsPeople(st.Faction) ? "the " : PeopleDefs.Possessive(s, st.Faction) + " ";
             if (home) return owner + "home camp";
             return owner + "camp by the " + CornerTerrains(s, st.Corner);
         }

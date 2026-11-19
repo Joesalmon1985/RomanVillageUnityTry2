@@ -8,8 +8,14 @@ namespace World.Sim.Factions
     /// <summary>Spells, declines, strength, the overrun warning and the endings (REFACTOR_SPEC 2.C).</summary>
     internal static class FactionLogic
     {
-        /// <summary>The rival's cast delay now: flat, or ramping from RivalCastDelayTicks to RivalCastDelayEndTicks.</summary>
-        public static int RivalDelay(WorldState s)
+        /// <summary>The Ash Clan's cast delay now (<see cref="RivalDelay(WorldState, int)"/> for <see cref="PlayerIds.Rival"/>).</summary>
+        public static int RivalDelay(WorldState s) => RivalDelay(s, PlayerIds.Rival);
+
+        /// <summary>
+        /// The cast delay of an AI people now: flat, or ramping from RivalCastDelayTicks to RivalCastDelayEndTicks; bolder
+        /// by its lead over the strongest other people.
+        /// </summary>
+        public static int RivalDelay(WorldState s, int faction)
         {
             var tu = s.Factions.Tuning;
             int d = tu.RivalCastDelayTicks;
@@ -20,13 +26,27 @@ namespace World.Sim.Factions
             }
             // Bolder when ahead: each point of strength the rival leads by takes RivalBoldTicksPerLead off its delay.
             var f = s.Factions;
-            if (tu.RivalBoldTicksPerLead > 0 && f.Factions.Count == PlayerIds.Count)
+            int strongestOther = StrongestOther(f, faction);
+            if (tu.RivalBoldTicksPerLead > 0 && faction >= 0 && faction < f.Factions.Count && strongestOther >= 0)
             {
-                int lead = f.Factions[PlayerIds.Rival].Strength - f.Factions[PlayerIds.Human].Strength;
+                int lead = f.Factions[faction].Strength - f.Factions[strongestOther].Strength;
                 int over = lead - tu.RivalBoldFromLead + 1;
                 if (over > 0) d = Math.Max(tu.RivalMinDelayTicks, d - tu.RivalBoldTicksPerLead * over);
             }
             return d;
+        }
+
+        /// <summary>The strongest people other than <paramref name="faction"/> (lowest id on a tie), or -1 when there is none.</summary>
+        public static int StrongestOther(FactionsState f, int faction)
+        {
+            int best = -1;
+            if (f == null) return best;
+            for (int i = 0; i < f.Factions.Count; i++)
+            {
+                if (i == faction) continue;
+                if (best < 0 || f.Factions[i].Strength > f.Factions[best].Strength) best = i;
+            }
+            return best;
         }
 
         public static Proposal Find(WorldState s, int proposalId)
@@ -170,7 +190,7 @@ namespace World.Sim.Factions
         }
 
         public static GameOutcome OutcomeFor(int winner) =>
-            winner == PlayerIds.Human ? GameOutcome.Victory : winner == PlayerIds.Rival ? GameOutcome.Defeat : GameOutcome.Draw;
+            winner == PlayerIds.Human ? GameOutcome.Victory : winner >= 0 ? GameOutcome.Defeat : GameOutcome.Draw;
     }
 
     /// <summary>Strength (every tick), the overrun warning and the endings (REFACTOR_SPEC 2.C.3).</summary>
@@ -179,7 +199,8 @@ namespace World.Sim.Factions
         public void Tick(WorldState s, EventBuffer ev)
         {
             var f = s.Factions;
-            if (f == null || f.GameOver || f.Factions.Count < PlayerIds.Count) return;
+            // A contest needs at least two peoples.
+            if (f == null || f.GameOver || f.Factions.Count < 2 || f.Factions.Count < s.PeopleCount) return;
             // Overrun ends only the 20-minute Prehistoric skirmish; everywhere else the setback rule of PRD_AGES 4.3 applies
             // (campaign, a game that took the Historic step, dev starts; H1-1).
             bool fatal = TimeLimited(s);
@@ -194,7 +215,8 @@ namespace World.Sim.Factions
                     ev.Add(new StrengthChanged { Faction = fa.Id, Strength = fa.Strength });
                 }
             }
-            int ps = f.Factions[PlayerIds.Human].Strength, rs = f.Factions[PlayerIds.Rival].Strength;
+            // ps: the player's strength; rs: the strongest other people's (the Ash Clan's in a two-people game).
+            int ps = f.Factions[PlayerIds.Human].Strength, rs = f.Factions[FactionLogic.StrongestOther(f, PlayerIds.Human)].Strength;
             var tu = f.Tuning;
             var w = f.Warning;
 
@@ -220,15 +242,13 @@ namespace World.Sim.Factions
             }
             if (!w.Active)
             {
-                int attacker = s.Tick < tu.WarningGraceTicks ? -1
-                    : ps >= rs + tu.OverrunMargin ? PlayerIds.Human : rs >= ps + tu.OverrunMargin ? PlayerIds.Rival : -1;
-                // Setback grace (4.3): no new warning against a people just overrun. -1 (never set) in the Prehistoric skirmish.
-                if (attacker >= 0 && f.Factions[1 - attacker].SetbackUntilTick > s.Tick) attacker = -1;
+                int attacker = -1, defender = -1;
+                if (s.Tick >= tu.WarningGraceTicks) PickOverrun(s, f, tu.OverrunMargin, out attacker, out defender);
                 if (attacker >= 0)
                 {
                     w.Active = true;
                     w.Attacker = attacker;
-                    w.Defender = 1 - attacker;
+                    w.Defender = defender;
                     w.StartTick = s.Tick;
                     w.EndTick = s.Tick + tu.WarningTicks;
                     ev.Add(new OverrunWarningStarted { Attacker = w.Attacker, Defender = w.Defender, EndTick = w.EndTick });
@@ -245,6 +265,31 @@ namespace World.Sim.Factions
                 }
                 End(s, ps > rs ? GameOutcome.Victory : rs > ps ? GameOutcome.Defeat : GameOutcome.Draw, OutcomeReasons.Time, ps, rs, ev);
             }
+        }
+
+        /// <summary>
+        /// Who may start an overrun warning: the strongest people (lowest id on a tie) against the weakest other people
+        /// (lowest id on a tie) when it leads by the margin. Setback grace (4.3): no new warning against a people just
+        /// overrun (-1, never set, in the Prehistoric skirmish). With two peoples this is exactly the old player-or-rival rule.
+        /// </summary>
+        private static void PickOverrun(WorldState s, FactionsState f, int margin, out int attacker, out int defender)
+        {
+            attacker = -1;
+            defender = -1;
+            int a = -1;
+            for (int i = 0; i < f.Factions.Count; i++)
+                if (a < 0 || f.Factions[i].Strength > f.Factions[a].Strength) a = i;
+            if (a < 0) return;
+            int d = -1;
+            for (int i = 0; i < f.Factions.Count; i++)
+            {
+                if (i == a) continue;
+                if (d < 0 || f.Factions[i].Strength < f.Factions[d].Strength) d = i;
+            }
+            if (d < 0 || f.Factions[a].Strength < f.Factions[d].Strength + margin) return;
+            if (f.Factions[d].SetbackUntilTick > s.Tick) return;
+            attacker = a;
+            defender = d;
         }
 
         /// <summary>The skirmish time limit applies: Prehistoric era in skirmish mode.</summary>
@@ -291,11 +336,14 @@ namespace World.Sim.Factions
         {
             var f = new FactionsState { Tuning = FactionTunings.Tuned() };
             s.Factions = f;
-            for (int id = 0; id < PlayerIds.Count; id++)
+            int n = s.PeopleCount;
+            f.Casts = new int[n];
+            f.OpeningDone = new bool[n];
+            for (int id = 0; id < n; id++)
             {
                 var fa = new Faction
                 {
-                    Id = id, Name = id == PlayerIds.Human ? "Your people" : "the Ash Clan", Auto = id != PlayerIds.Human,
+                    Id = id, Name = PeopleDefs.Name(s, id), Auto = id != PlayerIds.Human,
                     NextPlanTick = id == PlayerIds.Human ? 0 : f.Tuning.PlanIntervalTicks / 2,
                 };
                 f.Factions.Add(fa);

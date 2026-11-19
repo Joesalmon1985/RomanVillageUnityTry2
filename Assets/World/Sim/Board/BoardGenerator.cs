@@ -22,7 +22,7 @@ namespace World.Sim
     /// range lies 2-3 hex edges away. The rival start (corner 97) is the Forest/Hills/Fields corner 4-5 hex
     /// edges from home. The outer ring is mostly Meadow.
     /// </summary>
-    public static class BoardGenerator
+    public static partial class BoardGenerator
     {
         public const int MvpRadius = 4;
 
@@ -72,12 +72,7 @@ namespace World.Sim
                 HexTerrain = new Terrain[topo.HexCount],
                 HexNumber = new int[topo.HexCount],
             };
-            for (int i = 0; i < Rows.Length; i++)
-            {
-                int r = i - MvpRadius;
-                int q0 = Math.Max(-MvpRadius, -MvpRadius - r);
-                for (int j = 0; j < Rows[i].Length; j++) b.HexTerrain[topo.HexIndex(new HexCoord(q0 + j, r))] = Rows[i][j];
-            }
+            WriteLegacyTerrain(b, topo);
 
             var homeIds = new int[HomeHexes.Length];
             for (int i = 0; i < HomeHexes.Length; i++) homeIds[i] = topo.HexIndex(HomeHexes[i]);
@@ -88,14 +83,29 @@ namespace World.Sim
             int rival = RivalCorner(b, topo, home);
             b.StartCorners = new[] { home, rival };
             DealNumbers(b, topo, b.StartCorners, new Rng(seed).Fork("board.numbers"));
-            b.SuggestedSettlementCorners = SuggestSites(b, topo, home, rival);
+            b.SuggestedSettlementCorners = SuggestSites(b, topo, b.StartCorners);
+            b.ReservedPlots = DanceCirclePlots(b, topo, home);
+            return b;
+        }
 
-            // The dance circle: slot 2 of the home camp's Fields sector.
+        /// <summary>The dance circle: slot 2 of the home camp's Fields sector (none if the home camp has no Fields).</summary>
+        private static int[] DanceCirclePlots(Board b, BoardTopology topo, int home)
+        {
             int fieldsSector = -1;
             for (int sec = 0; sec < 3; sec++)
                 if (PlotLayout.SectorHex(topo, home, sec) >= 0 && b.HexTerrain[PlotLayout.SectorHex(topo, home, sec)] == Terrain.Fields) fieldsSector = sec;
-            b.ReservedPlots = fieldsSector >= 0 ? new[] { PlotLayout.PlotId(home, fieldsSector, PlotLayout.CitySlot) } : new int[0];
-            return b;
+            return fieldsSector >= 0 ? new[] { PlotLayout.PlotId(home, fieldsSector, PlotLayout.CitySlot) } : new int[0];
+        }
+
+        /// <summary>The fixed terrain table (<see cref="Rows"/>) written onto a board's hexes.</summary>
+        private static void WriteLegacyTerrain(Board b, BoardTopology topo)
+        {
+            for (int i = 0; i < Rows.Length; i++)
+            {
+                int r = i - MvpRadius;
+                int q0 = Math.Max(-MvpRadius, -MvpRadius - r);
+                for (int j = 0; j < Rows[i].Length; j++) b.HexTerrain[topo.HexIndex(new HexCoord(q0 + j, r))] = Rows[i][j];
+            }
         }
 
         /// <summary>
@@ -203,13 +213,28 @@ namespace World.Sim
             return kinds.Count * 10 + count + (mountain ? 5 : 0);
         }
 
-        private static int[] SuggestSites(Board b, BoardTopology topo, int home, int rival)
+        /// <summary>
+        /// Suggested settlement corners: interior corners with at least two useful terrains, not at or next to a start
+        /// corner, at least <see cref="SuggestedSiteSpacing"/> from each other and from every start but the player's
+        /// (starts[0]), nearest to the player's start first.
+        /// </summary>
+        private static int[] SuggestSites(Board b, BoardTopology topo, int[] starts)
         {
+            int home = starts[0];
+            bool NearStart(int v, int minD)
+            {
+                foreach (int st in starts) if (st >= 0 && (v == st || topo.CornerDistance(v, st) < minD)) return true;
+                return false;
+            }
+            bool TooCloseToOtherStart(int v)
+            {
+                for (int i = 1; i < starts.Length; i++) if (starts[i] >= 0 && topo.CornerDistance(v, starts[i]) < SuggestedSiteSpacing) return true;
+                return false;
+            }
             var cands = new List<int>();
             foreach (int v in topo.Corners)
             {
-                if (topo.VertexHexes(v).Count != 3 || v == home || v == rival) continue;
-                if (topo.CornerDistance(v, home) < 2 || (rival >= 0 && topo.CornerDistance(v, rival) < 2)) continue;
+                if (topo.VertexHexes(v).Count != 3 || NearStart(v, 2)) continue;
                 if (SiteScore(b, topo, v) < 22) continue; // at least two different useful terrains
                 cands.Add(v);
             }
@@ -227,7 +252,7 @@ namespace World.Sim
             var sel = new List<int>();
             foreach (int v in cands)
             {
-                bool ok = rival < 0 || topo.CornerDistance(v, rival) >= SuggestedSiteSpacing;
+                bool ok = !TooCloseToOtherStart(v);
                 foreach (int s in sel) if (topo.CornerDistance(v, s) < SuggestedSiteSpacing) ok = false;
                 if (ok) sel.Add(v);
             }

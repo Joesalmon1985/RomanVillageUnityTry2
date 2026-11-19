@@ -82,11 +82,11 @@ namespace World.Sim.Eras
             ft.OverrunMargin = int.MaxValue / 4; // no overrun warning while the start is built
             foreach (var fa in s.Factions.Factions) fa.Auto = false;
 
-            var done = new bool[PlayerIds.Count];
+            var done = new bool[s.PeopleCount];
             while (s.Tick < BuildLimitTicks && !s.Factions.GameOver)
             {
                 bool all = true;
-                for (int f = 0; f < PlayerIds.Count; f++)
+                for (int f = 0; f < s.PeopleCount; f++)
                 {
                     if (!done[f]) done[f] = HistoricStartReached(s, f);
                     if (done[f]) continue;
@@ -102,7 +102,7 @@ namespace World.Sim.Eras
 
             var ev = new EventBuffer();
             ft.OverrunMargin = margin;
-            for (int f = 0; f < PlayerIds.Count; f++) AutonomyLogic.Handover(s, f, ev);
+            for (int f = 0; f < s.PeopleCount; f++) AutonomyLogic.Handover(s, f, ev);
             foreach (var fa in s.Factions.Factions)
             {
                 fa.Auto = true;

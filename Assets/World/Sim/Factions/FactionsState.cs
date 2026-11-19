@@ -182,10 +182,10 @@ namespace World.Sim.Factions
         /// <summary>"overrun" or "time"; null while the game runs.</summary>
         public string OutcomeReason;
         public long EndedTick = -1;
-        /// <summary>Spells cast per people.</summary>
-        public int[] Casts = new int[PlayerIds.Count];
+        /// <summary>Spells cast per people (length = the game's people count, set by FactionsModule.InitState).</summary>
+        public int[] Casts = new int[0];
         /// <summary>Per people: the opening proposal (woodcutter's hut) has been cast.</summary>
-        public bool[] OpeningDone = new bool[PlayerIds.Count];
+        public bool[] OpeningDone = new bool[0];
         /// <summary>Settlements stopped after a campaign loot (PRD_AGES 4.3), ascending settlement id; expired entries are pruned.</summary>
         public List<SettlementHalt> Halts = new List<SettlementHalt>();
     }

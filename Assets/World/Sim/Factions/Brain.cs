@@ -137,10 +137,11 @@ namespace World.Sim.Factions
             // Pressing an advantage: while this people is the stronger, strength builds come first.
             // (only against a people whose strength has not changed for PressIdleTicks).
             int press = 0;
-            if (f.Factions.Count == PlayerIds.Count)
+            int otherId = FactionLogic.StrongestOther(f, faction);
+            if (otherId >= 0 && faction >= 0 && faction < f.Factions.Count)
             {
                 var me = f.Factions[faction];
-                var other = f.Factions[1 - faction];
+                var other = f.Factions[otherId];
                 if (me.Strength >= other.Strength + f.Tuning.PressAdvantageLead && s.Tick - other.StrengthChangedTick >= f.Tuning.PressIdleTicks)
                     press = f.Tuning.PressAdvantageBonus;
             }
@@ -723,7 +724,7 @@ namespace World.Sim.Factions
                 if (AutonomyLogic.IsLed(fa)) { AutonomyLogic.Tick(s, fa, ev); continue; }
                 var top = FactionLogic.Top(f, fa.Id);
                 if (top == null || top.TopSinceTick < 0) continue;
-                int delay = FactionLogic.RivalDelay(s);
+                int delay = FactionLogic.RivalDelay(s, fa.Id);
                 bool ready = f.Tuning.RivalPacePerCast
                     // Paced per cast: the delay counts from its last cast; the top only has to have settled briefly.
                     ? s.Tick - Math.Max(fa.LastCastTick, 0) >= delay && s.Tick - top.TopSinceTick >= f.Tuning.RivalSettleTicks

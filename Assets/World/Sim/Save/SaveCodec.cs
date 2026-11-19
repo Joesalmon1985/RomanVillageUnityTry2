@@ -99,6 +99,7 @@ namespace World.Sim.Save
         public static WorldSim CreateSim(WorldState loaded)
         {
             if (loaded == null) throw new ArgumentNullException(nameof(loaded));
+            PeopleDefs.Ensure(loaded);   // G0-1: saves from before the peoples list get it from their players
             var sim = new WorldSim(loaded);
             Economy.EconomyModule.Register(sim);
             Factions.FactionsModule.Register(sim);

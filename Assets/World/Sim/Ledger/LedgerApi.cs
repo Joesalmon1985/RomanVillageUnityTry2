@@ -117,7 +117,7 @@ namespace World.Sim.Ledger
         {
             if (s == null) return;
             if (s.Ledger == null) s.Ledger = new LedgerState();
-            for (int f = s.Ledger.Factions.Count; f < PlayerIds.Count; f++) s.Ledger.Factions.Add(new FactionLedger { Faction = f });
+            for (int f = s.Ledger.Factions.Count; f < s.PeopleCount; f++) s.Ledger.Factions.Add(new FactionLedger { Faction = f });
         }
 
         public static void Register(WorldSim sim)

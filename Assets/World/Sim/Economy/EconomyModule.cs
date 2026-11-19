@@ -50,7 +50,7 @@ namespace World.Sim.Economy
 
             var starts = s.Board.StartCorners ?? new int[0];
             var stocked = new bool[topo.HexCount];
-            for (int f = 0; f < starts.Length && f < PlayerIds.Count; f++)
+            for (int f = 0; f < starts.Length && f < s.PeopleCount; f++)
             {
                 int corner = starts[f];
                 if (!PlotLayout.IsSettlementCorner(topo, corner)) continue;

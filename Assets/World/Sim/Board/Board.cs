@@ -37,10 +37,31 @@ namespace World.Sim
         /// </summary>
         public System.Collections.Generic.List<Eras.Landmark> Landmarks = new System.Collections.Generic.List<Eras.Landmark>();
 
+        /// <summary>Ports on the Meadow rim (BD-5), in the fixed spot order of <see cref="BoardGenerator.PortHexes"/>. Empty on the legacy board.</summary>
+        public System.Collections.Generic.List<Port> Ports = new System.Collections.Generic.List<Port>();
+
+        /// <summary>The god board deal (BD-4): deals tried (0 = not a dealt board) and whether the kept deal met BD-4.</summary>
+        public int DealTriesUsed;
+        public bool DealFair;
+
         [JsonIgnore]
         public BoardTopology Topology => BoardTopology.Get(Radius);
 
         public Terrain TerrainAt(int hex) => HexTerrain[hex];
         public int NumberAt(int hex) => HexNumber[hex];
+    }
+
+    /// <summary>
+    /// A port on a Meadow rim hex (BD-5): a settlement on one of <see cref="Corners"/> trades at <see cref="Ratio"/>:1,
+    /// any good when <see cref="Good"/> is null (3:1), else only that raw good (2:1).
+    /// </summary>
+    public sealed class Port
+    {
+        /// <summary>The Meadow rim hex the port sits on.</summary>
+        public int Hex;
+        /// <summary>The hex's settlement corners (where three hexes meet), ascending.</summary>
+        public int[] Corners = new int[0];
+        public int Ratio;
+        public Ware? Good;
     }
 }
