@@ -189,7 +189,13 @@ namespace World.Sim.Factions
             if (o.GameOver) return o.Sentence;
             var w = Warning(s);
             if (w.Active) return w.Sentence;
-            return "Your people " + Strength(s, PlayerIds.Human).Total + ", the Ash Clan " + Strength(s, PlayerIds.Rival).Total + ".";
+            var line = new System.Text.StringBuilder();
+            for (int id = 0; id < s.PeopleCount; id++)
+            {
+                if (id > 0) line.Append(", ");
+                line.Append(PeopleDefs.Name(s, id)).Append(' ').Append(Strength(s, id).Total);
+            }
+            return line.Append('.').ToString();
         }
 
         // ---- helpers ----

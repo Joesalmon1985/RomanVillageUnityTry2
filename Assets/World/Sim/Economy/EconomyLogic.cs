@@ -9,7 +9,7 @@ namespace World.Sim.Economy
 
         public static bool IsGameOver(WorldState s) => s.Factions != null && s.Factions.GameOver;
 
-        public static bool ValidFaction(int f) => f >= 0 && f < PlayerIds.Count;
+        public static bool ValidFaction(WorldState s, int f) => s != null && s.IsPeople(f);
 
         /// <summary>The settlement (site or active, not cancelled) on a corner, or null.</summary>
         public static Settlement SettlementAt(WorldState s, int corner)
@@ -171,7 +171,7 @@ namespace World.Sim.Economy
         {
             if (s == null || s.Economy == null || s.Board == null) return R(EconomyRefusals.UnknownPlot);
             if (IsGameOver(s)) return R(EconomyRefusals.GameOver);
-            if (!ValidFaction(faction)) return R(EconomyRefusals.NotOwner);
+            if (!ValidFaction(s, faction)) return R(EconomyRefusals.NotOwner);
             var def = BuildingDefs.Get(type);
             if (def == null) return R(EconomyRefusals.UnknownType);
             if (!def.Placeable) return R(EconomyRefusals.NotPlaceable, def.Name);
@@ -217,7 +217,7 @@ namespace World.Sim.Economy
         {
             if (s == null || s.Economy == null || s.Board == null) return R(EconomyRefusals.NotConnected);
             if (IsGameOver(s)) return R(EconomyRefusals.GameOver);
-            if (!ValidFaction(faction)) return R(EconomyRefusals.NotOwner);
+            if (!ValidFaction(s, faction)) return R(EconomyRefusals.NotOwner);
             var t = s.Board.Topology;
             if (hexEdge < 0 || hexEdge >= t.HexEdgeCount) return R(EconomyRefusals.NotConnected);
             if (RoadOnEdge(s, hexEdge) != null) return R(EconomyRefusals.RoadExists);
@@ -235,7 +235,7 @@ namespace World.Sim.Economy
         {
             if (s == null || s.Economy == null || s.Board == null) return R(EconomyRefusals.BadCorner);
             if (IsGameOver(s)) return R(EconomyRefusals.GameOver);
-            if (!ValidFaction(faction)) return R(EconomyRefusals.NotOwner);
+            if (!ValidFaction(s, faction)) return R(EconomyRefusals.NotOwner);
             var t = s.Board.Topology;
             if (!PlotLayout.IsSettlementCorner(t, corner)) return R(EconomyRefusals.BadCorner);
             if (SettlementAt(s, corner) != null) return R(EconomyRefusals.Occupied);
@@ -250,7 +250,7 @@ namespace World.Sim.Economy
         {
             if (s == null || s.Economy == null) return R(EconomyRefusals.NotASettlement);
             if (IsGameOver(s)) return R(EconomyRefusals.GameOver);
-            if (!ValidFaction(faction)) return R(EconomyRefusals.NotOwner);
+            if (!ValidFaction(s, faction)) return R(EconomyRefusals.NotOwner);
             var st = SettlementAt(s, corner);
             if (st == null) return R(EconomyRefusals.NotASettlement);
             if (st.Faction != faction) return R(EconomyRefusals.NotOwner);
@@ -264,7 +264,7 @@ namespace World.Sim.Economy
         {
             if (s == null || s.Economy == null) return R(EconomyRefusals.NotASite);
             if (IsGameOver(s)) return R(EconomyRefusals.GameOver);
-            if (!ValidFaction(faction)) return R(EconomyRefusals.NotOwner);
+            if (!ValidFaction(s, faction)) return R(EconomyRefusals.NotOwner);
             int owner;
             switch (kind)
             {

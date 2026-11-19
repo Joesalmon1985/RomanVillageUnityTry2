@@ -43,7 +43,7 @@ namespace World.Sim.Economy
         {
             var e = s?.Economy;
             var st = e == null ? null : EconomyLogic.GetSettlement(s, settlementId);
-            if (st == null || st.State != SettlementState.Active || !EconomyLogic.ValidFaction(newFaction) || st.Faction == newFaction) return false;
+            if (st == null || st.State != SettlementState.Active || !EconomyLogic.ValidFaction(s, newFaction) || st.Faction == newFaction) return false;
             int old = st.Faction;
 
             // Jobs first, while ownership is still the old one.

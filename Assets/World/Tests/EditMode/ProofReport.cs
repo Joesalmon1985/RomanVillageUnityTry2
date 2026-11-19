@@ -462,7 +462,7 @@ namespace World.Sim.Tests
             GameResult Run(bool fed) => GameRunner.Play(PairSeed, PlayerStyle.Prompt, setup: sim =>
             {
                 var s = sim.State;
-                for (int f = 0; f < PlayerIds.Count; f++)
+                for (int f = 0; f < s.PeopleCount; f++)
                     for (int i = 0; i < 3; i++)
                         s.Economy.Warriors.Add(new Warrior { Id = s.Economy.Warriors.Count, Faction = f, Lodge = -1, Settlement = f, Fed = true, NextMealTick = 600 });
                 SimTestKit.Give(s, 1, Ware.Meat, 60);

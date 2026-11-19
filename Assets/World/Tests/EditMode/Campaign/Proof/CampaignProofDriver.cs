@@ -61,7 +61,7 @@ namespace World.Sim.Tests
         public readonly List<SimEvent> Events = new List<SimEvent>();
         public readonly List<DuelRecord> Duels = new List<DuelRecord>();
         public readonly List<string> Failures = new List<string>();
-        public int[] SpellCasts = new int[PlayerIds.Count];
+        public int[] SpellCasts = new int[PlayerIds.LegacyCount];
         public int OverrunsOfYou, OverrunsOfAsh, Looted;
         public int MaxPoints, MaxAshPoints;
         public bool RosterUnlocked;

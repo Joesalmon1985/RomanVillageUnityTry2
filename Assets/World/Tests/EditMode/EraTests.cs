@@ -85,7 +85,7 @@ namespace World.Sim.Tests
             var sim = ScenarioStarts.Create(ScenarioStarts.DevHistoric, 2);
             var s = sim.State;
             Assert.AreEqual((Era.Historic, PlayMode.DevStart, ScenarioStarts.DevHistoric), (AgesApi.Current(s), AgesApi.Mode(s), s.Eras.StartId));
-            for (int f = 0; f < PlayerIds.Count; f++)
+            for (int f = 0; f < s.PeopleCount; f++)
             {
                 Assert.IsTrue(ScenarioStarts.HistoricStartReached(s, f), "people " + f);
                 Assert.That(AgesApi.HandoverTick(s, f), Is.InRange(0, s.Eras.ChapterStartTick));
