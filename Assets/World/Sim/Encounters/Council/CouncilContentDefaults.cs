@@ -1,0 +1,248 @@
+namespace World.Sim.Encounters.Council
+{
+    /// <summary>GENERATED copy of StreamingAssets/world/council/council_content.json (a test pins that they match). Edit the JSON, then regenerate.</summary>
+    public static class CouncilContentDefaults
+    {
+        public const string Json = @"{
+  ""Version"": 1,
+  ""Offices"": { ""prehistoric"": ""chief"", ""historic"": ""reeve"", ""modern"": ""mayor"", ""future"": ""mayor"" },
+  ""Emblems"": [
+    { ""Id"": ""acorn"", ""Name"": ""Acorn"", ""Shape"": ""circle"", ""Colour"": ""green"" },
+    { ""Id"": ""arrowhead"", ""Name"": ""Arrowhead"", ""Shape"": ""triangle"", ""Colour"": ""red"" },
+    { ""Id"": ""hearthstone"", ""Name"": ""Hearthstone"", ""Shape"": ""square"", ""Colour"": ""blue"" },
+    { ""Id"": ""leaf"", ""Name"": ""Willow leaf"", ""Shape"": ""diamond"", ""Colour"": ""gold"" }
+  ],
+  ""Personalities"": [
+    { ""Id"": ""careful"", ""Name"": ""The Careful"", ""Description"": ""Banks early and takes few risks."", ""BustTolerance"": 21, ""MinAdvances"": 1, ""MaxAdvances"": 5, ""BankAtTopPercent"": 100, ""TrailingBoost"": 6, ""LeadingCaution"": 3, ""PetitionBoost"": 0, ""Impulse"": 5, ""WeightStep"": 1.0, ""WeightProgress"": 1.0, ""WeightTop"": 3.0, ""WeightNewCatspaw"": -1.5, ""WeightCentral"": 2.0, ""WeightAdvanced"": 1.0, ""Noise"": 0.5 },
+    { ""Id"": ""steady"", ""Name"": ""The Steady"", ""Description"": ""Balances progress against risk."", ""BustTolerance"": 25, ""MinAdvances"": 1, ""MaxAdvances"": 7, ""BankAtTopPercent"": 90, ""TrailingBoost"": 8, ""LeadingCaution"": 4, ""PetitionBoost"": 0, ""Impulse"": 8, ""WeightStep"": 1.0, ""WeightProgress"": 1.5, ""WeightTop"": 3.0, ""WeightNewCatspaw"": 0.0, ""WeightCentral"": 1.0, ""WeightAdvanced"": 1.5, ""Noise"": 0.8 },
+    { ""Id"": ""bold"", ""Name"": ""The Bold"", ""Description"": ""Presses on and spreads catspaws widely."", ""BustTolerance"": 45, ""MinAdvances"": 2, ""MaxAdvances"": 12, ""BankAtTopPercent"": 60, ""TrailingBoost"": 10, ""LeadingCaution"": 0, ""PetitionBoost"": 0, ""Impulse"": 10, ""WeightStep"": 1.0, ""WeightProgress"": 0.5, ""WeightTop"": 2.0, ""WeightNewCatspaw"": 1.0, ""WeightCentral"": -0.5, ""WeightAdvanced"": 0.0, ""Noise"": 1.0 },
+    { ""Id"": ""closer"", ""Name"": ""The Closer"", ""Description"": ""Chases short tracks and banks the moment one is won."", ""BustTolerance"": 20, ""MinAdvances"": 1, ""MaxAdvances"": 6, ""BankAtTopPercent"": 100, ""TrailingBoost"": 8, ""LeadingCaution"": 2, ""PetitionBoost"": 0, ""Impulse"": 6, ""WeightStep"": 0.5, ""WeightProgress"": 1.5, ""WeightTop"": 4.0, ""WeightNewCatspaw"": -0.5, ""WeightCentral"": -2.0, ""WeightAdvanced"": 1.5, ""Noise"": 0.6 }
+  ],
+  ""Listening"": { ""Responses"": 5, ""AccuracyThresholdPercent"": 85, ""SpeedBonusPercent"": 5, ""FastMs"": 1500, ""SlowMs"": 4000, ""MaxBursts"": 2 },
+  ""Fallbacks"": {
+    ""DelegateTitle"": ""local delegate"",
+    ""Note"": ""Existing residents fill a dispute's lead part when an occupation matches; otherwise a local delegate stands in. Dispute facts never need an occupation the settlement lacks."",
+    ""DelegateNames"": [""Tove"", ""Brannoch"", ""Idris"", ""Maelle"", ""Hobb"", ""Sunniva"", ""Carrick"", ""Lysa"", ""Doran"", ""Peony"", ""Ruan"", ""Ysolt"", ""Gwen"", ""Torvald"", ""Marit"", ""Anselm""]
+  },
+  ""Names"": [""Aldis"", ""Bera"", ""Corin"", ""Dessa"", ""Edrin"", ""Fenna"", ""Garrow"", ""Hilde"", ""Iven"", ""Jorra"", ""Kelda"", ""Lorn"", ""Mavi"", ""Nell"", ""Perrin"", ""Quill"", ""Rhosa"", ""Sten"", ""Tamsin"", ""Ulva"", ""Varo"", ""Wynn"", ""Yara"", ""Zeb"", ""Alder"", ""Brisa"", ""Cael"", ""Dunn"", ""Emmet"", ""Fyra"", ""Gorm"", ""Hale"", ""Ilsa"", ""Joss"", ""Kiri"", ""Lars"", ""Mora"", ""Nils"", ""Odda"", ""Pell"", ""Rook"", ""Sorrel"", ""Tarn"", ""Una"", ""Vesna"", ""Wick"", ""Yew"", ""Zora""],
+  ""Disputes"": [
+    {
+      ""Id"": ""crossing"", ""Track"": 2, ""Pattern"": ""absent worker"", ""Role"": ""ferryman"", ""Occupations"": [""ferryman""], ""FallbackTitle"": ""crossing delegate"",
+      ""Props"": { ""prehistoric"": ""cracked paddle"", ""historic"": ""broken oar"" }, ""Silhouette"": ""long shaft with a flat blade"",
+      ""Cast"": { ""wronged"": ""ferryman (lead)"", ""accused"": ""the helper who left the far bank"", ""witness"": ""a carrier waiting at the bank"", ""settler"": ""{office}"" },
+      ""Lines"": {
+        ""opening"": [""My {prop} is broken and my helper has gone. Who minds the bank, {candidate}?"", ""Nobody answers from the far bank any more. Bring them back, {candidate}."", ""The crossing stands empty. {candidate}, ask why my helper walked off.""],
+        ""progress"": [""A carrier saw my helper on the far side. That is something."", ""They are talking about coming back. Not yet, but talking."", ""The far bank answered my call today.""],
+        ""setback"": [""Not a word from the other bank. I am tying up again."", ""They said the {prop} was never the trouble. Now I do not know what is."", ""Wrong question. My helper's door stayed shut.""],
+        ""revisit"": [""The bank is quiet, {candidate}. Come back and ask them again."", ""Still no crossing. The {prop} will keep; my helper may not."", ""People wait on the bank and look at me, {candidate}.""],
+        ""agreement"": [""My helper returns and the {prop} gets mended. Thank you, {candidate}."", ""We spoke at last. The crossing opens and you have my voice, {candidate}."", ""They take the far bank again. I will vouch for you, {candidate}.""],
+        ""acknowledgement"": [""{lead} has hands on both banks again, thanks to {winner}."", ""{winner} asked why the helper left, not only when they would return."", ""The crossing runs because {winner} listened to both banks.""]
+      }
+    },
+    {
+      ""Id"": ""boundary"", ""Track"": 3, ""Pattern"": ""disputed ownership"", ""Role"": ""neighbour"", ""Occupations"": [""*""], ""FallbackTitle"": ""neighbour delegate"",
+      ""Props"": { ""prehistoric"": ""boundary rope"", ""historic"": ""boundary rope"" }, ""Silhouette"": ""coiled rope with two stakes"",
+      ""Cast"": { ""wronged"": ""neighbour (lead)"", ""accused"": ""the other neighbour"", ""witness"": ""an elder or householder who remembers the old stakes"", ""settler"": ""{office}"" },
+      ""Lines"": {
+        ""opening"": [""This {prop} moved in the night. Whose strip is it? You decide, {candidate}."", ""Two of us claim the same strip. {candidate}, walk the line with us."", ""The old stakes are gone and nobody agrees where they stood. Help us, {candidate}.""],
+        ""progress"": [""An elder remembers two of the stakes. We are getting somewhere."", ""We stood on the same strip and did not shout. A start."", ""One stake is back where it was. One more to go.""],
+        ""setback"": [""They pulled the stakes up again. I am done talking today."", ""Words, then more words. The {prop} lies in the grass."", ""That went badly. Now neither of us will speak.""],
+        ""revisit"": [""Still crooked, {candidate}. Walk it again with us."", ""The {prop} lies where it fell, and nobody will lift it but you."", ""Two strips and one quarrel, {candidate}. Come back.""],
+        ""agreement"": [""Straight and fair. {candidate}, I accept the new line."", ""We shook on it, both of us. You may count on us, {candidate}."", ""The stakes go back by the elder's word. Thank you, {candidate}.""],
+        ""acknowledgement"": [""No more quarrels over the {prop}. Thanks to {winner}."", ""{winner} walked the line with {lead}, and it holds."", ""The boundary stands because {winner} asked who remembered, not who shouted.""]
+      }
+    },
+    {
+      ""Id"": ""forest"", ""Track"": 4, ""Pattern"": ""forest dispute"", ""Role"": ""forester"", ""Occupations"": [""woodcutter"", ""forester""], ""FallbackTitle"": ""forest delegate"",
+      ""Props"": { ""prehistoric"": ""sapling"", ""historic"": ""sapling"" }, ""Silhouette"": ""thin stem with a leafy tuft"",
+      ""Cast"": { ""wronged"": ""forester or woodcutter (lead)"", ""accused"": ""the cutters felling past the marked slope"", ""witness"": ""a gleaner or shepherd who works the ridge"", ""settler"": ""{office}"" },
+      ""Lines"": {
+        ""opening"": [""They fell trees faster than the forest grows. Plant this {prop} with me, {candidate}."", ""The ridge is bare where the old trees stood. Speak for the young ones, {candidate}."", ""Someone keeps felling the same slope. {candidate}, help me mark what stays.""],
+        ""progress"": [""A few more saplings are in the ground. The cutters watched."", ""Someone saw the felling. They are thinking about saying so."", ""The cutters are slowing down. Keep at it.""],
+        ""setback"": [""The axes were on the slope before dawn. I cannot stop them alone."", ""They felled the young ones too. Today is lost."", ""Too hasty. The cutters would not listen and the ridge paid.""],
+        ""revisit"": [""The stumps are still there, {candidate}. So is my {prop}."", ""Come back and help me guard the young trees."", ""Another tree fell while you were away, {candidate}.""],
+        ""agreement"": [""We fell one, we plant two. {candidate}, you have my vote."", ""The ridge will be green again. Thank you, {candidate}."", ""The slope is marked and the cutters agreed. I am with you, {candidate}.""],
+        ""acknowledgement"": [""The young trees on the ridge are {winner}'s doing."", ""Because of {winner}, {lead} plants before the felling."", ""{winner} got the cutters to mark the slope. It shows.""]
+      }
+    },
+    {
+      ""Id"": ""timber"", ""Track"": 5, ""Pattern"": ""withheld resource"", ""Role"": ""carpenter"", ""Occupations"": [""carpenter"", ""sawyer""], ""FallbackTitle"": ""builders' delegate"",
+      ""Props"": { ""prehistoric"": ""split log"", ""historic"": ""split beam"" }, ""Silhouette"": ""long beam with a crack down the middle"",
+      ""Cast"": { ""wronged"": ""carpenter or sawyer (lead)"", ""accused"": ""whoever keeps the sound timber back"", ""witness"": ""a carrier who hauled it and saw where it went"", ""settler"": ""{office}"" },
+      ""Lines"": {
+        ""opening"": [""This {prop} will not hold a roof. Someone keeps the good timber back, {candidate}."", ""Sound wood exists; I saw it stacked. Why is it not here, {candidate}?"", ""I cannot build on a split {prop}. Find who holds the good wood.""],
+        ""progress"": [""A straight plank arrived. Not much, but sound."", ""A carrier says the good stack sits at the back of a shed. Now we know."", ""They are loosening their grip. Keep pressing.""],
+        ""setback"": [""The good timber was moved again. I am stuck."", ""They said there is none. Nobody believes that."", ""Nothing today. I am setting my tools down.""],
+        ""revisit"": [""The roof is still open to the sky, {candidate}."", ""Still no sound wood. The {prop} is no better."", ""I keep asking for timber, {candidate}. Come back with an answer.""],
+        ""agreement"": [""Good wood at last. {candidate} has earned my hands."", ""The stack is shared out fairly. The roof will stand, {candidate}."", ""Whoever held it back will let go. I am with you, {candidate}.""],
+        ""acknowledgement"": [""Every sound beam {lead} raises, they owe a little to {winner}."", ""{winner} found the timber, and the roof stands."", ""The good wood is shared since {winner} asked where it was kept.""]
+      }
+    },
+    {
+      ""Id"": ""herbs"", ""Track"": 6, ""Pattern"": ""withheld resource"", ""Role"": ""healer"", ""Occupations"": [""healer""], ""FallbackTitle"": ""healing delegate"",
+      ""Props"": { ""prehistoric"": ""empty clay pot"", ""historic"": ""empty jar"" }, ""Silhouette"": ""round-bellied pot with a narrow neck"",
+      ""Cast"": { ""wronged"": ""healer (lead)"", ""accused"": ""whoever keeps the herb store shut, fearing a shortage"", ""witness"": ""a gleaner who knows where the herbs grow"", ""settler"": ""{office}"" },
+      ""Lines"": {
+        ""opening"": [""My {prop} is dry and the cough is spreading. Who holds the herbs, {candidate}?"", ""There are herbs in this village, just not in my hands. Ask why, {candidate}."", ""The sick wait on me and I have nothing. Find the herbs, {candidate}.""],
+        ""progress"": [""A few herbs reached me. Thank you."", ""A gleaner knows where they grow. That helps."", ""The {prop} is no longer empty. Do not stop.""],
+        ""setback"": [""Someone shut the store on me. Nothing today."", ""They say herbs are short, but would not show me. Nothing."", ""Wrong word to the wrong person. The sick must wait.""],
+        ""revisit"": [""Still thin on medicine, {candidate}."", ""The cough has not eased. Please try again."", ""My {prop} is as dry as when you left, {candidate}.""],
+        ""agreement"": [""The {prop} will be filled. I stand with {candidate}."", ""The store opens to the sick first. You have my voice, {candidate}."", ""Herbs shared, no shortage hidden. Thank you, {candidate}.""],
+        ""acknowledgement"": [""The sick are mending, and {winner} is the reason."", ""{winner} filled the {prop} for {lead}. People remember that."", ""Since {winner} spoke up, the herb store opens to anyone ill.""]
+      }
+    },
+    {
+      ""Id"": ""grain"", ""Track"": 7, ""Pattern"": ""withheld resource"", ""Role"": ""storekeeper"", ""Occupations"": [""storekeeper""], ""FallbackTitle"": ""store delegate"",
+      ""Props"": { ""prehistoric"": ""empty grain basket"", ""historic"": ""empty grain crate"" }, ""Silhouette"": ""wide open container beside the lead"",
+      ""Cast"": { ""wronged"": ""storekeeper (lead; every village has one)"", ""accused"": ""whoever set a share of grain aside"", ""witness"": ""a carrier who counted the loads"", ""settler"": ""{office}"" },
+      ""Lines"": {
+        ""opening"": [""Look at this {prop}. It was full at the last count. Who took the grain, {candidate}?"", ""Someone sits on a share of grain. {candidate}, help me count it back."", ""The store is empty and the loads say otherwise. Help me, {candidate}.""],
+        ""progress"": [""A carrier remembers three loads that never reached the store."", ""The count is closer. Two sacks found."", ""A share was set aside, they say. A first honest word.""],
+        ""setback"": [""The tally was wrong again. I cannot prove a thing."", ""They said it spoiled. Nobody saw it spoil."", ""That frightened them. The grain stays hidden.""],
+        ""revisit"": [""The {prop} is still empty, {candidate}."", ""Winter is coming and the store holds air. Come back."", ""Count again with me, {candidate}.""],
+        ""agreement"": [""The grain goes back in the store, shared by need. I accept, {candidate}."", ""The {prop} will be filled before the cold. You have my voice, {candidate}."", ""We agreed the count and the share. Thank you, {candidate}.""],
+        ""acknowledgement"": [""The store holds because {winner} made them count out loud."", ""{lead} sleeps easier since {winner} sat down with the tally."", ""{winner} brought the missing loads back to the store.""]
+      }
+    },
+    {
+      ""Id"": ""tools"", ""Track"": 8, ""Pattern"": ""absent worker"", ""Role"": ""miner"", ""Occupations"": [""miner"", ""quarrier""], ""FallbackTitle"": ""diggers' delegate"",
+      ""Props"": { ""prehistoric"": ""cracked stone pick"", ""historic"": ""cracked pickaxe"" }, ""Silhouette"": ""T-shaped haft with a heavy head"",
+      ""Cast"": { ""wronged"": ""miner or quarrier (lead)"", ""accused"": ""the digging crew who walked off"", ""witness"": ""a carrier who saw which way they went"", ""settler"": ""{office}"" },
+      ""Lines"": {
+        ""opening"": [""My {prop} cracked and half the diggers walked off. {candidate}, get them back."", ""The digging stopped and nobody says why. Will you ask them, {candidate}?"", ""I cannot dig alone with a broken {prop}. Find out where my crew went.""],
+        ""progress"": [""One of them came back for a morning. That counts."", ""A carrier saw where they went. They are not far."", ""They say a sound {prop} might bring them back.""],
+        ""setback"": [""They saw me and turned around. Nothing today."", ""Wrong promise. The digging stays quiet."", ""They say it was never the {prop}. Then what?""],
+        ""revisit"": [""Still no crew, {candidate}. The stone is not getting softer."", ""The {prop} lies where it cracked. Come back."", ""The digging is quiet, {candidate}. Try once more.""],
+        ""agreement"": [""A sound {prop} and the crew returns. Thank you, {candidate}."", ""They come back, and nobody digs alone again. You have my voice."", ""The fault was named and mended. I am with you, {candidate}.""],
+        ""acknowledgement"": [""The digging runs again, and {winner} is why."", ""{winner} asked why the crew left, not when they would be back."", ""{lead} has hands at the face again thanks to {winner}.""]
+      }
+    },
+    {
+      ""Id"": ""shares"", ""Track"": 9, ""Pattern"": ""disputed ownership"", ""Role"": ""miller"", ""Occupations"": [""miller"", ""baker""], ""FallbackTitle"": ""grain delegate"",
+      ""Props"": { ""prehistoric"": ""grain skin bag"", ""historic"": ""grain sack"" }, ""Silhouette"": ""slumped sack tied at the neck"",
+      ""Cast"": { ""wronged"": ""miller or baker (lead)"", ""accused"": ""the neighbour who claims half"", ""witness"": ""whoever saw the sack weighed"", ""settler"": ""{office}"" },
+      ""Lines"": {
+        ""opening"": [""This {prop} is mine by the weighing. They say half is theirs. Judge it, {candidate}."", ""Two of us claim the same {prop}. Who owns what came off the field, {candidate}?"", ""We both counted the {prop}, and counted differently. Help us, {candidate}.""],
+        ""progress"": [""Someone saw it weighed. They will say what they saw."", ""We agree on the weight at least."", ""They gave up a handful. It is a start.""],
+        ""setback"": [""Now they say I owe them a debt as well. This is worse."", ""No agreement. Each took a side of the {prop}."", ""The weighing was disputed. We start again.""],
+        ""revisit"": [""The {prop} sits between us, {candidate}."", ""Half each, all mine, or all theirs. Help us choose."", ""Still no shares settled, {candidate}.""],
+        ""agreement"": [""Shares agreed and cut in notches for all to see. Thank you, {candidate}."", ""We split it by the weighing. I accept, {candidate}."", ""Fair shares, and both of us said so. You have my voice.""],
+        ""acknowledgement"": [""The {prop} was split fairly. {winner} did that."", ""{lead} and their neighbour trade grain again, thanks to {winner}."", ""{winner} had them agree the weighing before the sharing.""]
+      }
+    },
+    {
+      ""Id"": ""water"", ""Track"": 10, ""Pattern"": ""withheld resource"", ""Role"": ""well keeper"", ""Occupations"": [""well keeper""], ""FallbackTitle"": ""water delegate"",
+      ""Props"": { ""prehistoric"": ""bark bucket"", ""historic"": ""bucket"" }, ""Silhouette"": ""open vessel with a curved handle"",
+      ""Cast"": { ""wronged"": ""well keeper (lead)"", ""accused"": ""whoever draws past their turn"", ""witness"": ""a carrier who fills first at dawn"", ""settler"": ""{office}"" },
+      ""Lines"": {
+        ""opening"": [""My {prop} comes up half empty. Someone draws past their turn, {candidate}."", ""The water runs low and everyone blames me. Help me, {candidate}."", ""There is water, but not where it is needed. Who keeps taking it, {candidate}?""],
+        ""progress"": [""A carrier saw who fills first at dawn. That helps."", ""The {prop} came up fuller today. Not full."", ""They agreed to wait their turn. For now.""],
+        ""setback"": [""Someone took it all before dawn. Nothing left."", ""I blamed the wrong person. Now nobody will answer me."", ""The {prop} came up empty. They shrugged.""],
+        ""revisit"": [""The water is lower, {candidate}. Come back."", ""My {prop} is still half empty. People notice."", ""The queue grows, {candidate}. Please try again.""],
+        ""agreement"": [""Turns and shares, fair to all. {candidate}, thank you."", ""The {prop} will come up full again. You have my voice, {candidate}."", ""We keep a count of turns now. I am with you, {candidate}.""],
+        ""acknowledgement"": [""Nobody goes thirsty, and {winner} is why."", ""{winner} had them take turns. {lead} says it works."", ""The water is shared since {winner} spoke up.""]
+      }
+    },
+    {
+      ""Id"": ""witness"", ""Track"": 11, ""Pattern"": ""reluctant witness"", ""Role"": ""carter"", ""Occupations"": [""carter"", ""carrier""], ""FallbackTitle"": ""road delegate"",
+      ""Props"": { ""prehistoric"": ""log roller"", ""historic"": ""cart wheel"" }, ""Silhouette"": ""round disc stood on its edge"",
+      ""Cast"": { ""wronged"": ""carter or carrier (lead)"", ""accused"": ""whoever broke the wheel on the road"", ""witness"": ""the bystander who saw it and will not say"", ""settler"": ""{office}"" },
+      ""Lines"": {
+        ""opening"": [""My {prop} broke on the road and someone saw how. They will not say, {candidate}."", ""A witness stares at their feet. Help me ask kindly, {candidate}."", ""Somebody saw who cracked my {prop}. Silence helps no one, {candidate}.""],
+        ""progress"": [""The witness said a little. Not the name, but a little."", ""They will talk if no one shames them. That is something."", ""A carrier says the witness wants to speak. They need a reason.""],
+        ""setback"": [""The witness bolted. I pushed too hard."", ""Now nobody saw anything. Wrong words, wrong moment."", ""Shouted at in public. They will not speak now.""],
+        ""revisit"": [""Still no word from the witness, {candidate}."", ""My {prop} is still broken and still unexplained."", ""Try again, gently, {candidate}.""],
+        ""agreement"": [""The witness spoke and no one is shamed. {candidate}, thank you."", ""It was an accident, it seems, and the {prop} gets mended. You have my voice."", ""What was seen is told. I am satisfied, {candidate}.""],
+        ""acknowledgement"": [""The truth about the {prop} came out because {winner} was gentle."", ""{winner} let the witness speak when ready. {lead} remembers."", ""Nobody fears speaking up now. {winner} did that.""]
+      }
+    },
+    {
+      ""Id"": ""deed"", ""Track"": 12, ""Pattern"": ""disputed ownership"", ""Role"": ""reeve"", ""Occupations"": [""reeve"", ""chief""], ""FallbackTitle"": ""elder delegate"",
+      ""Props"": { ""prehistoric"": ""tally stick"", ""historic"": ""deed scroll"" }, ""Silhouette"": ""slim rolled bar held in one hand"",
+      ""Cast"": { ""wronged"": ""reeve or chief, keeper of the record (lead)"", ""accused"": ""the second claimant"", ""witness"": ""an elder who remembers when it was made"", ""settler"": ""{office}"" },
+      ""Lines"": {
+        ""opening"": [""Two folk hold this {prop} and swear it names them. Judge it, {candidate}."", ""The {prop} says one thing, the elders another. Whose land is it, {candidate}?"", ""I keep the record, and the record is disputed. I need your word, {candidate}.""],
+        ""progress"": [""An elder remembers when it was made. That settles part."", ""The marks are clearer by daylight. We read it together."", ""Both sides agreed to hear the elder out.""],
+        ""setback"": [""They tugged at the {prop} itself. Now nobody trusts it."", ""Both left angry. The record stays unread."", ""The elder would not speak before them. Nothing today.""],
+        ""revisit"": [""The {prop} lies unread, {candidate}. The quarrel does not."", ""Still two claims and one record. Come back."", ""Land does not wait forever, {candidate}.""],
+        ""agreement"": [""The {prop} is read aloud and both accept it. Thank you, {candidate}."", ""The claim is settled and the record kept. You have my voice, {candidate}."", ""Both have their share in the record now. I am with you, {candidate}.""],
+        ""acknowledgement"": [""The record stands because {winner} had it read aloud."", ""{lead} keeps the {prop} safe, and {winner} made it matter."", ""{winner} made both claimants hear the elder. It held.""]
+      }
+    }
+  ],
+  ""ListeningLines"": [
+    { ""Id"": ""c01"", ""Tag"": ""Complain"", ""Speaker"": ""Old fisher"", ""Text"": ""The path floods every morning and nobody lifts a spade."" },
+    { ""Id"": ""c02"", ""Tag"": ""Complain"", ""Speaker"": ""Young shepherd"", ""Text"": ""I mended that fence twice this moon and the goats still get through."" },
+    { ""Id"": ""c03"", ""Tag"": ""Complain"", ""Speaker"": ""Weaver"", ""Text"": ""My share is smaller than last month and nobody tells me why."" },
+    { ""Id"": ""c04"", ""Tag"": ""Complain"", ""Speaker"": ""Carrier"", ""Text"": ""I hauled all that and got a nod. A nod does not fill a basket."" },
+    { ""Id"": ""c05"", ""Tag"": ""Complain"", ""Speaker"": ""Potter"", ""Text"": ""My roof leaks and I have asked three times."" },
+    { ""Id"": ""c06"", ""Tag"": ""Complain"", ""Speaker"": ""Gleaner"", ""Text"": ""The berries were picked clean before I woke. Fair?"" },
+    { ""Id"": ""c07"", ""Tag"": ""Complain"", ""Speaker"": ""Woodcutter"", ""Text"": ""The felling is loud and the stumps are everywhere."" },
+    { ""Id"": ""c08"", ""Tag"": ""Complain"", ""Speaker"": ""Householder"", ""Text"": ""The talk goes round and round while the fire burns low."" },
+    { ""Id"": ""c09"", ""Tag"": ""Complain"", ""Speaker"": ""Storekeeper"", ""Text"": ""Everyone counts the grain. Nobody counts who carried it."" },
+    { ""Id"": ""c10"", ""Tag"": ""Complain"", ""Speaker"": ""Farmer"", ""Text"": ""The strip beside mine keeps shrinking and nobody will say why."" },
+    { ""Id"": ""c11"", ""Tag"": ""Complain"", ""Speaker"": ""Baker"", ""Text"": ""Someone borrows my paddle and never brings it back."" },
+    { ""Id"": ""c12"", ""Tag"": ""Complain"", ""Speaker"": ""Quarrier"", ""Text"": ""Half my crew went off and I am told to mind the stone."" },
+    { ""Id"": ""c13"", ""Tag"": ""Complain"", ""Speaker"": ""Warden"", ""Text"": ""I walk the fence all night and hear complaints all day."" },
+    { ""Id"": ""c14"", ""Tag"": ""Complain"", ""Speaker"": ""Elder"", ""Text"": ""Nobody asks the old ones what the old stakes looked like."" },
+    { ""Id"": ""e01"", ""Tag"": ""Encourage"", ""Speaker"": ""Net mender"", ""Text"": ""You can do this. One more try and it will hold."" },
+    { ""Id"": ""e02"", ""Tag"": ""Encourage"", ""Speaker"": ""Potter"", ""Text"": ""That was well said. Keep your voice steady."" },
+    { ""Id"": ""e03"", ""Tag"": ""Encourage"", ""Speaker"": ""Old fisher"", ""Text"": ""Well done, friend. The hard part is behind you."" },
+    { ""Id"": ""e04"", ""Tag"": ""Encourage"", ""Speaker"": ""Young shepherd"", ""Text"": ""Do not stop now. The hill is nearly climbed."" },
+    { ""Id"": ""e05"", ""Tag"": ""Encourage"", ""Speaker"": ""Midwife"", ""Text"": ""I believe in you. Take your time."" },
+    { ""Id"": ""e06"", ""Tag"": ""Encourage"", ""Speaker"": ""Curer"", ""Text"": ""Everyone starts clumsy. Look how far you have come."" },
+    { ""Id"": ""e07"", ""Tag"": ""Encourage"", ""Speaker"": ""Stonecutter"", ""Text"": ""Your work gets better every day. People notice."" },
+    { ""Id"": ""e08"", ""Tag"": ""Encourage"", ""Speaker"": ""Farmer"", ""Text"": ""Stand tall. They listen when you speak like that."" },
+    { ""Id"": ""e09"", ""Tag"": ""Encourage"", ""Speaker"": ""Carrier"", ""Text"": ""You are stronger than you think. Lift it with me."" },
+    { ""Id"": ""e10"", ""Tag"": ""Encourage"", ""Speaker"": ""Gleaner"", ""Text"": ""Good effort. The next one will be better."" },
+    { ""Id"": ""e11"", ""Tag"": ""Encourage"", ""Speaker"": ""Storekeeper"", ""Text"": ""Keep going. The whole village is behind you."" },
+    { ""Id"": ""e12"", ""Tag"": ""Encourage"", ""Speaker"": ""Child"", ""Text"": ""You were so close! Try again, I know you can."" },
+    { ""Id"": ""e13"", ""Tag"": ""Encourage"", ""Speaker"": ""Sawyer"", ""Text"": ""Steady hands. Cut it once, cut it true."" },
+    { ""Id"": ""e14"", ""Tag"": ""Encourage"", ""Speaker"": ""Elder"", ""Text"": ""You listened first and spoke second. That is rare."" },
+    { ""Id"": ""w01"", ""Tag"": ""Warn"", ""Speaker"": ""Weaver"", ""Text"": ""Careful on the ice. It cracks when you least expect it."" },
+    { ""Id"": ""w02"", ""Tag"": ""Warn"", ""Speaker"": ""Old fisher"", ""Text"": ""Keep off the marsh at dusk. The ground gives way."" },
+    { ""Id"": ""w03"", ""Tag"": ""Warn"", ""Speaker"": ""Potter"", ""Text"": ""Mind the old beam. It is split and could come down."" },
+    { ""Id"": ""w04"", ""Tag"": ""Warn"", ""Speaker"": ""Baker"", ""Text"": ""Keep the fire away from the thatch or we lose the lot."" },
+    { ""Id"": ""w05"", ""Tag"": ""Warn"", ""Speaker"": ""Net mender"", ""Text"": ""Watch the river. It rises fast after rain."" },
+    { ""Id"": ""w06"", ""Tag"": ""Warn"", ""Speaker"": ""Young shepherd"", ""Text"": ""Wolves near the ridge. Stay together tonight."" },
+    { ""Id"": ""w07"", ""Tag"": ""Warn"", ""Speaker"": ""Curer"", ""Text"": ""Those berries are bitter and make you sick. Leave them."" },
+    { ""Id"": ""w08"", ""Tag"": ""Warn"", ""Speaker"": ""Storekeeper"", ""Text"": ""Do not trust a bargain that sounds too good."" },
+    { ""Id"": ""w09"", ""Tag"": ""Warn"", ""Speaker"": ""Woodcutter"", ""Text"": ""A tree is leaning on the slope. Keep clear."" },
+    { ""Id"": ""w10"", ""Tag"": ""Warn"", ""Speaker"": ""Gleaner"", ""Text"": ""Do not lean on that rail. The rope is rotten."" },
+    { ""Id"": ""w11"", ""Tag"": ""Warn"", ""Speaker"": ""Quarrier"", ""Text"": ""Loose stone above the path. Walk wide."" },
+    { ""Id"": ""w12"", ""Tag"": ""Warn"", ""Speaker"": ""Carrier"", ""Text"": ""Take care on the log. It is wet and it rolls."" },
+    { ""Id"": ""w13"", ""Tag"": ""Warn"", ""Speaker"": ""Warden"", ""Text"": ""Quarrels in the dark end in blood. Talk by daylight."" },
+    { ""Id"": ""w14"", ""Tag"": ""Warn"", ""Speaker"": ""Elder"", ""Text"": ""A rumour grows faster than a weed. Do not feed it."" },
+    { ""Id"": ""r01"", ""Tag"": ""Reassure"", ""Speaker"": ""Farmer"", ""Text"": ""Do not worry. The grain will last until the harvest."" },
+    { ""Id"": ""r02"", ""Tag"": ""Reassure"", ""Speaker"": ""Gleaner"", ""Text"": ""It is all right. Nobody blames you for the spilled water."" },
+    { ""Id"": ""r03"", ""Tag"": ""Reassure"", ""Speaker"": ""Weaver"", ""Text"": ""There is plenty for everyone, I promise."" },
+    { ""Id"": ""r04"", ""Tag"": ""Reassure"", ""Speaker"": ""Old fisher"", ""Text"": ""Relax. The storm has passed and the roof held."" },
+    { ""Id"": ""r05"", ""Tag"": ""Reassure"", ""Speaker"": ""Potter"", ""Text"": ""No harm done. We can mend it by morning."" },
+    { ""Id"": ""r06"", ""Tag"": ""Reassure"", ""Speaker"": ""Net mender"", ""Text"": ""The child is safe, asleep by the fire."" },
+    { ""Id"": ""r07"", ""Tag"": ""Reassure"", ""Speaker"": ""Young shepherd"", ""Text"": ""You are not alone. We will manage together."" },
+    { ""Id"": ""r08"", ""Tag"": ""Reassure"", ""Speaker"": ""Midwife"", ""Text"": ""It will heal. The wound is clean and shallow."" },
+    { ""Id"": ""r09"", ""Tag"": ""Reassure"", ""Speaker"": ""Baker"", ""Text"": ""Everything is in hand. Rest now."" },
+    { ""Id"": ""r10"", ""Tag"": ""Reassure"", ""Speaker"": ""Storekeeper"", ""Text"": ""The count is honest. Nothing is hidden."" },
+    { ""Id"": ""r11"", ""Tag"": ""Reassure"", ""Speaker"": ""Curer"", ""Text"": ""The fire is out and the camp is safe."" },
+    { ""Id"": ""r12"", ""Tag"": ""Reassure"", ""Speaker"": ""Stonecutter"", ""Text"": ""Calm yourself. The lost goat is wandering back."" },
+    { ""Id"": ""r13"", ""Tag"": ""Reassure"", ""Speaker"": ""Carrier"", ""Text"": ""It looks worse than it is. A little clay will mend it."" },
+    { ""Id"": ""r14"", ""Tag"": ""Reassure"", ""Speaker"": ""Elder"", ""Text"": ""Whoever spoke out of turn will be heard out, not shamed."" },
+    { ""Id"": ""q01"", ""Tag"": ""Question"", ""Speaker"": ""Carrier"", ""Text"": ""Where did you leave the good flint knife?"" },
+    { ""Id"": ""q02"", ""Tag"": ""Question"", ""Speaker"": ""Weaver"", ""Text"": ""Who will cut the reeds this season?"" },
+    { ""Id"": ""q03"", ""Tag"": ""Question"", ""Speaker"": ""Curer"", ""Text"": ""Has anyone seen the traders on the river road?"" },
+    { ""Id"": ""q04"", ""Tag"": ""Question"", ""Speaker"": ""Gleaner"", ""Text"": ""How much grain is left in the store?"" },
+    { ""Id"": ""q05"", ""Tag"": ""Question"", ""Speaker"": ""Stonecutter"", ""Text"": ""Why did the elders move the boundary stones?"" },
+    { ""Id"": ""q06"", ""Tag"": ""Question"", ""Speaker"": ""Net mender"", ""Text"": ""When does the crossing open again?"" },
+    { ""Id"": ""q07"", ""Tag"": ""Question"", ""Speaker"": ""Young shepherd"", ""Text"": ""Which path leads to the high pasture?"" },
+    { ""Id"": ""q08"", ""Tag"": ""Question"", ""Speaker"": ""Old fisher"", ""Text"": ""Do you know who borrowed the big pot?"" },
+    { ""Id"": ""q09"", ""Tag"": ""Question"", ""Speaker"": ""Potter"", ""Text"": ""What did the healer say about the cough?"" },
+    { ""Id"": ""q10"", ""Tag"": ""Question"", ""Speaker"": ""Farmer"", ""Text"": ""Are we sharing the catch or trading it?"" },
+    { ""Id"": ""q11"", ""Tag"": ""Question"", ""Speaker"": ""Woodcutter"", ""Text"": ""Who marked this slope, and who unmarked it?"" },
+    { ""Id"": ""q12"", ""Tag"": ""Question"", ""Speaker"": ""Storekeeper"", ""Text"": ""Who saw the loads come in, and who saw them go?"" },
+    { ""Id"": ""q13"", ""Tag"": ""Question"", ""Speaker"": ""Baker"", ""Text"": ""Did you hear the horn from the hill last night?"" },
+    { ""Id"": ""q14"", ""Tag"": ""Question"", ""Speaker"": ""Warden"", ""Text"": ""Whose turn is it to mind the fire?"" }
+  ]
+}
+";
+    }
+}

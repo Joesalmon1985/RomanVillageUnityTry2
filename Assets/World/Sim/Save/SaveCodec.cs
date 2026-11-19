@@ -107,6 +107,8 @@ namespace World.Sim.Save
             Ledger.LedgerModule.Register(sim);
             // The crystal campaign (PRD_CRYSTALS A.5): a loaded save keeps its campaign system and handlers. Idempotent.
             Campaign.CampaignModule.Register(sim);
+            // The village council (elections and listening): command handlers only, state is WorldState.Council. Idempotent.
+            Encounters.Council.CouncilModule.Register(sim);
             return sim;
         }
 

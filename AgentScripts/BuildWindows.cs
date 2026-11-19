@@ -16,9 +16,23 @@ public static class BuildWindows
     private const string ProbeResources = "Assets/RomanVillage/Probe/Resources";
     private const string ProbeParked = "Assets/RomanVillage/Probe/ProbeListNotInBuild";
 
-    public static string Run()
+    /// <summary>
+    /// Council playtest build: identical to <see cref="Run"/> except it defines COUNCIL_PLAYTEST_BUILD, which makes
+    /// CouncilDirector drop straight into the brief's example election on boot (no approach, no F1 tool needed).
+    /// Never for release; output is a separate exe so WorldMVP.exe is untouched.
+    /// Run: unity command script run --file AgentScripts/BuildWindows.cs --entry BuildWindows.RunCouncilPlaytest --timeout 900
+    /// </summary>
+    public const string CouncilOutput = "Builds/Windows/CouncilPlaytest.exe";
+
+    public static string RunCouncilPlaytest() => Build(CouncilOutput, "Council Playtest", new[] { "COUNCIL_PLAYTEST_BUILD" });
+
+    public static string Run() => Build(Output, "WorldMVP", null);
+
+    // not an overload of Run: the CLI's script runner refuses overloaded entry points
+    private static string Build(string output, string productName, string[] extraDefines)
     {
-        PlayerSettings.productName = "WorldMVP";
+        string prevProductName = PlayerSettings.productName;
+        PlayerSettings.productName = productName;
         PlayerSettings.fullScreenMode = FullScreenMode.FullScreenWindow;
         PlayerSettings.defaultIsNativeResolution = true;
         PlayerSettings.defaultScreenWidth = 1920;
@@ -42,14 +56,15 @@ public static class BuildWindows
             var opts = new BuildPlayerOptions
             {
                 scenes = new[] { "Assets/Scenes/World.unity" },
-                locationPathName = Output,
+                locationPathName = output,
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.None,
+                extraScriptingDefines = extraDefines,
             };
             var report = BuildPipeline.BuildPlayer(opts);
             var r = report.summary;
             // Delete the Burst debug folder (not shipped).
-            string burst = Path.Combine(Path.GetDirectoryName(Output), "WorldMVP_BurstDebugInformation_DoNotShip");
+            string burst = Path.Combine(Path.GetDirectoryName(output), Path.GetFileNameWithoutExtension(output) + "_BurstDebugInformation_DoNotShip");
             if (Directory.Exists(burst)) Directory.Delete(burst, true);
             return $"{r.result} size={r.totalSize / (1024 * 1024)}MB errors={r.totalErrors} warnings={r.totalWarnings} time={r.totalTime} ended={r.buildEndedAt:u}";
         }
@@ -60,6 +75,8 @@ public static class BuildWindows
                 string err = AssetDatabase.MoveAsset(ProbeParked, ProbeResources);
                 if (!string.IsNullOrEmpty(err)) Debug.LogError("[BuildWindows] could not move the probe resources back: " + err);
             }
+            PlayerSettings.productName = prevProductName;
+            AssetDatabase.SaveAssets();
         }
     }
 }
