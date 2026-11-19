@@ -33,6 +33,7 @@ namespace World.Game
         public bool IsOpen => View == BoardView.Rising || View == BoardView.Board;
         public Camera BoardCam { get; private set; }
         public GodBoardPieces Pieces { get; private set; }
+        public CollectWalkers Collectors { get; private set; }
         public IReadOnlyList<TempleView> Temples => _temples;
         public WorldBootstrap Boot => _boot;
         public WorldState S => _boot.Sim.State;
@@ -87,6 +88,7 @@ namespace World.Game
             var s = boot.Sim.State;
             if (s.Historic == null) BuildTemples(s); // a game that is already Historic has no temples (HI-2)
             Pieces = GodBoardPieces.Create(transform, s);
+            Collectors = CollectWalkers.Create(transform, s); // G1-7
             BuildCamera(s);
             gameObject.AddComponent<GodBoardHud>();
             boot.Clock.Ticked += OnTicked;
@@ -347,6 +349,26 @@ namespace World.Game
             Pieces.ShowMarks(shown, _edges, ac, ae);
         }
 
+        private int _hintCorner = -1, _hintEdge = -1;
+        private float _hintAt = -100f;
+        /// <summary>The last line the prince said for the hint (tests, feed).</summary>
+        public string LastHintLine { get; private set; }
+
+        /// <summary>GB-7: a short prince line each time the hint is shown on a new spot (at most one every 8 seconds).</summary>
+        private void PrinceSaysHint()
+        {
+            if (!AdviserOn || View != BoardView.Board || (AdviseCorner < 0 && AdviseEdge < 0)) { if (AdviseCorner < 0 && AdviseEdge < 0) { _hintCorner = -1; _hintEdge = -1; } return; }
+            if (AdviseCorner == _hintCorner && AdviseEdge == _hintEdge) return;
+            _hintCorner = AdviseCorner; _hintEdge = AdviseEdge;
+            if (Time.unscaledTime - _hintAt < 8f) return;
+            _hintAt = Time.unscaledTime;
+            var pd = PrinceDirector.Instance;
+            string line = pd != null ? pd.AdviseAtBoard(AdviseEdge >= 0, T.Phase == TablePhase.Setup) : null;
+            if (line == null) return;
+            LastHintLine = line;
+            Feed1("The prince: " + line);
+        }
+
         private void Advise(int h)
         {
             var t = T;
@@ -423,7 +445,7 @@ namespace World.Game
             {
                 switch (e)
                 {
-                    case Produced pr: HexDressingView.Pulse(pr.Hexes); break;
+                    case Produced pr: HexDressingView.Pulse(pr.Hexes); if (Collectors != null) Collectors.OnProduced(pr); break;
                     case Built b: Feed1(Name(b.People) + (b.People == Human ? " built a " : " built a ") + b.Kind + "."); break;
                     case Traded tr: Feed1(tr.With < 0 ? Name(tr.People) + " traded at the bank." : Name(tr.People) + " traded with " + Name(tr.With) + "."); break;
                     case TradeRefused rf:
@@ -474,7 +496,7 @@ namespace World.Game
                 ClampFocus();
                 ApplyBoardCamera();
             }
-            if (IsOpen) { Pieces.Sync(); RefreshMarks(false); }
+            if (IsOpen) { Pieces.Sync(); RefreshMarks(false); PrinceSaysHint(); }
         }
 
         private void ApplyCamera(float u, bool rising)

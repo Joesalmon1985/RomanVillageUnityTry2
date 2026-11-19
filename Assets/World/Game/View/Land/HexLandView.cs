@@ -21,6 +21,8 @@ namespace World.Game
         public int HexId { get; private set; }
         public Terrain Terrain { get; private set; }
         public int Number { get; private set; }
+        /// <summary>The board was dealt (god board): no number is drawn.</summary>
+        public bool BoardDealt { get; private set; }
         /// <summary>Items drawn now: mature, stage 2, stage 1, stage 0 (young of mined terrain are not drawn).</summary>
         public int ShownMature { get; private set; }
         public int ShownStage0 { get; private set; }
@@ -61,6 +63,7 @@ namespace World.Game
             v.HexId = hex;
             v.Terrain = board.HexTerrain[hex];
             v.Number = board.HexNumber[hex];
+            v.BoardDealt = board.DealTriesUsed > 0;
             v._ware = TerrainInfo.RawWare(v.Terrain);
             v._mpb = new MaterialPropertyBlock();
             v.BuildStatic();
@@ -75,13 +78,15 @@ namespace World.Game
             PatchGround(mb, Terrain, HexId);
             LandLook.Part(transform, "PatchGround", mb.ToMesh("patch " + HexId), null, true);
 
-            // Number post and token.
+            // Number post and token. A dealt (god board) board shows no number (AB-1): the token is a plain marker.
+            bool dealt = BoardDealt;
             var post = LandLook.Cached("token/post", m =>
             {
                 LandShapes.Beam(m, Vector3.zero, Vector3.up * (TokenHeight - TokenRadius + 0.1f), 0.09f, 6, LandLook.DarkWood);
                 LandShapes.Disc(m, new Vector3(0, 0.02f, 0), 0.5f, 8, LandLook.Stone * 0.8f);
             });
             var postObj = LandLook.Part(transform, "Post", post);
+            if (dealt) postObj.SetActive(false); // G1-7: no number post on a dealt board (AB-1)
             _token = new GameObject("Token").transform;
             _token.SetParent(transform, false);
             _token.localPosition = Vector3.up * TokenHeight;
@@ -93,8 +98,11 @@ namespace World.Game
                 DiscXY(m, 0f, TokenRadius, new Color(0.30f, 0.20f, 0.12f), 0.02f, true);
             });
             _disc = LandLook.Part(_token, "Disc", disc, LandLook.Unlit, false).GetComponent<Renderer>();
+            if (dealt) _disc.enabled = false;
             bool hot = Number == 6 || Number == 8;
             var ink = hot ? new Color(0.78f, 0.12f, 0.08f) : new Color(0.12f, 0.09f, 0.07f);
+            if (!dealt)
+            {
             var num = Signs.Text(_token, Number.ToString(), new Vector3(0, 0.14f, -0.06f), 0.95f, ink, 0f);
             num.name = "Number";
             int pips = EconomyApi.Pips(Number);
@@ -105,6 +113,7 @@ namespace World.Game
                 DiscXY(dots, 0f, 0.055f, ink, -0.07f, false, new Vector3(x, -0.55f, 0));
             }
             if (pips > 0) LandLook.Part(_token, "Pips", dots.ToMesh("pips " + Number), LandLook.Unlit, false);
+            }
             _halo = LandLook.Part(_token, "Halo", LandLook.Cached("token/halo2", m => DiscXY(m, 0f, TokenRadius * 1.5f, new Color(0.40f, 0.30f, 0.10f), 0.05f, true)), LandLook.Additive, false);
             _halo.SetActive(false);
             _stopMark = LandLook.Part(_token, "Stopped", LandLook.Cached("token/stop", m =>

@@ -182,6 +182,7 @@ namespace World.Game
             SpellCaster.CastAttempted += OnCastAttempted;
             // A game already past the opening (a load, or the F1 tools cast it) has no first scene left.
             if (s.Factions != null && s.Factions.OpeningDone != null && s.Factions.OpeningDone[PlayerIds.Human]) FirstSceneStep = SceneDone;
+            if (s.Ruleset == Ruleset.GodBoard) BeginGodBoard(); // G1-7: guide, not pitches
         }
 
         /// <summary>Called by the save system (F) after a load: resumes the first scene at that step.</summary>
@@ -214,6 +215,12 @@ namespace World.Game
 
             Mood = MoodNow();
             UpdateCompanions();
+            if (IsGodBoardGame)
+            {
+                UpdateGodGuide();
+                if (Time.unscaledTime >= _hudAt) { _hudAt = Time.unscaledTime + 0.5f; Hud.SetObjective(GodHudLine()); }
+                return;
+            }
             if (FirstSceneStep < SceneDone) UpdateFirstScene();
             else if (AfterHandover) UpdateAfter(); // H1-4: calm announcements, advice, the invitation
             else UpdateLoop();
@@ -264,7 +271,7 @@ namespace World.Game
                     if (n.FollowingTarget == _tail) n.StopWalking();
                     continue;
                 }
-                if (n == Prince && !tagAlong) continue;
+                if (n == Prince && (!tagAlong || Guiding)) continue; // G1-7: the guide places him
                 if (AfterBusy(n)) continue; // H1-4: the prince is walking to an announced spot, inviting, or at the fire
                 if (tagAlong)
                 {

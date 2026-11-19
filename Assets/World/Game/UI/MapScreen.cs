@@ -276,7 +276,7 @@ namespace World.Game
             for (int h = 0; h < t.HexCount; h++)
             {
                 int n = s.Board.HexNumber[h];
-                if (n <= 0) continue;
+                if (n <= 0 || s.Ruleset == Ruleset.GodBoard) continue; // AB-1: no number tokens on the god board
                 var p = WorldToGui(BoardSpace.Hex(t, h));
                 float d = UiStyle.Px(28);
                 GUI.color = new Color(0.97f, 0.93f, 0.80f, 0.95f);
