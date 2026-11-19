@@ -579,6 +579,7 @@ namespace World.Game
             if (s.Ruleset != Ruleset.GodBoard || s.Table == null) return;
             GodBoardDirector.Install(boot);
             PlagueViews.Install(boot);
+            SpireDirector.Install(boot); // G2-4: crystal spires and their rhythm stages
         }
     }
 }

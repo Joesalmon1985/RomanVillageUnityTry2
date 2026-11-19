@@ -74,6 +74,14 @@ namespace World.Game
         private readonly List<Input_> _queue = new List<Input_>();
         private readonly HashSet<int> _autoQueued = new HashSet<int>();
 
+        private RhythmRequest _request;
+        /// <summary>0-based spire the dance is played at; -1 at the home camp's circle.</summary>
+        public int SpireIndex { get; private set; } = -1;
+        /// <summary>The chart's pack id actually playing (the built-in "lv1_warehouse" or a local pack).</summary>
+        public string PackId { get; private set; }
+        /// <summary>True when a spire's own pack was wanted but missing, so spire 1's chart and track play.</summary>
+        public bool PackFellBack { get; private set; }
+
         private EncounterContext _ctx;
         private GameObject _root;
         private EncounterSfx _sfx;
@@ -99,15 +107,29 @@ namespace World.Game
             _beginFrame = Time.frameCount;
             Tuning = TuningOverride ?? EncounterTuningFiles.Rhythm();
             if (TuningOverride == null) Tuning.CalibrationMs = PlayerPrefs.GetFloat(CalibrationPref, (float)Tuning.CalibrationMs);
-            var pack = Resources.Load<TextAsset>((StemDirOverride ?? StemSet.DefaultDir) + "/pack");
-            Chart = null;
-            if (pack != null)
+            _request = ctx.Request as RhythmRequest;
+            SpireIndex = _request != null ? _request.SpireIndex : -1;
+            Chart = null; Stems = null;
+            PackId = null; PackFellBack = false;
+            if (SpireIndex >= 1 && StemDirOverride == null)
             {
-                try { Chart = PackJson.Parse(pack.text); }
-                catch (Exception e) { Debug.LogWarning("[Rhythm] pack.json unreadable, using the built-in chart: " + e.Message); }
+                // Spires 2 to 4 play the owner's local packs; a missing folder or pack falls back to spire 1's track (SP-3).
+                string want = LocalRhythmPacks.PackIdOfSpire(SpireIndex);
+                if (LocalRhythmPacks.TryLoad(want, out var lc, out var ls)) { Chart = lc; Stems = ls; PackId = want; }
+                else { PackFellBack = true; Debug.Log("[Rhythm] spire " + (SpireIndex + 1) + ": local pack '" + want + "' not available, playing spire 1's track"); }
             }
-            if (Chart == null) Chart = FallbackChart.Create();
-            Stems = StemSet.Load(StemDirOverride ?? StemSet.DefaultDir, Chart);
+            if (Chart == null)
+            {
+                var pack = Resources.Load<TextAsset>((StemDirOverride ?? StemSet.DefaultDir) + "/pack");
+                if (pack != null)
+                {
+                    try { Chart = PackJson.Parse(pack.text); }
+                    catch (Exception e) { Debug.LogWarning("[Rhythm] pack.json unreadable, using the built-in chart: " + e.Message); }
+                }
+                if (Chart == null) Chart = FallbackChart.Create();
+                Stems = StemSet.Load(StemDirOverride ?? StemSet.DefaultDir, Chart);
+                if (PackId == null) PackId = Chart.Id;
+            }
             if (Stems.IsSynth) Debug.Log("[Rhythm] stems missing: playing the synthesised fallback loops");
 
             _root = new GameObject("DanceEncounter");
@@ -115,7 +137,9 @@ namespace World.Game
             Player = StemPlayer.Create(_root.transform, Stems);
             _sfx = EncounterSfx.Create(_root.transform);
 
-            Circle = DanceCircle.Current;
+            Circle = _request != null && _request.Stage != null ? _request.Stage.Circle : DanceCircle.Current;
+            if (Circle != null && Circle.Retired && SpireDirector.Instance != null && SpireDirector.Instance.Count > 0)
+                Circle = SpireDirector.Instance.Spires[0].Circle; // SP-1: the home circle is retired, Sol's dance moves to the first spire
             if (Circle == null && ctx.Sim != null)
             {
                 // No camp in this scene (should not happen in the game): stand a circle up for the dance only.
@@ -126,7 +150,7 @@ namespace World.Game
             // Stand at the dancer's spot facing the fire, drums 1-4 left to right in front.
             ctx.PlaceAvatar(Circle.Layout.DancerSpot, Circle.Layout.DancerYaw, ViewPitch);
             if (ctx.World != null && ctx.World.GodCam != null) { _prevPan = ctx.World.GodCam.KeyboardPan; ctx.World.GodCam.KeyboardPan = false; }
-            _sol = ctx.Npc != null ? ctx.Npc : Npc.Find(NpcIds.Host);
+            _sol = _request != null ? null : (ctx.Npc != null ? ctx.Npc : Npc.Find(NpcIds.Host)); // Sol stays at the home camp
             if (_sol != null) { _solScale = _sol.transform.localScale; _sol.Actor?.FaceTowards(Circle.Layout.DancerSpot); }
             SpeechBubbles.ShowInEncounter = true;
             StartPhrase();
@@ -156,6 +180,8 @@ namespace World.Game
             _solBubble = 0;
             SpeechBubbles.ShowInEncounter = false;
             if (Player != null) Player.StopAll();
+            if (Stems != null && Stems.Source != null && Stems.Source.StartsWith("local pack"))
+            { foreach (var c in new[] { Stems.Drums, Stems.Bass, Stems.Other }) if (c != null) UnityEngine.Object.Destroy(c); }
             if (_ctx != null && _ctx.World != null && _ctx.World.GodCam != null) _ctx.World.GodCam.KeyboardPan = _prevPan;
             if (_sol != null) { _sol.transform.localScale = _solScale; _sol.Actor?.PlayIdle(); }
             if (Circle != null && _ownCircle == null) Circle.ResetDance();
@@ -591,7 +617,7 @@ namespace World.Game
             var r = new Rect(px(16), px(92), sw - px(32), px(48));
             EncounterUi.Fill(r, new Color(0.05f, 0.04f, 0.03f, 0.55f));
             float x = r.x + px(12);
-            EncounterUi.Label(new Rect(x, r.y, px(330), r.height), "Dance at the fire  <size=" + (int)px(20) + ">Sol, 174 BPM</size>", EncounterUi.Body, EncounterUi.Gold);
+            EncounterUi.Label(new Rect(x, r.y, px(330), r.height), "Dance at the fire  <size=" + (int)px(20) + ">" + (_request != null ? "Spire " + (SpireIndex + 1) : "Sol") + ", " + System.Math.Round(Chart.Bpm) + " BPM</size>", EncounterUi.Body, EncounterUi.Gold);
             x += px(340);
             for (int b = 0; b < Tuning.BlockCount; b++)
             {

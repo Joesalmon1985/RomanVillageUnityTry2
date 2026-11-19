@@ -82,7 +82,7 @@ namespace World.Game
 
         // ------------------------------------------------------------------ build
 
-        public static DanceCircle Build(Transform parent, CampLayout layout)
+        public static DanceCircle Build(Transform parent, CampLayout layout, bool makeCurrent = true)
         {
             var go = new GameObject("DanceCircle");
             go.transform.SetParent(parent, false);
@@ -91,8 +91,19 @@ namespace World.Game
             dc.Layout = layout;
             dc.Centre = layout.DanceCircleCentre;
             dc.BuildScenery();
-            Current = dc;
+            if (makeCurrent) Current = dc;
             return dc;
+        }
+
+        /// <summary>True once the first crystal spire has risen and the home circle is out of use (SP-1, G2-4).</summary>
+        public bool Retired { get; private set; }
+
+        /// <summary>Retires the circle: hidden and not used by the dance any more. <see cref="Current"/> stays so lighting keeps its reference.</summary>
+        public void Retire()
+        {
+            if (Retired) return;
+            Retired = true;
+            gameObject.SetActive(false);
         }
 
         private void OnDestroy() { if (Current == this) Current = null; if (_sparkMesh != null) Destroy(_sparkMesh); if (_coreMesh != null) Destroy(_coreMesh); }

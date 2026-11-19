@@ -132,6 +132,28 @@ namespace World.Game
             BuildClearings();
         }
 
+        /// <summary>
+        /// A dance stage away from the home camp (a crystal spire's stage, G2-4): fire at <paramref name="centre"/>, the dancer
+        /// <see cref="DancerDistance"/> m from it towards <paramref name="dancerSide"/> (a flat direction), facing the fire.
+        /// Only the dance fields are set (no dressing, no clearings, no home corner).
+        /// </summary>
+        public static CampLayout ForStage(Vector3 centre, Vector3 dancerSide) => new CampLayout(centre, dancerSide);
+
+        private CampLayout(Vector3 centre, Vector3 dancerSide)
+        {
+            ReservedPlot = -1;
+            HomeCorner = -1;
+            DanceCircleCentre = centre;
+            dancerSide.y = 0;
+            var u = dancerSide.sqrMagnitude > 1e-4f ? dancerSide.normalized : Vector3.back;
+            DancerSpot = centre + u * DancerDistance;
+            Forward = -u;
+            Right = new Vector3(Forward.z, 0, -Forward.x);
+            DancerYaw = BoardSpace.YawOf(Forward);
+            DrummerSpot = CirclePoint(DrummerAngle, DrummerDistance);
+            DrummerYaw = BoardSpace.YawOf(DancerSpot - DrummerSpot);
+        }
+
         /// <summary>Drum 1-4, left to right as seen from <see cref="DancerSpot"/>, on the near half of the drum circle.</summary>
         public Vector3 DrumPosition(int pad1to4)
         {
