@@ -162,6 +162,10 @@ namespace World.Sim.Table
         public int CornerA;
         public int CornerB;
         public int Good = -1;
+        /// <summary>Every corner that may use the port (G0-2: the port hex's settlement corners); null = only A and B.</summary>
+        public int[] Corners;
+        /// <summary>The board hex the port sits on, or -1.</summary>
+        public int Hex = -1;
     }
 
     /// <summary>A trade offered by the current people (TR-2). Give = what From gives, Get = what From receives.</summary>

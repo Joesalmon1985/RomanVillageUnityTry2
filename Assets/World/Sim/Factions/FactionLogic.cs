@@ -349,16 +349,22 @@ namespace World.Sim.Factions
                 f.Factions.Add(fa);
                 FactionLogic.ComputeStrength(s, fa);
             }
-            // The player's first plan happens at tick 0 so the opening proposal exists from the start.
-            Brain.Plan(s, PlayerIds.Human, null);
+            // The player's first plan happens at tick 0 so the opening proposal exists from the start. The god board has no
+            // proposals for building (G0-2).
+            if (s.Ruleset == Ruleset.Legacy) Brain.Plan(s, PlayerIds.Human, null);
         }
 
         public static void Register(WorldSim sim)
         {
-            sim.AddSystem(SystemOrder.Brain, new BrainSystem());
-            sim.AddSystem(SystemOrder.Strength, new StrengthSystem());
-            sim.RegisterHandler(new CastSpellHandler());
-            sim.RegisterHandler(new DeclineProposalHandler());
+            // G0-2: proposals and spells for building, strength, overrun and the 20-minute limit run only on the legacy
+            // ruleset. The god board keeps the factions' state (names, halts, advice) without them.
+            if (sim.State.Ruleset == Ruleset.Legacy)
+            {
+                sim.AddSystem(SystemOrder.Brain, new BrainSystem());
+                sim.AddSystem(SystemOrder.Strength, new StrengthSystem());
+                sim.RegisterHandler(new CastSpellHandler());
+                sim.RegisterHandler(new DeclineProposalHandler());
+            }
             // Later ages (PRD_AGES A.5, 4.3; H1-0).
             sim.RegisterHandler(new AdviseHandler());
             EconomyApi.Hooks(sim).IsSettlementHalted.Add(CampaignRules.IsHalted);

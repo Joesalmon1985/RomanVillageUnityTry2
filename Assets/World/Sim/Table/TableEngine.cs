@@ -23,6 +23,15 @@ namespace World.Sim.Table
 
         /// <summary>Whether an AI seat accepts an offer addressed to it (TR-6). Default: always declines (G1-2 owns AI trading).</summary>
         public Func<WorldState, int, TradeOffer, bool> AiAnswer = (s, p, o) => false;
+
+        /// <summary>A 7 was rolled and the discards are done (TU-10, PL-6), right after the <see cref="Epidemic"/> event. The plague wires this (G0-2).</summary>
+        public Action<WorldState, EventBuffer> OnEpidemic;
+
+        /// <summary>The last people of a round ended its turn (PL-5): (state, round just ended, events). Runs before the next round's first roll.</summary>
+        public Action<WorldState, int, EventBuffer> OnRoundEnded;
+
+        /// <summary>A people reached the winning points (TU-7): (state, winner, events), right after the <see cref="AgeEnded"/> event.</summary>
+        public Action<WorldState, int, EventBuffer> OnAgeEnded;
     }
 
     /// <summary>Lets an AI seat act through the same checks as the commands. Each accepted action lengthens its turn (HG-5).</summary>
@@ -515,10 +524,11 @@ namespace World.Sim.Table
             FinishSeven(s, ev);
         }
 
-        private static void FinishSeven(WorldState s, EventBuffer ev)
+        private void FinishSeven(WorldState s, EventBuffer ev)
         {
             var t = s.Table;
             ev.Add(new Epidemic { People = t.Current, Round = t.Round });
+            Seams.OnEpidemic?.Invoke(s, ev);
             t.Phase = TablePhase.Main;
             t.TurnTicks = 0; // the wait for discards does not use up an AI's turn
         }
@@ -533,6 +543,7 @@ namespace World.Sim.Table
             {
                 t.TurnIndex = 0;
                 t.Round++;
+                Seams.OnRoundEnded?.Invoke(s, t.Round - 1, ev);
             }
             BeginTurn(s, ev);
         }
@@ -582,7 +593,7 @@ namespace World.Sim.Table
         }
 
         /// <summary>After any change on the board: longest road, points, and the end of the age (TU-6, TU-7).</summary>
-        private static void AfterChange(WorldState s, EventBuffer ev)
+        private void AfterChange(WorldState s, EventBuffer ev)
         {
             var t = s.Table;
             var tu = t.Tuning;
@@ -624,6 +635,7 @@ namespace World.Sim.Table
                 t.Phase = TablePhase.Ended;
                 ExpireOffers(t, ev);
                 ev.Add(new AgeEnded { Winner = top, Points = topPts });
+                Seams.OnAgeEnded?.Invoke(s, top, ev);
             }
         }
 

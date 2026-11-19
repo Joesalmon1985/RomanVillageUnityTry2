@@ -121,11 +121,19 @@ namespace World.Sim.Table
             int rate = t.Tuning.BankRate;
             foreach (var port in t.Ports)
             {
-                if (!(OwnsCorner(t, p, port.CornerA) || OwnsCorner(t, p, port.CornerB))) continue;
+                if (!UsesPort(t, p, port)) continue;
                 if (port.Good < 0) rate = Math.Min(rate, t.Tuning.GenericPortRate);
                 else if (port.Good == (int)g) rate = Math.Min(rate, t.Tuning.GoodPortRate);
             }
             return rate;
+        }
+
+        /// <summary>True when p holds a settlement or city on a corner of the port.</summary>
+        public static bool UsesPort(TableState t, int p, TablePort port)
+        {
+            if (OwnsCorner(t, p, port.CornerA) || OwnsCorner(t, p, port.CornerB)) return true;
+            if (port.Corners != null) foreach (int c in port.Corners) if (OwnsCorner(t, p, c)) return true;
+            return false;
         }
 
         private static bool OwnsCorner(TableState t, int p, int c) => c >= 0 && c < t.CornerOwner.Length && t.CornerOwner[c] == p;

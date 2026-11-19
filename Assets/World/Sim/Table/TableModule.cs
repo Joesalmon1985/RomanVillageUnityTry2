@@ -42,7 +42,11 @@ namespace World.Sim.Table
                 t.CornerLevel[c] = 1;
             }
             if (ports != null)
-                foreach (var port in ports) t.Ports.Add(new TablePort { CornerA = port.CornerA, CornerB = port.CornerB, Good = port.Good });
+                foreach (var port in ports) t.Ports.Add(new TablePort
+                {
+                    CornerA = port.CornerA, CornerB = port.CornerB, Good = port.Good, Hex = port.Hex,
+                    Corners = port.Corners == null ? null : (int[])port.Corners.Clone(),
+                });
             foreach (var pe in t.Peoples) pe.Points = t.Tuning.SettlementPoints;
             s.Table = t;
         }
