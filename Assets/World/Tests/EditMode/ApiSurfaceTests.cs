@@ -424,7 +424,7 @@ namespace World.Sim.Tests
             Method(typeof(EconomyApi), "Hooks", typeof(EconomyHooks), typeof(WorldSim));
             Method(typeof(WorldSimFactory), "CreateNew", typeof(WorldSim), typeof(ulong));
             Method(typeof(SaveCodec), "CreateSim", typeof(WorldSim), WS);
-            Const(typeof(SaveCodec), "CurrentVersion", 7); // G0-3 (war on the god board), G0-2 (god board); PRD_AGES H1-0 (AG-52): older versions load by migration
+            Const(typeof(SaveCodec), "CurrentVersion", 8); // G4-2 (Historic on the god board), G0-3 (war on the god board), G0-2 (god board); PRD_AGES H1-0 (AG-52): older versions load by migration
             Const(typeof(SaveCodec), "OldestVersion", 4);
             Const(typeof(SystemOrder), "Dice", 100);
             Const(typeof(SystemOrder), "Growth", 150);

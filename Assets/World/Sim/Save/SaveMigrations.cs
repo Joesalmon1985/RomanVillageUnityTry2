@@ -18,6 +18,7 @@ namespace World.Sim.Save
             { 4, V4ToV5 },
             { 5, V5ToV6 },
             { 6, V6ToV7 },
+            { 7, V7ToV8 },
         };
 
         /// <summary>Migrates a model read by FromJson in place: LoadedVersion = the file's version, Version = CurrentVersion.</summary>
@@ -75,6 +76,20 @@ namespace World.Sim.Save
             if (s.War != null) return;
             War.WarModule.InitState(s, s.Table.PeopleCount);
             GodBoard.GodBoardModule.SyncBoard(s, null);
+        }
+
+        /// <summary>
+        /// v7 (the war wired, G0-3) to v8 (Historic on the god board, G4-2): a Legacy game has no Historic state. A god board
+        /// game whose table ended with a winner (the island standing) was waiting at "Historic ready": it steps into Historic
+        /// now (era and chapter, temples down, castles and resources from the board), as the age's end does in a v8 game.
+        /// Events of the step are not raised (there is no event buffer at load).
+        /// </summary>
+        private static void V7ToV8(WorldState s)
+        {
+            if (s.Ruleset != Ruleset.GodBoard || s.Table == null) { s.Historic = null; return; }
+            if (s.Historic != null) return;
+            if (s.Table.Phase == Table.TablePhase.Ended && !s.Table.IslandFell && s.Table.Winner >= 0)
+                Historic.HistoricModule.Switch(s, s.Table.Winner, null);
         }
     }
 }

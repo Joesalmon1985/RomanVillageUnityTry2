@@ -15,7 +15,7 @@ namespace World.Sim.GodBoard
     /// <item>TU-2, PL-9: a hex with demons on any of its plague nodes produces nothing (<see cref="PlagueApi.HexBlocked"/>).</item>
     /// <item>PL-6: every 7 (the table's Epidemic, after discards) is an epidemic (<see cref="PlagueRules.Epidemic"/>).</item>
     /// <item>PL-5: after the last people's turn of a round, the infection draw (<see cref="PlagueRules.InfectRound"/>).</item>
-    /// <item>HI-8, HI-1: when the age ends the plague ends and the Historic chapter is marked ready (ChapterReady). The step
+    /// <item>HI-8, HI-1: when the age ends the plague ends and the island steps into Historic (G4-2, HistoricModule.Switch). The view of the step
     /// itself (AdvanceChapter, temples falling) is the Historic stub's (G1-8).</item>
     /// </list>
     /// Seams left for later packages: the table AI (G1-2) wires its hooks in <see cref="WireAi"/>; the war (G3-2) reads the
@@ -88,6 +88,8 @@ namespace World.Sim.GodBoard
                 WarModule.Register(sim, Linked);
                 sim.AddSystem(SyncOrder, new WarTableSync(seams));
             }
+            // G4-2: the Historic age's system (idle until the age turns).
+            Historic.HistoricModule.Register(sim);
             SeamTable.Add(sim, seams);
             return seams;
         }
@@ -273,11 +275,14 @@ namespace World.Sim.GodBoard
             return true;
         }
 
-        /// <summary>HI-8 and HI-1: the plague ends, and the Historic chapter becomes ready for the step.</summary>
+        /// <summary>
+        /// HI-8 and HI-1: the plague ends, and the island steps into Historic at once (G1-8 sim part, G4-2): the Historic
+        /// chapter is marked ready and advanced to, the temples fall, castles and resources begin (<see cref="Historic.HistoricModule.Switch"/>).
+        /// </summary>
         private static void AgeEnded(WorldState s, int winner, EventBuffer ev)
         {
             PlagueRules.End(s, ev);
-            Eras.ErasLogic.MarkReady(s, Eras.ChapterIds.Historic, ev);
+            Historic.HistoricModule.Switch(s, winner, ev);
         }
     }
 }

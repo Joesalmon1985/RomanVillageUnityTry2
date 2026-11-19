@@ -38,6 +38,8 @@ namespace World.Sim.Save
     public static class SaveCodec
     {
         /// <summary>
+        /// 8 = the Historic age on the god board (G4-2): WorldState.Historic (castles, finite resources, Historic buildings and
+        /// carriers); a god board game whose age has ended steps into Historic. Version 7 loads by migration.
         /// 7 = the war on the god board (G0-3): WorldState.War (null in a Legacy game), Table.ClosedCorners and
         /// Table.IslandFell. A version 6 god board save gets a fresh war built from its table by migration.
         /// 6 = the god board (G0-2): WorldState.Ruleset, Table and Plague (null in a Legacy game), Board.Ports, the peoples
@@ -50,7 +52,7 @@ namespace World.Sim.Save
         /// StrategyState.DraftNextStep; 24 cards; economy targets and per-terrain batch sizes in the tuning).
         /// 2 = unified economy (14 wares, 20 building types, outbreaks, military comparison). Older saves are refused.
         /// </summary>
-        public const int CurrentVersion = 7;
+        public const int CurrentVersion = 8;
 
         /// <summary>Oldest save version this build reads.</summary>
         public const int OldestVersion = 4;
