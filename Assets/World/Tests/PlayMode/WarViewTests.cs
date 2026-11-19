@@ -183,5 +183,21 @@ namespace World.Game.Tests
             Assert.Greater(_v.SoldierCount, 0);
             foreach (var v in _v.Soldiers) Assert.IsTrue(v.MarkerShown, "marker on the board");
         }
+    
+        [UnityTest, Timeout(120000)]
+        public IEnumerator NoNumberTokensInAGodBoardGame()
+        {
+            yield return Start();
+            yield return null;
+            int hexes = 0;
+            foreach (var h in Object.FindObjectsByType<HexLandView>(FindObjectsSortMode.None))
+            {
+                hexes++;
+                Assert.IsFalse(h.NumberShown, "AB-1: no number token on hex " + h.HexId);
+                h.Paid(3);
+                Assert.IsFalse(h.PaidTextShown, "AB-1: no paid count on hex " + h.HexId);
+            }
+            Assert.Greater(hexes, 0);
+        }
     }
 }

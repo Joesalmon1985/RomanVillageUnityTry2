@@ -46,6 +46,11 @@ namespace World.Game
         public string Title => LandText.State != null ? LandText.HexTitle(LandText.State, HexId) : "Hex";
         public IEnumerable<string> Lines => LandText.State != null ? LandText.HexLines(LandText.State, HexId) : new string[0];
 
+        /// <summary>AB-1: in a GodBoard game no number token, pips or paid count is shown (the F1 tools may). Set by LandViews before it creates the hexes.</summary>
+        public static bool HideNumbers;
+        public bool PaidTextShown => _paidText != null && _paidText.gameObject.activeSelf;
+        public bool NumberShown => _token != null && _token.gameObject.activeSelf;
+
         public static HexLandView Create(Transform parent, Board board, int hex)
         {
             var t = board.Topology;
@@ -76,7 +81,7 @@ namespace World.Game
                 LandShapes.Beam(m, Vector3.zero, Vector3.up * (TokenHeight - TokenRadius + 0.1f), 0.09f, 6, LandLook.DarkWood);
                 LandShapes.Disc(m, new Vector3(0, 0.02f, 0), 0.5f, 8, LandLook.Stone * 0.8f);
             });
-            LandLook.Part(transform, "Post", post);
+            var postObj = LandLook.Part(transform, "Post", post);
             _token = new GameObject("Token").transform;
             _token.SetParent(transform, false);
             _token.localPosition = Vector3.up * TokenHeight;
@@ -131,6 +136,7 @@ namespace World.Game
             _paidText = Signs.Text(transform, "+4", new Vector3(0, TokenHeight + 1.8f, 0), 1.5f, new Color(1f, 0.85f, 0.15f), 0f);
             _paidText.name = "PaidText";
             _paidText.gameObject.SetActive(false);
+            if (HideNumbers) { postObj.SetActive(false); _token.gameObject.SetActive(false); }
         }
 
         /// <summary>A disc in the XY plane at z, facing -Z (or +Z with back).</summary>
@@ -314,7 +320,7 @@ namespace World.Game
             LastPaid = Time.time;
             _beam.SetActive(true); _ring.SetActive(true);
             _paidText.text = "+" + count;
-            _paidText.gameObject.SetActive(true);
+            _paidText.gameObject.SetActive(!HideNumbers);
         }
 
         /// <summary>Turns the token to the camera and runs the flare (called every frame by LandViews).</summary>
