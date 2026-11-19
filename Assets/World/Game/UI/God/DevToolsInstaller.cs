@@ -12,6 +12,7 @@ namespace World.Game
             DevTools.Register();
             DevStart.RegisterTool(); // developer starts (dev.historic)
             CampaignDevTool.Register(); // the crystal campaign (I8)
+            DressingDevTool.Register(); // dressed land from a dealt board (G1-4)
             PlaytestDevTool.Register(); // jump straight into the Ward duel or the rhythm party
             var bar = boot.gameObject.AddComponent<GodToolbar>();
             bar.Bind(boot);
