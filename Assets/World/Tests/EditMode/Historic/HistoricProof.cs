@@ -48,11 +48,12 @@ namespace World.Sim.Tests
             public bool Balanced;
         }
 
-        public static GameResult Run(ulong seed, out ulong usedSeed)
+        public static GameResult Run(ulong seed, out ulong usedSeed, System.Action<HistoricTuning> tweak = null)
         {
             var (sim, _, k) = HistoricTests.PlayToHistoric(seed);
             usedSeed = k;
             var s = sim.State;
+            tweak?.Invoke(s.Historic.Tuning);
             var g = new GameResult { Seed = k, Winner = s.Historic.Winner, SwitchTick = s.Historic.StartTick };
             g.MatureAtSwitch = HistoricApi.Trees(s, TreeStage.Mature);
             g.RockAtSwitch = s.Historic.Hexes.Sum(r => r.Rock);
@@ -135,6 +136,24 @@ namespace World.Sim.Tests
             return sb.ToString();
         }
 
+        public static string VariantReport(List<GameResult> games, List<(string name, List<GameResult> rs)> variants)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine();
+            sb.AppendLine("## Variants (proof settings only, same seeds)");
+            sb.AppendLine();
+            sb.AppendLine("| Variant | Stages raised (wood / brick / stone of " + games.Sum(g => g.Peoples.Count) + ") | Worst wood gap (min) | Peoples over 5 min | Worst empty store (min) | Trees felled / planted (all) |");
+            sb.AppendLine("|---|---|---|---|---|---|");
+            foreach (var (name, rs) in new[] { ("Default", games) }.Concat(variants))
+            {
+                var all = rs.SelectMany(g => g.Peoples).ToList();
+                sb.AppendLine("| " + name + " | " + all.Count(p => p.Stages >= 1) + " / " + all.Count(p => p.Stages >= 2) + " / " + all.Count(p => p.Stages >= 3)
+                              + " | " + Min(all.Max(p => p.WoodGap)) + " | " + all.Count(p => p.WoodGap > WoodGapLimit) + " | " + Min(all.Max(p => p.WoodEmpty))
+                              + " | " + all.Sum(p => p.Felled) + " / " + all.Sum(p => p.Planted) + " |");
+            }
+            return sb.ToString();
+        }
+
         [Test]
         public void SixtyMinutesOfAiOnlyHistoric_CastlesRise_AndNoPeopleIsOutOfWood()
         {
@@ -145,7 +164,14 @@ namespace World.Sim.Tests
                 games.Add(Run(seed, out var used));
                 seed = used + 1;
             }
-            string report = Report(games);
+            // Variants on the same seeds (proof settings only; the rules are unchanged): heavier castles keep the demand for
+            // wood up for the whole hour, and slower trees test the foresters.
+            var variants = new List<(string name, List<GameResult> rs)>
+            {
+                ("Castle costs x4", games.Select(g => Run(g.Seed, out _, tu => { foreach (var c in tu.CastleCost) for (int w = 0; w < c.Length; w++) c[w] *= 4; })).ToList()),
+                ("Trees grow half as fast (TreeGrowTicks 1200)", games.Select(g => Run(g.Seed, out _, tu => tu.TreeGrowTicks = 1200)).ToList()),
+            };
+            string report = Report(games) + VariantReport(games, variants);
             TestContext.Out.WriteLine(report);
             string root = RepoRoot();
             if (root != null)
