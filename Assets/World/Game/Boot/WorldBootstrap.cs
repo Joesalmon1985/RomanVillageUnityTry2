@@ -75,6 +75,7 @@ namespace World.Game
             CampInstaller.Install(this);     // D: dance circle, camp dressing, Mira and Sol
             LandViewsInstaller.Install(this); // V: terrain and land views
             GradeViewsInstaller.Install(this); // ages H1-5: grade visuals, towns (shell)
+            GodBoardInstaller.Install(this); // G1-5: temples and the god board (GodBoard games only)
             LightingInstaller.Install(this); // L: day-night cycle, fires and torches, night readability (after V: it dresses the sky and the views)
             PrinceInstaller.Install(this);   // N: prince, sawyer, merchant, first scene
             InteriorsInstaller.Install(this); // crystals I5: interiors (shell)
