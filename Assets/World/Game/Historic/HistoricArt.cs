@@ -293,8 +293,8 @@ namespace World.Game
             switch (stage)
             {
                 case TreeStage.Sapling:
-                    mb.Cylinder(p, 0.07f, 0.05f, 0.7f, 4, Timber);
-                    mb.Cone(p + Vector3.up * 0.25f, 0.45f, 1.0f, 5, new Color(0.40f, 0.68f, 0.28f));
+                    mb.Cylinder(p, 0.1f, 0.07f, 1.0f, 4, Timber);
+                    mb.Cone(p + Vector3.up * 0.35f, 0.7f, 1.5f, 5, new Color(0.40f, 0.68f, 0.28f));
                     break;
                 case TreeStage.Young:
                     TerrainBuilder.Tree(mb, p, rnd, 0.62f);
@@ -306,8 +306,8 @@ namespace World.Game
                 {
                     float f = Mathf.Clamp01(stumpLife);
                     var wood = Color.Lerp(new Color(0.30f, 0.22f, 0.15f), new Color(0.46f, 0.32f, 0.20f), f);
-                    mb.Cylinder(p, 0.55f, 0.42f, 0.35f + 0.4f * f, 6, wood);
-                    mb.Cylinder(p + Vector3.up * (0.35f + 0.4f * f), 0.44f, 0.44f, 0.03f, 6, Color.Lerp(wood, new Color(0.85f, 0.72f, 0.5f), f));
+                    mb.Cylinder(p, 0.8f, 0.62f, 0.5f + 0.5f * f, 6, wood);
+                    mb.Cylinder(p + Vector3.up * (0.5f + 0.5f * f), 0.64f, 0.64f, 0.04f, 6, Color.Lerp(wood, new Color(0.85f, 0.72f, 0.5f), f));
                     break;
                 }
             }

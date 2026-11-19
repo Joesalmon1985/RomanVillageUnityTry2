@@ -23,6 +23,10 @@ namespace World.Game
         /// <summary>Seconds the board stays up with "The age has turned" before it closes by itself.</summary>
         public static float TurnMomentSeconds = 4.5f;
         public const float SyncInterval = 0.25f;
+        /// <summary>Dev start "eve": seconds the clock stays paused after the scene loads, so the switch plays in front of the camera (captures set it very large).</summary>
+        public static float EveHoldSeconds = 3f;
+        private const string EvePause = "HistoricEve";
+        private float _eveUntil = -1f;
 
         private WorldBootstrap _boot;
         private WorldState S => _boot.Sim.State;
@@ -79,6 +83,7 @@ namespace World.Game
             _root.SetParent(transform, false);
             _dust = new HistoricDust(_root);
             boot.Clock.Ticked += OnTicked;
+            if (DevStart.Current == GodBoardStart.EveId) { boot.Clock.Pause(EvePause); _eveUntil = Time.unscaledTime + EveHoldSeconds; }
             _collapsed = boot.Sim.State.Historic != null; // a loaded Historic game has no temples (the god board skips them)
         }
 
@@ -167,9 +172,13 @@ namespace World.Game
 
         // ---------------------------------------------------------------- per frame
 
+        /// <summary>Ends the eve hold: the clock runs and the age turns.</summary>
+        public void ReleaseEve() { _eveUntil = -1f; _boot.Clock.Resume(EvePause); }
+
         private void Update()
         {
             _clock += Time.deltaTime;
+            if (_eveUntil > 0f && Time.unscaledTime >= _eveUntil) ReleaseEve();
             if (S.Historic == null) return;
             if (_leaveAt > 0f && Time.unscaledTime >= _leaveAt)
             {

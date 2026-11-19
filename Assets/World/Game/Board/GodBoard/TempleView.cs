@@ -117,7 +117,7 @@ namespace World.Game
             var pick = transform.Find("Pick");
             if (pick != null) Destroy(pick.gameObject);
             _dust = new HistoricDust(transform);
-            _dust.Burst(transform.position + Vector3.up * 1.5f, 16, Radius, 1.6f, 2.2f);
+            _dust.Burst(transform.position + Vector3.up * 1.5f, 16, Radius, 1.6f, 1.0f);
             _nextDust = 0.5f;
         }
 
@@ -136,7 +136,7 @@ namespace World.Game
             if (_fall >= _nextDust && _fall < CollapseSeconds + 0.6f)
             {
                 _nextDust = _fall + 0.55f;
-                _dust.Burst(transform.position + Vector3.up * (3f * (1f - u) + 0.5f), 10, Radius * 0.9f, 1.5f, 2.2f);
+                _dust.Burst(transform.position + Vector3.up * (3f * (1f - u) + 0.5f), 10, Radius * 0.9f, 1.5f, 1.0f);
             }
             _dust.Update(Time.deltaTime);
             if (_fall >= CollapseSeconds + RubbleSeconds)
