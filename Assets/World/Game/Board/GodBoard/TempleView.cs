@@ -100,8 +100,56 @@ namespace World.Game
             }
         }
 
+        /// <summary>HI-2: the temple falls (dust, collapse, cleared ground). The altar stops working at once; the temple is gone after <see cref="CollapseSeconds"/> plus the rubble time.</summary>
+        public const float CollapseSeconds = 3.2f, RubbleSeconds = 3f;
+        public bool Collapsing { get; private set; }
+        public bool Gone { get; private set; }
+        private float _fall;
+        private Transform _body;
+        private HistoricDust _dust;
+        private float _nextDust;
+
+        public void Collapse()
+        {
+            if (Collapsing) return;
+            Collapsing = true; Smoking = false;
+            _body = transform.Find("Body");
+            var pick = transform.Find("Pick");
+            if (pick != null) Destroy(pick.gameObject);
+            _dust = new HistoricDust(transform);
+            _dust.Burst(transform.position + Vector3.up * 1.5f, 16, Radius, 1.6f, 2.2f);
+            _nextDust = 0.5f;
+        }
+
+        private void UpdateCollapse()
+        {
+            _fall += Time.deltaTime;
+            float u = Mathf.Clamp01(_fall / CollapseSeconds);
+            if (_body != null && _body.gameObject.activeSelf)
+            {
+                float shake = (1f - u) * 0.25f;
+                _body.localPosition = new Vector3(Mathf.Sin(_fall * 40f) * shake, -u * u * 4.8f, Mathf.Cos(_fall * 33f) * shake);
+                _body.localRotation = Quaternion.Euler(u * 7f, 0, -u * 9f);
+                _body.localScale = new Vector3(1f, Mathf.Lerp(1f, 0.25f, u), 1f);
+                if (u >= 1f) _body.gameObject.SetActive(false);
+            }
+            if (_fall >= _nextDust && _fall < CollapseSeconds + 0.6f)
+            {
+                _nextDust = _fall + 0.55f;
+                _dust.Burst(transform.position + Vector3.up * (3f * (1f - u) + 0.5f), 10, Radius * 0.9f, 1.5f, 2.2f);
+            }
+            _dust.Update(Time.deltaTime);
+            if (_fall >= CollapseSeconds + RubbleSeconds)
+            {
+                Gone = true;
+                WalkGrid.RemoveStaticBlockers(GodBoardDirector.SolidOwner);
+                Destroy(gameObject);
+            }
+        }
+
         private void Update()
         {
+            if (Collapsing) { UpdateCollapse(); return; }
             _clock += Time.deltaTime;
             int shown = 0;
             for (int i = 0; i < PuffCount; i++)

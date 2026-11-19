@@ -22,7 +22,7 @@ namespace World.Game
         /// <summary>Why the last start failed (sentence), or null.</summary>
         public static string LastError { get; private set; }
         /// <summary>The starts that can be built now.</summary>
-        public static IReadOnlyList<string> Ids { get { var l = new List<string>(ScenarioStarts.Ids); l.Add(GodBoardStart.Id); return l; } }
+        public static IReadOnlyList<string> Ids { get { var l = new List<string>(ScenarioStarts.Ids); l.Add(GodBoardStart.Id); l.Add(GodBoardStart.HistoricId); l.Add(GodBoardStart.EveId); return l; } }
 
         private static WorldSim s_pending;
         private static string s_pendingId;
@@ -74,7 +74,10 @@ namespace World.Game
             try
             {
                 float t0 = Time.realtimeSinceStartup;
-                var sim = id == GodBoardStart.Id ? GodBoardStart.Create(seed) : ScenarioStarts.Create(id, seed);
+                var sim = id == GodBoardStart.Id ? GodBoardStart.Create(seed)
+                    : id == GodBoardStart.HistoricId ? GodBoardStart.CreateHistoric(seed, false)
+                    : id == GodBoardStart.EveId ? GodBoardStart.CreateHistoric(seed, true)
+                    : ScenarioStarts.Create(id, seed);
                 if (sim == null) { LastError = "There is no developer start called \"" + id + "\"."; return null; }
                 Debug.Log("[DevStart] built " + id + " (seed " + seed + ") in " + (Time.realtimeSinceStartup - t0).ToString("0.0") + " s");
                 return sim;

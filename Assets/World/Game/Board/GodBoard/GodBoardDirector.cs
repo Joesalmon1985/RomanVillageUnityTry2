@@ -85,7 +85,7 @@ namespace World.Game
             Instance = this;
             _boot = boot;
             var s = boot.Sim.State;
-            BuildTemples(s);
+            if (s.Historic == null) BuildTemples(s); // a game that is already Historic has no temples (HI-2)
             Pieces = GodBoardPieces.Create(transform, s);
             BuildCamera(s);
             gameObject.AddComponent<GodBoardHud>();
@@ -579,6 +579,7 @@ namespace World.Game
             if (s.Ruleset != Ruleset.GodBoard || s.Table == null) return;
             GodBoardDirector.Install(boot);
             PlagueViews.Install(boot);
+            HistoricDirector.Install(boot); // G4-3: the switch, castles, trees, Historic buildings
         }
     }
 }
