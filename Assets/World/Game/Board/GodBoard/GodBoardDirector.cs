@@ -50,6 +50,10 @@ namespace World.Game
         public string Message { get; private set; } = "";
         public CommandResult LastResult { get; private set; }
         public int SacrificeCount { get; private set; }
+        /// <summary>Unscaled time of the last epidemic (a resolved 7), for the banner; far in the past at first.</summary>
+        public float EpidemicAt { get; private set; } = -100f;
+        /// <summary>The table has ended: an age turned or the island fell. No further table input.</summary>
+        public bool GameOver => T != null && T.Phase == TablePhase.Ended;
 
         public struct FeedLine { public string Text; public float Time; }
         private readonly List<FeedLine> _feed = new List<FeedLine>();
@@ -244,6 +248,9 @@ namespace World.Game
             return r;
         }
 
+        /// <summary>Sends a table command as the player (G1-6 panels). Refusals show as a plain sentence in the status line.</summary>
+        public CommandResult Send(Command c) => Submit(c);
+
         public CommandResult PlaceSettlement(int corner) => Submit(new PlaceTableSettlement { Corner = corner });
         public CommandResult PlaceRoad(int edge) => Submit(new PlaceTableRoad { HexEdge = edge });
         public CommandResult UpgradeCity(int corner) => Submit(new UpgradeTableCity { Corner = corner });
@@ -255,7 +262,7 @@ namespace World.Game
         /// <summary>A press at a screen point (pixels, origin bottom-left): the nearest legal spot gets its command. Returns what was sent, or null.</summary>
         public string TapAt(Vector2 screen)
         {
-            if (View != BoardView.Board) return null;
+            if (View != BoardView.Board || GameOver) return null;
             RefreshMarks(true);
             float scale = Screen.height / 390f;
             float best = TapRadiusPx * Mathf.Max(1f, scale);
@@ -393,6 +400,22 @@ namespace World.Game
             while (_feed.Count > 6) _feed.RemoveAt(0);
         }
 
+        private int FindOfferFrom(int id)
+        {
+            foreach (var o in T.Offers) if (o.Id == id) return o.From;
+            return -1;
+        }
+
+        /// <summary>Esc or the pause key: closes the trade panel if open, else leaves the board like "Return to the world". True when it did something.</summary>
+        public bool PressEscape()
+        {
+            if (!IsOpen) return false;
+            var hud = GetComponent<GodBoardHud>();
+            if (hud != null && hud.TradeOpen) { hud.CloseTrade(); return true; }
+            Leave();
+            return true;
+        }
+
         private void OnTicked(IReadOnlyList<SimEvent> events)
         {
             RefreshPoints();
@@ -403,11 +426,21 @@ namespace World.Game
                     case Produced pr: HexDressingView.Pulse(pr.Hexes); break;
                     case Built b: Feed1(Name(b.People) + (b.People == Human ? " built a " : " built a ") + b.Kind + "."); break;
                     case Traded tr: Feed1(tr.With < 0 ? Name(tr.People) + " traded at the bank." : Name(tr.People) + " traded with " + Name(tr.With) + "."); break;
-                    case TradeRefused rf: Feed1(Name(rf.People) + " will not trade with the leader."); break;
-                    case Epidemic _: Feed1("The gods are angry."); break;
+                    case TradeRefused rf:
+                        Feed1(rf.Code == TableRefusals.LeaderRefuses ? Name(rf.People) + " will not trade with the leader." : Name(rf.People) + " will not trade: " + rf.Sentence);
+                        break;
+                    case Epidemic _:
+                        Feed1("The gods are angry.");
+                        EpidemicAt = Time.unscaledTime;
+                        if (View != BoardView.Board) Hud.Notice("The gods are angry.", true);
+                        break;
+                    case OfferAnswered oa when _boot.Sim.State.Table != null && FindOfferFrom(oa.OfferId) == Human:
+                        Feed1(oa.Status == OfferStatus.Accepted ? Name(oa.By) + " accepted your offer." : oa.Status == OfferStatus.Declined ? "Your offer was declined." : "Your offer ran out of time.");
+                        break;
+                    case GameLost _: Feed1("The island falls."); break;
                     case Discarded d: Feed1(Name(d.People) + " discarded cards."); break;
                     case OfferMade om when om.To == Human: Feed1(Name(om.From) + " offers you a trade."); break;
-                    case AgeEnded ae: Feed1(Name(ae.Winner) + " reached " + ae.Points + " points."); break;
+                    case AgeEnded ae: Feed1(Name(ae.Winner) + " reached " + ae.Points + " points. The age has turned."); break;
                     case TableResumed _: Feed1("The god board opens."); break;
                 }
             }
@@ -421,6 +454,8 @@ namespace World.Game
             var t = T;
             foreach (var tv in _temples)
                 tv.Smoking = t != null && !t.Paused && tv.People == t.Current && (t.Phase == TablePhase.Setup || t.Phase == TablePhase.Main || t.Phase == TablePhase.Discard);
+
+            if (Input.GetKeyDown(KeyCode.Escape)) PressEscape();
 
             if (View == BoardView.Rising || View == BoardView.Falling)
             {

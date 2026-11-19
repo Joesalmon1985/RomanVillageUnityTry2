@@ -14,7 +14,7 @@ namespace World.Game
     /// 844 x 390). Mouse and touch both work (IMGUI takes touches as presses).
     /// G1-6 fills <see cref="TradePanel"/> (trade panel, offer cards, cost card) into <see cref="TradeArea"/>.
     /// </summary>
-    public sealed class GodBoardHud : MonoBehaviour
+    public sealed partial class GodBoardHud : MonoBehaviour
     {
         /// <summary>The free region (design pixels from the right and bottom edges) reserved for the trade panel and offer cards (G1-6).</summary>
         public static readonly Vector2 TradeAreaSize = new Vector2(230f, 150f);
@@ -90,11 +90,11 @@ namespace World.Game
             Texts.Add(s);
         }
 
-        private bool Button(Rect r, string s, bool enabled, float size = 12f)
+        private bool Button(Rect r, string s, bool enabled, float size = 12f, bool force = false)
         {
             _rects.Add(r);
             _button.fontSize = Mathf.Max(8, Mathf.RoundToInt(size * _u));
-            var old = GUI.enabled; GUI.enabled = enabled;
+            var old = GUI.enabled; GUI.enabled = enabled && (!_under || force);
             bool hit = GUI.Button(r, s, _button);
             GUI.enabled = old;
             Texts.Add("[" + s + "]");
@@ -175,11 +175,17 @@ namespace World.Game
             GUI.depth = -10;
             var s = _d.S; var t = _d.T;
             float W = Screen.width / _u;
+            _under = DiscardVisible || GameOverShown;
             Ribbon(s, t);
             Status(s, t);
             Controls(t, W);
             Hand(s, t);
             Feed();
+            OfferCards(s, t);
+            if (TradeOpen && !GameOverShown) TradeModal(s, t, W);
+            if (DiscardVisible) DiscardModal(s, t, W);
+            EpidemicBanner(W);
+            if (GameOverShown) GameOverModal(s, t, W);
             if (TradePanel != null) TradePanel(TradeArea);
         }
 
@@ -218,7 +224,7 @@ namespace World.Game
                 if (t.Current != _d.Human) return _d.PeopleShort(t.Current) + " choose their camp.";
                 return t.SetupCorner < 0 ? "Place a settlement: tap a gold spot." : "Now a road beside it: tap a gold bar.";
             }
-            if (t.Phase == TablePhase.Discard) return "Sickness: cards are discarded.";
+            if (t.Phase == TablePhase.Discard) return DiscardVisible ? "Sickness: choose the cards to give up." : "Sickness: cards are discarded.";
             if (t.Current == _d.Human) return "Your turn: build, or end it.";
             return who + ".";
         }
@@ -245,10 +251,11 @@ namespace World.Game
             }
             Text(RR(6f, 18f, 132f, 12f), main ? Mathf.CeilToInt(t.Sand / (float)WorldSim.TicksPerSecond) + " s of sand" : (t.Phase == TablePhase.Setup ? "No hourglass in setup" : "Hourglass waits"), 9f, new Color(0.9f, 0.86f, 0.75f), false, TextAnchor.MiddleRight);
             if (Button(RR(6f, 32f, 132f, 34f), "End turn", main, 13f)) _d.EndTurn();
-            if (Button(RR(6f, 70f, 132f, 34f), "Return to the world", true, 12f)) _d.Leave();
+            if (Button(RR(6f, 70f, 132f, 34f), "Return to the world", true, 12f, true)) _d.Leave();
             if (Button(RR(6f, 108f, 132f, 28f), GodBoardDirector.AdviserOn ? "Hint: on" : "Hint: off", true, 11f)) GodBoardDirector.AdviserOn = !GodBoardDirector.AdviserOn;
             if (Button(RR(6f, 140f, 64f, 28f), "Zoom -", true, 11f)) _d.Zoom(1f / 1.4f);
             if (Button(RR(74f, 140f, 64f, 28f), "Zoom +", true, 11f)) _d.Zoom(1.4f);
+            if (Button(RR(6f, 172f, 132f, 30f), TradeOpen ? "Close trade" : "Trade", true, 12f)) { if (TradeOpen) CloseTrade(); else OpenTrade(); }
         }
 
         private void Hand(WorldState s, TableState t)

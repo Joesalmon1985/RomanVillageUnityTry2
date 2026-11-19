@@ -102,6 +102,7 @@ namespace World.Game
             bool god = _boot != null && _boot.Views != null && _boot.Views.CurrentView == ViewMode.God;
             if (Input.GetKeyDown(ToggleKey) && !_menu && !god && !MapScreen.IsOpen) Visible = !Visible;
             if (!Input.GetKeyDown(KeyCode.Escape)) return;
+            if (!_menu && GodBoardDirector.Instance != null && GodBoardDirector.Instance.View != BoardView.Altar) return; // Esc belongs to the god board (G1-6)
             if (_menu) CloseMenu();
             else if (MapScreen.IsOpen) MapScreen.Close();
             else if (DialoguePanel.IsOpen) DialoguePanel.Close();
