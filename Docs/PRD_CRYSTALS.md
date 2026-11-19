@@ -1090,7 +1090,7 @@ The island's terrain is fixed (`BoardGenerator.Rows`), so the authored campaign 
 | The Old Quarry, upper and lower levels | Interiors | Under the glade. |
 | The Ash cut (second quarry exit) | Meadow hex (-2, -2) | West of the glade, towards the Ash Clan. |
 | The Cold Kiln (Fire site) | Meadow hex (4, -1) | East shore, beside the clay hills at (3, -1). |
-| The Black Forge (Fire altar) | The west-rim Meadow hex nearest the Ash Clan's start corner | Ash land. |
+| The Black Forge (Fire altar) | Meadow hex (4, -3) on the south-east shore, two hexes south of the Cold Kiln (moved by PRD_GODBOARD CC-11; was the west-rim Meadow hex (-4, 2) nearest the Ash Clan's start corner) | Fire country, beside the Fire region's hexes (3, -3) and (3, -2). |
 | The Low Causeway and tide cellar (Water site) | Meadow hex (1, -4) | South shore. |
 | The Old Cistern (Water altar) | Meadow hex (2, -3) | Inland from the south shore. |
 | Gannet Watch (the wizard) | Meadow hex (2, 2) | Seaward of the mountain hexes (1, 2) and (2, 1). |

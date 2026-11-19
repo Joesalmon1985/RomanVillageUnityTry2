@@ -59,8 +59,9 @@ namespace World.Sim.Table
     /// <summary>Auto is true when the default chooser picked (AI seat, or the player's time ran out).</summary>
     public sealed class Discarded : SimEvent { public int People; public int[] Cards; public bool Auto; }
 
-    /// <summary>Kind: "settlement", "road", "city". Spot = corner or hex edge. Setup is true for setup-round pieces.</summary>
-    public sealed class Built : SimEvent { public int People; public string Kind; public int Spot; public bool Setup; }
+    /// <summary>Kind: "settlement", "road", "city". Spot = corner or hex edge. Setup is true for setup-round pieces. Free is
+    /// true for a piece granted outside the turn at no cost (a crystal reward, CC-4; <see cref="TableGrants"/>).</summary>
+    public sealed class Built : SimEvent { public int People; public string Kind; public int Spot; public bool Setup; public bool Free; }
 
     /// <summary>Cards a people got at the end of its setup placement (one per resource hex beside its second settlement).</summary>
     public sealed class StartingCards : SimEvent { public int People; public int[] Cards; }
