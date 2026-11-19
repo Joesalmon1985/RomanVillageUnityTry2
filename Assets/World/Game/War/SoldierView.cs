@@ -15,7 +15,7 @@ namespace World.Game
     /// </summary>
     public sealed class SoldierView : MonoBehaviour
     {
-        public const float MarkerRadius = 5.5f, MarkerY = 14f;
+        public const float MarkerRadius = 9f, MarkerY = 14f;
 
         public int Id { get; private set; }
         public int People { get; private set; }
@@ -99,7 +99,7 @@ namespace World.Game
                 LandShapes.Disc(mb, Vector3.zero, MarkerRadius + 1.6f, 16, new Color(0.05f, 0.04f, 0.04f));
                 LandShapes.Disc(mb, Vector3.up * 0.2f, MarkerRadius, 16, col);
                 // A pip in the look's colour: red Raider, blue Shieldbearer, green Skirmisher, brown Brute, none for the plain Warrior.
-                if (look != SoldierLook.Warrior) LandShapes.Disc(mb, Vector3.up * 0.4f, 2.4f, 10, SoldierMeshes.LookColour(look));
+                if (look != SoldierLook.Warrior) LandShapes.Disc(mb, Vector3.up * 0.4f, 3.8f, 10, SoldierMeshes.LookColour(look));
             }), LandLook.Unlit, false);
             _marker.SetActive(false);
             _last = transform.position;
