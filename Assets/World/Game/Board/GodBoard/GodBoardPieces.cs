@@ -43,7 +43,7 @@ namespace World.Game
             p._pieceMat = MaterialFactory.CreateVertexColored(Color.white, "GodBoardPiece");
             p._baseMat = MaterialFactory.CreateUnlit(new Color(0.08f, 0.07f, 0.06f), "GodBoardPieceBase");
             p._spotMat = MaterialFactory.CreateUnlit(new Color(1f, 0.92f, 0.45f), "GodBoardSpot");
-            p._adviseMat = MaterialFactory.CreateUnlit(new Color(0.45f, 1f, 0.85f), "GodBoardAdvise");
+            p._adviseMat = MaterialFactory.CreateUnlit(new Color(0.3f, 1f, 0.9f), "GodBoardAdvise");
             go.SetActive(false);
             return p;
         }
@@ -136,7 +136,7 @@ namespace World.Game
             var topo = _s.Board.Topology;
             foreach (int c in corners) { Disc(BoardSpace.Corner(topo, c), 17f, _baseMat, "Spot back " + c, 13.5f); Disc(BoardSpace.Corner(topo, c), 12f, _spotMat, "Spot " + c, 14f); }
             foreach (int e in edges) { Bar(e, 20f, _baseMat, "Spot edge back " + e, 13.5f); Bar(e, 13f, _spotMat, "Spot edge " + e, 14f); }
-            foreach (int c in adviseCorners) Ring(BoardSpace.Corner(topo, c), 27f, _adviseMat, "Advise " + c);
+            foreach (int c in adviseCorners) Ring(BoardSpace.Corner(topo, c), 32f, _adviseMat, "Advise " + c);
             foreach (int e in adviseEdges) Bar(e, 24f, _adviseMat, "Advise edge " + e);
         }
 
@@ -156,8 +156,8 @@ namespace World.Game
             {
                 float a0 = i * Mathf.PI * 2 / N, a1 = (i + 1) * Mathf.PI * 2 / N;
                 var o0 = new Vector3(Mathf.Sin(a0), 0, Mathf.Cos(a0)); var o1 = new Vector3(Mathf.Sin(a1), 0, Mathf.Cos(a1));
-                mb.Quad(o0 * (r - 6f), o0 * r, o1 * r, o1 * (r - 6f), Color.white);
-                mb.Quad(o0 * (r - 6f), o1 * (r - 6f), o1 * r, o0 * r, Color.white);
+                mb.Quad(o0 * (r - 9f), o0 * r, o1 * r, o1 * (r - 9f), Color.white);
+                mb.Quad(o0 * (r - 9f), o1 * (r - 9f), o1 * r, o0 * r, Color.white);
             }
             var go = mb.ToObject(name, _marks, m);
             go.transform.position = at + Vector3.up * 15f; go.layer = 2;
@@ -176,7 +176,7 @@ namespace World.Game
         private void Update()
         {
             _clock += Time.unscaledDeltaTime;
-            float pulse = 0.7f + 0.3f * Mathf.Sin(_clock * 5f);
+            float pulse = 0.88f + 0.12f * Mathf.Sin(_clock * 5f);
             if (_spotMat != null) _spotMat.color = new Color(1f * pulse, 0.92f * pulse, 0.45f * pulse);
         }
 

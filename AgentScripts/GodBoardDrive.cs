@@ -75,3 +75,14 @@ public static class GodBoardProbe
         return sb.ToString();
     }
 }
+public static class GodBoardShot
+{
+    public static string Temple() { GodBoardDrive.Shot("temple"); return "t"; }
+    public static string Setup() { GodBoardDrive.Shot("board_setup"); return "s"; }
+}
+public static class GodBoardShot2
+{
+    public static string Placed() { GodBoardDrive.Shot("board_placed"); return "p"; }
+    public static string Hud() { GodBoardDrive.Shot("board_hud"); return "h"; }
+    public static string Walk() { var w = PlayerWalker.Instance; return "ok"; }
+}
