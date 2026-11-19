@@ -107,6 +107,18 @@ public static class HistoricDrive
         Cam(c + o * 70f + Vector3.up * 48f, c, 45f);
         return "forest hex " + best + " score " + bs;
     }
+    public static string ForesterCam()
+    {
+        foreach (var b in S.Historic.Buildings)
+            if (b.Kind == HistoricKind.Forester && b.State == HistoricBuildingState.Active)
+            {
+                var c = HistoricDirector.Instance.BuildingPos(b.Id);
+                var o = new Vector3(c.x, 0, c.z).normalized;
+                Cam(c + o * 30f + Vector3.up * 18f, c, 50f);
+                return "forester " + b.Id + " hex " + b.Hex;
+            }
+        return "no forester";
+    }
     public static string IslandCam() { RenderSettings.fog = false; return Cam(new Vector3(0, 620f, -470f), Vector3.zero, 50f); }
     public static string Island()
     {

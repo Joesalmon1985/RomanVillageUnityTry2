@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using World.Sim;
 using World.Sim.Historic;
+using World.Sim.Campaign;
 using World.Sim.Table;
 
 namespace World.Game.Tests
@@ -138,6 +139,21 @@ namespace World.Game.Tests
             yield return null;
             HistoricDirector.Instance.SyncNow();
             Assert.Greater(HistoricDirector.Instance.BuildingViews, 0);
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator Historic_SpireStillStartsTheRhythmEncounter()
+        {
+            yield return Start(GodBoardStart.HistoricId);
+            Assert.IsNotNull(S.Historic);
+            var sd = SpireDirector.Instance;
+            Assert.IsNotNull(sd, "spires installed in a Historic game");
+            sd.OnTicked(new System.Collections.Generic.List<SimEvent> { new SpireRaised { Element = Element.Earth, People = 1, Corner = S.Board.StartCorners[1], Kind = "city" } });
+            var sp = sd.Stage(0);
+            _boot.Avatar.PlaceExact(sp.Layout.DancerSpot, sp.Layout.DancerYaw, 0f);
+            sp.Interact();
+            Assert.IsTrue(EncounterHost.Instance.IsRunning, "the rhythm encounter starts at a spire after the switch");
+            EncounterHost.Instance.Abort();
         }
 
         [UnityTest, Timeout(240000)]
