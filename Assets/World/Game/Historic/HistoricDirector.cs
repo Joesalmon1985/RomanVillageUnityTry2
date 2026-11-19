@@ -193,13 +193,13 @@ namespace World.Game
             _clock += Time.deltaTime;
             _ft[_ftN % _ft.Length] = Time.unscaledDeltaTime; _ftN++;
             if (_eveUntil > 0f && Time.unscaledTime >= _eveUntil) ReleaseEve();
-            if (S.Historic == null) return;
             if (_leaveAt > 0f && Time.unscaledTime >= _leaveAt)
             {
                 _leaveAt = -1f;
                 var gb = GodBoardDirector.Instance;
                 if (gb != null && gb.IsOpen) gb.Leave();
             }
+            if (S.Historic == null) return;
             if (_collapsePending)
             {
                 var gb = GodBoardDirector.Instance;
@@ -468,6 +468,10 @@ namespace World.Game
         // ---------------------------------------------------------------- tests and tools
 
         public Vector3 CastlePos(int people) => _castles.TryGetValue(people, out var c) ? c.Pos : Vector3.zero;
+        /// <summary>Vertices of a hex's tree mesh (0 if none): drops when a tree is felled and a small stump replaces it.</summary>
+        public int TreeMeshVertices(int hex) => _hexes.TryGetValue(hex, out var v) && v.Trees != null ? v.Trees.GetComponent<MeshFilter>().sharedMesh.vertexCount : 0;
+        /// <summary>The switch moment as the event would start it (tests).</summary>
+        public void BeganForTest(int winner) => OnBegan(new HistoricBegan { Winner = winner });
         public bool HexHasTreeMesh(int hex) => _hexes.TryGetValue(hex, out var v) && v.Trees != null && v.Trees.activeSelf;
         public bool ForestPropsHidden(int hex) { var go = TerrainBuilder.HexProps(hex); return go == null || !go.activeSelf; }
 
