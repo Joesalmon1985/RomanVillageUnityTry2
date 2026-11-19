@@ -89,6 +89,15 @@ namespace World.Sim.Table
         private readonly EventBuffer _ev;
         public readonly int People;
 
+        private readonly Func<Command, CommandResult> _run;
+
+        /// <summary>G1-3: an actor that sends its commands through a runner (a virtual player in the proof), not straight into the engine.</summary>
+        internal TableActor(Func<Command, CommandResult> run, int people)
+        {
+            _run = run;
+            People = people;
+        }
+
         internal TableActor(TableEngine e, WorldState s, EventBuffer ev, int people)
         {
             _e = e;
@@ -106,6 +115,7 @@ namespace World.Sim.Table
         private CommandResult Run(Command c)
         {
             c.PlayerId = People;
+            if (_run != null) return _run(c);
             var r = _e.Check(_s, c);
             return r.Ok ? _e.Apply(_s, c, _ev) : r;
         }

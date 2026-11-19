@@ -102,7 +102,7 @@ namespace World.Sim.GodBoard
         {
             seams.HexBlocked = PlagueApi.HexBlocked;
             seams.OnEpidemic = (s, ev) => { PlagueRules.Epidemic(s, ev); CheckIslandFell(s, seams, ev); };
-            seams.OnRoundEnded = (s, round, ev) => { PlagueRules.InfectRound(s, ev); CheckIslandFell(s, seams, ev); };
+            seams.OnRoundEnded = (s, round, ev) => { if (PlagueRules.InfectEvery <= 1 || round % PlagueRules.InfectEvery == 0) PlagueRules.InfectRound(s, ev); CheckIslandFell(s, seams, ev); };
             seams.OnAgeEnded = AgeEnded;
             // G0-3: the war follows the table (garrisons, war state, CL-2 deliveries).
             seams.OnBoardChanged = SyncBoard;

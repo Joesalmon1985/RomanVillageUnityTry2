@@ -54,7 +54,9 @@ namespace World.Sim.War
         /// <summary>Ticks for one step along a trail or between a node and a settlement (placeholder pace).</summary>
         public const int MoveTicks = 40;
         /// <summary>Lead in points that starts a war against the leader (WA-11).</summary>
-        public const int WarLead = 2;
+        public static int WarLead = 2;
+        /// <summary>Garrison soldiers a new settlement starts with (a city has one more). Proof variants only; the rule is 1 (WA-4).</summary>
+        public static int SettlementSoldiers = 1;
 
         /// <summary>The raw good a terrain yields, or -1 (Meadow and anything else).</summary>
         public static int RawOfTerrain(Terrain t)

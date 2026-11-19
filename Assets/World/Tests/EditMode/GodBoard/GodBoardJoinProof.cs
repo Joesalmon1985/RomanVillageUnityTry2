@@ -31,19 +31,26 @@ namespace World.Sim.Tests
             public int Trained, Purged, Died, Duels, Outbreaks, Epidemics, BlockedProductions;
             public int PeopleTrades, BankTrades, Tr4Checked, Tr4Broken, Offers, Refusals;
             public int Settlements, Cities, Roads;
+            // G1-3: a virtual player on the human seat (Seat -1 = the all-AI table).
+            public int Seat = -1;
+            public int OffersToPlayer, OffersToPlayerNonLeading, NonLeadingRounds, Banishes;
+            public bool PlayerWon;
+            /// <summary>Trades with the player's seat, and of them those where a leading people took part (the player's choice; TR-4 binds the AI seats).</summary>
+            public int PlayerTrades, PlayerLeaderTrades;
         }
 
         /// <summary>One all-AI game. tweak (optional) changes the fresh state before the first tick (proof variants only).</summary>
-        public static GameResult Play(ulong seed, Action<WorldState> tweak = null)
+        public static GameResult Play(ulong seed, Action<WorldState> tweak = null, Func<WorldSim, Action> makeDriver = null, int humanSeat = -1)
         {
             var setup = GameSetup.GodBoard;
-            setup.TableHumanSeat = -1;
+            setup.TableHumanSeat = humanSeat;
             var sim = WorldSimFactory.CreateNew(seed, setup);
+            var drive = makeDriver?.Invoke(sim);
             var s = sim.State;
             tweak?.Invoke(s);
             var t = s.Table;
             int n = t.PeopleCount;
-            var r = new GameResult { Seed = seed };
+            var r = new GameResult { Seed = seed, Seat = humanSeat };
             var pts = new int[n];
             var peak = new int[n];
             for (int p = 0; p < n; p++) pts[p] = peak[p] = TableRules.Points(s, p);
@@ -53,6 +60,7 @@ namespace World.Sim.Tests
             int i = 0;
             for (; i < MaxTicks && t.Phase != TablePhase.Ended; i++)
             {
+                drive?.Invoke();
                 sim.Step();
                 bool war = s.War.AtWar.Any(x => x);
                 if (t.Round >= 1)
@@ -60,6 +68,7 @@ namespace World.Sim.Tests
                     if (t.Round != lastRound)
                     {
                         if (lastRound >= 1 && roundWar) r.RoundsAtWar++;
+                        if (lastRound >= 1 && humanSeat >= 0 && !Leading(humanSeat)) r.NonLeadingRounds++;
                         lastRound = t.Round;
                         roundWar = false;
                     }
@@ -85,7 +94,15 @@ namespace World.Sim.Tests
                         case DemonPurged _: r.Purged++; break;
                         case SoldierDied _: r.Died++; break;
                         case DuelStarted _: r.Duels++; break;
-                        case OfferMade _: r.Offers++; break;
+                        case OfferMade om:
+                            r.Offers++;
+                            if (humanSeat >= 0 && om.From != humanSeat && (om.To == humanSeat || om.To < 0))
+                            {
+                                r.OffersToPlayer++;
+                                if (!Leading(humanSeat)) r.OffersToPlayerNonLeading++;
+                            }
+                            break;
+                        case Banished _: r.Banishes++; break;
                         case TradeRefused _: r.Refusals++; break;
                         case Produced pr: r.BlockedProductions += pr.Blocked.Length; break;
                         case Built b when !b.Setup:
@@ -96,6 +113,12 @@ namespace World.Sim.Tests
                         case Traded tr:
                             if (tr.With < 0) { r.BankTrades++; break; }
                             r.PeopleTrades++;
+                            if (humanSeat >= 0 && (tr.With == humanSeat || tr.People == humanSeat))
+                            {
+                                r.PlayerTrades++;
+                                if (Leading(tr.With) || Leading(tr.People)) r.PlayerLeaderTrades++;
+                                break;
+                            }
                             r.Tr4Checked++;
                             if (Leading(tr.With) || Leading(tr.People)) r.Tr4Broken++;
                             break;
@@ -105,7 +128,9 @@ namespace World.Sim.Tests
             if (lastRound >= 1 && roundWar) r.RoundsAtWar++;
             r.End = t.IslandFell ? "island" : t.Phase == TablePhase.Ended ? "won" : "cap";
             r.Winner = t.Winner;
+            r.PlayerWon = humanSeat >= 0 && t.Winner == humanSeat;
             r.Rounds = t.Round;
+            r.Banishes = Math.Max(0, r.Banishes - r.Purged); // the plague raises Banished for soldiers' purges too
             r.Points = Enumerable.Range(0, n).Select(p => TableRules.Points(s, p)).ToArray();
             r.Outbreaks = s.Plague.Outbreaks;
             r.Epidemics = s.Plague.Epidemics;
