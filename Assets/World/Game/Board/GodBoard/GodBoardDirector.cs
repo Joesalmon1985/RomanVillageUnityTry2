@@ -404,7 +404,7 @@ namespace World.Game
                     case Built b: Feed1(Name(b.People) + (b.People == Human ? " built a " : " built a ") + b.Kind + "."); break;
                     case Traded tr: Feed1(tr.With < 0 ? Name(tr.People) + " traded at the bank." : Name(tr.People) + " traded with " + Name(tr.With) + "."); break;
                     case TradeRefused rf: Feed1(Name(rf.People) + " will not trade with the leader."); break;
-                    case Epidemic _: Feed1("Sickness passes through the land."); break;
+                    case Epidemic _: Feed1("The gods are angry."); break;
                     case Discarded d: Feed1(Name(d.People) + " discarded cards."); break;
                     case OfferMade om when om.To == Human: Feed1(Name(om.From) + " offers you a trade."); break;
                     case AgeEnded ae: Feed1(Name(ae.Winner) + " reached " + ae.Points + " points."); break;
@@ -543,6 +543,7 @@ namespace World.Game
             var s = boot.Sim.State;
             if (s.Ruleset != Ruleset.GodBoard || s.Table == null) return;
             GodBoardDirector.Install(boot);
+            PlagueViews.Install(boot);
         }
     }
 }

@@ -40,8 +40,12 @@ namespace World.Game
 
         private void Awake() { _d = GetComponent<GodBoardDirector>(); }
 
+        /// <summary>Other components' controls on the board (the plague toggle, G2-2): presses inside them are not board presses.</summary>
+        public static Func<Vector2, bool> ExtraOver;
+
         public bool Over(Vector2 screenPos)
         {
+            if (ExtraOver != null) foreach (Func<Vector2, bool> f in ExtraOver.GetInvocationList()) if (f(screenPos)) return true;
             var g = new Vector2(screenPos.x, Screen.height - screenPos.y);
             foreach (var r in _rects) if (r.Contains(g)) return true;
             return false;
