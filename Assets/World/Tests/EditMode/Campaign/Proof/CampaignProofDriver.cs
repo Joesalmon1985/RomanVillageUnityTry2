@@ -195,8 +195,10 @@ namespace World.Sim.Tests
             int pts = LedgerApi.Points(S, PlayerIds.Human), ash = LedgerApi.Points(S, PlayerIds.Rival);
             MaxPoints = Math.Max(MaxPoints, pts);
             MaxAshPoints = Math.Max(MaxAshPoints, ash);
-            if (pts != c.RestoredOrder.Count + PaidOther(PlayerIds.Human)) Fail("player points " + pts + " but " + c.RestoredOrder.Count + " restored");
-            if (ash != c.EverOnAltar.Count + PaidOther(PlayerIds.Rival)) Fail("Ash points " + ash + " but " + c.EverOnAltar.Count + " ever on an altar");
+            // On the god board the crystal keys pay nothing (CC-6); legacy runs keep the ledger check.
+            int paidPerCrystal = CampaignRuleset.GodBoard(S) ? 0 : 1;
+            if (pts != paidPerCrystal * c.RestoredOrder.Count + PaidOther(PlayerIds.Human)) Fail("player points " + pts + " but " + c.RestoredOrder.Count + " restored");
+            if (ash != paidPerCrystal * c.EverOnAltar.Count + PaidOther(PlayerIds.Rival)) Fail("Ash points " + ash + " but " + c.EverOnAltar.Count + " ever on an altar");
             if (S.Tick % 600 == 0)
             {
                 InvariantChecks++;
@@ -389,6 +391,23 @@ namespace World.Sim.Tests
                 d.Events.Add(new QuestEventDef { Id = id + "_read_marks", At = at, Action = QuestAction.Examine, Requires = known, Sets = new List<string> { id + ".way_known" } });
                 site.Requires = known.Concat(new[] { id + ".way_known" }).ToList();
             }
+        }
+
+        /// <summary>
+        /// A god board start (G2-3): four peoples on a dealt board with the table and the plague
+        /// (<see cref="CampaignGodBoardTests.GodGame"/>), and StartCampaign at once, in the first minute (CC-1).
+        /// </summary>
+        public static ProofRun StartGodBoard(string pack, ulong seed, ProofPolicy policy, Action<CampaignDefinition> edit = null)
+        {
+            var sim = CampaignGodBoardTests.GodGame(seed);
+            var d = PackFiles.Load(pack);
+            edit?.Invoke(d);
+            var r = sim.Submit(new StartCampaign { Definition = d });
+            if (!r.Ok) throw new InvalidOperationException("StartCampaign refused: " + r.Reason);
+            sim.Step();
+            var run = new ProofRun(sim, policy);
+            foreach (var e in sim.DrainEvents()) if (e.GetType().Namespace == typeof(CampaignState).Namespace) run.Events.Add(e);
+            return run;
         }
 
         /// <summary>A run continued from a save of another (same policy copy, its events so far kept).</summary>
