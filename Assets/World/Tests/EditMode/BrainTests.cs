@@ -13,7 +13,7 @@ namespace World.Sim.Tests
         private static void CheckQueue(WorldState s)
         {
             var f = s.Factions;
-            for (int fa = 0; fa < PlayerIds.Count; fa++)
+            for (int fa = 0; fa < s.PeopleCount; fa++)
             {
                 var q = f.Proposals.Where(p => p.Faction == fa).ToList();
                 Assert.LessOrEqual(q.Count, f.Tuning.QueueLength);

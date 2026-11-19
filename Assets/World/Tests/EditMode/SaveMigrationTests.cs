@@ -70,7 +70,7 @@ namespace World.Sim.Tests
             Assert.AreEqual(ChapterIds.Prehistoric, AgesApi.Chapter(s));
             Assert.IsFalse(AgesApi.CampaignMayStart(s));
             Assert.AreEqual(-1, AgesApi.HandoverTick(s, PlayerIds.Human));
-            Assert.AreEqual(PlayerIds.Count, s.Ledger.Factions.Count);
+            Assert.AreEqual(PlayerIds.LegacyCount, s.Ledger.Factions.Count);
             Assert.IsNull(s.Campaign);
             Assert.IsNotNull(LandmarkApi.Get(s, LandmarkIds.HomeHearth));
             Assert.AreEqual(SaveCodec.StateJson(a.State), SaveCodec.StateJson(s), "the migrated state equals the state a v5 build had");

@@ -62,7 +62,7 @@ namespace World.Sim.Tests
             Assert.AreEqual(0, sim.State.Tick);
             Assert.IsNotNull(sim.State.Board);
             Assert.AreEqual(570, sim.State.Board.Topology.VertexCount);
-            Assert.AreEqual(PlayerIds.Count, sim.State.Players.Count);
+            Assert.AreEqual(PlayerIds.LegacyCount, sim.State.Players.Count);
             Assert.AreEqual(10, WorldSim.TicksPerSecond);
         }
 
