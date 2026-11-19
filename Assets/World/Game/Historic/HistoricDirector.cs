@@ -175,9 +175,23 @@ namespace World.Game
         /// <summary>Ends the eve hold: the clock runs and the age turns.</summary>
         public void ReleaseEve() { _eveUntil = -1f; _boot.Clock.Resume(EvePause); }
 
+        // Frame-time probe (G4-3 budget): the last 600 frame times, read by tests and the capture driver.
+        private readonly float[] _ft = new float[600];
+        private int _ftN;
+        public void ResetFrameStats() { _ftN = 0; }
+        public string FrameStats()
+        {
+            int n = Mathf.Min(_ftN, _ft.Length);
+            if (n == 0) return "no frames";
+            var a = new float[n]; System.Array.Copy(_ft, a, n); System.Array.Sort(a);
+            float sum = 0f; foreach (float f in a) sum += f;
+            return "frames=" + n + " res=" + Screen.width + "x" + Screen.height + " avg=" + (1000f * sum / n).ToString("0.00") + "ms p95=" + (1000f * a[(int)(n * 0.95f)]).ToString("0.00") + "ms max=" + (1000f * a[n - 1]).ToString("0.0") + "ms";
+        }
+
         private void Update()
         {
             _clock += Time.deltaTime;
+            _ft[_ftN % _ft.Length] = Time.unscaledDeltaTime; _ftN++;
             if (_eveUntil > 0f && Time.unscaledTime >= _eveUntil) ReleaseEve();
             if (S.Historic == null) return;
             if (_leaveAt > 0f && Time.unscaledTime >= _leaveAt)

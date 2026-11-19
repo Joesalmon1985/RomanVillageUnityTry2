@@ -107,7 +107,7 @@ public static class HistoricDrive
         Cam(c + o * 70f + Vector3.up * 48f, c, 45f);
         return "forest hex " + best + " score " + bs;
     }
-    public static string IslandCam() { return Cam(new Vector3(0, 1050f, -760f), Vector3.zero, 40f); }
+    public static string IslandCam() { RenderSettings.fog = false; return Cam(new Vector3(0, 620f, -470f), Vector3.zero, 50f); }
     public static string Island()
     {
         var w = PlayerWalker.Instance;
@@ -119,4 +119,9 @@ public static class HistoricEve
 {
     public static string Hold() { HistoricDirector.EveHoldSeconds = 1e6f; return "hold"; }
     public static string Release() { HistoricDirector.Instance.ReleaseEve(); return "released"; }
+}
+public static class HistoricFrame
+{
+    public static string Start() { HistoricDirector.Instance.ResetFrameStats(); return "started"; }
+    public static string Read() { return HistoricDirector.Instance.FrameStats(); }
 }
