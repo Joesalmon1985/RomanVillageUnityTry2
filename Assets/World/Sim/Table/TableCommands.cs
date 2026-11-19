@@ -68,6 +68,19 @@ namespace World.Sim.Table
     /// <summary>A completed trade. With = -1 for the bank or a port (Rate is then the rate used), else the partner people.</summary>
     public sealed class Traded : SimEvent { public int People; public int With; public int[] Give; public int[] Get; public int Rate; public int OfferId; }
 
+    /// <summary>
+    /// An AI seat (People) will not trade with a people (With), for the reason Code (TR-7): "leader_refuses" means With is
+    /// leading. The feed line: "The Elves will not trade with the leader". OfferId is the offer it turned down.
+    /// </summary>
+    public sealed class TradeRefused : SimEvent
+    {
+        public int People;
+        public int With;
+        public int OfferId;
+        public string Code;
+        public string Sentence => TableRefusals.Sentence(Code);
+    }
+
     public sealed class OfferMade : SimEvent { public int OfferId; public int From; public int To; public int[] Give; public int[] Get; }
 
     /// <summary>Status: Accepted, Declined (by To, or by everyone for an open offer) or Expired.</summary>

@@ -12,17 +12,49 @@ namespace World.Sim.Table
         /// <summary>True when a hex produces nothing this roll (TU-2, PL-9). Default: never. The plague wires this.</summary>
         public Func<WorldState, int, bool> HexBlocked = (s, hex) => false;
 
-        /// <summary>Cards a people gives up after a 7: (state, people, count) to counts per raw good summing to count (TU-10).</summary>
-        public Func<WorldState, int, int, int[]> ChooseDiscard = TableDefaults.ChooseDiscard;
+        /// <summary>
+        /// Cards a people gives up after a 7: (state, people, count) to counts per raw good summing to count (TU-10).
+        /// Default: the AI brain (keeps its target build's cards); also the adviser's choice when the player's time runs out.
+        /// </summary>
+        public Func<WorldState, int, int, int[]> ChooseDiscard = TableAi.ChooseDiscard;
 
-        /// <summary>An AI seat's setup placement: (state, people) to (corner, hex edge touching it).</summary>
-        public Func<WorldState, int, (int corner, int edge)> AiSetup = TableDefaults.SetupPlacement;
+        /// <summary>An AI seat's setup placement: (state, people) to (corner, hex edge touching it). Default: the AI brain.</summary>
+        public Func<WorldState, int, (int corner, int edge)> AiSetup = TableAi.SetupPlacement;
 
-        /// <summary>An AI seat plays its turn through the actor (build, trade, offer). Called once per turn. Default: a basic builder.</summary>
-        public Action<WorldState, int, TableActor> AiTurn = TableBasicAi.PlayTurn;
+        /// <summary>
+        /// An AI seat plays its turn through the actor (build, trade, offer). Called once at the start of its turn, and
+        /// again (up to <see cref="TableEngine.MaxAiCallsPerTurn"/> calls) after one of its offers was answered or expired.
+        /// Default: the AI brain (G1-2).
+        /// </summary>
+        public Action<WorldState, int, TableActor> AiTurn = TableAi.PlayTurn;
 
-        /// <summary>Whether an AI seat accepts an offer addressed to it (TR-6). Default: always declines (G1-2 owns AI trading).</summary>
-        public Func<WorldState, int, TradeOffer, bool> AiAnswer = (s, p, o) => false;
+        /// <summary>Whether an AI seat accepts an offer addressed to it (TR-6). Default: the AI brain.</summary>
+        public Func<WorldState, int, TradeOffer, bool> AiAnswer = TableAi.Accepts;
+
+        /// <summary>
+        /// Why an AI seat (answerer) will not trade with a people (offerer) at all, or null (TR-4). Default: the AI brain
+        /// (leader_refuses when the offerer is leading). An offer addressed to such a seat is refused with the code; an
+        /// offer to everyone is declined by that seat with a <see cref="TradeRefused"/> event (TR-7).
+        /// </summary>
+        public Func<WorldState, int, int, string> AiRefusal = TableAi.Refusal;
+
+        /// <summary>The G1-1 stand-in seats: basic builder, always declines, largest-pile discard, most-pips setup, no refusals.</summary>
+        public static TableSeams Basic()
+        {
+            var seams = new TableSeams();
+            seams.UseBasic();
+            return seams;
+        }
+
+        /// <summary>Puts the G1-1 stand-in on every AI hook (HexBlocked is left alone).</summary>
+        public void UseBasic()
+        {
+            ChooseDiscard = TableDefaults.ChooseDiscard;
+            AiSetup = TableDefaults.SetupPlacement;
+            AiTurn = TableBasicAi.PlayTurn;
+            AiAnswer = (s, p, o) => false;
+            AiRefusal = (s, p, from) => null;
+        }
     }
 
     /// <summary>Lets an AI seat act through the same checks as the commands. Each accepted action lengthens its turn (HG-5).</summary>
@@ -90,9 +122,14 @@ namespace World.Sim.Table
             return TableRefusals.NotYourTurn;
         }
 
+        /// <summary>Calls of AiTurn per AI turn at most (the first one plus replays after its offers were answered).</summary>
+        public const int MaxAiCallsPerTurn = 8;
+
         public CommandResult Check(WorldState s, Command c)
         {
             string code = Refusal(s, c);
+            // TR-4: an AI seat that will not trade with the offerer refuses an offer addressed to it outright.
+            if (code == null && c is OfferTrade ot && ot.To >= 0 && ot.To != s.Table.HumanSeat) code = Seams.AiRefusal?.Invoke(s, ot.To, c.PlayerId);
             return code == null ? CommandResult.Accept() : No(code);
         }
 
@@ -416,6 +453,9 @@ namespace World.Sim.Table
             t.TurnTicks = 0;
             t.AiActions = 0;
             t.AiPlayed = false;
+            t.AiReplay = false;
+            t.AiCalls = 0;
+            t.AiAsked.Clear();
             t.Sand = Math.Min(t.Tuning.TurnBaseTicks, t.Tuning.TurnCapTicks);
             t.IdleTicks = 0;
             ev.Add(new TurnStarted { People = t.Current, Round = t.Round });
@@ -551,6 +591,7 @@ namespace World.Sim.Table
         private static void Answer(WorldState s, TradeOffer o, int p, bool accept, EventBuffer ev)
         {
             var t = s.Table;
+            if (o.From == t.Current && o.From != t.HumanSeat) t.AiReplay = true; // the AI seat looks again at its turn
             if (accept)
             {
                 var from = t.Peoples[o.From].Hand;
@@ -673,12 +714,16 @@ namespace World.Sim.Table
         private void TickAi(WorldState s, EventBuffer ev)
         {
             var t = s.Table;
-            if (!t.AiPlayed)
+            if (!t.AiPlayed || (t.AiReplay && t.AiCalls < MaxAiCallsPerTurn))
             {
                 t.AiPlayed = true;
+                t.AiReplay = false;
+                t.AiCalls++;
                 Seams.AiTurn?.Invoke(s, t.Current, new TableActor(this, s, ev, t.Current));
                 if (t.Phase != TablePhase.Main) return; // the age may have ended
             }
+            // The turn waits while one of its own offers is open (TR-3: an offer lasts OfferTicks or until the turn ends).
+            foreach (var o in t.Offers) if (o.Status == OfferStatus.Open && o.From == t.Current) return;
             if (t.TurnTicks >= t.Tuning.AiTurnTicks + t.Tuning.AiActionTicks * t.AiActions) EndTurnNow(s, "ai", ev);
         }
 
@@ -713,6 +758,7 @@ namespace World.Sim.Table
                 if (o.Status == OfferStatus.Open && o.TicksLeft <= 0)
                 {
                     o.Status = OfferStatus.Expired;
+                    if (o.From == t.Current && o.From != t.HumanSeat) t.AiReplay = true;
                     ev.Add(new OfferAnswered { OfferId = o.Id, By = -1, Status = OfferStatus.Expired });
                 }
                 if (o.Status != OfferStatus.Open) changed = true;
@@ -728,6 +774,14 @@ namespace World.Sim.Table
             {
                 if (p == o.From || p == t.HumanSeat || (o.To >= 0 && o.To != p)) continue;
                 if (o.Status != OfferStatus.Open) return;
+                string refusal = Seams.AiRefusal?.Invoke(s, p, o.From);
+                if (refusal != null)
+                {
+                    // TR-4, TR-7: the seat will not trade with this people; the feed says why.
+                    ev.Add(new TradeRefused { People = p, With = o.From, OfferId = o.Id, Code = refusal });
+                    if (Check(s, new AnswerOffer { PlayerId = p, OfferId = o.Id, Accept = false }).Ok) Answer(s, o, p, false, ev);
+                    continue;
+                }
                 bool yes = Seams.AiAnswer(s, p, o);
                 var check = Check(s, new AnswerOffer { PlayerId = p, OfferId = o.Id, Accept = yes });
                 if (!check.Ok) yes = false;

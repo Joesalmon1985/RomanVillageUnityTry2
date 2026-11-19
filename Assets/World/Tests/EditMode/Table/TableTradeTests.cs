@@ -154,6 +154,7 @@ namespace World.Sim.Tests
             int offered = 0;
             var sim = ToHumanTurn(wire: seams => seams.AiTurn = (s, p, a) =>
             {
+                if (s.Table.AiCalls > 1) return; // asked again after the answer (G1-2): offer only once a turn
                 s.Table.Peoples[p].Hand = Cards(sheep: 2);
                 Assert.IsTrue(a.OfferTrade(0, Cards(sheep: 1), Cards(1)).Ok);
                 offered++;
@@ -170,7 +171,7 @@ namespace World.Sim.Tests
             Assert.AreEqual((ai, 0), (Single<Traded>(evs).People, Single<Traded>(evs).With));
             CollectionAssert.AreEqual(Cards(2, sheep: 1), t.Peoples[0].Hand);
 
-            // The next AI's offer is left unanswered: it closes when that turn ends (HG-4, TR-3).
+            // The next AI's offer is left unanswered: the AI's turn waits for it until it expires (OfferTicks), then ends (TR-3).
             log.Clear();
             Assert.IsTrue(StepUntil(sim, () => t.Offers.Count > 0 && t.Offers[0].From != ai, 200, log));
             var second = t.Offers[0];

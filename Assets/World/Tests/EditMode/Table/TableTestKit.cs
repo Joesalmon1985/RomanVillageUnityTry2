@@ -27,8 +27,18 @@ namespace World.Sim.Tests
             return sim;
         }
 
-        /// <summary>AI seats that never act (their turns just run out), so tests control every card.</summary>
-        public static void IdleAi(TableSeams seams) => seams.AiTurn = (s, p, a) => { };
+        /// <summary>
+        /// AI seats that never act (their turns just run out), so tests control every card. The other hooks are the G1-1
+        /// stand-in's (always decline, largest-pile discard, no refusals).
+        /// </summary>
+        public static void IdleAi(TableSeams seams)
+        {
+            seams.UseBasic();
+            seams.AiTurn = (s, p, a) => { };
+        }
+
+        /// <summary>Every AI hook on the G1-1 stand-in (TableBasicAi).</summary>
+        public static void BasicAi(TableSeams seams) => seams.UseBasic();
 
         public static TableState T(WorldSim sim) => sim.State.Table;
 
