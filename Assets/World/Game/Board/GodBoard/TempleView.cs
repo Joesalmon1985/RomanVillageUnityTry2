@@ -11,7 +11,7 @@ namespace World.Game
     /// </summary>
     public sealed class TempleView : MonoBehaviour, IInspectable
     {
-        public const float Radius = 5.2f;
+        public const float Radius = 4.4f;
         public const int PuffCount = 6;
 
         public int People { get; private set; }
@@ -143,8 +143,8 @@ namespace World.Game
     public static class TempleSites
     {
         /// <summary>Metres from the corner searched, nearest first.</summary>
-        public const float MinDistance = 14f, MaxDistance = 44f;
-        public const float Footprint = 6.2f;
+        public const float MinDistance = 12f, MaxDistance = 60f;
+        public const float Footprint = 5f;
 
         public static bool Find(Board board, int corner, IReadOnlyList<CampProp> avoid, out Vector3 at, out float yawToCorner)
         {

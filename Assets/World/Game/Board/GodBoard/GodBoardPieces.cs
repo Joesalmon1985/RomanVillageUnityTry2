@@ -12,7 +12,7 @@ namespace World.Game
     /// </summary>
     public sealed class GodBoardPieces : MonoBehaviour
     {
-        public const float HouseWidth = 22f, RoadWidth = 9f;
+        public const float HouseWidth = 28f, RoadWidth = 9f;
 
         private WorldState _s;
         private GameObject[] _corner, _road;
@@ -134,18 +134,18 @@ namespace World.Game
             _markSig = sig;
             for (int i = _marks.childCount - 1; i >= 0; i--) Destroy(_marks.GetChild(i).gameObject);
             var topo = _s.Board.Topology;
-            foreach (int c in corners) Disc(BoardSpace.Corner(topo, c), 11f, _spotMat, "Spot " + c);
-            foreach (int e in edges) Bar(e, 11f, _spotMat, "Spot edge " + e);
-            foreach (int c in adviseCorners) Ring(BoardSpace.Corner(topo, c), 19f, _adviseMat, "Advise " + c);
-            foreach (int e in adviseEdges) Bar(e, 15f, _adviseMat, "Advise edge " + e);
+            foreach (int c in corners) { Disc(BoardSpace.Corner(topo, c), 17f, _baseMat, "Spot back " + c, 13.5f); Disc(BoardSpace.Corner(topo, c), 12f, _spotMat, "Spot " + c, 14f); }
+            foreach (int e in edges) { Bar(e, 20f, _baseMat, "Spot edge back " + e, 13.5f); Bar(e, 13f, _spotMat, "Spot edge " + e, 14f); }
+            foreach (int c in adviseCorners) Ring(BoardSpace.Corner(topo, c), 27f, _adviseMat, "Advise " + c);
+            foreach (int e in adviseEdges) Bar(e, 24f, _adviseMat, "Advise edge " + e);
         }
 
-        private void Disc(Vector3 at, float r, Material m, string name)
+        private void Disc(Vector3 at, float r, Material m, string name, float y)
         {
             var mb = new MeshBuilder();
             mb.Cylinder(Vector3.zero, r, r, 0.4f, 14, Color.white);
             var go = mb.ToObject(name, _marks, m);
-            go.transform.position = at + Vector3.up * 14f; go.layer = 2;
+            go.transform.position = at + Vector3.up * y; go.layer = 2;
         }
 
         private void Ring(Vector3 at, float r, Material m, string name)
@@ -156,21 +156,21 @@ namespace World.Game
             {
                 float a0 = i * Mathf.PI * 2 / N, a1 = (i + 1) * Mathf.PI * 2 / N;
                 var o0 = new Vector3(Mathf.Sin(a0), 0, Mathf.Cos(a0)); var o1 = new Vector3(Mathf.Sin(a1), 0, Mathf.Cos(a1));
-                mb.Quad(o0 * (r - 4f), o0 * r, o1 * r, o1 * (r - 4f), Color.white);
-                mb.Quad(o0 * (r - 4f), o1 * (r - 4f), o1 * r, o0 * r, Color.white);
+                mb.Quad(o0 * (r - 6f), o0 * r, o1 * r, o1 * (r - 6f), Color.white);
+                mb.Quad(o0 * (r - 6f), o1 * (r - 6f), o1 * r, o0 * r, Color.white);
             }
             var go = mb.ToObject(name, _marks, m);
             go.transform.position = at + Vector3.up * 15f; go.layer = 2;
         }
 
-        private void Bar(int edge, float width, Material m, string name)
+        private void Bar(int edge, float width, Material m, string name, float y = 14f)
         {
             BoardSpace.HexEdgeEnds(_s.Board.Topology, edge, out var a, out var b);
             var d = b - a; d.y = 0; float len = d.magnitude; var dir = d / len;
             var mb = new MeshBuilder();
             mb.Box(Vector3.zero, new Vector3(width, 0.6f, len * 0.62f), Color.white, Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg);
             var go = mb.ToObject(name, _marks, m);
-            go.transform.position = (a + b) * 0.5f + Vector3.up * 14f; go.layer = 2;
+            go.transform.position = (a + b) * 0.5f + Vector3.up * y; go.layer = 2;
         }
 
         private void Update()
