@@ -16,6 +16,7 @@ namespace World.Sim.Historic
     /// <item>a clay pit, then a kiln (bricks for the second stage);</item>
     /// <item>a farm, then a sheep farm (the third stage wants grain and sheep);</item>
     /// <item>more woodcutters while wood is short and grown trees stand in reach (up to <see cref="HistoricTuning.MaxWoodcutters"/>);</item>
+    /// <item>a fresh clay pit while the castle wants bricks, the store has no clay and our pits stand on dry hexes;</item>
     /// <item>a second quarry while the castle still wants stone.</item>
     /// </list>
     /// Sites are chosen by a score per kind (resources in reach, crowding, distance to the castle); ties go to the lowest hex.
@@ -99,12 +100,27 @@ namespace World.Sim.Historic
                 var k = Try(s, p, HistoricKind.Woodcutter);
                 if (k != null) return k;
             }
+            if (HistoricRules.CastleNeed(h, hp, (int)Ware.Bricks) > 0 && hp.Stock[(int)Ware.Clay] < 2
+                && CountOf(h, p, HistoricKind.ClayPit) < tu.MaxClayPits && OwnPitsDry(h, p))
+            {
+                // Clay seeps back slowly and pits of several peoples may share a hex: dig a fresh hex when ours are dry.
+                var k = Try(s, p, HistoricKind.ClayPit);
+                if (k != null) return k;
+            }
             if (HistoricRules.CastleNeed(h, hp, (int)Ware.Stone) > 0 && CountOf(h, p, HistoricKind.Quarry) < tu.MaxQuarries)
             {
                 var k = Try(s, p, HistoricKind.Quarry);
                 if (k != null) return k;
             }
             return null;
+        }
+
+        /// <summary>True when every clay pit of the people stands on a hex with less than 2 clay left.</summary>
+        public static bool OwnPitsDry(HistoricState h, int p)
+        {
+            foreach (var b in h.Buildings)
+                if (b.People == p && b.Kind == HistoricKind.ClayPit && h.Hexes[b.Hex].Clay >= 2) return false;
+            return true;
         }
 
         private static HistoricKind? Try(WorldState s, int p, HistoricKind k) => BestHex(s, p, k) >= 0 ? k : (HistoricKind?)null;

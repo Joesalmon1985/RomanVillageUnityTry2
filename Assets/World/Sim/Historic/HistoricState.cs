@@ -87,6 +87,7 @@ namespace World.Sim.Historic
         public int MaxOpenSites = 2;
         public int MaxWoodcutters = 4;
         public int MaxQuarries = 2;
+        public int MaxClayPits = 3;
         /// <summary>Wood kept back in the store for building sites while the castle is fed.</summary>
         public int SiteReserveWood = 6;
         /// <summary>Most buildings (of all peoples) on one hex.</summary>
