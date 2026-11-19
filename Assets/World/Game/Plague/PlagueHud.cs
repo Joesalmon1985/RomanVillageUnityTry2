@@ -88,9 +88,15 @@ namespace World.Game
             }
             _u = Mathf.Max(0.6f, Screen.height / 390f);
             GUI.depth = -12;
-            var toggle = OnBoard ? R(404f, 6f, 92f, 32f) : RR(6f, 6f, 92f, 32f);
-            if (Button(toggle, _v.Overlay ? "Plague: on" : "Plague", _v.Overlay, 12f)) _v.ToggleOverlay();
-            if (_v.Overlay) Panel(OnBoard ? R(500f, 6f, 200f, 80f) : RR(6f, 42f, 200f, 80f));
+            // On the god board the toggle is a round icon drawn by GodBoardHud (G1-6b, slot 2 along the top-right edge).
+            GodBoardHud.PlagueIsOn = () => _v != null && _v.Overlay;
+            GodBoardHud.PlagueToggle = () => _v.ToggleOverlay();
+            if (!OnBoard)
+            {
+                var toggle = RR(6f, 6f, 92f, 32f);
+                if (Button(toggle, _v.Overlay ? "Plague: on" : "Plague", _v.Overlay, 12f)) _v.ToggleOverlay();
+            }
+            if (_v.Overlay) Panel(OnBoard ? RR(6f, 44f, 200f, 80f) : RR(6f, 42f, 200f, 80f));
             if (!OnBoard) BanishControl();
         }
 

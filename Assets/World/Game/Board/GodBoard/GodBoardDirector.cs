@@ -1,11 +1,19 @@
 using System.Collections.Generic;
 using UnityEngine;
 using World.Sim;
+using World.Sim.Campaign;
 using World.Sim.Table;
+using World.Sim.War;
 
 namespace World.Game
 {
     public enum BoardView { Altar, Rising, Board, Falling }
+
+    /// <summary>G1-6b: which kind of spot the player lit from the costs card (None lights every affordable kind, as before).</summary>
+    public enum BuildKind { None, Road, Settlement, City }
+
+    /// <summary>A big moment card (G1-6b): what happened, shown large for a few seconds at the board centre.</summary>
+    public struct MomentCard { public string Kind, Title, Text; public float Time, Duration; }
 
     /// <summary>
     /// The god board in the world (G1-5; PRD_GODBOARD GB-1, GB-2, GB-4, GB-7). Builds the four temples, owns the board camera
@@ -59,6 +67,25 @@ namespace World.Game
         public struct FeedLine { public string Text; public float Time; }
         private readonly List<FeedLine> _feed = new List<FeedLine>();
         public IReadOnlyList<FeedLine> Feed => _feed;
+        /// <summary>Lines ever added to the feed (the log tab's unread badge counts from this).</summary>
+        public int FeedTotal { get; private set; }
+
+        /// <summary>The newest moment card (G1-6b); Kind is "" until the first one.</summary>
+        public MomentCard Moment { get; private set; } = new MomentCard { Kind = "", Time = -100f };
+        public void ShowMoment(string kind, string title, string text, float duration = 3.4f)
+        {
+            Moment = new MomentCard { Kind = kind, Title = title, Text = text, Time = Time.unscaledTime, Duration = duration };
+        }
+
+        /// <summary>The kind of spot lit from the costs card, or None.</summary>
+        public BuildKind BuildMode { get; private set; }
+
+        /// <summary>The costs card was tapped: lights only that kind of legal spot (a second tap on the same row puts it out).</summary>
+        public void SetBuildMode(BuildKind k)
+        {
+            BuildMode = BuildMode == k ? BuildKind.None : k;
+            _marksTick = -1;
+        }
 
         private WorldBootstrap _boot;
         private readonly List<TempleView> _temples = new List<TempleView>();
@@ -324,6 +351,7 @@ namespace World.Game
             _marksTick = S.Tick;
             _corners.Clear(); _edges.Clear(); _upgrades.Clear();
             AdviseCorner = -1; AdviseEdge = -1;
+            if (!MyTurn || t.Phase != TablePhase.Main) BuildMode = BuildKind.None;
             if (MyTurn)
             {
                 int h = Human;
@@ -335,12 +363,18 @@ namespace World.Game
                 }
                 else
                 {
-                    if (TableRules.SettlementsLeft(t, h) > 0 && TableRules.CanPay(hand, TableRules.SettlementCost)) _corners.AddRange(TableRules.LegalSettlementCorners(S, h, true));
-                    if (TableRules.RoadsLeft(t, h) > 0 && TableRules.CanPay(hand, TableRules.RoadCost)) _edges.AddRange(TableRules.LegalRoadEdges(S, h));
-                    if (TableRules.CitiesLeft(t, h) > 0 && TableRules.CanPay(hand, TableRules.CityCost))
+                    bool all = BuildMode == BuildKind.None;
+                    if ((all || BuildMode == BuildKind.Settlement) && TableRules.SettlementsLeft(t, h) > 0 && TableRules.CanPay(hand, TableRules.SettlementCost)) _corners.AddRange(TableRules.LegalSettlementCorners(S, h, true));
+                    if ((all || BuildMode == BuildKind.Road) && TableRules.RoadsLeft(t, h) > 0 && TableRules.CanPay(hand, TableRules.RoadCost)) _edges.AddRange(TableRules.LegalRoadEdges(S, h));
+                    if ((all || BuildMode == BuildKind.City) && TableRules.CitiesLeft(t, h) > 0 && TableRules.CanPay(hand, TableRules.CityCost))
                         for (int c = 0; c < t.CornerOwner.Length; c++) if (t.CornerOwner[c] == h && t.CornerLevel[c] == 1) _upgrades.Add(c);
                 }
                 if (AdviserOn) Advise(h);
+                if (BuildMode != BuildKind.None && t.Phase == TablePhase.Main)
+                {
+                    if (AdviseCorner >= 0 && !_corners.Contains(AdviseCorner) && !_upgrades.Contains(AdviseCorner)) AdviseCorner = -1;
+                    if (AdviseEdge >= 0 && !_edges.Contains(AdviseEdge)) AdviseEdge = -1;
+                }
             }
             var ac = new List<int>(); var ae = new List<int>();
             if (AdviseCorner >= 0) ac.Add(AdviseCorner);
@@ -367,6 +401,7 @@ namespace World.Game
             if (line == null) return;
             LastHintLine = line;
             Feed1("The prince: " + line);
+            ShowMoment("prince", "The prince advises", line, 3.0f);
         }
 
         private void Advise(int h)
@@ -419,7 +454,8 @@ namespace World.Game
         private void Feed1(string text)
         {
             _feed.Add(new FeedLine { Text = text, Time = Time.unscaledTime });
-            while (_feed.Count > 6) _feed.RemoveAt(0);
+            FeedTotal++;
+            while (_feed.Count > 40) _feed.RemoveAt(0);
         }
 
         private int FindOfferFrom(int id)
@@ -446,7 +482,7 @@ namespace World.Game
                 switch (e)
                 {
                     case Produced pr: HexDressingView.Pulse(pr.Hexes); if (Collectors != null) Collectors.OnProduced(pr); break;
-                    case Built b: Feed1(Name(b.People) + (b.People == Human ? " built a " : " built a ") + b.Kind + "."); break;
+                    case Built b: if (b.People == Human) BuildMode = BuildKind.None; Feed1(Name(b.People) + (b.People == Human ? " built a " : " built a ") + b.Kind + "."); break;
                     case Traded tr: Feed1(tr.With < 0 ? Name(tr.People) + " traded at the bank." : Name(tr.People) + " traded with " + Name(tr.With) + "."); break;
                     case TradeRefused rf:
                         Feed1(rf.Code == TableRefusals.LeaderRefuses ? Name(rf.People) + " will not trade with the leader." : Name(rf.People) + " will not trade: " + rf.Sentence);
@@ -454,10 +490,19 @@ namespace World.Game
                     case Epidemic _:
                         Feed1("The gods are angry.");
                         EpidemicAt = Time.unscaledTime;
+                        ShowMoment("epidemic", "The gods are angry.", "Sickness runs through the camps.", 3.2f);
                         if (View != BoardView.Board) Hud.Notice("The gods are angry.", true);
                         break;
                     case OfferAnswered oa when _boot.Sim.State.Table != null && FindOfferFrom(oa.OfferId) == Human:
                         Feed1(oa.Status == OfferStatus.Accepted ? Name(oa.By) + " accepted your offer." : oa.Status == OfferStatus.Declined ? "Your offer was declined." : "Your offer ran out of time.");
+                        break;
+                    case SpireRaised sr:
+                        Feed1(Name(sr.People) + " raised a spire and won a free " + (sr.Kind ?? "camp").ToLowerInvariant() + ".");
+                        ShowMoment("crystal", "A crystal returns.", sr.People == Human ? "A free " + (sr.Kind ?? "camp").ToLowerInvariant() + " rises for us." : Name(sr.People) + " win a free " + (sr.Kind ?? "camp").ToLowerInvariant() + ".", 3.6f);
+                        break;
+                    case SettlementBurned sb:
+                        Feed1(Name(sb.People) + (sb.WasCity ? " lost a city to the flames." : " lost a camp to the flames."));
+                        ShowMoment("burned", sb.WasCity ? "A city burns." : "A camp burns.", sb.People == Human ? "Our people flee the smoke." : Name(sb.People) + " flee the smoke.", 3.4f);
                         break;
                     case GameLost _: Feed1("The island falls."); break;
                     case Discarded d: Feed1(Name(d.People) + " discarded cards."); break;
