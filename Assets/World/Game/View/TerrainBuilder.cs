@@ -121,6 +121,7 @@ namespace World.Game
             posts.ToObject("CornerStones", root, vcMat);
 
             BuildIsland(root, layout, vcMat);
+            if (board.Ports != null && board.Ports.Count > 0) PortMarkers.Build(board, root, vcMat); // dealt board only (AB-4)
             BuildBounds(root);
 
             // God-view-only overlay.
@@ -299,6 +300,15 @@ namespace World.Game
                 return true;
             }
             int placed = 0;
+            // Dealt board (god board, AB-5): resource hexes except Mountain are dressed by pip level at load.
+            bool dealt = board.DealTriesUsed > 0 && terrain != Terrain.Meadow && board.HexNumber[h] > 0;
+            int dressLevel = dealt ? HexDressing.Level(HexDressing.PipsOf(board, h)) : -1;
+            if (dealt && terrain != Terrain.Mountain)
+            {
+                placed = HexDressing.Fill(props, board, h, (p, m, c) => Ok(p, m, c), false);
+                if (first) Count("dressed " + terrain, placed);
+                return props.VertexCount > 0 ? props.ToObject("Props", tile, mat) : null;
+            }
             switch (terrain)
             {
                 case Terrain.Forest:
@@ -377,8 +387,12 @@ namespace World.Game
                         _peaks[h].Add(new Vector3(p.x, p.z, r));
                         WalkGrid.AddStaticBlocker(p, r, PeakBlockerOwner);
                         var peak = new MeshBuilder();
-                        peak.Cylinder(p, r, r * 0.24f, height * 0.75f, 9, new Color(0.47f, 0.45f, 0.43f) * rnd.Range(0.9f, 1.1f), false);
-                        peak.Cone(p + Vector3.up * height * 0.75f, r * 0.24f, height * 0.25f, 9, new Color(0.95f, 0.95f, 0.97f));
+                        if (dressLevel >= 0) HexDressing.Peak(peak, p, r, HexDressing.PeakHeight(dressLevel, rnd.Next()) * (i % 2 == 0 ? 1f : 0.85f), dressLevel, rnd);
+                        else
+                        {
+                            peak.Cylinder(p, r, r * 0.24f, height * 0.75f, 9, new Color(0.47f, 0.45f, 0.43f) * rnd.Range(0.9f, 1.1f), false);
+                            peak.Cone(p + Vector3.up * height * 0.75f, r * 0.24f, height * 0.25f, 9, new Color(0.95f, 0.95f, 0.97f));
+                        }
                         var go = peak.ToObject("Peak", tile, mat);
                         var mc = go.AddComponent<MeshCollider>(); mc.sharedMesh = go.GetComponent<MeshFilter>().sharedMesh; mc.convex = true;
                     }
