@@ -15,12 +15,12 @@ namespace World.Game
         private Transform[] _puffs; private Material _mat; private float _t;
         public int PuffsShown { get; private set; }
 
-        public static SmokeColumn Create(Transform parent, Vector3 local, float height, float size, int puffs = 6)
+        public static SmokeColumn Create(Transform parent, Vector3 local, float height, float size, int puffs = 6, Color? tone = null)
         {
             var go = new GameObject("Smoke"); go.transform.SetParent(parent, false); go.transform.localPosition = local; go.layer = 2;
             var s = go.AddComponent<SmokeColumn>();
             s.Height = height; s.Size = size;
-            s._mat = MaterialFactory.CreateUnlit(s.Tone, "WarSmoke");
+            s._mat = MaterialFactory.CreateUnlit(tone ?? s.Tone, "WarSmoke");
             s._puffs = new Transform[puffs];
             var mesh = LandLook.Cached("war/puff", mb => mb.Cylinder(Vector3.zero, 1f, 0.6f, 1.2f, 7, Color.white));
             for (int i = 0; i < puffs; i++)
@@ -232,11 +232,10 @@ namespace World.Game
                 mb.Box(new Vector3(0, 1.2f, 0), new Vector3(4.2f, 0.06f, 0.06f), LandLook.DarkWood); mb.Box(new Vector3(0, 1.2f, 0), new Vector3(0.06f, 0.06f, 4.2f), LandLook.DarkWood);
             }), null, false);
             h._prop = LandLook.Part(go.transform, "Prop", LandLook.Cached("war/prop/" + good, mb => HutProps.Build(mb, good)), null, true);
-            h._prop.transform.localPosition = new Vector3(2.9f, 0, 1.4f);
+            h._prop.transform.localPosition = new Vector3(2.9f, 0, 1.4f); h._prop.transform.localScale = Vector3.one * 1.4f;
             h._prop.transform.localRotation = Quaternion.Euler(0, -25f, 0);
             h._pile = new GameObject("Pile"); h._pile.transform.SetParent(go.transform, false); h._pile.transform.localPosition = new Vector3(-2.2f, 0, 2.9f);
-            h._smoke = SmokeColumn.Create(go.transform, new Vector3(1.0f, 3.3f, -0.6f), 6f, 0.5f, 4);
-            h._smoke.Tone = new Color(0.6f, 0.6f, 0.6f);
+            h._smoke = SmokeColumn.Create(go.transform, new Vector3(1.0f, 3.3f, -0.6f), 6f, 0.45f, 4, new Color(0.78f, 0.78f, 0.78f));
             h._smoke.Intensity = 0f;
             h.Apply(0, 0, 0, 0);
             return h;
@@ -271,7 +270,7 @@ namespace World.Game
             {
                 _pop = Mathf.Max(0f, _pop - Time.deltaTime * 2.2f);
                 float s = 1f + 0.35f * Mathf.Sin(_pop * Mathf.PI);
-                _prop.transform.localScale = Vector3.one * s;
+                _prop.transform.localScale = Vector3.one * (1.4f * s);
                 _prop.transform.localPosition = new Vector3(2.9f, Mathf.Sin(_pop * Mathf.PI) * 0.5f, 1.4f);
             }
         }
@@ -299,11 +298,16 @@ namespace World.Game
                 mb.Box(new Vector3(0, 0.15f, 0), new Vector3(9.4f, 0.3f, 5.6f), new Color(0.40f, 0.34f, 0.26f));
                 mb.Box(new Vector3(0, 1.4f, 0), new Vector3(8.4f, 2.4f, 4.4f), Color.Lerp(LandLook.Hide, people, 0.2f));
                 for (int i = 0; i < 5; i++) mb.Box(new Vector3(-3.6f + i * 1.8f, 1.5f, 2.25f), new Vector3(0.3f, 2.7f, 0.3f), dark);
-                // gabled roof in the people's colour
-                mb.Box(new Vector3(0, 3.4f, 0), new Vector3(9.2f, 0.25f, 5.2f), people * 0.7f);
-                mb.Box(new Vector3(0, 4.0f, 0), new Vector3(9.2f, 0.25f, 3.6f), people * 0.8f);
-                mb.Box(new Vector3(0, 4.6f, 0), new Vector3(9.2f, 0.25f, 2.0f), people);
-                mb.Box(new Vector3(0, 5.0f, 0), new Vector3(9.4f, 0.3f, 0.5f), dark);
+                // gabled roof in the people's colour (two slopes, both faces, and the gable ends)
+                float x0 = -4.9f, x1 = 4.9f, ze = 3.1f, y0 = 3.3f, yr = 5.2f;
+                var rc = people; var rd = people * 0.72f;
+                mb.Quad(new Vector3(x0, y0, -ze), new Vector3(x1, y0, -ze), new Vector3(x1, yr, 0), new Vector3(x0, yr, 0), rd);
+                mb.Quad(new Vector3(x0, yr, 0), new Vector3(x1, yr, 0), new Vector3(x1, y0, -ze), new Vector3(x0, y0, -ze), rd * 0.8f);
+                mb.Quad(new Vector3(x0, yr, 0), new Vector3(x1, yr, 0), new Vector3(x1, y0, ze), new Vector3(x0, y0, ze), rc);
+                mb.Quad(new Vector3(x0, y0, ze), new Vector3(x1, y0, ze), new Vector3(x1, yr, 0), new Vector3(x0, yr, 0), rc * 0.8f);
+                mb.Tri(new Vector3(x0, y0, -ze), new Vector3(x0, yr, 0), new Vector3(x0, y0, ze), rd); mb.Tri(new Vector3(x1, y0, ze), new Vector3(x1, yr, 0), new Vector3(x1, y0, -ze), rd);
+                mb.Box(new Vector3(0, yr + 0.1f, 0), new Vector3(9.9f, 0.25f, 0.35f), dark);
+                for (int i = 0; i < 4; i++) mb.Box(new Vector3(-3.6f + i * 2.4f, 4.3f, ze - 0.8f), new Vector3(0.12f, 0.12f, 1.8f), Color.Lerp(people, Color.white, 0.5f), 0f); // roof ribbons
                 // door and skulls over it
                 mb.Box(new Vector3(0, 1.0f, 2.3f), new Vector3(1.4f, 2.0f, 0.15f), dark);
                 for (int i = 0; i < 3; i++) mb.Box(new Vector3(-0.7f + i * 0.7f, 2.65f, 2.3f), new Vector3(0.3f, 0.3f, 0.15f), new Color(0.88f, 0.84f, 0.72f));

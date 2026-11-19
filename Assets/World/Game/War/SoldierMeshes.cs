@@ -26,7 +26,7 @@ namespace World.Game
             }
         }
 
-        private static Color Hide(Color people) => Color.Lerp(new Color(0.52f, 0.38f, 0.24f), people, 0.55f);
+        private static Color Hide(Color people) => Color.Lerp(new Color(0.52f, 0.38f, 0.24f), people, 0.85f);
 
         public static void Leg(MeshBuilder mb, Color people)
         {

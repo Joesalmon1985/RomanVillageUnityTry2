@@ -40,11 +40,14 @@ namespace World.Game
         private readonly List<SoldierView> _dying = new List<SoldierView>();
         private readonly Dictionary<int, SiteView> _sites = new Dictionary<int, SiteView>();
         private readonly Dictionary<int, Vector3> _stepFrom = new Dictionary<int, Vector3>();
+        private readonly Dictionary<int, Vector3> _lastCentre = new Dictionary<int, Vector3>();
         private readonly HashSet<int> _fresh = new HashSet<int>();
         private readonly List<Vector3> _taken = new List<Vector3>();
         private Transform _soldiers, _siteRoot;
         private readonly List<Vector3> _templeAt = new List<Vector3>();
 
+        /// <summary>Capture and test aid: a soldier held at a place and facing (the sim position is ignored while pinned).</summary>
+        public readonly Dictionary<int, Vector4> Pinned = new Dictionary<int, Vector4>();
         public SoldierView ViewOf(int id) => _views.TryGetValue(id, out var v) ? v : null;
         public string SiteCorners() { var l = new List<string>(); foreach (var kv in _sites) l.Add(kv.Key + ":" + kv.Value.State + "/huts" + kv.Value.HutCount); return string.Join(" ", l); }
         public SiteView SiteOf(int corner) => _sites.TryGetValue(corner, out var v) ? v : null;
@@ -166,7 +169,7 @@ namespace World.Game
                         int other = duel.A == x.Id ? duel.B : duel.A;
                         var ov = ViewOf(other);
                         var axis = BoardSpace.DirOf(duel.Id * 47f);
-                        var centre = CentreOf(x);
+                        var centre = CentreOf(x) + (x.Node > 0 ? BoardSpace.DirOf(duel.Id * 47f + 90f) * 6.2f : BoardSpace.DirOf(duel.Id * 47f + 90f) * 6f);
                         pos = centre + axis * (x.Id < other ? -1.3f : 1.3f);
                         v.FaceYaw = BoardSpace.YawOf(axis * (x.Id < other ? 1f : -1f));
                     }
@@ -174,6 +177,7 @@ namespace World.Game
                 else if (v.PurgeLoop && x.Node > 0) v.FaceYaw = BoardSpace.YawOf(NodePos(x.Node) - pos);
                 else if (!moving && x.Corner >= 0) { var c = CornerPos(x.Corner); var o = pos - c; o.y = 0; if (o.sqrMagnitude > 0.01f) v.FaceYaw = BoardSpace.YawOf(o); }
                 v.Target = pos;
+                if (Pinned.TryGetValue(x.Id, out var pin)) { v.Target = new Vector3(pin.x, pin.y, pin.z); v.FaceYaw = pin.w; v.SimMoving = false; v.PurgeLoop = false; }
             }
         }
 
@@ -188,13 +192,14 @@ namespace World.Game
             {
                 moving = true;
                 var to = StepPos(x.Path[0]);
-                var from = _stepFrom.TryGetValue(x.Id, out var f) ? f : (v != null ? v.transform.position : to);
+                var from = _stepFrom.TryGetValue(x.Id, out var f) ? f : _lastCentre.TryGetValue(x.Id, out var lc) ? lc : (v != null ? v.transform.position : to);
                 float u = 1f - Mathf.Clamp01(x.MoveLeft / (float)WarData.MoveTicks);
                 return Vector3.Lerp(from, to, u);
             }
             var c = CentreOf(x);
+            _lastCentre[x.Id] = c; _stepFrom.Remove(x.Id);
             if (x.Node <= 0 && x.Corner < 0) return v != null ? v.transform.position : c;
-            float r = x.Node > 0 ? 3.2f : 6.5f;
+            float r = x.Node > 0 ? 5.6f : 6.5f;
             float a = (slot + (x.Node > 0 ? 0.5f : 0f)) * Mathf.PI * 2f / Mathf.Max(3, count) + (x.Node > 0 ? 0f : 0.6f);
             return c + new Vector3(Mathf.Sin(a), 0, Mathf.Cos(a)) * r;
         }
