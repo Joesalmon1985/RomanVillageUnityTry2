@@ -419,7 +419,8 @@ namespace World.Sim.Tests
             Row("Points lost to burning per game: median / max", "median under 2", rs => Median(rs.Select(g => g.PointsBurned).ToList()) + " / " + rs.Max(g => g.PointsBurned));
             Row("Games with a fall from 9+ to under 6 more than twice", "none", rs => rs.Count(g => g.BigFalls > 2) + " (falls in all games: " + rs.Sum(g => g.BigFalls) + ")");
             Row("Share of rounds with a war active", "under 30%", rs => Pct(rs.Sum(g => g.RoundsAtWar), rs.Sum(g => g.Rounds)));
-            Row("Trades between peoples obeying TR-4", "100%", rs => (rs.Sum(g => g.Tr4Checked) - rs.Sum(g => g.Tr4Broken)) + " of " + rs.Sum(g => g.Tr4Checked));
+            Row("Trades between AI seats obeying TR-4", "100%", rs => (rs.Sum(g => g.Tr4Checked) - rs.Sum(g => g.Tr4Broken)) + " of " + rs.Sum(g => g.Tr4Checked));
+            Row("Trades with the player (of them with a leading people at the table)", "- (the player's own choice; the engine closes AI offers to a leading player and AI seats refuse a leading player)", rs => rs.Any(g => g.Seat < 0) ? "-" : rs.Sum(g => g.PlayerTrades) + " (" + rs.Sum(g => g.PlayerLeaderTrades) + ")");
             Row("AI-to-player offers per round while the player is not leading", "at least 1 in 3 (0.33)", rs =>
             {
                 int rounds = rs.Sum(g => g.NonLeadingRounds);

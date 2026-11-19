@@ -35,6 +35,8 @@ namespace World.Sim.Tests
             public int Seat = -1;
             public int OffersToPlayer, OffersToPlayerNonLeading, NonLeadingRounds, Banishes;
             public bool PlayerWon;
+            /// <summary>Trades with the player's seat, and of them those where a leading people took part (the player's choice; TR-4 binds the AI seats).</summary>
+            public int PlayerTrades, PlayerLeaderTrades;
         }
 
         /// <summary>One all-AI game. tweak (optional) changes the fresh state before the first tick (proof variants only).</summary>
@@ -111,6 +113,12 @@ namespace World.Sim.Tests
                         case Traded tr:
                             if (tr.With < 0) { r.BankTrades++; break; }
                             r.PeopleTrades++;
+                            if (humanSeat >= 0 && (tr.With == humanSeat || tr.People == humanSeat))
+                            {
+                                r.PlayerTrades++;
+                                if (Leading(tr.With) || Leading(tr.People)) r.PlayerLeaderTrades++;
+                                break;
+                            }
                             r.Tr4Checked++;
                             if (Leading(tr.With) || Leading(tr.People)) r.Tr4Broken++;
                             break;
