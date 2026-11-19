@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using World.Sim.Plague;
 using World.Sim.Table;
+using World.Sim.War;
 
 namespace World.Sim.GodBoard
 {
@@ -36,6 +37,9 @@ namespace World.Sim.GodBoard
                 throw new ArgumentException("The god board needs a start corner for every people (" + s.PeopleCount + " peoples, " + starts.Length + " corners).");
             TableModule.InitState(s, s.PeopleCount, starts, humanSeat, PortsFromBoard(s.Board));
             PlagueModule.InitState(s);
+            // G0-3: the war after the plague (its own stream forked last), with the first camps as home camps and garrisons.
+            WarModule.InitState(s, s.PeopleCount);
+            SyncBoard(s, null);
         }
 
         /// <summary>
@@ -77,6 +81,13 @@ namespace World.Sim.GodBoard
             if (sim.State.Plague != null) PlagueModule.Register(sim);
             var seams = TableModule.Register(sim);
             Wire(seams);
+            // G0-3: the war runs after the plague and the table; a sync system right after it carries burnings, ruins and
+            // the island's fall back to the table.
+            if (sim.State.War != null)
+            {
+                WarModule.Register(sim, Linked);
+                sim.AddSystem(SyncOrder, new WarTableSync(seams));
+            }
             SeamTable.Add(sim, seams);
             return seams;
         }
@@ -88,10 +99,124 @@ namespace World.Sim.GodBoard
         public static void Wire(TableSeams seams)
         {
             seams.HexBlocked = PlagueApi.HexBlocked;
-            seams.OnEpidemic = (s, ev) => PlagueRules.Epidemic(s, ev);
-            seams.OnRoundEnded = (s, round, ev) => PlagueRules.InfectRound(s, ev);
+            seams.OnEpidemic = (s, ev) => { PlagueRules.Epidemic(s, ev); CheckIslandFell(s, seams, ev); };
+            seams.OnRoundEnded = (s, round, ev) => { PlagueRules.InfectRound(s, ev); CheckIslandFell(s, seams, ev); };
             seams.OnAgeEnded = AgeEnded;
+            // G0-3: the war follows the table (garrisons, war state, CL-2 deliveries).
+            seams.OnBoardChanged = SyncBoard;
+            seams.OnProduced = (s, corner, good, n, ev) => WarRules.Deliver(s, corner, good, n);
             WireAi(seams);
+        }
+
+        /// <summary>Tick slot of the war-to-table sync: right after the war system (Combat + 10).</summary>
+        public const int SyncOrder = SystemOrder.Combat + 11;
+
+        /// <summary>
+        /// PL-10 (G0-3): when the plague has fallen, the table closes for good with <see cref="GameLost"/> and the war stops.
+        /// Called after every plague step the table drives, and each tick by the sync system as a safety net.
+        /// </summary>
+        public static void CheckIslandFell(WorldState s, TableSeams seams, EventBuffer ev)
+        {
+            if (s?.Plague == null || !s.Plague.IslandFell || s.Table == null || s.Table.IslandFell) return;
+            if (seams?.Engine != null) seams.Engine.IslandFalls(s, ev);
+            if (s.War != null) s.War.Stopped = true;
+        }
+
+        /// <summary>
+        /// G0-3: the war module follows the table after every board change. Every table settlement or city has a war
+        /// settlement (home camps on the start corners are flagged, WA-15; new ones get their garrison, WA-4; a city its second
+        /// soldier); war settlements no longer on the table are removed; then the war state is recomputed from the table's
+        /// points (WA-11). Idempotent.
+        /// </summary>
+        public static void SyncBoard(WorldState s, EventBuffer ev)
+        {
+            var t = s?.Table;
+            var w = s?.War;
+            if (t == null || w == null || w.Stopped) return;
+            for (int c = 0; c < t.CornerOwner.Length; c++)
+            {
+                int owner = t.CornerOwner[c];
+                if (owner < 0) continue;
+                var st = WarApi.SettlementAt(s, c);
+                bool city = t.CornerLevel[c] == 2;
+                if (st == null) WarRules.AddSettlement(s, owner, c, city, c == t.Peoples[owner].StartCorner, ev);
+                else if (city && !st.IsCity) WarRules.UpgradeCity(s, c, ev);
+            }
+            for (int i = w.Settlements.Count - 1; i >= 0; i--)
+            {
+                int c = w.Settlements[i].Corner;
+                if (c < 0 || c >= t.CornerOwner.Length || t.CornerOwner[c] != w.Settlements[i].People) WarRules.RemoveSettlement(s, c);
+            }
+            var pts = new int[t.PeopleCount];
+            for (int p = 0; p < t.PeopleCount; p++) pts[p] = t.Peoples[p].Points;
+            WarRules.SetPoints(s, pts, ev);
+        }
+
+        /// <summary>
+        /// PR-3 stand-in for the carriers: a settlement is linked to its people's lodge when the people's own roads join them
+        /// (a road path that does not pass through another people's settlement). The lodge's own corner is always linked.
+        /// </summary>
+        public static bool Linked(WorldState s, int corner)
+        {
+            var t = s?.Table;
+            if (t == null || corner < 0 || corner >= t.CornerOwner.Length) return true;
+            int p = t.CornerOwner[corner];
+            if (p < 0) return false;
+            var lodge = WarApi.LodgeOf(s, p);
+            if (lodge == null) return false;
+            if (lodge.Corner == corner) return true;
+            var topo = s.Board.Topology;
+            var seen = new bool[t.CornerOwner.Length];
+            var queue = new Queue<int>();
+            queue.Enqueue(corner);
+            seen[corner] = true;
+            while (queue.Count > 0)
+            {
+                int c = queue.Dequeue();
+                foreach (int e in topo.CornerHexEdges(c))
+                {
+                    if (t.RoadOwner[e] != p) continue;
+                    int a = topo.HexEdgeCornerA(e), b = topo.HexEdgeCornerB(e);
+                    int n = a == c ? b : a;
+                    if (seen[n]) continue;
+                    seen[n] = true;
+                    if (n == lodge.Corner) return true;
+                    if (t.CornerOwner[n] >= 0 && t.CornerOwner[n] != p) continue; // another people's settlement cuts the road
+                    queue.Enqueue(n);
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// G0-3: carries the war back to the table each tick. A table settlement whose war settlement burned (a ruin stands on
+        /// its corner) leaves the table with its points (TU-6, WA-14) and its corner stays closed; a closed corner whose ruin
+        /// was cleared opens again; and the island's fall closes the table (PL-10). Nothing changes once the table has ended.
+        /// </summary>
+        private sealed class WarTableSync : ISimSystem
+        {
+            private readonly TableSeams _seams;
+            public WarTableSync(TableSeams seams) { _seams = seams; }
+
+            public void Tick(WorldState s, EventBuffer ev)
+            {
+                var t = s.Table;
+                var w = s.War;
+                if (t == null || w == null) return;
+                CheckIslandFell(s, _seams, ev);
+                if (t.Phase == TablePhase.Ended || _seams.Engine == null) return;
+                for (int i = 0; i < w.Ruins.Count; i++)
+                {
+                    var r = w.Ruins[i];
+                    if (r.Corner < t.CornerOwner.Length && t.CornerOwner[r.Corner] == r.People && WarApi.SettlementAt(s, r.Corner) == null)
+                        _seams.Engine.LoseSettlement(s, r.Corner, "burned", true, ev);
+                }
+                for (int i = t.ClosedCorners.Count - 1; i >= 0; i--)
+                {
+                    int c = t.ClosedCorners[i];
+                    if (!WarApi.IsRuin(s, c)) _seams.Engine.ReopenCorner(s, c, ev);
+                }
+            }
         }
 
         /// <summary>

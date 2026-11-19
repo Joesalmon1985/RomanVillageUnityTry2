@@ -64,6 +64,21 @@ namespace World.Sim.Table
 
         /// <summary>A people reached the winning points (TU-7): (state, winner, events), right after the <see cref="AgeEnded"/> event.</summary>
         public Action<WorldState, int, EventBuffer> OnAgeEnded;
+
+        /// <summary>
+        /// G0-3: after every change on the board (a build in setup or play, a settlement lost), once longest road and points
+        /// are computed. The war wires this (garrisons WA-4, war state WA-11).
+        /// </summary>
+        public Action<WorldState, EventBuffer> OnBoardChanged;
+
+        /// <summary>
+        /// G0-3, CL-2: a settlement or city produced: (state, corner, raw good index, cards, events), once per producing
+        /// hex and corner. Cards reach the hand anyway; the war wires this to deliver the same raw goods to the store.
+        /// </summary>
+        public Action<WorldState, int, int, int, EventBuffer> OnProduced;
+
+        /// <summary>The engine these seams belong to (G0-3: the war and the plague ask it to remove settlements or end the game).</summary>
+        public TableEngine Engine { get; internal set; }
     }
 
     /// <summary>Lets an AI seat act through the same checks as the commands. Each accepted action lengthens its turn (HG-5).</summary>
@@ -101,7 +116,67 @@ namespace World.Sim.Table
     {
         public readonly TableSeams Seams;
 
-        public TableEngine(TableSeams seams) { Seams = seams ?? new TableSeams(); }
+        public TableEngine(TableSeams seams)
+        {
+            Seams = seams ?? new TableSeams();
+            Seams.Engine = this;
+        }
+
+        // =====================================================================================================
+        // G0-3: calls from the war and the plague (not commands)
+        // =====================================================================================================
+
+        /// <summary>
+        /// A settlement or city leaves the table (TU-6, WA-14): its corner is emptied, its points are lost at once, and with
+        /// close = true the corner stays closed until <see cref="ReopenCorner"/>. Roads stay. False when nothing stands there
+        /// or the table is closed for good. Works while the table is paused (the world goes on).
+        /// </summary>
+        public bool LoseSettlement(WorldState s, int corner, string cause, bool close, EventBuffer ev)
+        {
+            var t = s?.Table;
+            if (t == null || t.Phase == TablePhase.Ended || corner < 0 || corner >= t.CornerOwner.Length) return false;
+            int owner = t.CornerOwner[corner];
+            if (owner < 0) return false;
+            bool wasCity = t.CornerLevel[corner] == 2;
+            t.CornerOwner[corner] = -1;
+            t.CornerLevel[corner] = 0;
+            if (close && !t.ClosedCorners.Contains(corner))
+            {
+                t.ClosedCorners.Add(corner);
+                t.ClosedCorners.Sort();
+            }
+            ev?.Add(new SettlementLost { People = owner, Corner = corner, WasCity = wasCity, Cause = cause, Closed = close });
+            AfterChange(s, ev);
+            return true;
+        }
+
+        /// <summary>A closed corner opens again (the ruin's time is over, WA-14). False if it was not closed.</summary>
+        public bool ReopenCorner(WorldState s, int corner, EventBuffer ev)
+        {
+            var t = s?.Table;
+            if (t == null || !t.ClosedCorners.Remove(corner)) return false;
+            ev?.Add(new CornerReopened { Corner = corner });
+            return true;
+        }
+
+        /// <summary>
+        /// PL-10: the island fell. The game is lost for everyone: open offers expire, the table closes for good (Phase Ended,
+        /// no winner, IslandFell) and <see cref="GameLost"/> is raised. Nothing on the table moves afterwards. False when the
+        /// table already ended.
+        /// </summary>
+        public bool IslandFalls(WorldState s, EventBuffer ev)
+        {
+            var t = s?.Table;
+            if (t == null || t.Phase == TablePhase.Ended) return false;
+            ExpireOffers(t, ev);
+            t.Phase = TablePhase.Ended;
+            t.Winner = -1;
+            t.IslandFell = true;
+            var pts = new int[t.PeopleCount];
+            for (int p = 0; p < t.PeopleCount; p++) pts[p] = t.Peoples[p].Points;
+            ev?.Add(new GameLost { Cause = "island_fell", Round = t.Round, Points = pts });
+            return true;
+        }
 
         private static int Raw(Ware w) => (int)w;
 
@@ -512,6 +587,7 @@ namespace World.Sim.Table
                     int n = t.CornerLevel[c];
                     t.Peoples[owner].Hand[(int)w.Value] += n;
                     gains[owner * Wares.RawCount + (int)w.Value] += n;
+                    Seams.OnProduced?.Invoke(s, c, (int)w.Value, n, ev);
                 }
             }
             ev.Add(new Produced { Hexes = hexes.ToArray(), Blocked = blocked.ToArray(), Gains = gains });
@@ -569,6 +645,7 @@ namespace World.Sim.Table
             var t = s.Table;
             ev.Add(new Epidemic { People = t.Current, Round = t.Round });
             Seams.OnEpidemic?.Invoke(s, ev);
+            if (t.Phase == TablePhase.Ended) return; // G0-3: the island fell
             t.Phase = TablePhase.Main;
             t.TurnTicks = 0; // the wait for discards does not use up an AI's turn
         }
@@ -584,6 +661,7 @@ namespace World.Sim.Table
                 t.TurnIndex = 0;
                 t.Round++;
                 Seams.OnRoundEnded?.Invoke(s, t.Round - 1, ev);
+                if (t.Phase == TablePhase.Ended) return; // G0-3: the island fell
             }
             BeginTurn(s, ev);
         }
@@ -678,6 +756,7 @@ namespace World.Sim.Table
                 ev.Add(new AgeEnded { Winner = top, Points = topPts });
                 Seams.OnAgeEnded?.Invoke(s, top, ev);
             }
+            Seams.OnBoardChanged?.Invoke(s, ev);
         }
 
         // =====================================================================================================

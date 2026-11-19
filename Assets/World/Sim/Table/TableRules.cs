@@ -62,6 +62,10 @@ namespace World.Sim.Table
             var t = s.Table;
             var topo = s.Board.Topology;
             if (!topo.IsCorner(corner) || t.CornerOwner[corner] >= 0) return TableRefusals.InvalidSite;
+            // G0-3: only corners where three hexes meet, like the world's camps and the ports (PlotLayout.IsSettlementCorner).
+            if (!PlotLayout.IsSettlementCorner(topo, corner)) return TableRefusals.InvalidSite;
+            // G0-3, WA-14: a burned settlement's ruin keeps its corner closed until the ruin time is over.
+            if (t.ClosedCorners != null && t.ClosedCorners.Contains(corner)) return TableRefusals.InvalidSite;
             foreach (int n in topo.CornerNeighbours(corner)) if (t.CornerOwner[n] >= 0) return TableRefusals.TooClose;
             if (needRoad)
             {

@@ -17,6 +17,7 @@ namespace World.Sim.Save
         {
             { 4, V4ToV5 },
             { 5, V5ToV6 },
+            { 6, V6ToV7 },
         };
 
         /// <summary>Migrates a model read by FromJson in place: LoadedVersion = the file's version, Version = CurrentVersion.</summary>
@@ -57,6 +58,23 @@ namespace World.Sim.Save
             s.Table = null;
             s.Plague = null;
             PeopleDefs.Ensure(s);
+        }
+
+        /// <summary>
+        /// v6 (god board, G0-2) to v7 (the war wired, G0-3): a Legacy game has no war. A god board game gets a fresh war
+        /// (its stream forked from the loaded world stream), a war settlement with its garrison for every settlement and city
+        /// on the table (the start corners as home camps), and the war state from the table's points.
+        /// </summary>
+        private static void V6ToV7(WorldState s)
+        {
+            if (s.Ruleset != Ruleset.GodBoard || s.Table == null)
+            {
+                s.War = null;
+                return;
+            }
+            if (s.War != null) return;
+            War.WarModule.InitState(s, s.Table.PeopleCount);
+            GodBoard.GodBoardModule.SyncBoard(s, null);
         }
     }
 }

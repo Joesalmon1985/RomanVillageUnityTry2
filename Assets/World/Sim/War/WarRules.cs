@@ -82,7 +82,7 @@ namespace World.Sim.War
 
         // ---- war state (WA-11)
 
-        /// <summary>Recomputes who is at war from the points (WA-11). Emits <see cref="WarStateChanged"/> when the matrix changes; ends duels of peoples now at peace.</summary>
+        /// <summary>Recomputes who is at war from the points (WA-11; ties per <see cref="WarState.TiedLeadersFight"/>). Emits <see cref="WarStateChanged"/> when the matrix changes; ends duels of peoples now at peace.</summary>
         public static void SetPoints(WorldState s, int[] points, EventBuffer ev)
         {
             var w = s?.War;
@@ -96,7 +96,12 @@ namespace World.Sim.War
             foreach (int p in pts) top = Math.Max(top, p);
             var leaders = new List<int>();
             for (int i = 0; i < n; i++) if (pts[i] == top) leaders.Add(i);
-            if (leaders.Count >= 2)
+            bool everyoneTied = leaders.Count == n;
+            if (leaders.Count >= 2 && everyoneTied && w.TiedLeadersFight == TieRule.OnlyWhenNotEveryoneTied)
+            {
+                // G0-3 tuning flag: everyone shares the top score, so nobody is at war.
+            }
+            else if (leaders.Count >= 2)
             {
                 foreach (int a in leaders) foreach (int b in leaders) if (a != b) war[a * n + b] = true;
             }
@@ -123,7 +128,7 @@ namespace World.Sim.War
         public static void Tick(WorldState s, EventBuffer ev, Func<WorldState, int, bool> linked = null)
         {
             var w = s?.War;
-            if (w == null) return;
+            if (w == null || w.Stopped) return;
             w.Clock++;
             TickProcessing(s, ev, linked);
             TickLodges(s, ev);

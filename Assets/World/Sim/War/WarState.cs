@@ -33,6 +33,23 @@ namespace World.Sim.War
         /// <summary>Symmetric war matrix, index a * PeopleCount + b (WA-11).</summary>
         public bool[] AtWar;
         public int Trained, Died, Purged, Burned, Looted;
+        /// <summary>
+        /// Tuning flag for WA-11's tie rule (G0-3; owner has not ruled yet). Literal: two or more peoples sharing the top score
+        /// are at war, so a fresh game with everyone tied is at war. OnlyWhenNotEveryoneTied (default): tied leaders fight only
+        /// when not every people shares the top score.
+        /// </summary>
+        public TieRule TiedLeadersFight = TieRule.OnlyWhenNotEveryoneTied;
+        /// <summary>True once the war has been stopped for good (G0-3: the island fell, PL-10). Tick then does nothing.</summary>
+        public bool Stopped;
+    }
+
+    /// <summary>How WA-11 treats peoples tied at the top (see <see cref="WarState.TiedLeadersFight"/>).</summary>
+    public enum TieRule
+    {
+        /// <summary>WA-11 read literally: any tie at the top is a war between the tied peoples.</summary>
+        Literal = 0,
+        /// <summary>Tied leaders fight only when at least one people is below the top score.</summary>
+        OnlyWhenNotEveryoneTied = 1,
     }
 
     public sealed class WarSettlement

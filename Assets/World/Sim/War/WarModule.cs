@@ -11,7 +11,7 @@ namespace World.Sim.War
         public void Tick(WorldState s, EventBuffer ev) => WarRules.Tick(s, ev, Linked);
     }
 
-    /// <summary>Entry point of the war module. Not wired into WorldSimFactory or SaveCodec (G3-1/G3-2 core).</summary>
+    /// <summary>Entry point of the war module. On god board games GodBoardModule initialises it (after the plague) and registers it (G0-3).</summary>
     public static class WarModule
     {
         /// <summary>Fresh war state for a number of peoples: no settlements, peace, own Rng forked from the world seed.</summary>

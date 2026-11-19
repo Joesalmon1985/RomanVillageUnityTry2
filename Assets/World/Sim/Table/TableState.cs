@@ -145,6 +145,14 @@ namespace World.Sim.Table
 
         /// <summary>The winner once Phase is Ended, else -1.</summary>
         public int Winner = -1;
+
+        // ---- G0-3: the war and the plague on the table ----
+
+        /// <summary>Corners closed to building: ruins of burned settlements until their ruin time is over (WA-14). Ascending.</summary>
+        public List<int> ClosedCorners = new List<int>();
+
+        /// <summary>True when the island fell (PL-10): the game is lost for every people and the table is closed for good (Phase Ended, Winner -1).</summary>
+        public bool IslandFell;
     }
 
     /// <summary>One people's seat at the table.</summary>

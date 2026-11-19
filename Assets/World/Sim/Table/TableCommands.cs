@@ -93,6 +93,21 @@ namespace World.Sim.Table
     /// <summary>A people reached the winning points: the prehistoric age ends (TU-7, HI-1).</summary>
     public sealed class AgeEnded : SimEvent { public int Winner; public int Points; }
 
+    /// <summary>
+    /// G0-3, TU-6, WA-14: a settlement or city left the table (Cause "burned": an enemy soldier burned it). Its points are
+    /// lost at once (see the PointsChanged that follows). Closed = its corner stays closed until <see cref="CornerReopened"/>.
+    /// </summary>
+    public sealed class SettlementLost : SimEvent { public int People; public int Corner; public bool WasCity; public string Cause; public bool Closed; }
+
+    /// <summary>G0-3, WA-14: a ruin's time is over; the corner may be built on again under the normal rules.</summary>
+    public sealed class CornerReopened : SimEvent { public int Corner; }
+
+    /// <summary>
+    /// G0-3, PL-10: the game is lost for every people (Cause "island_fell": 8 outbreaks). The table is closed for good:
+    /// Phase Ended with no winner. The Game shows "The island falls" and offers a new game.
+    /// </summary>
+    public sealed class GameLost : SimEvent { public string Cause; public int Round; public int[] Points; }
+
     /// <summary>Refusal codes of the table (Appendix A) and their sentences.</summary>
     public static class TableRefusals
     {
