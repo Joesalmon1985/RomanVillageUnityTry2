@@ -178,6 +178,8 @@ namespace World.Game
             bool hide = dance || (Circle != null && Circle.Retired);
             Available = !hide;
             if (_visual != null && _visual.activeSelf == hide) _visual.SetActive(!hide);
+            // The lantern is a real per-pixel light outside the WorldLights budget: it burns only while someone is near enough to see it (its range is 5.5 m), so a far camp's budget is not shared with it.
+            if (_lamp != null) { var cam = Camera.main; bool near = cam != null && (cam.transform.position - transform.position).sqrMagnitude < 30f * 30f; if (_lamp.enabled != near) _lamp.enabled = near; }
             var col = GetComponent<Collider>(); if (col != null) col.enabled = !hide;
             if (hide) { CancelTune(); return; }
             float dt = Time.unscaledDeltaTime;
