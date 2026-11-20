@@ -377,6 +377,7 @@ namespace World.Game
         {
             WorldActions.Machine.Tick(Time.unscaledTime);
             var cam = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.ActiveCamera : Camera.main;
+            if (OnGodBoard) cam = GodBoardDirector.Instance.BoardCam; // the board camera is the one the player sees (panning is a drag, not a tap)
             if (cam != null)
             {
                 var t = cam.transform;

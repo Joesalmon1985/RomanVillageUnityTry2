@@ -98,6 +98,7 @@ namespace World.Game
                 .Tick(2)
                 .Check(() => T.CornerOwner[corner] == 0 && D.Pieces.CornerPiece(corner) != null, "the setup settlement did not appear")
                 .WaitUntil(() => D.EdgeSpots.Count > 0, 10f, "no setup road offered")
+                .Wait(0.8f) // the tap guard after the camp's command
                 .Call(() => { edge = D.EdgeSpots[0]; string r = D.TapAt(D.ScreenOfEdge(edge)); if (r == null || !r.StartsWith("preview")) throw new Exception("the first tap on the edge did not preview: " + r); })
                 .Wait(0.5f)
                 .Call(() => { string r = D.TapAt(D.ScreenOfEdge(edge)); if (r == null || r.StartsWith("preview")) throw new Exception("the second tap on the edge sent nothing: " + r); })
@@ -171,6 +172,7 @@ namespace World.Game
              .Tick(2)
              .Check(() => T.Peoples[0].Hand[0] == wood - rate && T.Peoples[0].Hand[4] == stone + 1, "the bank trade did not change the hand")
              .Call(() => Hud.CloseTrade())
+             .Wait(0.8f)
              // An AI offer arrives as an envoy; tap once to see the bundle, again to accept. The player must not lead (TR-4): give seat 1 a city.
              .Call(() =>
              {
@@ -202,8 +204,9 @@ namespace World.Game
                  var pick = TableAi.ChooseDiscard(S, 0, owed);
                  for (int g = 0; g < Wares.RawCount; g++) for (int n = 0; n < pick[g]; n++) Hud.TapLedge("basket:" + g);
                  if (Hud.DiscardChosen != owed) throw new Exception("the sack holds " + Hud.DiscardChosen + " of " + owed);
-                 var r = Hud.TapLedge("sack"); if (r != WorldTapResult.Previewed) throw new Exception("the sack tap did not preview: " + r);
              })
+             .Wait(0.8f) // the tap guard after the envoy's command (this run is much faster than a hand)
+             .Call(() => { var r = Hud.TapLedge("sack"); if (r != WorldTapResult.Previewed) throw new Exception("the sack tap did not preview: " + r); })
              .Wait(0.5f)
              .Call(() => { var r = Hud.TapLedge("sack"); if (r != WorldTapResult.Confirmed) throw new Exception("the second sack tap did not give: " + r); })
              .Tick(2)

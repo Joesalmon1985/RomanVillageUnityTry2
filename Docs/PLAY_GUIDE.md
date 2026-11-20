@@ -114,8 +114,8 @@ Builds/Windows/WorldMVP.exe -autoplay <name> -novsync -screen-fullscreen 0 -scre
 
 | Script | What it checks |
 |---|---|
-| `board_first_round` | dev.godboard, walk to the altar, sacrifice, setup camp and road, AI seats place, first turn, a production pulse, leave (table pauses and stays frozen), come back (resumes) |
-| `board_trade_discard` | bank trade from the trade modal changes the hand; an AI offer card is accepted; a 7 from the table's own dice forces a discard that is completed |
+| `board_first_round` | dev.godboard, walk to the altar, sacrifice, setup camp and road (each by a ghost preview, then a confirming tap), AI seats place, first turn, a production pulse, leave (table pauses and stays frozen), come back (resumes) |
+| `board_trade_discard` | WU-2 ledge: the trader unrolls the barter mat and a bank trade changes the hand; an AI offer arrives as an envoy (tap to see, tap again to accept); a 7 from the table's own dice forces a discard that is done by the sack (basket taps, then two taps on the sack) |
 | `plague_epidemic` | a 7 brings an epidemic (feed line, sky, demons), the overlay shows 48 nodes, a banish on foot removes a demon |
 | `war_burn` | a soldier reaches an unguarded camp, it burns, a ruin shows, the owner's table points drop |
 | `board_to_historic` | dev.godboard.eve: the switch plays, temples fall, castle scaffolds start, trees render, the player walks |
