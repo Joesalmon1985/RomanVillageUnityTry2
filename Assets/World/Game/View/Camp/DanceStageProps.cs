@@ -157,8 +157,8 @@ namespace World.Game
                 _perf[p] = pf;
             }
             // A warm stage light above the performers, so each person and drum reads against the dark (the fire alone lights one side).
-            var sl = new GameObject("Stage light"); sl.transform.SetParent(transform, false); sl.transform.position = lay.DanceCircleCentre + Vector3.up * 3.2f;
-            _stageLight = sl.AddComponent<Light>(); _stageLight.type = LightType.Point; _stageLight.range = 13f; _stageLight.intensity = 0.9f; _stageLight.color = new Color(1f, 0.78f, 0.5f); _stageLight.shadows = LightShadows.None;
+            var sl = new GameObject("Stage light"); sl.transform.SetParent(transform, false); sl.transform.position = Vector3.Lerp(lay.DanceCircleCentre, lay.DancerSpot, 0.7f) + Vector3.up * 3.4f; // on the dancer's side, so the performers' fronts (and the drums) are lit, not only their backs
+            _stageLight = sl.AddComponent<Light>(); _stageLight.type = LightType.Point; _stageLight.range = 14f; _stageLight.intensity = 1.5f; _stageLight.color = new Color(1f, 0.78f, 0.5f); _stageLight.shadows = LightShadows.None;
             ApplyPoses(1f);
         }
 

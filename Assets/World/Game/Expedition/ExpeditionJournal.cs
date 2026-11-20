@@ -299,17 +299,17 @@ namespace World.Game
             float mid = r.center.x;
             GUI.DrawTexture(new Rect(mid - 2f, r.y, 4f, r.height), UiStyle.SolidTexture(new Color(0.55f, 0.42f, 0.25f)));
             float ip = fs * 0.8f;
-            float closeSide = Mathf.Max(WorldHitTarget.MinSide(Screen.height), fs * 2.2f);
-            var close = new Rect(r.xMax - closeSide - 4f, r.y + 4f, closeSide, closeSide * 0.8f);
+            float closeW = Mathf.Max(WorldHitTarget.MinSide(Screen.height), fs * 4.2f), closeH = Mathf.Max(WorldHitTarget.MinSide(Screen.height) * 0.8f, fs * 2f);
+            var close = new Rect(r.xMax - closeW - 4f, r.y + 4f, closeW, closeH);
             GUI.DrawTexture(close, UiStyle.SolidTexture(cover));
             var cs = new GUIStyle(_bookText) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold }; cs.normal.textColor = new Color(0.95f, 0.88f, 0.7f);
             GUI.Label(close, "Close", cs);
             var e = Event.current;
             if (e.type == EventType.MouseDown && close.Contains(e.mousePosition)) { Expanded = false; e.Use(); return; }
             var left = new Rect(r.x + ip, r.y + ip, r.width / 2f - 2f * ip, r.height - 2f * ip);
-            var right = new Rect(mid + ip, r.y + ip + closeSide * 0.8f, r.width / 2f - 2f * ip, r.height - 2f * ip - closeSide * 0.8f);
+            var right = new Rect(mid + ip, r.y + ip + closeH * 0.8f, r.width / 2f - 2f * ip, r.height - 2f * ip - closeH * 0.8f);
             GUI.Label(new Rect(left.x, left.y, left.width, fs * 1.8f), "Mira's journal", _bookTitle);
-            GUI.Label(new Rect(right.x, r.y + ip, right.width - closeSide, fs * 1.8f), "What was written", _bookTitle);
+            GUI.Label(new Rect(right.x, r.y + ip, right.width - closeW, fs * 1.8f), "What was written", _bookTitle);
             DrawPage(new Rect(left.x, left.y + fs * 1.9f, left.width, left.height - fs * 1.9f), Plain(CompactText(S, 0)), ref _scrollL);
             DrawPage(new Rect(right.x, right.y + fs * 1.3f, right.width, right.height - fs * 1.3f), Plain(FullEntries(S)), ref _scrollR);
         }
