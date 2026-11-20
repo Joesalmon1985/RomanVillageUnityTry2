@@ -235,8 +235,8 @@ namespace World.Game
                 Prim(PrimitiveType.Cylinder, m, new Vector3(-0.12f, 0.02f, 0f), new Vector3(0.26f, 0.02f, 0.26f), StoneDark);
                 var pole = new GameObject("Pole").transform; pole.SetParent(m, false);
                 Prim(PrimitiveType.Cylinder, pole, new Vector3(-0.12f, 0.46f, 0f), new Vector3(0.045f, 0.46f, 0.045f), WoodDark);
-                Prim(PrimitiveType.Cube, pole, new Vector3(0.05f, 0.80f, 0f), new Vector3(0.32f, 0.22f, 0.02f), Color.white).name = "Banner";
-                Prim(PrimitiveType.Cube, pole, new Vector3(0.05f, 0.675f, 0f), new Vector3(0.32f, 0.035f, 0.025f), Color.gray).name = "Trim";
+                Prim(PrimitiveType.Cube, pole, new Vector3(0.09f, 0.79f, 0f), new Vector3(0.42f, 0.28f, 0.025f), Color.white).name = "Banner";
+                Prim(PrimitiveType.Cube, pole, new Vector3(0.09f, 0.64f, 0f), new Vector3(0.42f, 0.04f, 0.03f), Color.gray).name = "Trim";
                 Prim(PrimitiveType.Cylinder, pole, new Vector3(-0.12f, 0.6f, 0f), new Vector3(0.075f, 0.02f, 0.075f), Gold).name = "Cord";
                 Prim(PrimitiveType.Cube, pole, new Vector3(-0.08f, 0.52f, -0.03f), new Vector3(0.015f, 0.15f, 0.015f), Gold, new Vector3(0f, 0f, 12f)).name = "CordEnd";
                 Prim(PrimitiveType.Sphere, pole, new Vector3(-0.12f, 0.95f, 0f), new Vector3(0.17f, 0.12f, 0.17f), new Color(0.75f, 0.25f, 0.15f)).name = "Helmet";
@@ -303,10 +303,10 @@ namespace World.Game
             else if (id == "sack")
             {
                 var body = new GameObject("Body").transform; body.SetParent(m, false);
-                Prim(PrimitiveType.Sphere, body, new Vector3(-0.08f, 0.27f, 0f), new Vector3(0.52f, 0.5f, 0.46f), new Color(0.66f, 0.52f, 0.32f));
+                Prim(PrimitiveType.Sphere, body, new Vector3(-0.08f, 0.3f, 0f), new Vector3(0.66f, 0.58f, 0.56f), new Color(0.66f, 0.52f, 0.32f));
                 Prim(PrimitiveType.Cylinder, body, new Vector3(-0.08f, 0.56f, 0f), new Vector3(0.2f, 0.07f, 0.2f), new Color(0.60f, 0.46f, 0.27f));
                 Prim(PrimitiveType.Cylinder, body, new Vector3(-0.08f, 0.6f, 0f), new Vector3(0.22f, 0.02f, 0.22f), WickerDark);
-                var mini = Hourglass(m, new Vector3(0.36f, 0f, -0.02f), 0.42f); mini.name = "Mini";
+                var mini = Hourglass(m, new Vector3(0.4f, 0f, -0.04f), 0.55f); mini.name = "Mini";
                 it.Dyn.localPosition = Vector3.zero;
             }
             else if (id == "sack-clear")
@@ -611,6 +611,10 @@ namespace World.Game
                     float target = _hud.HourglassTipped ? 90f : 0f;
                     float cur = pivot.localEulerAngles.z; if (cur > 180f) cur -= 360f;
                     pivot.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(cur, target, 0.2f));
+                    // laid on its side the glass is wider than its place on the ledge: it settles lower and smaller
+                    float tip = Mathf.Clamp01(Mathf.Abs(Mathf.Lerp(cur, target, 0.2f)) / 90f);
+                    glass.localScale = Vector3.one * Mathf.Lerp(1f, 0.62f, tip);
+                    glass.localPosition = new Vector3(0f, -0.13f * tip, 0f);
                     SetSand(glass, main ? vm.SandFraction : 0f, main && !_hud.HourglassTipped, main ? (vm.SandFraction > 0.3f ? new Color(0.98f, 0.82f, 0.38f) : new Color(0.95f, 0.45f, 0.25f)) : new Color(0.55f, 0.5f, 0.4f));
                     var bell = it.Model.Find("Bell");
                     bell.localPosition = Vector3.Lerp(bell.localPosition, new Vector3(0.36f, _hud.HourglassTipped ? 0.32f : 0f, -0.05f), 0.2f);
@@ -618,7 +622,7 @@ namespace World.Game
                 }
                 case "sack":
                 {
-                    Place(it, r, 0.95f);
+                    Place(it, r, 1.2f);
                     int owed = Mathf.Min(vm.DiscardOwed, 12), chosen = Mathf.Min(_hud.DiscardChosen, owed);
                     float f = owed > 0 ? chosen / (float)owed : 0f;
                     it.Model.Find("Body").localScale = Vector3.one * (0.8f + 0.25f * f);
@@ -641,7 +645,7 @@ namespace World.Game
                     SetSand(it.Model.Find("Mini"), frac, true, frac > 0.3f ? new Color(0.98f, 0.82f, 0.38f) : new Color(0.95f, 0.4f, 0.25f));
                     return;
                 }
-                case "sack-clear": Place(it, r, 0.85f); return;
+                case "sack-clear": Place(it, r, 1.1f); return;
                 case "chronicler":
                     Place(it, r, 0.95f);
                     it.Model.Find("Flame").gameObject.SetActive(_hud.UnreadFeed > 0);
@@ -671,7 +675,7 @@ namespace World.Game
             if (id.StartsWith("mat-get:")) { RefreshMatPart(it, r, vm, now); return; }
             if (id.StartsWith("envoy:"))
             {
-                Place(it, r, 0.95f);
+                Place(it, r, 1.15f);
                 int oid = int.Parse(id.Substring(6));
                 TradeOffer o = null; foreach (var x in vm.Incoming) if (x.Id == oid) o = x;
                 if (o == null) return;
@@ -698,7 +702,7 @@ namespace World.Game
                 Paint(it.Model.Find("Bowl").gameObject, TableRules.CanPay(vm.Hand, o.Get) ? Wood : new Color(0.2f, 0.17f, 0.14f));
                 return;
             }
-            if (id.StartsWith("wave:")) { Place(it, r, 0.9f); return; }
+            if (id.StartsWith("wave:")) { Place(it, r, 1.05f); return; }
             Place(it, r, 0.9f);
         }
 
