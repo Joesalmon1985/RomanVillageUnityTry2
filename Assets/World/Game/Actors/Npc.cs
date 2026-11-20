@@ -306,6 +306,8 @@ namespace World.Game
         public const float LookRange = 9f;
         /// <summary>Optional: someone this villager is talking with (it looks at them; set by conversing pairs).</summary>
         public Transform LookPartner;
+        /// <summary>P1: true while this villager has the word in a wordless conversation (<see cref="ConverseGroup"/>): it gestures.</summary>
+        public bool Chatting;
         private float _bodyLangAt;
 
         /// <summary>
@@ -318,7 +320,7 @@ namespace World.Game
             if (Time.time < _bodyLangAt) return;
             _bodyLangAt = Time.time + 0.2f + (GetInstanceID() & 7) * 0.005f;
             bool encounter = EncounterHost.Instance != null && EncounterHost.Instance.IsRunning;
-            pa.Talking = !encounter && HasShownBubble();
+            pa.Talking = !encounter && (Chatting && !IsWalking || HasShownBubble());
             Vector3? look = null;
             var views = ViewSwitcher.Instance;
             if (!IsWalking && !encounter && views != null && views.CurrentView != ViewMode.God)

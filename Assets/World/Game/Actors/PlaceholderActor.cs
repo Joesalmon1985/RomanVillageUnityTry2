@@ -13,7 +13,11 @@ namespace World.Game
             /// <summary>Package N: a come-here wave (calling the player over) and a builder's hammering.</summary>
             Beckon = "beckon", Hammer = "hammer",
             /// <summary>Both arms overhead, clapping (the council's supporters).</summary>
-            ClapHigh = "clapHigh";
+            ClapHigh = "clapHigh",
+            /// <summary>P1: a two-handed staff blow (sparring), a guard with both forearms up, an open-armed explaining sweep (referee, talk).</summary>
+            Strike = "strike", Block = "block", Gesture = "gesture",
+            /// <summary>P1: a listener's nod (head only).</summary>
+            Nod = "nod";
     }
 
     /// <summary>
@@ -212,6 +216,10 @@ namespace World.Game
                 case ActorKeys.Beckon: len = 1.4f; break;
                 case ActorKeys.Hammer: len = 0.9f; break;
                 case ActorKeys.ClapHigh: len = 1.6f; break;
+                case ActorKeys.Strike: len = 0.75f; break;
+                case ActorKeys.Block: len = 0.7f; break;
+                case ActorKeys.Gesture: len = 1.3f; break;
+                case ActorKeys.Nod: len = 0.8f; break;
                 default: return false;
             }
             _oneShot = key; _oneShotT = 0; _oneShotLen = len;
@@ -361,6 +369,33 @@ namespace World.Game
                         lift = Mathf.Max(lift, Mathf.Abs(Mathf.Sin(_oneShotT * 5f)) * 0.07f * env);
                         break;
                     }
+                    case ActorKeys.Strike:
+                    {
+                        // Wind up over the shoulder, swing down and through, recover.
+                        float wind = u < 0.35f ? Mathf.SmoothStep(0, 1, u / 0.35f) : 0f;
+                        float hit = u >= 0.35f ? Mathf.Clamp01((u - 0.35f) / 0.2f) : 0f;
+                        float rec = u >= 0.6f ? Mathf.SmoothStep(0, 1, (u - 0.6f) / 0.4f) : 0f;
+                        float ax = Mathf.Lerp(Mathf.Lerp(-30f, -165f, wind), -55f, hit);
+                        ax = Mathf.Lerp(ax, armR.x, rec);
+                        armR = new Vector3(ax, 0, -10f); armL = new Vector3(ax + 8f, 0, 10f);
+                        bodyPitch = Mathf.Lerp(-8f * wind + 18f * hit, 0f, rec); lift = 0.03f * hit * (1f - rec);
+                        break;
+                    }
+                    case ActorKeys.Block:
+                        armL = Vector3.Lerp(armL, new Vector3(-120f, 0, 28f), env); armR = Vector3.Lerp(armR, new Vector3(-120f, 0, -28f), env);
+                        bodyPitch = -10f * env; headPitch += 10f * env;
+                        break;
+                    case ActorKeys.Gesture:
+                    {
+                        float sweep = Mathf.Sin(u * Mathf.PI * 2f);
+                        armR = Vector3.Lerp(armR, new Vector3(-75f, 0, 40f + sweep * 30f), env);
+                        armL = Vector3.Lerp(armL, new Vector3(-50f, 0, -25f - sweep * 15f), env * 0.8f);
+                        bodyPitch = 5f * env; headYaw += sweep * 12f * env;
+                        break;
+                    }
+                    case ActorKeys.Nod:
+                        headPitch += Mathf.Max(0f, Mathf.Sin(u * Mathf.PI * 3f)) * 16f * env; bodyPitch += 3f * env;
+                        break;
                     case ActorKeys.Hammer:
                     {
                         float k = Mathf.Abs(Mathf.Sin(u * Mathf.PI * 2f));
@@ -429,7 +464,7 @@ namespace World.Game
         {
             Carrying = style;
             if (_load != null) { Destroy(_load); _load = null; }
-            if (style == CarryStyle.None) return;
+            if (style == CarryStyle.None || load.a < 0.01f) return; // alpha 0: the pose only (the caller carries its own prop)
             var m = MaterialFactory.Shared(load);
             _load = style == CarryStyle.Shoulder
                 ? Signs.Prim(PrimitiveType.Cube, _body, "Load", new Vector3(0.2f, 1.62f, -0.04f), new Vector3(0.34f, 0.28f, 0.52f), m)

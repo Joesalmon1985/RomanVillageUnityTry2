@@ -238,6 +238,21 @@ namespace World.Game
         {
             _actors = GetComponentsInChildren<PlaceholderActor>();
             _next = Time.time + 2f;
+            // P1: figures standing within 4.5 m of each other pair up and talk (a figure joins at most one pair).
+            var used = new bool[_actors.Length];
+            for (int i = 0; i < _actors.Length; i++)
+            {
+                if (used[i] || _actors[i] == null) continue;
+                for (int j = i + 1; j < _actors.Length; j++)
+                {
+                    if (used[j] || _actors[j] == null) continue;
+                    var a = (PlaceholderActor)_actors[i]; var b = (PlaceholderActor)_actors[j];
+                    if (BoardSpace.Flat(a.transform.position - b.transform.position) > 4.5f) continue;
+                    used[i] = used[j] = true;
+                    ConverseGroup.Start(a.transform, a.transform, b.transform);
+                    break;
+                }
+            }
         }
 
         private void Update()
@@ -245,7 +260,7 @@ namespace World.Game
             if (_actors == null || _actors.Length == 0 || Time.time < _next) return;
             _next = Time.time + 3.5f + (_turn % 3);
             var a = _actors[_turn % _actors.Length];
-            if (a != null && !a.IsPlayingOneShot) a.PlayOneShot(Moves[_turn % Moves.Length]);
+            if (a != null && !a.IsPlayingOneShot && !((PlaceholderActor)a).Talking) a.PlayOneShot(Moves[_turn % Moves.Length]);
             _turn++;
         }
     }

@@ -685,6 +685,16 @@ namespace World.Game
                 float frac = Mathf.Clamp01(o.TicksLeft / (float)Mathf.Max(1, vm.OfferTicks));
                 walker.localPosition = new Vector3((1f - w) * 3.5f, w < 1f ? Mathf.Abs(Mathf.Sin(now * 12f)) * 0.04f : 0f, 0f);
                 walker.localRotation = Quaternion.Euler(0f, w < 1f ? -70f * (1f - w) : (1f - frac) * 110f, 0f);
+                // P1: the robed envoy rocks from foot to foot as it walks in, then waits shifting its weight, with a small
+                // bow every few seconds while patience lasts (a different phase per envoy).
+                var envoyBody = walker.Find("Envoy");
+                if (envoyBody != null)
+                {
+                    float ph = oid * 1.7f, bowK = Mathf.Max(0f, Mathf.Sin(now * 0.9f + ph) - 0.85f) / 0.15f;
+                    envoyBody.localRotation = w < 1f
+                        ? Quaternion.Euler(6f, 0f, Mathf.Sin(now * 12f) * 7f)
+                        : Quaternion.Euler(bowK * 16f * frac, 0f, Mathf.Sin(now * 1.3f + ph) * 2.5f);
+                }
                 string sig = o.From + "|" + string.Join(",", o.Give) + "|" + string.Join(",", o.Get);
                 if (it.Sig != sig)
                 {
