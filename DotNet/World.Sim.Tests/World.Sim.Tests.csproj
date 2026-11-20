@@ -10,7 +10,7 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../../Assets/World/Tests/EditMode/**/*.cs" />
+    <Compile Include="../../Assets/World/Tests/EditMode/**/*.cs" Exclude="../../Assets/World/Tests/EditMode/Game/**/*.cs" /><!-- EditMode/Game needs UnityEngine (World.Game.EditTests); Unity runs it -->
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />

@@ -103,3 +103,21 @@ If the Ash Clan's runners get there first (they set out when the campaign starts
 - Walking between spots is 50 to 100 m each time. The Tab map can walk you there.
 - The Ash Clan is weak against a player who answers quickly; a slow player can still lose.
 - The dance has no lanes: most notes are on the two outer drums.
+
+## God board smoke runs
+
+Packaged AutoPlay scripts for the god board (PRD_GODBOARD 12.3). Build with `AgentScripts/BuildWindows.cs`, then run each; it logs `[AutoPlay] <name> OK` and exits 0, or `FAILED` and exits 1. Each takes 6 to 20 seconds (it pauses the clock and steps it by hand).
+
+```bash
+Builds/Windows/WorldMVP.exe -autoplay <name> -novsync -screen-fullscreen 0 -screen-width 844 -screen-height 390 -logFile Builds/logs/<name>.log
+```
+
+| Script | What it checks |
+|---|---|
+| `board_first_round` | dev.godboard, walk to the altar, sacrifice, setup camp and road, AI seats place, first turn, a production pulse, leave (table pauses and stays frozen), come back (resumes) |
+| `board_trade_discard` | bank trade from the trade modal changes the hand; an AI offer card is accepted; a 7 from the table's own dice forces a discard that is completed |
+| `plague_epidemic` | a 7 brings an epidemic (feed line, sky, demons), the overlay shows 48 nodes, a banish on foot removes a demon |
+| `war_burn` | a soldier reaches an unguarded camp, it burns, a ruin shows, the owner's table points drop |
+| `board_to_historic` | dev.godboard.eve: the switch plays, temples fall, castle scaffolds start, trees render, the player walks |
+
+Set-up that would need luck or minutes (cards in hand, an AI offer, a points lead, extra soldiers) is prepared by `World.Sim.Table.SmokeSetup` in the sim; everything else goes through commands and the views' public methods. `first_scene` is the older smoke run.

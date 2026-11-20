@@ -61,6 +61,8 @@ namespace World.Game
         public int SacrificeCount { get; private set; }
         /// <summary>Unscaled time of the last epidemic (a resolved 7), for the banner; far in the past at first.</summary>
         public float EpidemicAt { get; private set; } = -100f;
+        /// <summary>Production pulses played so far (a Produced event with hexes); read by the AutoPlay smoke scripts.</summary>
+        public int ProductionPulses { get; private set; }
         /// <summary>The table has ended: an age turned or the island fell. No further table input.</summary>
         public bool GameOver => T != null && T.Phase == TablePhase.Ended;
 
@@ -198,6 +200,20 @@ namespace World.Game
         }
 
         // ---------------------------------------------------------------- opening and leaving
+
+        /// <summary>WU-0 preview: could the player sacrifice now? Reads state only (sim <c>Check</c>), says why not.</summary>
+        public WorldActionCheck CheckSacrifice(bool ignoreRange = false)
+        {
+            if (T == null) return WorldActionCheck.Disable("This game has no god board.");
+            if (IsOpen || View == BoardView.Falling) return WorldActionCheck.Disable("The god board is open.");
+            var altar = OwnTemple;
+            if (altar == null) return WorldActionCheck.Disable("There is no altar here.");
+            var w = PlayerWalker.Instance;
+            if (!ignoreRange && w != null && BoardSpace.Flat(altar.transform.position - w.Position) > AltarRange)
+                return WorldActionCheck.Refuse("Walk closer to the altar.");
+            var r = _boot.Sim.Check(new Sacrifice { PlayerId = Human });
+            return r.Ok ? WorldActionCheck.Allowed : WorldActionCheck.Refuse(r.Message);
+        }
 
         /// <summary>Casting at the altar: sends <c>Sacrifice</c> and starts the camera rise (GB-1).</summary>
         public bool TrySacrifice(bool ignoreRange = false)
@@ -484,7 +500,7 @@ namespace World.Game
             {
                 switch (e)
                 {
-                    case Produced pr: HexDressingView.Pulse(pr.Hexes); if (Collectors != null) Collectors.OnProduced(pr); break;
+                    case Produced pr: if (pr.Hexes != null && pr.Hexes.Length > 0) ProductionPulses++; HexDressingView.Pulse(pr.Hexes); if (Collectors != null) Collectors.OnProduced(pr); break;
                     case Built b: if (b.People == Human) BuildMode = BuildKind.None; Feed1(Name(b.People) + (b.People == Human ? " built a " : " built a ") + b.Kind + "."); break;
                     case Traded tr: Feed1(tr.With < 0 ? Name(tr.People) + " traded at the bank." : Name(tr.People) + " traded with " + Name(tr.With) + "."); break;
                     case TradeRefused rf:
