@@ -4,6 +4,8 @@ using System.Text;
 using UnityEditor;
 using UnityEngine;
 using World.Game;
+using World.Sim;
+using World.Sim.Table;
 
 /// <summary>
 /// WU-0 capture driver for the world-first UI (Docs/WORLD_UI_PLAN.md, P-6): the three ratios with a simulated notch
@@ -73,6 +75,104 @@ public static class WorldUiCaptures
                     return "altar " + r + " " + WorldActions.State;
                 }
             case "cancel": WorldActions.Cancel(); return "cancelled";
+            // ---- WU-2: the altar ledge scenarios
+            case "open1":
+                {
+                    var d = GodBoardDirector.Instance; GodBoardDirector.RiseSeconds = 0.3f;
+                    boot.Clock.Pause("WorldUiCapture");
+                    bool ok = d.TrySacrifice(true); for (int i = 0; i < 3; i++) boot.Clock.StepOnce();
+                    return "open1 " + ok + " " + d.View;
+                }
+            case "open2":
+                {
+                    var d = GodBoardDirector.Instance; var t = boot.Sim.State.Table;
+                    if (d.View != BoardView.Board) return "not on the board: " + d.View;
+                    WorldActions.Machine.MinConfirmSeconds = 0f; WorldActions.Machine.GuardSeconds = 0f;
+                    d.IsSpotOffered(BuildKind.Road, 0); // refreshes the marks
+                    if (t.SetupCorner < 0)
+                    {
+                        if (d.AdviseCorner < 0) return "no advised corner yet (view " + d.View + ")";
+                        d.TapAtNow(d.ScreenOfCorner(d.AdviseCorner)); boot.Clock.StepOnce(); boot.Clock.StepOnce();
+                        d.IsSpotOffered(BuildKind.Road, 0);
+                    }
+                    if (t.Phase == TablePhase.Setup && d.EdgeSpots.Count > 0) d.TapAtNow(d.ScreenOfEdge(d.EdgeSpots[0])); boot.Clock.StepOnce(); boot.Clock.StepOnce();
+                    int g = 0; while (!(t.Phase == TablePhase.Main && t.Current == 0 && !t.Paused) && g++ < 20000) boot.Clock.StepOnce();
+                    return "open2 phase " + t.Phase + " current " + t.Current;
+                }
+            case "tstate": { var t = boot.Sim.State.Table; var d = GodBoardDirector.Instance; return "phase " + t.Phase + " cur " + t.Current + " paused " + t.Paused + " view " + d.View + " myturn " + d.MyTurn + " corners " + d.CornerSpots.Count; }
+            case "hand":
+                {
+                    var h = boot.Sim.State.Table.Peoples[0].Hand;
+                    for (int i = 0; i < 5; i++) h[i] = int.Parse(a[1 + i]);
+                    return "hand set";
+                }
+            case "buildmode":
+                {
+                    var d = GodBoardDirector.Instance; d.SetBuildMode(a[1] == "road" ? BuildKind.Road : a[1] == "camp" ? BuildKind.Settlement : BuildKind.City);
+                    return "buildmode " + d.BuildMode;
+                }
+            case "preview":
+                {
+                    var d = GodBoardDirector.Instance; d.FreshModel();
+                    if (d.EdgeSpots.Count == 0 && d.CornerSpots.Count == 0) return "no spots";
+                    string r = a.Length > 1 && a[1] == "camp" && d.CornerSpots.Count > 0 ? d.TapAt(d.ScreenOfCorner(d.CornerSpots[0])) : d.EdgeSpots.Count > 0 ? d.TapAt(d.ScreenOfEdge(d.EdgeSpots[0])) : d.TapAt(d.ScreenOfCorner(d.CornerSpots[0]));
+                    return "preview " + r;
+                }
+            case "tapledge":
+                {
+                    var hud = GodBoardDirector.Instance.GetComponent<GodBoardHud>();
+                    return "tapledge " + a[1] + " " + hud.TapLedge(a[1]);
+                }
+            case "mat":
+                {
+                    var hud = GodBoardDirector.Instance.GetComponent<GodBoardHud>();
+                    hud.TapLedge("trader"); hud.TapLedge("basket:0"); hud.SelectBankGet(4);
+                    return "mat " + hud.MatOpen;
+                }
+            case "envoy":
+                {
+                    var t = boot.Sim.State.Table;
+                    var o1 = new TradeOffer { Id = t.NextOfferId++, From = 1, To = 0, TicksLeft = 110, Status = OfferStatus.Open }; o1.Give[1] = 1; o1.Get[3] = 1;
+                    var o2 = new TradeOffer { Id = t.NextOfferId++, From = 2, To = 0, TicksLeft = 40, Status = OfferStatus.Open }; o2.Give[2] = 2; o2.Get[4] = 1;
+                    t.Offers.Add(o1); t.Offers.Add(o2);
+                    return "envoys " + o1.Id + "," + o2.Id;
+                }
+            case "discard":
+                {
+                    var t = boot.Sim.State.Table; var h = t.Peoples[0].Hand;
+                    h[0] = 4; h[1] = 3; h[2] = 2; h[3] = 3; h[4] = 2;
+                    t.Phase = TablePhase.Discard; t.DiscardOwed = new int[t.PeopleCount]; t.DiscardOwed[0] = 7; t.DiscardTicksLeft = 90;
+                    var hud = GodBoardDirector.Instance.GetComponent<GodBoardHud>();
+                    return "discard " + hud.DiscardVisible;
+                }
+            case "fill":
+                {
+                    var hud = GodBoardDirector.Instance.GetComponent<GodBoardHud>();
+                    for (int g = 0; g < 5; g++) hud.AdjustDiscard(g, 1 + 0 * g);
+                    hud.AdjustDiscard(0, 1); hud.AdjustDiscard(1, 1);
+                    return "sack " + hud.DiscardChosen;
+                }
+            case "epidemic":
+                {
+                    var d = GodBoardDirector.Instance;
+                    d.ShowMoment("epidemic", "The gods are angry.", "Sickness runs through the camps.", 6f);
+                    return "epidemic moment";
+                }
+            case "gameover":
+                {
+                    TableEngine eng = null;
+                    foreach (var sys in boot.Sim.Systems) if (sys is TableEngine te) eng = te;
+                    return "gameover " + (eng != null && eng.IslandFalls(boot.Sim.State, new EventBuffer()));
+                }
+            case "clearview": GodBoardSettings.Override = a[1] == "on"; return "clearview " + a[1];
+            case "ledge":
+                {
+                    var hud = GodBoardDirector.Instance.GetComponent<GodBoardHud>();
+                    var sb = new StringBuilder("band " + hud.LedgeBand + " safe " + ScreenSafeArea.Current() + " rects " + hud.LedgeRects.Count);
+                    foreach (var kv in hud.LedgeRects) if (kv.Key == "basket:0" || kv.Key == "hourglass" || kv.Key == "lamb") sb.Append(" " + kv.Key + "=" + kv.Value);
+                    sb.Append(" minside " + WorldHitTarget.MinSide(Screen.height));
+                    return sb.ToString();
+                }
             case "hour": DayNight.Instance.SetHour(float.Parse(a[1], ci)); return "hour";
             case "pause": boot.Clock.Pause("WorldUiCapture"); return "paused";
             case "resume": boot.Clock.Resume("WorldUiCapture"); return "resumed";

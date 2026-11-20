@@ -56,27 +56,11 @@ namespace World.Game
         public bool GameOverShown { get { var t = Tb; return t != null && _d.View == BoardView.Board && t.Phase == TablePhase.Ended; } }
 
         /// <summary>Open offers addressed to the player (or to everyone) that the player may still answer, soonest to expire first.</summary>
-        public List<TradeOffer> IncomingOffers()
-        {
-            var list = new List<TradeOffer>();
-            var t = Tb;
-            if (t == null || t.Paused || t.Phase != TablePhase.Main) return list;
-            int me = _d.Human;
-            foreach (var o in t.Offers)
-                if (o.Status == OfferStatus.Open && o.From != me && (o.To == me || o.To < 0) && !o.DeclinedBy.Contains(me)) list.Add(o);
-            list.Sort((a, b) => a.TicksLeft.CompareTo(b.TicksLeft));
-            return list;
-        }
+        public List<TradeOffer> IncomingOffers() => _d.FreshModel().Incoming;
 
-        public TradeOffer OwnOpenOffer()
-        {
-            var t = Tb;
-            if (t == null) return null;
-            foreach (var o in t.Offers) if (o.Status == OfferStatus.Open && o.From == _d.Human) return o;
-            return null;
-        }
+        public TradeOffer OwnOpenOffer() => _d.FreshModel().OwnOffer;
 
-        public int BankRate(int good) => TableRules.TradeRate(_d.S, _d.Human, (Ware)good);
+        public int BankRate(int good) => _d.FreshModel().BankRate[good];
 
         private bool CanAct
         {

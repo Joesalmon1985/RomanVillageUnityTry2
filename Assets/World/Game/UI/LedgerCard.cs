@@ -143,6 +143,8 @@ namespace World.Game
         public static Transform Anchor { get; private set; }
         /// <summary>The thing whose screen bounds the card keeps clear of (the tapped object), or null.</summary>
         public static Component Bounds { get; private set; }
+        /// <summary>A screen-space object (the altar ledge) the card unfolds from, or null.</summary>
+        public static IScreenAnchored ScreenAnchor { get; private set; }
         public static bool IsOpen => Content != null;
         /// <summary>Unscaled time the card was opened (for the unfold).</summary>
         public static float OpenedAt { get; private set; }
@@ -151,11 +153,11 @@ namespace World.Game
         public static event Action Changed;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() { Content = null; Anchor = null; Changed = null; LastRect = default; }
+        private static void ResetStatics() { Content = null; Anchor = null; ScreenAnchor = null; Changed = null; LastRect = default; }
 
-        public static void Show(LedgerContent content, Transform anchor, LedgerMode mode, Component bounds = null)
+        public static void Show(LedgerContent content, Transform anchor, LedgerMode mode, Component bounds = null, IScreenAnchored screen = null)
         {
-            Bounds = bounds;
+            Bounds = bounds; ScreenAnchor = screen;
 #if UNITY_EDITOR
             var v = LedgerText.Violation(content);
             if (v != null) Debug.LogWarning("LedgerCard: text speaks of '" + v + "' (AB-1): " + string.Join(" / ", content.AllText()));
@@ -167,7 +169,7 @@ namespace World.Game
         public static void Hide()
         {
             if (Content == null) return;
-            Content = null; Anchor = null; Bounds = null; LastRect = default;
+            Content = null; Anchor = null; Bounds = null; ScreenAnchor = null; LastRect = default;
             Changed?.Invoke();
         }
 
@@ -183,7 +185,8 @@ namespace World.Game
         public static LedgerLayout CurrentLayout(Camera cam)
         {
             Rect? a = null;
-            if (Bounds != null && cam != null && WorldHitTarget.ScreenBounds(Bounds, cam, out var br))
+            if (ScreenAnchor != null && ScreenAnchor.TryGetScreenRect(out var sr)) a = sr;
+            if (!a.HasValue && Bounds != null && cam != null && WorldHitTarget.ScreenBounds(Bounds, cam, out var br))
             {
                 var screen = new Rect(0, 0, Screen.width, Screen.height);
                 if (br.Overlaps(screen) && br.width < Screen.width * 0.9f) a = br;
@@ -251,12 +254,13 @@ namespace World.Game
                 _ask = new GUIStyle(_body) { fontStyle = FontStyle.Bold }; _ask.normal.textColor = Ask;
                 _no = new GUIStyle(_body); _no.normal.textColor = No;
             }
-            GUI.depth = -8;
+            GUI.depth = -12;
             // Unfold: the tablet grows from the anchor.
             float t = Mathf.Clamp01((Time.unscaledTime - LedgerCard.OpenedAt) / UnfoldSeconds);
             var full = L.Card;
             Vector2 from = full.center;
-            if (LedgerCard.Anchor != null && cam != null)
+            if (LedgerCard.ScreenAnchor != null && LedgerCard.ScreenAnchor.TryGetScreenRect(out var sar)) from = sar.center;
+            else if (LedgerCard.Anchor != null && cam != null)
             {
                 var s = cam.WorldToScreenPoint(LedgerCard.Anchor.position);
                 if (s.z > 0) from = new Vector2(s.x, Screen.height - s.y);

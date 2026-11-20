@@ -17,7 +17,7 @@ namespace World.Game.Tests
         private GodBoardDirector _d;
         private WorldState S => _boot.Sim.State;
 
-        [SetUp] public void SetUp() { GodBoardDirector.RiseSeconds = 0.05f; }
+        [SetUp] public void SetUp() { GodBoardDirector.RiseSeconds = 0.05f; PointerInput.InputEnabled = true; GodBoardSettings.Override = null; }
         [TearDown] public void TearDown() { GodBoardDirector.RiseSeconds = 2.4f; Time.timeScale = 1f; }
 
         private IEnumerator Start(bool pause = true)

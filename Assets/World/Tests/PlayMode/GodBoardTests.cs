@@ -17,7 +17,7 @@ namespace World.Game.Tests
         private GodBoardDirector _d;
         private WorldState S => _boot.Sim.State;
 
-        [SetUp] public void SetUp() { GodBoardDirector.RiseSeconds = 0.05f; }
+        [SetUp] public void SetUp() { GodBoardDirector.RiseSeconds = 0.05f; PointerInput.InputEnabled = true; GodBoardSettings.Override = null; }
         [TearDown] public void TearDown() { GodBoardDirector.RiseSeconds = 2.4f; }
 
         private IEnumerator Start()
@@ -106,7 +106,7 @@ namespace World.Game.Tests
             int c = _d.AdviseCorner;
             Assert.GreaterOrEqual(c, 0, "the adviser marks a corner");
             Assert.IsTrue(_d.CornerSpots.Contains(c));
-            string tapped = _d.TapAt(_d.ScreenOfCorner(c));
+            string tapped = _d.TapAtNow(_d.ScreenOfCorner(c)); // the one-tap path; the preview path is in GodBoardLedgeTests
             Assert.AreEqual("corner " + c, tapped);
             Step(2);
             yield return null;
@@ -117,7 +117,7 @@ namespace World.Game.Tests
             yield return null;
             Assert.Greater(_d.EdgeSpots.Count, 0);
             int e = _d.EdgeSpots[0];
-            Assert.IsNotNull(_d.TapAt(_d.ScreenOfEdge(e)));
+            Assert.IsNotNull(_d.TapAtNow(_d.ScreenOfEdge(e)));
             Step(2);
             yield return null;
             Assert.AreEqual(0, S.Table.RoadOwner[e]);
@@ -167,8 +167,8 @@ namespace World.Game.Tests
             Step(2);
             yield return WaitView(BoardView.Board);
             yield return null;
-            _d.TapAt(_d.ScreenOfCorner(_d.AdviseCorner)); Step(2); yield return null;
-            _d.TapAt(_d.ScreenOfEdge(_d.EdgeSpots[0])); Step(2); yield return null;
+            _d.TapAtNow(_d.ScreenOfCorner(_d.AdviseCorner)); Step(2); yield return null;
+            _d.TapAtNow(_d.ScreenOfEdge(_d.EdgeSpots[0])); Step(2); yield return null;
             int guard = 0;
             while (!(S.Table.Phase == TablePhase.Main && S.Table.Current == 0 && !S.Table.Paused) && guard++ < 20000) Step(5);
             Assert.AreEqual(TablePhase.Main, S.Table.Phase, "reached the player's turn");

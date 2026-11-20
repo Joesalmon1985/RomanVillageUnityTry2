@@ -57,6 +57,12 @@ namespace World.Game
         bool Commit();
     }
 
+    /// <summary>An action or inspectable that lives on the screen rather than in the scene (the altar ledge, WU-2): its rect in GUI coordinates (top-left origin), for the ledger card to unfold from.</summary>
+    public interface IScreenAnchored
+    {
+        bool TryGetScreenRect(out Rect gui);
+    }
+
     /// <summary>A world action that is a scene object: where the ledger unfolds from and how far a key press reaches.</summary>
     public interface IWorldActionAnchor
     {
@@ -214,7 +220,10 @@ namespace World.Game
         public static bool ScreenBounds(Component c, Camera cam, out Rect rect)
         {
             rect = default;
-            if (c == null || cam == null) return false;
+            if (c == null) return false;
+            var lp = c.GetComponent<LedgeProxy>(); // the altar ledge lives on the screen, not in the scene
+            if (lp != null) return lp.TryGetScreenRect(out rect);
+            if (cam == null) return false;
             bool any = false; var b = new Bounds();
             foreach (var r in c.GetComponentsInChildren<Renderer>()) { if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds); }
             foreach (var col in c.GetComponentsInChildren<Collider>()) { if (!any) { b = col.bounds; any = true; } else b.Encapsulate(col.bounds); }
@@ -326,14 +335,14 @@ namespace World.Game
             switch (m.State)
             {
                 case WorldActionState.Preview:
-                    LedgerCard.Show(LedgerContent.From(m.Current, ((IWorldAction)m.Current).PreviewLine, null), AnchorOf(m.Current), LedgerMode.Preview, m.Current as Component);
+                    LedgerCard.Show(LedgerContent.From(m.Current, ((IWorldAction)m.Current).PreviewLine, null), AnchorOf(m.Current), LedgerMode.Preview, m.Current as Component, m.Current as IScreenAnchored);
                     break;
                 case WorldActionState.Inspect:
-                    LedgerCard.Show(LedgerContent.From(m.Current, null, null), AnchorOf(m.Current), LedgerMode.Inspect, m.Current as Component);
+                    LedgerCard.Show(LedgerContent.From(m.Current, null, null), AnchorOf(m.Current), LedgerMode.Inspect, m.Current as Component, m.Current as IScreenAnchored);
                     break;
                 case WorldActionState.Refused:
                 case WorldActionState.Disabled:
-                    LedgerCard.Show(LedgerContent.From(m.Current, null, m.Reason), AnchorOf(m.Current), LedgerMode.Refused, m.Current as Component);
+                    LedgerCard.Show(LedgerContent.From(m.Current, null, m.Reason), AnchorOf(m.Current), LedgerMode.Refused, m.Current as Component, m.Current as IScreenAnchored);
                     break;
                 default:
                     LedgerCard.Hide();
@@ -357,14 +366,18 @@ namespace World.Game
         public const float MoveMetres = 0.35f, TurnDegrees = 2.5f;
         private Vector3 _lastPos; private Quaternion _lastRot; private Camera _lastCam;
 
+        /// <summary>The god board owns the pointer (WU-2): its ledge and ghost previews use the same machine.</summary>
+        private static bool OnGodBoard => GodBoardDirector.Instance != null && GodBoardDirector.Instance.View == BoardView.Board;
+
         private static bool Blocked =>
-            !PointerInput.InputEnabled || Hud.MenuOpen || MapScreen.IsOpen
+            (!PointerInput.InputEnabled && !OnGodBoard) || Hud.MenuOpen || MapScreen.IsOpen
             || (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning);
 
         private void Update()
         {
             WorldActions.Machine.Tick(Time.unscaledTime);
             var cam = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.ActiveCamera : Camera.main;
+            if (OnGodBoard) cam = GodBoardDirector.Instance.BoardCam; // the board camera is the one the player sees (panning is a drag, not a tap)
             if (cam != null)
             {
                 var t = cam.transform;

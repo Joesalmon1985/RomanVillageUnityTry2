@@ -85,7 +85,7 @@ namespace World.Game
             SettlementCount = sc; CityCount = cc; RoadCount = rc;
         }
 
-        private GameObject BuildHouse(Vector3 at, Color col, bool city, int corner)
+        private GameObject BuildHouse(Vector3 at, Color col, bool city, int corner, Transform parent = null)
         {
             var mb = new MeshBuilder();
             float w = city ? HouseWidth * 1.35f : HouseWidth;
@@ -97,13 +97,13 @@ namespace World.Game
                 mb.Box(new Vector3(w * 0.32f, 8f, w * 0.1f), new Vector3(w * 0.28f, 16f, w * 0.28f), Color.Lerp(col, Color.white, 0.4f));
                 mb.Cone(new Vector3(w * 0.32f, 16f, w * 0.1f), w * 0.26f, 6f, 4, col * 0.6f);
             }
-            var go = mb.ToObject((city ? "City " : "Settlement ") + corner, _pieces, _pieceMat);
+            var go = mb.ToObject((city ? "City " : "Settlement ") + corner, parent != null ? parent : _pieces, _pieceMat);
             go.transform.position = at + Vector3.up * 0.4f;
             go.layer = 2;
             return go;
         }
 
-        private GameObject BuildRoad(int edge, Color col)
+        private GameObject BuildRoad(int edge, Color col, Transform parent = null)
         {
             var topo = _s.Board.Topology;
             BoardSpace.HexEdgeEnds(topo, edge, out var a, out var b);
@@ -117,7 +117,7 @@ namespace World.Game
             mb.Quad(P(h0, -RoadWidth * 0.62f, 0.15f), P(h1, -RoadWidth * 0.62f, 0.15f), P(h1, RoadWidth * 0.62f, 0.15f), P(h0, RoadWidth * 0.62f, 0.15f), new Color(0.08f, 0.07f, 0.06f));
             mb.Quad(P(h0, -RoadWidth * 0.62f, 0.15f), P(h0, RoadWidth * 0.62f, 0.15f), P(h1, RoadWidth * 0.62f, 0.15f), P(h1, -RoadWidth * 0.62f, 0.15f), new Color(0.08f, 0.07f, 0.06f));
             mb.Box(P(len * 0.5f, 0, 1.2f), new Vector3(RoadWidth, 2.2f, h1 - h0), col, Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg);
-            var go = mb.ToObject("Road " + edge, _pieces, _pieceMat);
+            var go = mb.ToObject("Road " + edge, parent != null ? parent : _pieces, _pieceMat);
             go.transform.position = a + Vector3.up * 0.3f;
             go.layer = 2;
             return go;
@@ -148,7 +148,7 @@ namespace World.Game
             go.transform.position = at + Vector3.up * y; go.layer = 2;
         }
 
-        private void Ring(Vector3 at, float r, Material m, string name)
+        private void Ring(Vector3 at, float r, Material m, string name, Transform parent = null)
         {
             var mb = new MeshBuilder();
             const int N = 20;
@@ -159,18 +159,51 @@ namespace World.Game
                 mb.Quad(o0 * (r - 9f), o0 * r, o1 * r, o1 * (r - 9f), Color.white);
                 mb.Quad(o0 * (r - 9f), o1 * (r - 9f), o1 * r, o0 * r, Color.white);
             }
-            var go = mb.ToObject(name, _marks, m);
+            var go = mb.ToObject(name, parent != null ? parent : _marks, m);
             go.transform.position = at + Vector3.up * 15f; go.layer = 2;
         }
 
-        private void Bar(int edge, float width, Material m, string name, float y = 14f)
+        private void Bar(int edge, float width, Material m, string name, float y = 14f, Transform parent = null)
         {
             BoardSpace.HexEdgeEnds(_s.Board.Topology, edge, out var a, out var b);
             var d = b - a; d.y = 0; float len = d.magnitude; var dir = d / len;
             var mb = new MeshBuilder();
             mb.Box(Vector3.zero, new Vector3(width, 0.6f, len * 0.62f), Color.white, Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg);
-            var go = mb.ToObject(name, _marks, m);
+            var go = mb.ToObject(name, parent != null ? parent : _marks, m);
             go.transform.position = (a + b) * 0.5f + Vector3.up * y; go.layer = 2;
+        }
+
+
+        // ---------------------------------------------------------------- the ghost piece (WU-2 preview)
+
+        private Transform _ghost;
+        private BuildKind _ghostKind; private int _ghostSpot = -1;
+        /// <summary>The ghost piece standing on the board now (preview before the command), or none.</summary>
+        public BuildKind GhostKind => _ghost != null ? _ghostKind : BuildKind.None;
+        public int GhostSpot => _ghost != null ? _ghostSpot : -1;
+        public bool HasGhost => _ghost != null;
+
+        /// <summary>Stands a pulsing ghost of the piece on a spot in a people's colour. Nothing is built.</summary>
+        public void ShowGhost(BuildKind kind, int spot, int people)
+        {
+            HideGhost();
+            var go = new GameObject("Ghost"); go.transform.SetParent(transform, false);
+            _ghost = go.transform; _ghostKind = kind; _ghostSpot = spot;
+            var topo = _s.Board.Topology;
+            var col = PeopleColour(people);
+            if (kind == BuildKind.Road) { BuildRoad(spot, col, _ghost); Bar(spot, 24f, _adviseMat, "Ghost ring", 16f, _ghost); }
+            else
+            {
+                var at = BoardSpace.Corner(topo, spot);
+                BuildHouse(at, col, kind == BuildKind.City, spot, _ghost);
+                Ring(at, 34f, _adviseMat, "Ghost ring", _ghost);
+            }
+        }
+
+        public void HideGhost()
+        {
+            if (_ghost != null) Destroy(_ghost.gameObject);
+            _ghost = null; _ghostSpot = -1; _ghostKind = BuildKind.None;
         }
 
         private void Update()

@@ -91,11 +91,17 @@ namespace World.Game
             int corner = -1, edge = -1;
             return s.WaitUntil(() => D.View == BoardView.Board, 20f, "the camera did not rise to the board")
                 .WaitUntil(() => D.MyTurn && D.AdviseCorner >= 0, 10f, "no setup corner offered")
-                .Call(() => { corner = D.AdviseCorner; if (D.TapAt(D.ScreenOfCorner(corner)) == null) throw new Exception("tap on the corner sent nothing"); })
+                .Call(() => { corner = D.AdviseCorner; string r = D.TapAt(D.ScreenOfCorner(corner)); if (r == null || !r.StartsWith("preview")) throw new Exception("the first tap on the corner did not preview: " + r); })
+                .Check(() => D.Pieces.HasGhost && T.CornerOwner[corner] != 0, "no ghost camp, or the camp was built before the second tap")
+                .Wait(0.5f)
+                .Call(() => { string r = D.TapAt(D.ScreenOfCorner(corner)); if (r == null || r.StartsWith("preview")) throw new Exception("the second tap on the corner sent nothing: " + r); })
                 .Tick(2)
                 .Check(() => T.CornerOwner[corner] == 0 && D.Pieces.CornerPiece(corner) != null, "the setup settlement did not appear")
                 .WaitUntil(() => D.EdgeSpots.Count > 0, 10f, "no setup road offered")
-                .Call(() => { edge = D.EdgeSpots[0]; if (D.TapAt(D.ScreenOfEdge(edge)) == null) throw new Exception("tap on the edge sent nothing"); })
+                .Wait(0.8f) // the tap guard after the camp's command
+                .Call(() => { edge = D.EdgeSpots[0]; string r = D.TapAt(D.ScreenOfEdge(edge)); if (r == null || !r.StartsWith("preview")) throw new Exception("the first tap on the edge did not preview: " + r); })
+                .Wait(0.5f)
+                .Call(() => { string r = D.TapAt(D.ScreenOfEdge(edge)); if (r == null || r.StartsWith("preview")) throw new Exception("the second tap on the edge sent nothing: " + r); })
                 .Tick(2)
                 .Check(() => T.RoadOwner[edge] == 0 && D.Pieces.RoadPiece(edge) != null, "the setup road did not appear")
                 .StepUntil(() => T.Phase == TablePhase.Main, 4000, "the AI seats did not finish placing")
@@ -150,13 +156,15 @@ namespace World.Game
             var s = new AutoPlayScript(name);
             int rate = 0, wood = 0, stone = 0, clay = 0, sheep = 0, offerId = 0, owed = 0, before = 0;
             s.Begun().OpenAndSetUp()
-             // Bank trade from the modal.
+             // Bank trade on the barter mat: the trader unrolls it, a basket gives, the wanted good is set opposite.
              .Call(() => { SmokeSetup.SetCards(S, 0, 0, 8); SmokeSetup.SetCards(S, 0, 4, 0); })
+             .Wait(0.1f)
              .Call(() =>
              {
-                 rate = Hud.BankRate(0); Hud.OpenTrade();
-                 if (!Hud.TradeOpen) throw new Exception("trade modal did not open");
-                 Hud.SelectBankGive(0); Hud.SelectBankGet(4);
+                 rate = Hud.BankRate(0); Hud.TapLedge("trader");
+                 if (!Hud.MatOpen) throw new Exception("the barter mat did not open");
+                 Hud.TapLedge("basket:0"); Hud.SelectBankGet(4);
+                 if (Hud.BankGive != 0) throw new Exception("the basket did not set the good to give");
                  wood = T.Peoples[0].Hand[0]; stone = T.Peoples[0].Hand[4];
                  var r = Hud.DoBankTrade();
                  if (!r.Ok) throw new Exception("bank trade refused: " + r.Message);
@@ -164,7 +172,8 @@ namespace World.Game
              .Tick(2)
              .Check(() => T.Peoples[0].Hand[0] == wood - rate && T.Peoples[0].Hand[4] == stone + 1, "the bank trade did not change the hand")
              .Call(() => Hud.CloseTrade())
-             // An AI offer, accepted from the card. The player must not lead (TR-4): give seat 1 a city.
+             .Wait(0.8f)
+             // An AI offer arrives as an envoy; tap once to see the bundle, again to accept. The player must not lead (TR-4): give seat 1 a city.
              .Call(() =>
              {
                  int c = TableGrants.BestCityCorner(S, 1);
@@ -174,9 +183,12 @@ namespace World.Game
                  SmokeSetup.SetCards(S, 1, 1, 3);
                  offerId = SmokeSetup.AddOffer(S, 1, 0, 1, 3);
              })
-             .Wait(0.1f)
-             .Check(() => Hud.IncomingOffers().Count == 1, "the offer card is not shown")
-             .Call(() => { var r = Hud.AnswerOffer(offerId, true); if (!r.Ok) throw new Exception("accept refused: " + r.Message); })
+             .Wait(0.8f)
+             .Check(() => Hud.IncomingOffers().Count == 1 && Hud.LedgeRects.ContainsKey("envoy:" + offerId), "the envoy is not on the ledge")
+             .Call(() => { var r = Hud.TapLedge("envoy:" + offerId); if (r != WorldTapResult.Previewed) throw new Exception("the envoy tap did not preview: " + r); })
+             .Check(() => T.Peoples[0].Hand[1] == clay, "the offer was accepted before the second tap")
+             .Wait(0.5f)
+             .Call(() => { var r = Hud.TapLedge("envoy:" + offerId); if (r != WorldTapResult.Confirmed) throw new Exception("the second envoy tap did not accept: " + r); })
              .Tick(2)
              .Check(() => T.Peoples[0].Hand[1] == clay + 1 && T.Peoples[0].Hand[3] == sheep - 1, "the accepted offer did not change the hand")
              // A 7 comes from the table's own dice: end turns, keeping 9 cards in hand, until it does.
@@ -184,14 +196,19 @@ namespace World.Game
              {
                  if (T.Phase == TablePhase.Main && T.Current == 0 && !T.Paused) { SmokeSetup.TopUpHand(S, 0, 9); D.EndTurn(); }
              })
-             .WaitUntil(() => Hud.DiscardVisible, 5f, "the discard picker is not shown")
+             .WaitUntil(() => Hud.DiscardVisible && Hud.LedgeRects.ContainsKey("sack"), 5f, "the discard sack is not on the ledge")
+             // The ritual: the adviser's goods go into the sack one basket tap at a time, then the sack is tapped twice.
              .Call(() =>
              {
                  owed = Hud.DiscardOwed; before = TableRules.HandSize(T.Peoples[0].Hand);
-                 Hud.SuggestDiscard();
-                 var r = Hud.DoDiscard();
-                 if (!r.Ok) throw new Exception("discard refused: " + r.Message);
+                 var pick = TableAi.ChooseDiscard(S, 0, owed);
+                 for (int g = 0; g < Wares.RawCount; g++) for (int n = 0; n < pick[g]; n++) Hud.TapLedge("basket:" + g);
+                 if (Hud.DiscardChosen != owed) throw new Exception("the sack holds " + Hud.DiscardChosen + " of " + owed);
              })
+             .Wait(0.8f) // the tap guard after the envoy's command (this run is much faster than a hand)
+             .Call(() => { var r = Hud.TapLedge("sack"); if (r != WorldTapResult.Previewed) throw new Exception("the sack tap did not preview: " + r); })
+             .Wait(0.5f)
+             .Call(() => { var r = Hud.TapLedge("sack"); if (r != WorldTapResult.Confirmed) throw new Exception("the second sack tap did not give: " + r); })
              .Tick(2)
              .Check(() => TableRules.HandSize(T.Peoples[0].Hand) == before - owed && !Hud.DiscardVisible, "the discard was not completed")
              .Log("[AutoPlay] " + name + " OK")
