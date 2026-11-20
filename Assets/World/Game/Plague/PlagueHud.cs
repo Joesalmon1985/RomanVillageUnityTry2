@@ -14,6 +14,19 @@ namespace World.Game
     /// </summary>
     public sealed class PlagueHud : MonoBehaviour
     {
+        /// <summary>
+        /// The Clear view setting (WORLD_UI_PLAN Q-2): the old HUD as a fallback. Off by default: the world carries the plague
+        /// (the lodge, the shrines, the board's totem; V toggles the overlay) and nothing is drawn here. On: the "Plague" and
+        /// "Banish" buttons and the counter panel are back. Stored in PlayerPrefs "world.clearview".
+        /// </summary>
+        public static bool ClearView
+        {
+            get { try { return PlayerPrefs.GetInt("world.clearview", 0) == 1; } catch { return s_clear; } }
+            set { s_clear = value; try { PlayerPrefs.SetInt("world.clearview", value ? 1 : 0); } catch { } }
+        }
+        private static bool s_clear;
+        private static System.Func<bool> s_isOn; private static System.Action s_toggle;
+
         private PlagueViews _v;
         private readonly List<Rect> _rects = new List<Rect>();
         private GUIStyle _label, _button;
@@ -80,6 +93,13 @@ namespace World.Game
             if (_v == null || _v.P == null) return;
             var dir = _v.Dir;
             OnBoard = dir != null && dir.View == BoardView.Board;
+            // World first: without the Clear view setting nothing is drawn and the board's round icon is not offered.
+            if (!ClearView)
+            {
+                if (GodBoardHud.PlagueToggle == s_toggle) GodBoardHud.PlagueToggle = null;
+                if (GodBoardHud.PlagueIsOn == s_isOn) GodBoardHud.PlagueIsOn = null;
+                return;
+            }
             if (!OnBoard && !WorldHudAllowed()) return;
             if (_label == null)
             {
@@ -89,8 +109,9 @@ namespace World.Game
             _u = Mathf.Max(0.6f, Screen.height / 390f);
             GUI.depth = -12;
             // On the god board the toggle is a round icon drawn by GodBoardHud (G1-6b, slot 2 along the top-right edge).
-            GodBoardHud.PlagueIsOn = () => _v != null && _v.Overlay;
-            GodBoardHud.PlagueToggle = () => _v.ToggleOverlay();
+            s_isOn = () => _v != null && _v.Overlay; s_toggle = () => _v.ToggleOverlay();
+            GodBoardHud.PlagueIsOn = s_isOn;
+            GodBoardHud.PlagueToggle = s_toggle;
             if (!OnBoard)
             {
                 var toggle = RR(6f, 6f, 92f, 32f);

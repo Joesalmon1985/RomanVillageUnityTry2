@@ -8,7 +8,7 @@ using World.Sim.Plague;
 
 namespace World.Game.Tests
 {
-    /// <summary>G2-2: the plague overlay, the demons on the ground, the banish on foot and the epidemic storm (PL-6, PL-11, PL-12).</summary>
+    /// <summary>G2-2 and WU-3: the plague overlay, the demons on the ground, the banish on foot and the epidemic storm (PL-6, PL-11, PL-12).</summary>
     public class PlagueViewTests
     {
         private const string TestPause = "PlagueViewTest";
@@ -16,7 +16,7 @@ namespace World.Game.Tests
         private PlagueViews _v;
         private WorldState S => _boot.Sim.State;
 
-        [SetUp] public void SetUp() { GodBoardDirector.RiseSeconds = 0.05f; }
+        [SetUp] public void SetUp() { GodBoardDirector.RiseSeconds = 0.05f; PointerInput.InputEnabled = true; WorldActions.Cancel(); }
         [TearDown] public void TearDown() { GodBoardDirector.RiseSeconds = 2.4f; }
 
         private IEnumerator Start()
@@ -140,6 +140,160 @@ namespace World.Game.Tests
             yield return new WaitForSecondsRealtime(0.7f);
             Assert.Greater(_v.StormLevel, 0.9f);
             Assert.AreEqual(0, _v.EpidemicsSeen);
+        }
+
+        // ------------------------------------------------------------------ WU-3: the plague at the healer's lodge
+
+        private LodgeTable Lodge => HealersLodge.Instance.Plague;
+
+        private void AssertTableMatches()
+        {
+            var t = Lodge;
+            for (int n = 1; n <= 48; n++)
+            {
+                Assert.AreEqual(_v.FiguresAt(n), t.TableFigures(n), "table figures = overlay figures at node " + n);
+                for (int k = 0; k < 4; k++)
+                {
+                    Assert.AreEqual(PlagueApi.DemonsOfKindAt(S, n, k), t.TableDemons(n, k), "table demons node " + n + " kind " + k);
+                    Assert.AreEqual(_v.NodeOf(n).Kinds[k], t.TableDemons(n, k), "overlay kinds node " + n + " kind " + k);
+                }
+            }
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Lodge_Table_ShowsTheSameDemons_AfterInfection_AndAfterBanish()
+        {
+            yield return Start();
+            Assert.IsNotNull(HealersLodge.Instance, "the lodge is built"); Assert.IsNotNull(Lodge, "its plague props exist");
+            Assert.AreEqual(48, Lodge.NodeTaps.Count);
+            yield return null;
+            AssertTableMatches();
+            Infect(4);
+            yield return null; yield return null;
+            Assert.Greater(PlagueApi.TotalDemons(S), 0);
+            AssertTableMatches();
+            int node = NodeWithDemons(); int before = PlagueApi.DemonsAt(S, node);
+            var w = PlayerWalker.Instance;
+            w.Teleport(_v.NodePosition(node) + new Vector3(8f, 0, 0), 270f, 8f);
+            yield return null;
+            Assert.IsTrue(_v.TryBanishNear().Ok);
+            Step(2); yield return null; yield return null;
+            Assert.AreEqual(before - 1, PlagueApi.DemonsAt(S, node));
+            AssertTableMatches();
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Lodge_Lanterns_Peg_AndVessels_FollowTheState()
+        {
+            yield return Start();
+            yield return null;
+            var t = Lodge;
+            Assert.AreEqual(0, t.LanternsLit); Assert.AreEqual(1, t.PegStep);
+            var ev = new EventBuffer();
+            int guard = 0;
+            while (S.Plague.Outbreaks < 3 && guard++ < 400) { PlagueRules.InfectRound(S, ev); PlagueRules.Epidemic(S, ev); }
+            Assert.GreaterOrEqual(S.Plague.Outbreaks, 3, "the test could not cause outbreaks");
+            Assert.Greater(S.Plague.RateIndex, 0, "epidemics moved the rate");
+            yield return null; yield return null;
+            Assert.AreEqual(S.Plague.Outbreaks, t.LanternsLit, "lanterns = outbreaks");
+            Assert.AreEqual(S.Plague.RateIndex + 1, t.PegStep, "peg = rate step");
+            // Vessels: empty, cured, eradicated, strengthened (Ash altar).
+            for (int e = 0; e < 4; e++) Assert.AreEqual(VesselState.Empty, t.VesselShown(e));
+            S.Plague.Cured[0] = true; S.Plague.Eradicated[1] = true; S.Plague.Cured[1] = true; S.Plague.Strengthened[2] = true;
+            yield return null; yield return null;
+            Assert.AreEqual(VesselState.Cured, t.VesselShown(0));
+            Assert.AreEqual(VesselState.Eradicated, t.VesselShown(1));
+            Assert.AreEqual(VesselState.Strengthened, t.VesselShown(2));
+            Assert.AreEqual(VesselState.Empty, t.VesselShown(3));
+            S.Plague.Strengthened[2] = false; S.Plague.Cured[0] = false;
+            yield return null; yield return null;
+            Assert.AreEqual(VesselState.Empty, t.VesselShown(0)); Assert.AreEqual(VesselState.Empty, t.VesselShown(2));
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Lodge_Says_NothingOfEpidemicsOrCardsToCome_AndTagsItsZones()
+        {
+            yield return Start();
+            Infect(5);
+            S.Plague.Cured[2] = true;
+            yield return null;
+            var bad = new[] { "remain", "cards", "deck", "epidemics", " left in", "to come", "next epidemic" };
+            int n = 0;
+            foreach (var text in Lodge.AllTexts())
+            {
+                n++;
+                Assert.IsNull(LedgerText.Violation(text), "AB-1 word in: " + text);
+                foreach (var b in bad) Assert.IsFalse(text.ToLowerInvariant().Contains(b), b + " in: " + text);
+            }
+            Assert.Greater(n, 60);
+            var ids = new System.Collections.Generic.HashSet<string>();
+            foreach (var z in WorldZone.All) ids.Add(z.ZoneId);
+            foreach (var id in new[] { WorldZones.PlgMap, WorldZones.PlgDanger, WorldZones.PlgCures, WorldZones.PlgDeck, WorldZones.PlgActions, WorldZones.PlgPhase, WorldZones.PlgCity })
+                Assert.IsTrue(ids.Contains(id), id + " is tagged");
+            // A tap on a prop opens its ledger (inspection only).
+            Lodge.Post.Interact();
+            Assert.AreEqual(WorldActionState.Inspect, WorldActions.State);
+            Assert.IsTrue(LedgerCard.IsOpen);
+            Assert.AreEqual("Warning post", LedgerCard.Content.Title);
+            WorldActions.Cancel();
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Shrine_Tap_Previews_ThenBanishesOnce_AndTheCharmCools()
+        {
+            yield return Start();
+            Infect(3);
+            yield return null;
+            int node = NodeWithDemons(); Assert.Greater(node, 0);
+            int before = PlagueApi.DemonsAt(S, node);
+            var nv = _v.NodeOf(node);
+            var w = PlayerWalker.Instance; var at = _v.NodePosition(node);
+            // Far: refused with a reason, nothing sent.
+            w.Teleport(at + new Vector3(120f, 0, 0), 0f, 8f);
+            yield return null; yield return new WaitForSecondsRealtime(0.8f);
+            Assert.AreEqual(WorldTapResult.Refused, WorldActions.Tap(nv));
+            Assert.AreEqual(WorldActionState.Refused, WorldActions.State);
+            StringAssert.Contains("closer", WorldActions.Machine.Reason);
+            Assert.AreEqual(0, _v.BanishesSent);
+            WorldActions.Cancel();
+            // Near: the first tap previews (nothing sent), the second confirms once.
+            w.Teleport(at + new Vector3(8f, 0, 0), 270f, 8f);
+            yield return null; yield return new WaitForSecondsRealtime(0.8f);
+            Assert.AreEqual(WorldTapResult.Previewed, WorldActions.Tap(nv));
+            Assert.AreEqual(WorldActionState.Preview, WorldActions.State);
+            Assert.IsTrue(nv.Previewing); Assert.IsTrue(LedgerCard.IsOpen);
+            Assert.AreEqual(0, _v.BanishesSent);
+            Assert.AreEqual(before, PlagueApi.DemonsAt(S, node));
+            yield return new WaitForSecondsRealtime(0.4f);
+            Assert.AreEqual(WorldTapResult.Confirmed, WorldActions.Tap(nv));
+            Assert.AreEqual(WorldTapResult.Ignored, WorldActions.Tap(nv), "the guard swallows a burst");
+            Step(2); yield return null;
+            Assert.AreEqual(1, _v.BanishesSent);
+            Assert.AreEqual(before - 1, PlagueApi.DemonsAt(S, node));
+            Assert.Greater(_v.CooldownTicksLeft, 0);
+            Assert.Less(BanishCharm.Instance.Ready01, 1f, "the charm cools");
+            yield return new WaitForSecondsRealtime(0.8f);
+            if (PlagueApi.DemonsAt(S, node) > 0)
+            {
+                Assert.AreEqual(WorldTapResult.Refused, WorldActions.Tap(nv));
+                StringAssert.Contains("smouldering", WorldActions.Machine.Reason);
+            }
+            WorldActions.Cancel();
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator NoPlagueOrBanishButtons_ByDefault_AndTheTotemToggleWorks()
+        {
+            yield return Start();
+            PlagueHud.ClearView = false;
+            for (int i = 0; i < 5; i++) yield return null;
+            Assert.IsFalse(PlagueHud.ClearView);
+            Assert.AreEqual(0, _v.Hud.Texts.Count, "no plague controls are drawn");
+            Assert.IsNull(GodBoardHud.PlagueToggle, "the board's round Plague icon is not offered");
+            Assert.IsFalse(PlagueViews.OverlayOn);
+            Assert.IsTrue(PlagueViews.ToggleOverlayFromTotem());
+            Assert.IsTrue(_v.Overlay);
+            Assert.IsFalse(PlagueViews.ToggleOverlayFromTotem());
         }
     }
 }

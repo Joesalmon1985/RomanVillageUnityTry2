@@ -63,7 +63,8 @@ namespace World.Game.Tests
             var layout = new CampLayout(S.Board);
             Assert.IsTrue(layout.Hub);
             foreach (var z in HubZones) Assert.IsNotNull(HubInstaller.Zone(z), "zone " + z);
-            Assert.AreEqual(6, HubInstaller.Root.GetComponentsInChildren<WorldZone>().Length);
+            int hubZones = 0; foreach (var wz in HubInstaller.Root.GetComponentsInChildren<WorldZone>()) if (wz.ZoneId.StartsWith("HUB-")) hubZones++; // the lodge's PLG-* props (WU-3) are tagged below the hub too
+            Assert.AreEqual(6, hubZones);
             // The people of each place.
             Need("temple_keeper"); Need("temple_builder_0"); Need("temple_builder_1");
             Need("council_steward");
