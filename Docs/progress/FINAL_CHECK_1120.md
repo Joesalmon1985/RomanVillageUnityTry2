@@ -50,3 +50,4 @@ Frame time (`phone_frametime`, 60 s, dev.godboard seed 7, 844x390, vSync off, ru
 | `HubTests` | not rerun (time limit); failure 3 (healer facing 55 degrees, limit 15) is unexplained and may be a real merge interaction with P3's lodge work or P2b's lodge table; open |
 
 After the fix the suite counts are therefore not fully re-established: PlayMode 309 total, at best 1 real failure fixed and 2 confirmed flakes; 2 failures (Hub healer facing, Plague burst guard) remain unconfirmed. EditMode (806) and dotnet (774) were green before the fix and the fix touches only a PlayMode light toggle.
+- Healer turn test (HubTests.Healer_AndAssistant_Work_AndTheHealerTurnsToTheMapTable): cause was the test, not the game; it waited 90 frames but the actor turns at 300 deg/s of game time, so a fast editor (~3 ms frames) covered only ~100 deg; the test now waits up to 2.5 s of game time for the bearing under 15 deg. No game code changed.

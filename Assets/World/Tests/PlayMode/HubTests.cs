@@ -219,8 +219,11 @@ namespace World.Game.Tests
             var table = lodge.Plague.TableCentre;
             lodge.ShowTo(table);
             Assert.AreEqual(HealersLodge.Work.Showing, lodge.HealerWork);
-            for (int i = 0; i < 90; i++) yield return null;
+            // Turning takes game time (300 deg/s), not frames: a fast editor runs 90 frames in a third of a second.
             var h = lodge.Healer.transform;
+            float tShow = Time.time;
+            while (Time.time - tShow < 2.5f && Mathf.Abs(Bearing(h.position, h.eulerAngles.y, table)) >= 15f) yield return null;
+            
             Assert.Less(Mathf.Abs(Bearing(h.position, h.eulerAngles.y, table)), 15f, "the healer faces the map table");
             yield return Until(() => lodge.HealerWork != HealersLodge.Work.Showing, 10f, "and goes back to work");
         }
