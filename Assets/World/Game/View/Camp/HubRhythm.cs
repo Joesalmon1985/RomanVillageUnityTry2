@@ -48,7 +48,31 @@ namespace World.Game
             g.Sol = sol; g._home = home; g._homeYaw = homeYaw;
             Instance = g;
             sol.DialogueBuilder = g.BuildDialogue;
+            g.BuildEntry(sol, home, homeYaw);
             return g;
+        }
+
+        /// <summary>The two-tap entry beside Sol (WU-1b): "Dance at the fire?" while the circle is warm, "Follow Sol to the spires?" once it is cold.</summary>
+        public HubEntryAction Entry { get; private set; }
+
+        private void BuildEntry(Npc sol, Vector3 home, float homeYaw)
+        {
+            var f = new HubFrame(home, homeYaw);
+            var at = f.W(1.5f, 0.3f); at.y = home.y;
+            Entry = HubEntryAction.Make(sol.transform.parent, "Sol seat", at, homeYaw, new Vector2(1.3f, 1.0f),
+                "Sol's seat", "Dance at the fire?", "Dance with Sol",
+                () => CircleIsCold
+                    ? new[] { "Sol keeps this seat by the cold fire.", "The drums stand at the spires now." }
+                    : new[] { "Sol keeps the beat here. Four drums round a fire." },
+                () => { if (!CircleIsCold) return WorldActionCheck.Allowed; return Leading ? WorldActionCheck.Refuse("Sol is already leading the way.") : WorldActionCheck.Allowed; },
+                () =>
+                {
+                    if (CircleIsCold) return LeadToSpire();
+                    var s = Npc.Find(NpcIds.Host);
+                    return s != null && EncounterDirectory.TryStart(EncounterDirectory.RhythmParty, s);
+                });
+            Entry.Reach = 6f;
+            var upd = Entry.gameObject.AddComponent<SolEntryWords>(); upd.Entry = Entry;
         }
 
         private void BuildDialogue(Npc n)
@@ -105,6 +129,18 @@ namespace World.Game
                 Sol.Directed = false;
                 Sol.WalkTo(_home);
             }
+        }
+    }
+
+    /// <summary>Keeps Sol's seat's question in step with the circle (warm or cold).</summary>
+    public sealed class SolEntryWords : MonoBehaviour
+    {
+        public HubEntryAction Entry;
+        private void Update()
+        {
+            if (Entry == null) return;
+            Entry.QuestionText = SolGuide.CircleIsCold ? "Follow Sol to the spires?" : "Dance at the fire?";
+            Entry.PromptText = SolGuide.CircleIsCold ? "Follow Sol to the spires" : "Dance with Sol";
         }
     }
 }

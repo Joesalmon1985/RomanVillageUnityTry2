@@ -18,7 +18,7 @@ namespace World.Game
     }
 
     /// <summary>What a tap did (<see cref="PointerInput.LastTap"/>).</summary>
-    public enum TapOutcome { None, Bubble, Interact, Person, Cast, CastRefused, Inspect, Preview, Confirm, Refused, Cancelled, Ignored }
+    public enum TapOutcome { None, Bubble, Interact, Person, Cast, CastRefused, Inspect, Preview, Confirm, Refused, Cancelled, Ignored, Walk }
 
     /// <summary>
     /// The free mouse pointer (REFACTOR_SPEC 2.D "Pointer", appendix B); replaces the old Picker. Owner: package P.
@@ -136,6 +136,17 @@ namespace World.Game
             return Tap(hit);
         }
 
+        /// <summary>WU-1b: true when a press here lands on empty scene: ground or sky, no person, prop, bubble, ledger card or action, and not a castable ring.</summary>
+        public static bool EmptyScene(Vector2 screenPoint)
+        {
+            var gui = new Vector2(screenPoint.x, Screen.height - screenPoint.y);
+            if (LedgerCard.Contains(gui) || SpeechBubbles.Contains(gui)) return false;
+            var hit = Raycast(screenPoint);
+            if (hit.Target != null && !(hit.Target is HexView)) return false;
+            if (CastableAt(hit)) return false;
+            return WorldActions.PickEnlarged(screenPoint, ActiveCamera) == null;
+        }
+
         /// <summary>True when the hit's ground lies in the press area of an open proposal of your people that is in cast range.</summary>
         public static bool CastableAt(PointerHit hit) => hit.HasGround && hit.ProposalId >= 0 && SpellCaster.InRange(hit.ProposalId);
 
@@ -191,6 +202,10 @@ namespace World.Game
             {
                 var r = SpellCaster.TryCastAt(hit.Ground);
                 outcome = r.Ok ? TapOutcome.Cast : TapOutcome.CastRefused;
+            }
+            else if ((t == null || t is HexView) && hit.HasGround && GroundWalk.TryWalk(hit.Ground))
+            {
+                outcome = TapOutcome.Walk; // WU-1b: tap the ground to walk there
             }
             else if (t is IInspectable insp)
             {
@@ -283,6 +298,7 @@ namespace World.Game
             if (Blocked || GodView || !Application.isFocused && !Application.isBatchMode)
             {
                 if (_ring != null) _ring.SetActive(false);
+                if (_pressId != -2) { _pressId = -2; DragLook.End(); }
                 if (GodView) GodClick();
                 return;
             }
@@ -295,12 +311,40 @@ namespace World.Game
             UpdateHighlight(hit);
 
             if (Input.GetMouseButtonDown(1) && PlayerWalker.Instance != null) PlayerWalker.Instance.StopAuto();
-            if (Input.GetMouseButtonDown(0)) PointerInput.TapAt(mouse);
+            // WU-1b: a press is a tap on release, or a drag that turns the view (one sixth per drag step) when it started on empty scene.
+            if (Input.GetMouseButtonDown(0)) PressBegan(-1, mouse);
+            if (Input.GetMouseButton(0)) PressMoved(-1, mouse);
+            if (Input.GetMouseButtonUp(0)) PressEnded(-1, mouse);
             for (int i = 0; i < Input.touchCount; i++)
             {
                 var t = Input.GetTouch(i);
-                if (t.phase == TouchPhase.Began && TouchStrips.StripAt(t.position) == 0) PointerInput.TapAt(t.position);
+                if (t.phase == TouchPhase.Began) PressBegan(t.fingerId, t.position);
+                else if (t.phase == TouchPhase.Moved || t.phase == TouchPhase.Stationary) PressMoved(t.fingerId, t.position);
+                else if (t.phase == TouchPhase.Ended) PressEnded(t.fingerId, t.position);
+                else if (t.phase == TouchPhase.Canceled && t.fingerId == _pressId) { _pressId = -2; DragLook.End(); }
             }
+            DragLook.Pump();
+        }
+
+        private int _pressId = -2; // -1 mouse, >= 0 a finger, -2 none
+        private Vector2 _pressAt; private bool _pressTaps;
+
+        private void PressBegan(int id, Vector2 pos)
+        {
+            if (_pressId != -2) return; // one press at a time
+            _pressId = id; _pressAt = pos;
+            _pressTaps = TouchStrips.StripAt(pos) == 0; // a press in the strip band is a move, never a world tap
+            DragLook.Begin(pos, _pressTaps && PointerInput.EmptyScene(pos));
+        }
+
+        private void PressMoved(int id, Vector2 pos) { if (id == _pressId) DragLook.Move(pos); }
+
+        private void PressEnded(int id, Vector2 pos)
+        {
+            if (id != _pressId) return;
+            _pressId = -2;
+            bool drag = DragLook.End();
+            if (_pressTaps && !drag) PointerInput.TapAt(_pressAt);
         }
 
         /// <summary>F1 God View: a click with the Select tool selects for the inspect panel.</summary>
