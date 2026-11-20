@@ -176,10 +176,10 @@ namespace World.Sim.Tests
             string root = RepoRoot();
             if (root != null)
                 File.WriteAllText(Path.Combine(root, "Docs", "progress", "G4-2-proof.md"), report.Replace("\r\n", "\n"), new UTF8Encoding(false));
-            // Balance F1 changed which games are played; on one map (seed 3003, people 1) the only clay hex in reach is shared and runs dry,
-            // so that people stops after the wood stage (reported in the proof). Every other people must still raise all three stages.
+            // HI-3, HI-6: every people raises all three stages (a people whose only clay hex runs dry digs a dry hex and the
+            // finished peoples stop draining it; see G4-2.md).
             var allPeoples = games.SelectMany(g => g.Peoples).ToList();
-            Assert.GreaterOrEqual(allPeoples.Count(p => p.Stages == 3), allPeoples.Count - 1, "at most one people short of three castle stages");
+            Assert.AreEqual(allPeoples.Count, allPeoples.Count(p => p.Stages == 3), "every people raises all three castle stages");
             foreach (var g in games)
             {
                 Assert.IsTrue(g.Balanced, "ware books, seed " + g.Seed);

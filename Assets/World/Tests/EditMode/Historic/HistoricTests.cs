@@ -412,6 +412,53 @@ namespace World.Sim.Tests
         }
 
         [Test]
+        public void ClayPit_Planner_UsesADryHexWhenNoWetOneIsInReach_AndPrefersAWetOne()
+        {
+            var sim = Fresh(7, true);
+            var s = sim.State;
+            var h = s.Historic;
+            var hills = HistoricRules.Territory(s, 0, HistoricRules.FarRings).Where(x => h.Hexes[x].Terrain == Terrain.Hills && h.Hexes[x].ClayCap >= 2).ToList();
+            if (hills.Count == 0) Assert.Inconclusive("no Hills hex in reach on this seed");
+            int wet = HistoricPlanner.BestHex(s, 0, HistoricKind.ClayPit);
+            Assert.IsTrue(hills.Contains(wet));
+            Assert.GreaterOrEqual(h.Hexes[wet].Clay, 2, "a hex with clay first");
+            foreach (int x in hills) h.Hexes[x].Clay = 0;
+            int dry = HistoricPlanner.BestHex(s, 0, HistoricKind.ClayPit);
+            Assert.IsTrue(hills.Contains(dry), "every hex is dry: a dry Hills hex still serves, its clay seeps back");
+            Assert.IsNull(HistoricRules.SiteRefusal(s, 0, HistoricKind.ClayPit, dry));
+        }
+
+        [Test]
+        public void ClayPit_AndKiln_IdleWhenTheCastlesBricksAreCovered_SoASharedHexIsNotDrained()
+        {
+            var sim = Fresh();
+            var s = sim.State;
+            var h = s.Historic;
+            var hp = h.Peoples[0];
+            int hex = HexOf(s, Terrain.Hills);
+            Active(s, 0, HistoricKind.ClayPit, hex);
+            hp.Castle.StagesDone = 3;
+            int clay = h.Hexes[hex].Clay;
+            Steps(sim, 400);
+            Assert.AreEqual(clay, h.Hexes[hex].Clay, "a finished people digs no more");
+            hp.Castle.StagesDone = 1;
+            Assert.IsTrue(HistoricRules.BricksStillWanted(h, hp, true));
+            hp.Stock[(int)Ware.Bricks] += 1000; h.Ledger.Starting[(int)Ware.Bricks] += 1000;
+            Assert.IsFalse(HistoricRules.BricksStillWanted(h, hp, false), "bricks in the store cover the need");
+            AssertBalanced(s);
+        }
+
+        [Test]
+        public void Seed3003_EveryPeopleRaisesAllThreeStages_EvenWhenTheOnlyClayHexRunsDry()
+        {
+            var (sim, _, _) = PlayToHistoric(3003);
+            var s = sim.State;
+            Steps(sim, 36000);
+            foreach (var hp in s.Historic.Peoples) Assert.AreEqual(3, hp.Castle.StagesDone, "people " + hp.Id);
+            AssertBalanced(s);
+        }
+
+        [Test]
         public void Kiln_FiresClayAndWood_IntoBricks()
         {
             var sim = Fresh();

@@ -16,7 +16,8 @@ namespace World.Sim.Historic
     /// <item>a clay pit, then a kiln (bricks for the second stage);</item>
     /// <item>a farm, then a sheep farm (the third stage wants grain and sheep);</item>
     /// <item>more woodcutters while wood is short and grown trees stand in reach (up to <see cref="HistoricTuning.MaxWoodcutters"/>);</item>
-    /// <item>a fresh clay pit while the castle wants bricks, the store has no clay and our pits stand on dry hexes;</item>
+    /// <item>a fresh clay pit while the castle wants bricks, the store has no clay and our pits stand on dry hexes (a hex with
+    /// clay first; when every Hills hex in reach is dry, a dry one whose clay seeps back, shared or not);</item>
     /// <item>a second quarry while the castle still wants stone.</item>
     /// </list>
     /// Sites are chosen by a score per kind (resources in reach, crowding, distance to the castle); ties go to the lowest hex.
@@ -195,8 +196,10 @@ namespace World.Sim.Historic
                         score = r.Rock - 30 * sameKind;
                         break;
                     case HistoricKind.ClayPit:
-                        if (r.Clay < 2) continue;
-                        score = r.ClayCap - 20 * sameKind;
+                        // A hex that is dry right now still serves: its clay seeps back (ClayRefillTicks), also when another people's
+                        // pit shares it. Hexes with clay in them come first (the tier), dry ones are the fallback.
+                        if (r.ClayCap < 2) continue;
+                        score = (r.Clay >= 2 ? 1000 : 0) + r.ClayCap - 20 * sameKind;
                         break;
                     case HistoricKind.Farm:
                         if (r.Fields.Length == 0) continue;
