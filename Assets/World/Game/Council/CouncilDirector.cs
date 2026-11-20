@@ -115,6 +115,35 @@ namespace World.Game
         /// <summary>The foot of the lookout tower: the candidate leads the player here and they climb up together.</summary>
         public Vector3 GatherSpot => Site.ToWorld(new Vector3(-3f, 0f, 4f));
 
+        // ------------------------------------------------------------------ the council steward (WU-1a, HUB-COUNCIL)
+
+        /// <summary>The steward stands here at the foot of the lookout tower, right of where the gathering candidate stands.</summary>
+        public Vector3 StewardSpot => Site.ToWorld(new Vector3(3f, 0f, 4f));
+
+        /// <summary>
+        /// The steward's invitation: the same accept path as the candidate's approach (entering an offered council counts as
+        /// accepting, <see cref="CouncilEncounter.Begin"/>). Returns null when the council opened, otherwise an honest sentence.
+        /// </summary>
+        public string StewardOpen(Npc steward)
+        {
+            var s = Boot.Sim.State;
+            HomeSettlement = FindHome();
+            var sc = CouncilApi.Get(s, HomeSettlement);
+            if (sc == null)
+            {
+                if (!CouncilApi.CanOffer(s, HomeSettlement)) return "No dispute is called yet.";
+                if (!Boot.Sim.Submit(new CouncilOffer { Settlement = HomeSettlement, PlayerId = PlayerIds.Human }).Ok) return "No dispute is called yet.";
+                Boot.Clock.StepOnce();
+                sc = CouncilApi.Get(s, HomeSettlement);
+            }
+            if (sc == null) return "No dispute is called yet.";
+            bool open = sc.Status == CouncilStatus.Offered || (sc.Status == CouncilStatus.InProgress && sc.PlayerHelps);
+            if (!open) return sc.Status == CouncilStatus.Decided ? "The matter is settled." : "The others are settling it among themselves.";
+            if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return "Not now.";
+            if (Asker != null && Approach != Stage.Gathered) { SpeechBubbles.Close(_askHandle); Dismiss(); }
+            return EncounterDirectory.TryStart(CouncilEncounter.Id, steward, HomeSettlement) ? null : "Not now.";
+        }
+
         // ------------------------------------------------------------------ events
 
         void OnTicked(IReadOnlyList<SimEvent> events)

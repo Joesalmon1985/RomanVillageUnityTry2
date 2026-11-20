@@ -167,7 +167,7 @@ namespace World.Game.Tests
             // Spawn and the prince's start are lattice cells 20 m apart; the spawn is 4 steps along the Forest spoke.
             Assert.AreEqual(20f, BoardSpace.Flat(WalkLattice.ToWorld(camp.Spawn) - WalkLattice.ToWorld(camp.PrinceStart)), 0.01f);
             Assert.AreEqual(20f, BoardSpace.Flat(WalkLattice.ToWorld(camp.Spawn) - camp.Hearth), 0.01f);
-            Assert.AreEqual(camp.SpawnHeading, WalkLattice.HeadingOf(BoardSpace.YawOf(WalkLattice.ToWorld(camp.PrinceStart) - WalkLattice.ToWorld(camp.Spawn))));
+            Assert.AreEqual(camp.PrinceHeading, WalkLattice.HeadingOf(BoardSpace.YawOf(WalkLattice.ToWorld(camp.PrinceStart) - WalkLattice.ToWorld(camp.Spawn))));
             Assert.AreEqual(6f, BoardSpace.Flat(camp.DancerSpot - camp.DanceCircleCentre), 0.01f, "dancer 6 m from the fire");
             for (int p = 1; p <= 4; p++) Assert.AreEqual(4f, BoardSpace.Flat(camp.DrumPosition(p) - camp.DanceCircleCentre), 0.01f, "drum " + p + " on the 4 m circle");
             // Drums 1-4 left to right as seen from the dancer.

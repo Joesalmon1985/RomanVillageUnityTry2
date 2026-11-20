@@ -16,6 +16,15 @@ namespace World.Game
         public CampProp(string kind, Vector3 position, float yaw, float radius) { Kind = kind; Position = position; Yaw = yaw; Radius = radius; }
     }
 
+    /// <summary>A hub destination's footprint (WU-1a): its zone id, where it stands, which way its front faces and its radius.</summary>
+    public struct HubPlace
+    {
+        public string Zone, Kind;
+        public Vector3 Position;
+        public float Yaw, Radius;
+        public HubPlace(string zone, string kind, Vector3 position, float yaw, float radius) { Zone = zone; Kind = kind; Position = position; Yaw = yaw; Radius = radius; }
+    }
+
     /// <summary>
     /// Where things stand at the home camp (REFACTOR_SPEC 2.E, 8.3, appendix B), derived from the board alone, so any
     /// package can build one: <c>new CampLayout(state.Board)</c>. Owner: package D.
@@ -65,8 +74,27 @@ namespace World.Game
         public Vector3 FireLeapMark => DanceCircleCentre - Right * 2.4f;
         public Vector3 SpiritCallMark => DanceCircleCentre + Right * 2.4f;
         public Cell Spawn { get; }
-        public int SpawnHeading { get; }
+        public int SpawnHeading { get; private set; }
         public Cell PrinceStart { get; }
+        /// <summary>
+        /// True on a dealt (god board) island: the hub of the world-first UI (WU-1a). The spawn then faces the heading that
+        /// puts the dance circle and Mira in the first view, and <see cref="Places"/> hold the temple, the healer's lodge and
+        /// the duel ring. Legacy boards keep the old layout exactly.
+        /// </summary>
+        public bool Hub { get; }
+        /// <summary>The heading of the prince's start line (the same as <see cref="SpawnHeading"/> outside the hub).</summary>
+        public int PrinceHeading { get; }
+        /// <summary>Hub destinations placed by the layout: HUB-TEMPLE (the player's temple), HUB-HEALER (the lodge), HUB-DUEL (the ring). Empty outside the hub.</summary>
+        public IReadOnlyList<HubPlace> Places => _places;
+        public bool TryPlace(string zone, out HubPlace place)
+        {
+            foreach (var p in _places) if (p.Zone == zone) { place = p; return true; }
+            place = default; return false;
+        }
+        /// <summary>Radius of the green hub clearing round the hearth (m).</summary>
+        public const float HubRadius = 62f;
+        private readonly List<HubPlace> _places = new List<HubPlace>();
+        private Board _board;
         /// <summary>The home camp's dressing: hide tents, lean-to, drying racks, totems, wood pile, and where the camp's figures stand.</summary>
         public IReadOnlyList<CampProp> Dressing => _dressing;
         /// <summary>
@@ -83,6 +111,7 @@ namespace World.Game
 
         public CampLayout(Board board)
         {
+            _board = board;
             var t = board.Topology;
             HomeCorner = board.StartCorners != null && board.StartCorners.Length > 0 ? board.StartCorners[0] : 0;
             Hearth = BoardSpace.Vertex(t, HomeCorner);
@@ -105,7 +134,9 @@ namespace World.Game
             int hf = WalkLattice.HeadingOf(BoardSpace.YawOf(_spoke[forestSector]));
             Spawn = corner + WalkLattice.Dir(hf) * 4;
             SpawnHeading = (hf + 4) % 6;
-            PrinceStart = Spawn + WalkLattice.Dir(SpawnHeading) * 4;
+            PrinceHeading = SpawnHeading;
+            PrinceStart = Spawn + WalkLattice.Dir(PrinceHeading) * 4;
+            Hub = board.DealTriesUsed > 0;
             _forestYaw = BoardSpace.YawOf(_spoke[forestSector]);
             var toPrince = WalkLattice.ToWorld(PrinceStart) - Hearth; toPrince.y = 0;
             _princeSide = Mathf.DeltaAngle(_forestYaw, BoardSpace.YawOf(toPrince)) >= 0f ? 1 : -1;
@@ -129,6 +160,7 @@ namespace World.Game
             DrummerYaw = BoardSpace.YawOf(DancerSpot - DrummerSpot);
 
             BuildDressing();
+            if (Hub) BuildHub(board);
             BuildClearings();
         }
 
@@ -243,6 +275,77 @@ namespace World.Game
             ClearLine(spawn, MiraSpot, 3f);
             ClearLine(spawn, WalkLattice.ToWorld(PrinceStart), 4f);
             Clear(spawn, 6f);
+            if (!Hub) return;
+            // WU-1a: the hub clearing, a level green ground round the home camp (circles on the island only), and each place.
+            var bt = _board.Topology;
+            for (float x = -HubRadius; x <= HubRadius; x += 12f)
+                for (float z = -HubRadius; z <= HubRadius; z += 12f)
+                {
+                    var q = Hearth + new Vector3(x, 0, z);
+                    if (x * x + z * z <= HubRadius * HubRadius && bt.HexAt(q.x, q.z) >= 0) Clear(q, 9f);
+                }
+            foreach (var pl in _places) Clear(pl.Position, pl.Radius + 3f);
+        }
+
+        // ------------------------------------------------------------------ the hub (WU-1a)
+
+        /// <summary>The lattice heading whose view holds the dance circle and Mira together (the first view of the hub).</summary>
+        private int ChooseViewHeading()
+        {
+            var spawn = WalkLattice.ToWorld(Spawn);
+            float a = BoardSpace.YawOf(DanceCircleCentre - spawn), b = BoardSpace.YawOf(MiraSpot - spawn);
+            float mid = a + Mathf.DeltaAngle(a, b) * 0.5f;
+            return WalkLattice.HeadingOf(mid);
+        }
+
+        private void BuildHub(Board board)
+        {
+            SpawnHeading = ChooseViewHeading();
+            var spawn = WalkLattice.ToWorld(Spawn);
+            float view = WalkLattice.Yaw(SpawnHeading);
+            // Temple left of ahead (the forecourt faces the hearth), the lodge one turn left and behind, the ring one turn right and behind.
+            Hub1("HUB-TEMPLE", "temple", board, spawn, view, -14f, 28f, 46f, 9f);
+            Hub1("HUB-HEALER", "lodge", board, spawn, view, -100f, 22f, 42f, 7f);
+            Hub1("HUB-DUEL", "ring", board, spawn, view, 105f, 22f, 44f, 7f);
+        }
+
+        /// <summary>Finds clear ground nearest the wanted bearing (from the spawn) and distance, strictest test first, and records the place.</summary>
+        private void Hub1(string zone, string kind, Board board, Vector3 spawn, float view, float bearing, float rMin, float rMax, float radius)
+        {
+            for (int pass = 0; pass < 3; pass++)
+            {
+                float rad = pass == 1 ? radius * 0.55f : radius;
+                for (float r = rMin; r <= rMax; r += 3f)
+                    for (int k = 0; k < 25; k++)
+                    {
+                        float off = ((k + 1) / 2) * 6f * (k % 2 == 0 ? 1 : -1);
+                        var p = spawn + BoardSpace.DirOf(view + bearing + off) * r; p.y = 0;
+                        if (!HubFree(board, p, radius, pass, rad)) continue;
+                        _places.Add(new HubPlace(zone, kind, p, BoardSpace.YawOf(Hearth - p), radius));
+                        return;
+                    }
+            }
+            // No clear ground (a cramped board): stand it on the bearing anyway, so the place still exists.
+            var q = spawn + BoardSpace.DirOf(view + bearing) * rMin; q.y = 0;
+            _places.Add(new HubPlace(zone, kind, q, BoardSpace.YawOf(Hearth - q), radius));
+        }
+
+        private bool HubFree(Board board, Vector3 p, float radius, int pass, float testRadius)
+        {
+            var t = board.Topology;
+            if (t.HexAt(p.x, p.z) < 0) return false;
+            for (int i = 0; i < 6; i++)
+            {
+                var q = p + BoardSpace.DirOf(i * 60f) * radius;
+                if (t.HexAt(q.x, q.z) < 0) return false;
+            }
+            foreach (var d in _dressing) if (BoardSpace.Flat(d.Position - p) < d.Radius + radius + 1f) return false;
+            foreach (var o in _places) if (BoardSpace.Flat(o.Position - p) < o.Radius + radius + 2f) return false;
+            if (BoardSpace.Flat(MiraSpot - p) < radius + 6f) return false;
+            if (BoardSpace.Flat(DanceCircleCentre - p) < PlotLayout.DanceCircleRadius + radius + 2f) return false;
+            if (BoardSpace.Flat(WalkLattice.ToWorld(Spawn) - p) < radius + 4f) return false;
+            if (BoardSpace.Flat(WalkLattice.ToWorld(PrinceStart) - p) < radius + 3f) return false;
+            return pass == 2 ? CouncilSite.Blocked(board, this, p, radius) == null : Obstruction(board, p, testRadius) == null;
         }
 
         // ------------------------------------------------------------------ clearance

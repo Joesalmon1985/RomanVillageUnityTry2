@@ -69,6 +69,7 @@ namespace World.Game
             sol.Options.Add(DialogueOption.Leave("Not now"));
             // The dance is played from the dancer's spot in front of the drums, facing the fire.
             sol.Stage = new EncounterStage(layout.DancerSpot, layout.DancerYaw);
+            if (layout.Hub) SolGuide.Attach(sol, layout.DrummerSpot, layout.DrummerYaw); // WU-1a: after the first spire he stays at the cold circle and leads to the spires
         }
     }
 }

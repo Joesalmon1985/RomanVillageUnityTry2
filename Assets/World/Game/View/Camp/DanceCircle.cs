@@ -91,6 +91,7 @@ namespace World.Game
             dc.Layout = layout;
             dc.Centre = layout.DanceCircleCentre;
             dc.BuildScenery();
+            if (makeCurrent && layout.Hub) { dc.gameObject.AddComponent<DanceStarter>(); foreach (var dr in dc._drums) if (dr != null) dr.Root.gameObject.AddComponent<DanceStarter>(); } // WU-1a: tap a drum or the fire ring to dance
             if (makeCurrent) Current = dc;
             return dc;
         }
