@@ -183,7 +183,7 @@ namespace World.Sim.Tests
         {
             var sb = new StringBuilder();
             sb.AppendLine();
-            sb.AppendLine("## Variants (same seeds; proof settings only, no rule changed)");
+            sb.AppendLine("## Variants (same seeds; proof settings only, the first row is the balance F1 default)");
             sb.AppendLine();
             sb.AppendLine("| Variant | Won / island fell / cap | Median rounds to 10 (won) | Island falls | Rounds at war | Points burned per game: median / max | Trained / purged per game | TR-4 |");
             sb.AppendLine("|---|---|---|---|---|---|---|---|");
@@ -222,7 +222,7 @@ namespace World.Sim.Tests
             sb.AppendLine("# G0-3 proof: all-AI god board games with the plague and the war");
             sb.AppendLine();
             sb.AppendLine("Written by `GodBoardJoinProof.AiOnlyGodBoard_PlagueAndWar_ManySeeds_WriteProof` (EditMode, `dotnet test DotNet --filter \"FullyQualifiedName~GodBoardJoinProof\"`).");
-            sb.AppendLine("Setup: " + rs.Count + " seeds (" + FirstSeed + " to " + (FirstSeed + (ulong)rs.Count - 1) + "), `GameSetup.GodBoard` (dealt board, ports), AI-only table (`TableHumanSeat = -1`, 4 seats on `TableAi`), plague and war wired as in a real game, nobody banishing (no player). War tie rule: `OnlyWhenNotEveryoneTied` (default). Cap " + MaxTicks + " ticks.");
+            sb.AppendLine("Setup: " + rs.Count + " seeds (" + FirstSeed + " to " + (FirstSeed + (ulong)rs.Count - 1) + "), `GameSetup.GodBoard` (dealt board, ports), AI-only table (`TableHumanSeat = -1`, 4 seats on `TableAi`), plague and war wired as in a real game, nobody banishing (no player). Balance F1 defaults: infection every 3rd round, war tie rule `NeverWhenTied`. Cap " + MaxTicks + " ticks.");
             sb.AppendLine();
             sb.AppendLine("## Against PRD 12.2");
             sb.AppendLine();

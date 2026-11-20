@@ -212,7 +212,7 @@ Names are placeholders the owner may change.
 
 | Id | Requirement |
 |---|---|
-| WA-11 | **War state**, recomputed whenever points change: if the top people leads the next by **2 or more**, every other people is at war with it. If two or more peoples share the top score, those peoples are at war with each other. Otherwise nobody is at war. A lead of exactly 1 is peace. |
+| WA-11 | **War state**, recomputed whenever points change: if the top people leads the next by **2 or more**, every other people is at war with it. **Peoples tied at the top never fight** (balance F1, owner decision 20 Nov 2026; `WarState.TiedLeadersFight = NeverWhenTied`, the default of new games; the literal reading and "unless everyone is tied" stay as tuning values, and older saves keep theirs). Otherwise nobody is at war. A lead of exactly 1 is peace. |
 | WA-12 | Soldiers of peoples not at war pass each other without fighting, on any land. |
 | WA-13 | **Army priorities** (each people's army brain, every `ArmyPlanTicks` = 50): (1) demon nodes on hexes that touch the people's own settlements; (2) demon nodes on hexes that touch any non-leading people's settlements, nearest by trail first; (3) if at war, the enemy's weakest reachable settlement (fewest garrison soldiers, then nearest by trail). Demons blocking a crossing on the army's route count as priority (1). A demon node whose hex touches only the leading people's settlements is ignored by the others' armies. The leader's own army treats its own demons as priority (1). |
 | WA-14 | An enemy soldier that reaches a settlement corner with no soldiers present burns it: the settlement or city and its huts are destroyed, its points are lost at once (TU-6), its stored goods are lost, and a ruin remains. After `RuinTicks` = 1800 the corner is free for anyone under the normal rules. Roads stay. |
@@ -235,7 +235,7 @@ The plague runs on its own map: a graph of **nodes** joined by **trails**, laid 
 | PL-2 | **Regions** (owner, Q-2) are fixed groups of resource hexes, one per element, each round its element's tower and its crystal route: Earth the west (10 hexes), Water the south (8), Fire the east (8), Air the north and the mountain block (12), so the Air site, the wizard and the Air altar stand in Air country. Each region has 12 nodes. A Meadow place belongs to the region of the resource hexes beside it. |
 | PL-3 | **Trails.** 73 trails join the nodes: 66 inside regions and 7 crossings between them. A node has 1 to 5 trails (7 dead ends with one trail). Trails are how outbreaks spread and how soldiers move (WA-17). Roads, settlements, carriers and building ignore trails completely. |
 | PL-4 | **Crossings.** Every pair of regions is joined, but only through few crossings: Fire–Water 1 pass (south-east of home), Water–Earth 2 passes (south, and the island centre), Earth–Air 1 pass (by the Ash Clan), Fire–Air 1 pass (onto the mountain shoulder in the east), Water–Air 1 pass (island centre), and Earth–Fire 1 **tunnel** through the Old Quarry under the home camp. Crossings are ordinary trails in the rules; the tunnel is drawn underground. |
-| PL-5 | **The infection deck** holds one card per node (48). **Once per round** (after the last people's turn) the sim draws as many cards as the current rate and puts 1 demon on each node drawn, then discards them. |
+| PL-5 | **The infection deck** holds one card per node (48). **Every third round** (after the last people's turn of rounds 3, 6, 9, ...; balance F1, owner decision 20 Nov 2026) the sim draws as many cards as the current rate and puts 1 demon on each node drawn, then discards them. | The interval is the saved per-game tuning field `PlagueState.InfectEvery` (new god board games: `PlagueRules.DefaultInfectEvery` = 3; 1 = every round, the pre-F1 rule, which older saves keep). The plague grace (`GraceRounds`, 6) counts infection draws, so epidemics start after about 18 rounds.
 | PL-6 | **Every production roll of 7 is an epidemic** (after `GraceRounds` = 6): the rate moves one step along the track, the bottom card of the deck gets 3 demons, then the discards are shuffled and put on top. The god board darkens, thunder rolls and the feed says "The gods are angry." No 7 is ever shown. |
 | PL-7 | Rate track: 1, 1, 2, 2, 2, 3, 3, 3, 4. |
 | PL-8 | A node holds at most 3 demons. A fourth causes an **outbreak**: every node one trail away gets 1 demon of the source's kind (chaining, each node at most once per chain). The outbreak counter goes up by 1 per outbreaking node. |
@@ -408,7 +408,7 @@ Run over at least 50 seeds each, headless:
 
 | Measure | Target |
 |---|---|
-| Rounds to 10 points, AI seat | 25–40 rounds |
+| Rounds to 10 points, AI seat | 25–40 rounds (**unmet by design** at 10 points, owner decision 20 Nov 2026: with balance F1 the games end earlier; see `Docs/progress/BALANCE_F1.md`) |
 | Quick player wins | 30–50% of seeds (4 peoples, so 25% is even) |
 | Absent player wins | under 5% |
 | Island falls (8 outbreaks) | 5–20% of games with no banishing; under 5% with an army brain active |
@@ -418,6 +418,8 @@ Run over at least 50 seeds each, headless:
 | Wares | every physical good accounted for (ledger balance), every card accounted for |
 | Determinism | same seed and inputs, same game, bit for bit, including save and load at any step |
 | Campaign | a direct player reaches at least 2 crystals first; a reluctant one 0 (as today), with the board played in between |
+
+Note (balance F1): the rounds-to-win target (25-40) stays unmet by design. The owner keeps the win at 10 points; options that stretch the game (win 13 or 14) were rejected. Every other target is judged as measured in `Docs/progress/G1-3-proof.md`.
 
 ### 12.3 Other tests
 
