@@ -330,7 +330,7 @@ namespace World.Game.Tests
             PointerInput.TapObject(Dir.Mira);
             yield return Frames(2);
             Assert.AreEqual(ExpeditionDirector.AskMenu, Dir.AskKind);
-            CollectionAssert.AreEqual(new[] { T("reply_with"), T("reply_know") }, SpeechBubbles.RepliesOf(Dir.AskHandle));
+            CollectionAssert.AreEqual(new[] { T("reply_with"), T("reply_know"), "Show me your pouch.", "Show me your journal." }, SpeechBubbles.RepliesOf(Dir.AskHandle));
             yield return Tap("reply_with");
             Assert.IsTrue(Last<SetCompany>().Present, "\"I'm with you\" sends SetCompany(true)");
             yield return Until(() => C.Party.PlayerPresent, 3f, "the sim to count the player present");
@@ -779,6 +779,17 @@ namespace World.Game.Tests
             PointerInput.TapObject(Dir.Book);
             Assert.IsTrue(MapScreen.IsOpen, "the journal book opens the journal");
             Assert.IsTrue(Dir.Journal.Expanded);
+            // P2a: a book view, not the side column, and big enough to tap
+            yield return Frames(3);
+            var book = Dir.Journal.BookRect;
+            Assert.Greater(book.width, Screen.width * 0.6f, "the journal is an open book over the map");
+            var safe = ScreenSafeArea.Current();
+            Assert.GreaterOrEqual(book.x, safe.x - 0.5f); Assert.LessOrEqual(book.xMax, safe.xMax + 0.5f);
+            Assert.GreaterOrEqual(ExpeditionJournal.BookFont(390f), 15, "the page text is readable at 844 x 390");
+            var pouchBox = Dir.Pouch.GetComponent<BoxCollider>(); var bookBox = Dir.Book.GetComponent<BoxCollider>();
+            Assert.GreaterOrEqual(Mathf.Min(pouchBox.size.x, pouchBox.size.y), 1.2f, "the pouch has a larger tap volume");
+            Assert.GreaterOrEqual(Mathf.Min(bookBox.size.x, bookBox.size.y), 1.2f, "so has the book");
+            MapScreen.Close();
         }
     }
 }

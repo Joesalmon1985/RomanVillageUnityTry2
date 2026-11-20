@@ -179,6 +179,7 @@ namespace World.Game
             Layout = CampLayout.ForStage(centre, dir);
             BuildSpire();
             Circle = DanceCircle.Build(transform, Layout, false);
+            StandingBell.Create(Circle); // P2a
             BuildDais();
             var pick = new GameObject("Pick");
             pick.transform.SetParent(transform, false);
