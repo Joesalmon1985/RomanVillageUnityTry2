@@ -242,6 +242,10 @@ namespace World.Game
                 var o0 = new Vector3(Mathf.Sin(a0), 0, Mathf.Cos(a0)); var o1 = new Vector3(Mathf.Sin(a1), 0, Mathf.Cos(a1));
                 mb.Quad(o0 * 1.9f, o0 * 2.3f, o1 * 2.3f, o1 * 1.9f, Color.white);
                 mb.Quad(o0 * 1.9f, o1 * 1.9f, o1 * 2.3f, o0 * 2.3f, Color.white);
+                // Round the whole temple at the ground, so the preview reads from afar.
+                float r0 = TempleView.Radius + 0.2f, r1 = TempleView.Radius + 0.9f; var g = Vector3.down * 0.9f;
+                mb.Quad(g + o0 * r0, g + o0 * r1, g + o1 * r1, g + o1 * r0, Color.white);
+                mb.Quad(g + o0 * r0, g + o1 * r0, g + o1 * r1, g + o0 * r1, Color.white);
                 var h = Vector3.up * 1.6f;
                 mb.Quad(h + o0 * 0.7f, h + o0 * 0.85f, h + o1 * 0.85f, h + o1 * 0.7f, Color.white);
                 mb.Quad(h + o0 * 0.7f, h + o1 * 0.7f, h + o1 * 0.85f, h + o0 * 0.85f, Color.white);

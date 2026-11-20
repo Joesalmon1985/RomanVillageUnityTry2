@@ -81,7 +81,7 @@ namespace World.Game
                 if (!WorldHitTarget.ScreenBounds(z, cam, out var r)) continue;
                 if (r.xMax < 0 || r.yMax < 0 || r.xMin > Screen.width || r.yMin > Screen.height) continue;
                 Box(r, Obj, 2f);
-                Label(new Vector2(r.x + 3, r.y + 2), z.ZoneId, Obj);
+                Label(new Vector2(Mathf.Clamp(r.x, 0, Screen.width - 120) + 3, Mathf.Clamp(r.y, 0, Screen.height - 30) + 2), z.ZoneId, Obj);
                 ObjectsDrawn++;
                 if (wf == null) wf = WorldZone.WireframeOf(z.ZoneId);
             }
