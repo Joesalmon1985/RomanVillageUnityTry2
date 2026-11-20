@@ -292,7 +292,7 @@ namespace World.Sim.Historic
                         if (b.Output + d.OutputCount > tu.OutputCap) return;
                         b.WorkMode = 1; break;
                     case HistoricKind.ClayPit:
-                        if (r.Clay <= 0 || b.Output + d.OutputCount > tu.OutputCap) return;
+                        if (r.Clay <= 0 || !BricksStillWanted(h, hp, true) || b.Output + d.OutputCount > tu.OutputCap) return;
                         b.WorkMode = 1; break;
                     case HistoricKind.Farm:
                         if (FindField(r, FieldStage.Ripe) >= 0 && b.Output + tu.GrainPerHarvest <= tu.OutputCap) b.WorkMode = 1;
@@ -300,6 +300,7 @@ namespace World.Sim.Historic
                         else return;
                         break;
                     default: // workshops: kiln, sheep farm
+                        if (b.Kind == HistoricKind.Kiln && !BricksStillWanted(h, hp, false)) return;
                         if (b.Output + d.OutputCount > tu.OutputCap) return;
                         for (int w = 0; w < Wares.Count; w++) if (b.Delivered[w] < d.Inputs[w]) return;
                         for (int w = 0; w < Wares.Count; w++)
@@ -391,6 +392,23 @@ namespace World.Sim.Historic
             var c = hp.Castle;
             if (c.StagesDone >= 3) return 0;
             return Math.Max(0, h.Tuning.CastleCost[c.StagesDone][w] - c.Delivered[w] - c.Incoming[w]);
+        }
+
+        /// <summary>
+        /// Bricks the people's castle still needs for its unfinished stages (cost - delivered - on the way), not yet covered by
+        /// bricks in the store (and, with <paramref name="countClay"/>, clay in the store, which fires one brick per unit).
+        /// Clay pits and kilns idle once the castle's bricks are covered, so a finished people no longer drains a clay hex that
+        /// another people shares (HI-3: every people must reach the brick stage).
+        /// </summary>
+        public static bool BricksStillWanted(HistoricState h, HistoricPeople hp, bool countClay)
+        {
+            var c = hp.Castle;
+            int need = 0;
+            for (int st = c.StagesDone; st < 3; st++) need += h.Tuning.CastleCost[st][(int)Ware.Bricks];
+            if (need == 0) return false;
+            need -= c.Delivered[(int)Ware.Bricks] + c.Incoming[(int)Ware.Bricks] + hp.Stock[(int)Ware.Bricks];
+            if (countClay) need -= hp.Stock[(int)Ware.Clay];
+            return need > 0;
         }
 
         // ---------------------------------------------------------------- carriers
