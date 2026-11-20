@@ -315,10 +315,31 @@ namespace World.Game
             FrameAxes(out var dir, out var right);
             var mid = (_stage.PlayerPos + _stage.MiraPos) * 0.5f;
             _refereeRest = mid + right * 2.6f; _refereeRest.y = _stage.PlayerPos.y;
-            _refereeStage = mid + right * 0.5f; _refereeStage.y = _stage.PlayerPos.y;
+            _refereeStage = mid + right * 1.1f; _refereeStage.y = _stage.PlayerPos.y;
             _referee = ActorFactory.Create("duel_referee", new Color(0.85f, 0.78f, 0.42f), _refereeRest, BoardSpace.YawOf(mid - _refereeRest), transform);
             _referee.Root.name = "DUEL-END referee";
             WorldZone.Tag(_referee.Root.gameObject, WorldZones.DuelEnd);
+            _referee.PlayOneShot(ActorKeys.Wave); // raises a hand at the start
+        }
+
+        private bool _refWasResult; private float _pointUntil;
+        /// <summary>The referee's gestures (presentation only): a raised hand at the start, a point at the winner at the end.</summary>
+        private void RefereeGestures(bool result)
+        {
+            if (result && !_refWasResult)
+            {
+                var o = _e.LastOutcome;
+                Vector3? at = o == World.Sim.Encounters.Ward.WardOutcome.Victory ? _stage.PlayerPos : o == World.Sim.Encounters.Ward.WardOutcome.Defeat ? _stage.MiraPos : (Vector3?)null;
+                if (at.HasValue)
+                {
+                    var p = at.Value + Vector3.up * 1.0f;
+                    if (_referee is RiggedActor ra) { ra.PointAt(p); _pointUntil = Time.unscaledTime + 3.5f; }
+                    else _referee.PlayOneShot(ActorKeys.Cheer);
+                }
+            }
+            if (!result && _refWasResult) { _referee.PlayOneShot(ActorKeys.Wave); }
+            if (_pointUntil > 0f && Time.unscaledTime > _pointUntil) { _pointUntil = 0f; if (_referee is RiggedActor rb) rb.PointAt(null); }
+            _refWasResult = result;
         }
 
         private void BuildReveal()
@@ -525,6 +546,7 @@ namespace World.Game
         private void RefreshReferee(bool result)
         {
             if (_referee == null) return;
+            RefereeGestures(result);
             var target = result ? _refereeStage : _refereeRest;
             var r = _referee.Root;
             r.position = Vector3.MoveTowards(r.position, target, Time.unscaledDeltaTime * 3f);

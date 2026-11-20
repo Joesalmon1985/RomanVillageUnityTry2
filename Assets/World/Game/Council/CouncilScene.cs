@@ -327,7 +327,7 @@ namespace World.Game
             for (int k = 0; k < 6; k++)
             {
                 var n = new GameObject("Note " + k).transform; n.SetParent(Root, false);
-                var body = CouncilShapes.Make("Paper", n, CouncilShapes.FoldedNote(Color.white), Vector3.zero, 1.7f);
+                var body = CouncilShapes.Make("Paper", n, CouncilShapes.FoldedNote(Color.white), Vector3.zero, 1.7f, true);
                 n.gameObject.SetActive(false);
                 _notes.Add(n.gameObject);
             }
@@ -784,15 +784,26 @@ namespace World.Game
                 // spaced by screen size (a tenth of the picture's height) so the notes stay apart and tappable on a phone
                 float dist = Vector3.Distance(ViewCamera.transform.position, ct.position);
                 float hM = 2f * dist * Mathf.Tan(ViewCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
-                float gap = Mathf.Max(0.6f, hM * 0.11f);
-                var pos = ct.position + Vector3.up * (1.35f + Mathf.Max(0.55f, hM * 0.11f) * (k / 3)) + camR * (Mathf.Max(0.7f, hM * 0.09f) + gap * (k % 3));
+                float gap = Mathf.Max(0.6f, hM * 0.13f);
+                var pos = ct.position + Vector3.up * (1.35f + Mathf.Max(0.55f, hM * 0.13f) * (k / 3)) + camR * (Mathf.Max(0.7f, hM * 0.09f) + gap * (k % 3));
                 _notes[k].transform.position = pos;
                 var toCam = (ViewCamera.transform.position - pos).normalized;
                 _notes[k].transform.rotation = Quaternion.FromToRotation(Vector3.up, toCam) * Quaternion.Euler(0, ViewCamera.transform.eulerAngles.y, 0);
-                float pulse = (k == PointedProposal ? 1.12f : 1f) * 1.4f;
+                // P2b: each note is about a tenth of the picture's height (it was a small stone on a phone), never smaller than before
+                if (_noteNat <= 0f)
+                {
+                    var rr = _notes[k].GetComponentInChildren<Renderer>();
+                    if (rr != null) { var bs = rr.bounds.size; _noteNat = Mathf.Max(bs.x, bs.y, bs.z) / Mathf.Max(0.01f, _notes[k].transform.lossyScale.x); }
+                }
+                float baseScale = _noteNat > 0f ? Mathf.Clamp(NoteScreenFraction * hM / _noteNat, 1.4f, 6f) : 1.4f;
+                float pulse = (k == PointedProposal ? 1.12f : 1f) * baseScale;
                 _notes[k].transform.localScale = Vector3.one * pulse;
             }
         }
+
+        float _noteNat;
+        /// <summary>Share of the picture's height a note takes (the closer camera on a phone; the notes sit at the foot, clear of the places).</summary>
+        public const float NoteScreenFraction = 0.10f;
 
         void StampNote(GameObject note, CouncilProposal p)
         {
@@ -893,6 +904,9 @@ namespace World.Game
                 var hz = Site.Hearth; var h0 = new Vector3(hz.x - cp.x, 0, hz.z - cp.z);
                 while (push > 0f && (h0 - dir * push).magnitude < 8f) push -= 0.5f;
                 push = Mathf.Max(0f, push);
+                // P2b: when the places are far apart the push widens the angle between them past what the picture holds: pull back
+                float maxSpan = (Mathf.Min(104f, 2f * Mathf.Atan(Mathf.Tan(MaxVfov * 0.5f * Mathf.Deg2Rad) * Mathf.Max(0.5f, aspect)) * Mathf.Rad2Deg) - 6f) / 1.05f;
+                for (int k = 0; k < 16 && push > 0f && SpanOf(cp + dir * push, tracks) > maxSpan; k++) push = Mathf.Max(0f, push - 1.5f);
                 cp += dir * push;
             }
             float mn = 999f, mx = -999f, dsum = 0f; int n = 0; float refB = float.NaN;
@@ -902,7 +916,7 @@ namespace World.Game
                 var d = pl.C - cp; d.y = 0;
                 dsum += Mathf.Max(8f, d.magnitude); n++;
                 // the settled block (left of the prop) and the catspaw's patch (right) must both be in frame
-                foreach (var off in new[] { -(0.6f * pl.R + 3.6f), 0.6f * pl.R + 5.8f })
+                foreach (var off in new[] { -(0.8f * pl.R + 5f), 0.8f * pl.R + 7.2f })
                 {
                     float b = YawTo(cp, pl.C + pl.Right * off);
                     if (float.IsNaN(refB)) refB = b;
@@ -913,7 +927,7 @@ namespace World.Game
             if (tracks == null || tracks.Count == 0) for (int t = 2; t <= 12; t++) Take(t);
             else foreach (var t in tracks) Take(t);
             yaw = (mn + mx) * 0.5f;
-            float hfov = Mathf.Clamp((mx - mn) + 5f, 26f, 100f);
+            float hfov = Mathf.Clamp((mx - mn) * 1.05f + 6f, 26f, 104f);
             float asp = Mathf.Max(0.5f, aspect);
             vfov = 2f * Mathf.Atan(Mathf.Tan(hfov * 0.5f * Mathf.Deg2Rad) / asp) * Mathf.Rad2Deg;
             float h = TowerH + 1.2f;
@@ -922,7 +936,7 @@ namespace World.Game
             float bottom = Mathf.Atan(h / AnchorFar) * Mathf.Rad2Deg + 5f;
             float aPlace = Mathf.Atan((h - 1f) / dm) * Mathf.Rad2Deg;
             vfov = Mathf.Max(vfov, 17f, (bottom - aPlace) / 0.78f);
-            vfov = Mathf.Min(vfov, 50f);
+            vfov = Mathf.Min(vfov, MaxVfov);
             pitchDown = Mathf.Clamp(bottom - 0.5f * vfov, 6f, 40f);
             // That pitch puts a point 17 m out straight ahead in the picture, but the candidate and the aide stand in the
             // lower corners. In a wide view (all eleven places, or a phone's aspect) the corner rays run far off-axis and
@@ -931,6 +945,27 @@ namespace World.Game
             // until both corner rays meet the ground within reach.
             for (int k = 0; k < 80 && pitchDown < 40f && Mathf.Max(CornerReach(CandidateU, pitchDown, yaw, vfov, asp), CornerReach(AideU, pitchDown, yaw, vfov, asp)) > AnchorFar - 1f; k++)
                 pitchDown = Mathf.Min(40f, pitchDown + 0.5f);
+        }
+
+        /// <summary>Widest vertical field of view the council camera uses (a phone's wide picture holds about 100 degrees across at this).</summary>
+        public const float MaxVfov = 58f;
+
+        /// <summary>The horizontal angle (degrees) the given places span, with their people and props, seen from a camera at <paramref name="c"/>.</summary>
+        float SpanOf(Vector3 c, IList<int> tracks)
+        {
+            float mn = 999f, mx = -999f, refB = float.NaN;
+            foreach (var t in tracks)
+            {
+                var pl = _places[t - 2];
+                foreach (var off in new[] { -(0.8f * pl.R + 5f), 0.8f * pl.R + 7.2f })
+                {
+                    float b = YawTo(c, pl.C + pl.Right * off);
+                    if (float.IsNaN(refB)) refB = b;
+                    b = refB + Mathf.DeltaAngle(refB, b);
+                    mn = Mathf.Min(mn, b); mx = Mathf.Max(mx, b);
+                }
+            }
+            return mx - mn;
         }
 
         /// <summary>Flat distance from the tower at which the ray through screen fraction (u, <see cref="AnchorV"/>) of a

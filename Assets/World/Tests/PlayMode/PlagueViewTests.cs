@@ -295,5 +295,78 @@ namespace World.Game.Tests
             Assert.IsTrue(_v.Overlay);
             Assert.IsFalse(PlagueViews.ToggleOverlayFromTotem());
         }
+
+#if UNITY_EDITOR
+        /// <summary>P2b: a tap on the table leans the camera over it; at 844 x 390 every pebble is at least the hit-target size and a tap on its centre picks it; the island and the docked card do not overlap.</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator P2b_LodgeTable_LeanView_PebblesAreHitTargets_At844x390_AndFigurinesDoNotOverlap()
+        {
+            UnityEditor.PlayModeWindow.GetRenderingResolution(out uint w0, out uint h0);
+            UnityEditor.PlayModeWindow.SetCustomRenderingResolution(844, 390, "P2b lodge 844x390");
+            try
+            {
+                for (int i = 0; i < 10 && Screen.height != 390; i++) yield return null;
+                ScreenSafeArea.Override = ScreenSafeArea.SimulatedNotch(Screen.width, Screen.height);
+                yield return Start();
+                Infect(5);
+                // three demons of mixed kinds on one shrine
+                for (int k = 0; k < 3; k++) S.Plague.KindCount[(5 - 1) * 4 + k] = 1;
+                yield return null; yield return null;
+                var t = Lodge;
+                Assert.IsTrue(t.PropsShown, "the table is up while the plague runs");
+                var w = PlayerWalker.Instance;
+                w.Teleport(t.TableCentre + new Vector3(0, 0, -3.5f), 0f, 8f);
+                yield return new WaitForSecondsRealtime(0.8f);
+                Assert.IsFalse(t.Leaning);
+                var inspected = WorldActions.Inspect(t.Table);
+                for (int i = 0; i < 5 && !t.Leaning; i++) yield return null;
+                Assert.IsTrue(t.Leaning, "a tap on the table leans the camera over it (inspect " + inspected + ", state " + WorldActions.State + ", locked " + w.IsLocked + ", gliding " + w.IsGliding + ", auto " + w.IsAutoWalking + ")");
+                for (int i = 0; i < 3; i++) yield return null;
+                var cam = w.Camera;
+                float H = Screen.height, W = Screen.width;
+                var safe = ScreenSafeArea.Current();
+                // every pebble: grown hit rect >= the minimum; a tap at its centre picks that very pebble
+                float min = WorldHitTarget.MinSide(H);
+                for (int n = 1; n <= 48; n++)
+                {
+                    var li = t.NodeTap(n);
+                    Assert.IsTrue(WorldHitTarget.ScreenBounds(li, cam, out var r), "pebble " + n + " is in front of the camera");
+                    var big = WorldHitTarget.Enlarge(r, H);
+                    Assert.GreaterOrEqual(big.width, min - 0.5f, "pebble " + n + " hit width"); Assert.GreaterOrEqual(big.height, min - 0.5f, "pebble " + n + " hit height");
+                    var picked = WorldActions.PickEnlarged(new Vector2(r.center.x, H - r.center.y), cam);
+                    Assert.AreSame(li, picked, "a tap at the centre of pebble " + n + " picks it");
+                }
+                // the island is inside the safe area and left of the card
+                float x0 = float.MaxValue, x1 = float.MinValue, y0 = float.MaxValue, y1 = float.MinValue;
+                foreach (var dx in new[] { -1f, 1f }) foreach (var dz in new[] { -1f, 1f })
+                {
+                    var sp = cam.WorldToScreenPoint(t.TableTop + new Vector3(dx * t.IslandHalfW, 0, dz * t.IslandHalfD));
+                    float gy = H - sp.y;
+                    x0 = Mathf.Min(x0, sp.x); x1 = Mathf.Max(x1, sp.x); y0 = Mathf.Min(y0, gy); y1 = Mathf.Max(y1, gy);
+                }
+                var island = Rect.MinMaxRect(x0, y0, x1, y1);
+                Assert.IsTrue(island.xMin >= safe.xMin - 1 && island.yMin >= safe.yMin - 1 && island.yMax <= safe.yMax + 1 && island.xMax <= safe.xMax, "island " + island + " in safe " + safe);
+                Assert.Greater(island.height, H * 0.7f, "the island fills the picture's height: " + island);
+                yield return new WaitForSecondsRealtime(0.8f);
+                var node = t.NodeTap(5);
+                WorldActions.Cancel();
+                Assert.AreEqual(WorldTapResult.Inspected, WorldActions.Inspect(node));
+                yield return null;
+                var card = LedgerCard.CurrentLayout(cam).Card;
+                Assert.IsFalse(card.Overlaps(island), "the card " + card + " does not cover the island " + island);
+                WorldActions.Cancel();
+                t.EndLean(true);
+                Assert.IsFalse(LedgerCard.DockRight);
+
+                // figurines: three of mixed kinds stand clear of one another
+                var fig = new System.Collections.Generic.List<Vector3>();
+                foreach (var g in t.NodeTap(5).GetComponentsInChildren<Transform>()) if (g.name.StartsWith("Demon ")) fig.Add(g.position);
+                Assert.AreEqual(3, fig.Count);
+                for (int i = 0; i < 3; i++) for (int j = i + 1; j < 3; j++)
+                    Assert.Greater(Vector3.Distance(fig[i], fig[j]), 0.07f, "figurines " + i + " and " + j + " overlap");
+            }
+            finally { UnityEditor.PlayModeWindow.SetCustomRenderingResolution(w0, h0, "restore"); ScreenSafeArea.Override = null; }
+        }
+#endif
     }
 }

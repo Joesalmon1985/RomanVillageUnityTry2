@@ -317,7 +317,7 @@ namespace World.Game
         {
             if (cam == null) return null;
             var gui = new Vector2(screenPoint.x, Screen.height - screenPoint.y);
-            Component best = null; float bestArea = float.MaxValue;
+            Component best = null; float bestArea = float.MaxValue, bestDist = float.MaxValue;
             foreach (var c in _registered)
             {
                 if (c == null || !c.gameObject.activeInHierarchy) continue;
@@ -325,7 +325,9 @@ namespace World.Game
                 var big = WorldHitTarget.Enlarge(r, Screen.height);
                 if (!big.Contains(gui)) continue;
                 float area = big.width * big.height;
-                if (area < bestArea) { best = c; bestArea = area; }
+                // Smallest grown rect wins; among equals (a crowd of small targets, as the lodge's pebbles) the nearest centre wins.
+                float dist = (big.center - gui).sqrMagnitude;
+                if (area < bestArea - 1f || (area < bestArea + 1f && dist < bestDist)) { best = c; bestArea = area; bestDist = dist; }
             }
             return best;
         }

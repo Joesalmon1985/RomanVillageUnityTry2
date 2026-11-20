@@ -41,6 +41,12 @@ namespace World.Game
             RefreshPreview();
         }
         public void ClearPreview() => SetPreview(null, false, false);
+        /// <summary>The middle of a place (track 2 to 12) on the ground (tests, captures).</summary>
+        public Vector3 PlaceCentre(int track) => _places[track - 2].C;
+        /// <summary>The ground radius of a place (the people and the prop).</summary>
+        public float PlaceRadius(int track) => _places[track - 2].R;
+        /// <summary>The folded note of a proposal (tests).</summary>
+        public GameObject NoteObject(int k) => _notes[k];
 
         readonly Dictionary<int, int> _turn = new Dictionary<int, int>();
         readonly List<GameObject> _ghosts = new List<GameObject>();
@@ -146,6 +152,9 @@ namespace World.Game
         {
             bool cam = ViewCamera != null && shown >= 0;
             SetRecorderVisible(cam);
+            // P2b: the camera stands on the tower platform; its wide view would show the platform's own edge at the foot of the picture
+            if (_platform == null && Root != null) { var pt = Root.Find("Lookout tower/Platform"); if (pt != null) _platform = pt.GetComponent<Renderer>(); }
+            if (_platform != null && _platform.enabled == cam) _platform.enabled = !cam;
             bool mine = e.PlayerSeat >= 0 && e.Active == e.PlayerSeat && e.Phase != ElectionPhase.Complete;
             // a preview that no longer fits the state (the turn moved on) goes away by itself
             if (PreviewProposal != null && !(mine && e.Phase == ElectionPhase.Choosing)) ClearPreview();
@@ -204,6 +213,8 @@ namespace World.Game
                     }
                 }
             }
+            // P2b: a bright pillar over each previewed place and a ghost sized to the picture, so two far-apart places still read on a phone
+            SyncPlaceBeacons(cam, seatCol, pulse);
             // the coloured ground rings: settled people a filled disc, listeners an open ring, a frame round a place in play
             for (int t = 2; t <= 12; t++)
             {
@@ -238,6 +249,52 @@ namespace World.Game
             {
                 // drawn through the place frame; the catspaw itself keeps its coloured head band
             }
+        }
+
+        Renderer _platform;
+        readonly List<GameObject> _beacons = new List<GameObject>();
+        /// <summary>Pillars standing now over previewed places (tests).</summary>
+        public int BeaconCount { get { int n = 0; foreach (var b in _beacons) if (b.activeSelf) n++; return n; } }
+        public Vector3 BeaconPosition(int i) => _beacons[i].transform.position;
+        /// <summary>Share of the picture's height a ghost catspaw and a pillar's width take at least.</summary>
+        public const float GhostScreenFraction = 0.12f, BeaconWidthFraction = 0.018f;
+
+        void SyncPlaceBeacons(bool cam, Color seatCol, float pulse)
+        {
+            int want = cam && PreviewProposal != null ? PreviewTracks.Count : 0;
+            while (_beacons.Count < want)
+            {
+                var mb = new MeshBuilder(); mb.Box(new Vector3(0, 6f, 0), new Vector3(1f, 12f, 1f), Color.white);
+                var go = mb.ToObject("Place beacon", _fx, RingMat(Color.white));
+                go.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                _beacons.Add(go);
+            }
+            var vc = ViewCamera;
+            for (int i = 0; i < _beacons.Count; i++)
+            {
+                var b = _beacons[i]; bool on = i < want && vc != null;
+                if (b.activeSelf != on) b.SetActive(on);
+                if (!on) continue;
+                var pl = _places[PreviewTracks[i] - 2];
+                var pos = new Vector3(pl.C.x, pl.Ground, pl.C.z);
+                b.transform.position = pos;
+                float dist = Mathf.Max(1f, Vector3.Distance(vc.transform.position, pos));
+                float hM = 2f * dist * Mathf.Tan(vc.fieldOfView * 0.5f * Mathf.Deg2Rad);
+                b.transform.localScale = new Vector3(Mathf.Max(0.3f, hM * BeaconWidthFraction), 1f, Mathf.Max(0.3f, hM * BeaconWidthFraction));
+                b.GetComponent<Renderer>().sharedMaterial = RingMat(Color.Lerp(seatCol, Color.white, 0.55f + 0.2f * pulse));
+            }
+            // ghosts: sized to the picture when it is wide (never below their old size)
+            if (vc != null && PreviewProposal != null)
+                for (int i = 0; i < _ghosts.Count && i < PreviewProposal.Steps.Count; i++)
+                {
+                    var g = _ghosts[i]; if (!g.activeSelf) continue;
+                    var r = g.GetComponent<Renderer>();
+                    float cur = g.transform.localScale.x;
+                    float nat = Mathf.Max(0.01f, Mathf.Max(r.bounds.size.x, r.bounds.size.y, r.bounds.size.z) / Mathf.Max(0.01f, cur));
+                    float dist = Mathf.Max(1f, Vector3.Distance(vc.transform.position, g.transform.position));
+                    float hM = 2f * dist * Mathf.Tan(vc.fieldOfView * 0.5f * Mathf.Deg2Rad);
+                    g.transform.localScale = Vector3.one * Mathf.Clamp(GhostScreenFraction * hM / nat, 1.8f, 5f);
+                }
         }
 
         /// <summary>The ground point under the camera is the reference for the candidate's anchors (the tower foot when not pushed).</summary>

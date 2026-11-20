@@ -37,7 +37,7 @@ namespace World.Game
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics() => Instance = null;
 
-        public const float TableY = 1.05f, TableW = 3.2f, TableD = 2.4f;
+        public const float TableY = 1.05f, TableW = 2.9f, TableD = 2.9f; // P2b: the island is as deep as it is wide, so the table is square and the island fills it
         public static readonly Vector2 TableSpot = new Vector2(0f, 13f), PostSpot = new Vector2(-8.2f, 8.5f), StickSpot = new Vector2(-5.9f, 8.7f),
             ShelfSpot = new Vector2(7.4f, 8.0f), SatchelSpot = new Vector2(3.6f, 9.8f), CharmSpot = new Vector2(0.7f, 8.4f), SignSpot = new Vector2(-3.2f, 10.2f);
 
@@ -47,6 +47,10 @@ namespace World.Game
         public LodgeInspect Table, Post, Stick, Satchel, Charm, Sign;
         public readonly LodgeInspect[] Vessels = new LodgeInspect[4];
         public readonly List<LodgeInspect> NodeTaps = new List<LodgeInspect>();
+        private readonly LodgeInspect[] _nodeLi = new LodgeInspect[PlagueGraphData.NodeCount];
+        /// <summary>Half the island's size on the table, in metres (east-west, north-south).</summary>
+        public float IslandHalfW { get; private set; }
+        public float IslandHalfD { get; private set; }
         public bool PropsShown => Props != null && Props.gameObject.activeSelf;
 
         private WorldBootstrap _boot;
@@ -90,7 +94,7 @@ namespace World.Game
             return t;
         }
 
-        private void OnDestroy() { if (_boot != null && _boot.Clock != null) _boot.Clock.Ticked -= OnTicked; if (Instance == this) Instance = null; }
+        private void OnDestroy() { if (_leaning) EndLean(false); if (_boot != null && _boot.Clock != null) _boot.Clock.Ticked -= OnTicked; if (Instance == this) Instance = null; }
 
         private Vector3 L(Vector2 spot, float y = 0f) => new Vector3(spot.x, y, spot.y);
 
@@ -123,7 +127,8 @@ namespace World.Game
             }
             for (int i = 0; i < PlagueGraphData.NodeCount; i++) { minX = Mathf.Min(minX, PlagueGraphData.X[i]); maxX = Mathf.Max(maxX, PlagueGraphData.X[i]); minZ = Mathf.Min(minZ, PlagueGraphData.Z[i]); maxZ = Mathf.Max(maxZ, PlagueGraphData.Z[i]); }
             _cx = (minX + maxX) * 0.5f; _cz = (minZ + maxZ) * 0.5f;
-            _scale = Mathf.Min((TableW - 0.35f) / (maxX - minX), (TableD - 0.35f) / (maxZ - minZ));
+            _scale = Mathf.Min((TableW - 0.2f) / (maxX - minX), (TableD - 0.2f) / (maxZ - minZ));
+            IslandHalfW = (maxX - minX) * 0.5f * _scale; IslandHalfD = (maxZ - minZ) * 0.5f * _scale;
 
             var root = Child("Map table", TableSpot);
             root.rotation = Quaternion.identity; // the carved island keeps the world's compass
@@ -161,7 +166,13 @@ namespace World.Game
                 var pa = T(PlagueGraphData.X[a], PlagueGraphData.Z[a], 0.018f); var pb = T(PlagueGraphData.X[b], PlagueGraphData.Z[b], 0.018f);
                 if (kind == 0) mb.Strip(pa, pb, 0.022f, new Color(0.90f, 0.85f, 0.68f));
                 else if (kind == 1) { mb.Strip(pa, pb, 0.04f, new Color(0.25f, 0.18f, 0.08f)); mb.Strip(pa + Vector3.up * 0.002f, pb + Vector3.up * 0.002f, 0.026f, new Color(1f, 0.80f, 0.22f)); }
-                else { mb.Strip(pa, pb, 0.045f, new Color(0.03f, 0.02f, 0.04f)); mb.Strip(pa + Vector3.up * 0.002f, pb + Vector3.up * 0.002f, 0.02f, new Color(0.30f, 0.16f, 0.40f)); }
+                else
+                {
+                    // P2b: the tunnel is a groove with a pale violet lip, a black floor and a glowing seam: it reads from standing distance.
+                    mb.Strip(pa + Vector3.up * 0.001f, pb + Vector3.up * 0.001f, 0.085f, new Color(0.78f, 0.62f, 0.92f));
+                    mb.Strip(pa + Vector3.up * 0.003f, pb + Vector3.up * 0.003f, 0.06f, new Color(0.02f, 0.01f, 0.03f));
+                    mb.Strip(pa + Vector3.up * 0.005f, pb + Vector3.up * 0.005f, 0.022f, new Color(0.62f, 0.32f, 0.85f));
+                }
             }
             // The pebbles: one per node, coloured by its element.
             for (int i = 0; i < PlagueGraphData.NodeCount; i++)
@@ -183,15 +194,16 @@ namespace World.Game
                 g.transform.SetParent(root, false);
                 g.transform.localPosition = T(PlagueGraphData.X[i], PlagueGraphData.Z[i], 0f);
                 _nodeT[i] = g.transform; _figs[i] = new List<GameObject>();
-                LandLook.PickBox(g, new Vector3(0, 0.1f, 0), new Vector3(0.2f, 0.3f, 0.2f));
+                LandLook.PickBox(g, new Vector3(0, 0.08f, 0), new Vector3(0.12f, 0.2f, 0.12f));
                 var li = g.AddComponent<LodgeInspect>();
                 li.PromptText = "Look at this shrine"; li.Reach = 6f;
                 li.TitleFn = () => PlagueViews.ElementName[PlagueApi.ElementOf(node)] + " shrine " + node;
                 li.LinesFn = () => NodeLines(node);
                 NodeTaps.Add(li);
+                _nodeLi[i] = li;
             }
             HubArt.Glow(Props, root.position + Vector3.up * 2.4f, 9f, 1.3f);
-            WalkGrid.AddSolid(root.position, 1.65f, HealersLodge.WalkSolidOwner);
+            WalkGrid.AddSolid(root.position, 1.85f, HealersLodge.WalkSolidOwner);
         }
 
         private IEnumerable<string> TableLines()
@@ -255,9 +267,12 @@ namespace World.Game
                 {
                     var g = new GameObject("Demon " + PlagueViews.ElementName[k]);
                     g.transform.SetParent(_nodeT[i], false);
-                    float a = (40f + slot * 120f) * Mathf.Deg2Rad;
-                    g.transform.localPosition = new Vector3(Mathf.Sin(a), 0, Mathf.Cos(a)) * 0.045f + Vector3.up * 0.03f;
-                    g.transform.localRotation = Quaternion.Euler(0, 180f + slot * 120f, 0);
+                    // P2b: figurines stand on a ring wide enough that three of a mixed kind do not overlap (base radius 0.034).
+                    int count = _tk[i * 4] + _tk[i * 4 + 1] + _tk[i * 4 + 2] + _tk[i * 4 + 3];
+                    float a = (40f + slot * 360f / Mathf.Max(1, count)) * Mathf.Deg2Rad;
+                    float ring = count <= 1 ? 0f : count == 2 ? 0.045f : 0.068f;
+                    g.transform.localPosition = new Vector3(Mathf.Sin(a), 0, Mathf.Cos(a)) * ring + Vector3.up * 0.03f;
+                    g.transform.localRotation = Quaternion.Euler(0, 180f + slot * 360f / Mathf.Max(1, count), 0);
                     LandLook.Part(g.transform, "Mesh", FigureMesh(k), null, false);
                     list.Add(g);
                 }
@@ -531,9 +546,98 @@ namespace World.Game
             var p = P;
             bool show = p != null && !p.Ended && S.Historic == null;
             if (Props.gameObject.activeSelf != show) Props.gameObject.SetActive(show);
-            if (!show) return;
+            if (!show) { if (_leaning) EndLean(false); return; }
             SyncAll(false);
+            UpdateLean();
         }
+
+        // ---------------------------------------------------------------- the lean over the table (P2b)
+
+        /// <summary>True while the camera leans over the map table (the pebbles are enlarged tap targets, the card docks at the right).</summary>
+        public static bool LeanActive { get; private set; }
+        public bool Leaning => _leaning;
+        private bool _leaning; private PlayerWalker _lw;
+        /// <summary>The share of the safe width the island may take in the table view (the ledger column takes the rest).</summary>
+        public const float LeanMapShare = 0.56f;
+        public static float LeanPitch = 70f;
+
+        /// <summary>The table surface at the middle of the island.</summary>
+        public Vector3 TableTop => TableCentre + Vector3.up * TableY;
+
+        /// <summary>The eye position and yaw that fit the island into the left of the safe area (pure geometry).</summary>
+        public static Vector3 LeanEye(Vector3 top, float halfW, float halfD, float pitchDeg, float vfovDeg, float screenW, float screenH, Rect safe, out float yaw)
+        {
+            yaw = 0f; // the island keeps the compass of the world: north (+z) is up the picture
+            float pad = Mathf.Max(8f, screenH * 0.03f);
+            var target = Rect.MinMaxRect(safe.xMin + pad, safe.yMin + pad, safe.xMin + safe.width * LeanMapShare - pad, safe.yMax - pad);
+            float f = screenH * 0.5f / Mathf.Tan(vfovDeg * 0.5f * Mathf.Deg2Rad);
+            var fwd = Quaternion.Euler(pitchDeg, yaw, 0) * Vector3.forward;
+            var right = Vector3.right;
+            var up = Vector3.Cross(fwd, right).normalized; // camera up
+            Vector3 aim = top; float dist = 3.2f;
+            var corners = new[] { new Vector3(-halfW, 0, -halfD), new Vector3(halfW, 0, -halfD), new Vector3(-halfW, 0, halfD), new Vector3(halfW, 0, halfD) };
+            for (int it = 0; it < 24; it++)
+            {
+                var eye = aim - fwd * dist;
+                float x0 = float.MaxValue, x1 = float.MinValue, y0 = float.MaxValue, y1 = float.MinValue;
+                foreach (var c in corners)
+                {
+                    var d = top + c - eye;
+                    float z = Mathf.Max(0.2f, Vector3.Dot(d, fwd));
+                    float px = screenW * 0.5f + Vector3.Dot(d, right) / z * f;
+                    float py = screenH * 0.5f - Vector3.Dot(d, up) / z * f; // GUI y (down)
+                    x0 = Mathf.Min(x0, px); x1 = Mathf.Max(x1, px); y0 = Mathf.Min(y0, py); y1 = Mathf.Max(y1, py);
+                }
+                float k = Mathf.Max((x1 - x0) / target.width, (y1 - y0) / target.height);
+                dist *= Mathf.Clamp(k, 0.5f, 2f);
+                // move the aim so the middle of the island's projected box lands on the middle of the target
+                float zc = Mathf.Max(0.2f, dist);
+                aim += right * (((x0 + x1) * 0.5f - target.center.x) / f * zc) - up * (((y0 + y1) * 0.5f - target.center.y) / f * zc);
+            }
+            return aim - fwd * dist;
+        }
+
+        private void UpdateLean()
+        {
+            var w = PlayerWalker.Instance;
+            if (!_leaning)
+            {
+                if (w == null || w.IsLocked || WorldActions.State != WorldActionState.Inspect) return;
+                var cur = WorldActions.Machine.Current as LodgeInspect;
+                if (cur == null || (cur != Table && System.Array.IndexOf(_nodeLi, cur) < 0)) return;
+                BeginLean(w);
+                return;
+            }
+            if (w == null || w.IsLocked || w.IsGliding || w.IsAutoWalking || Input.GetKeyDown(KeyCode.Escape)) EndLean(w != null && !w.IsLocked);
+        }
+
+        /// <summary>Leans the camera over the table (the first tap on the table or a pebble; tests call it too).</summary>
+        public bool BeginLean(PlayerWalker w)
+        {
+            if (_leaning || w == null || w.Camera == null) return false;
+            var eye = LeanEye(TableTop, IslandHalfW, IslandHalfD, LeanPitch, w.Camera.fieldOfView, Screen.width, Screen.height, ScreenSafeArea.Current(), out float yaw);
+            w.StopAuto();
+            w.PlaceExact(eye - Vector3.up * WorldBootstrap.EyeHeight, yaw, LeanPitch);
+            WorldActions.NoteCameraMove(0.6f);
+            _leaning = true; _lw = w; LeanActive = true;
+            LedgerCard.DockRight = true;
+            foreach (var li in _nodeLi) if (li != null) WorldActions.Register(li);
+            return true;
+        }
+
+        /// <summary>Stands up again: the walker goes back to the cell it stood on.</summary>
+        public void EndLean(bool restore)
+        {
+            if (!_leaning) return;
+            _leaning = false; LeanActive = false;
+            LedgerCard.DockRight = false;
+            foreach (var li in _nodeLi) if (li != null) WorldActions.Unregister(li);
+            if (restore && _lw != null) _lw.RestoreCell();
+            _lw = null;
+        }
+
+        /// <summary>The tap component of a shrine pebble (tests: the pebbles in the table view).</summary>
+        public LodgeInspect NodeTap(int node) => _nodeLi[node - 1];
 
         private void SyncAll(bool force)
         {

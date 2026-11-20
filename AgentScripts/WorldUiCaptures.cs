@@ -249,6 +249,17 @@ public static class WorldUiCaptures
                     return "council " + EncounterDirectory.TryStart(CouncilEncounter.Id, null, home);
                 }
             case "ctap": return "ctap " + CouncilEncounter.Current.TapTarget(cmd.Substring(5)) + " state " + WorldActions.State;
+            case "cfar":
+                {
+                    var enc = CouncilEncounter.Current; var sc = enc.Scene; int best = -1; float bd = -1f; var sb = new StringBuilder();
+                    for (int i = 0; i < sc.Proposals.Count; i++)
+                    {
+                        var st = sc.Proposals[i].Steps; float d = st.Count > 1 ? Vector3.Distance(sc.PlaceCentre(st[0].Key), sc.PlaceCentre(st[1].Key)) : 0f;
+                        sb.Append("note " + i + " d " + d.ToString("0") + "; ");
+                        if (d > bd) { bd = d; best = i; }
+                    }
+                    return "cfar " + best + " " + sb;
+                }
             case "ctapnow": return "ctapnow " + CouncilEncounter.Current.TapTargetNow(cmd.Substring(8));
             case "cadv":
                 {

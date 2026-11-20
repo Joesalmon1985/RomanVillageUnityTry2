@@ -149,23 +149,15 @@ namespace World.Game
                 playerPos.y = miraPos.y;
                 _stage = WardDuelStage.Build(_root.transform, playerPos, _mira != null ? _mira.Actor : null, _sfx);
 
-                // Over-the-shoulder first-person view: both wizards and both Wards in frame.
-                {
-                    var toMira = (miraPos - playerPos).normalized;
-                    var right = Vector3.Cross(Vector3.up, toMira).normalized;
-                    var camPos = playerPos - toMira * 3.0f + right * 1.8f;
-                    var target = Vector3.Lerp(playerPos, miraPos, 0.62f) + Vector3.up * 0.9f;
-                    var d = target - (camPos + Vector3.up * WorldBootstrap.EyeHeight);
-                    float yaw = BoardSpace.YawOf(d);
-                    float pitch = -Mathf.Atan2(d.y, new Vector2(d.x, d.z).magnitude) * Mathf.Rad2Deg;
-                    ctx.PlaceAvatar(camPos + Vector3.up * 0.05f, yaw, pitch);
-                }
+                // P2b: the same wide over-the-shoulder framing as the campaign duels (both wizards, Wards and posts in frame).
+                FrameDuelCamera(ctx, playerPos, miraPos);
             }
             _stage.Struck += OnStruck;
             if (ctx.World != null && ctx.World.GodCam != null) { _prevPan = ctx.World.GodCam.KeyboardPan; ctx.World.GodCam.KeyboardPan = false; }
 
             _firstTimer = State == null || State.Ward == null || State.Ward.CompletedDuelsVsMira == 0;
             NewDuel();
+            LedgerCard.DockTop = true; // the referee's card is a strip along the top edge, never over the stage
             Props = DuelWorldProps.Build(this, _root.transform, ctx.FirstPersonCamera != null ? ctx.FirstPersonCamera : Camera.main);
         }
 
@@ -187,7 +179,7 @@ namespace World.Game
             _stage.CasterWindUp = 0.25f;
             _stage.OpponentWindUp = WindUpFor(Profile);
 
-            FrameCampaignCamera(ctx, spec);
+            FrameDuelCamera(ctx, spec.CasterPos, spec.OpponentPos);
         }
 
         /// <summary>Seconds between an opponent's cast and the bolt leaving its hands, from the profile's tempo and animation length.</summary>
@@ -219,13 +211,13 @@ namespace World.Game
         /// opponent, so Mira is left of centre and the opponent's face in the right half; widened (pulled back and turned)
         /// until the volunteer at the way out is in frame too.
         /// </summary>
-        private void FrameCampaignCamera(EncounterContext ctx, DuelStageSpec spec)
+        private void FrameDuelCamera(EncounterContext ctx, Vector3 casterPos, Vector3 opponentPos)
         {
             var cam = ctx.FirstPersonCamera;
             if (cam != null) { _prevFov = cam.fieldOfView; cam.fieldOfView = CampaignFieldOfView; }
             float aspect = cam != null && cam.aspect > 0.1f ? cam.aspect : UnityEngine.Screen.width / (float)Mathf.Max(1, UnityEngine.Screen.height);
             float halfH = Mathf.Atan(Mathf.Tan(CampaignFieldOfView * 0.5f * Mathf.Deg2Rad) * aspect) * Mathf.Rad2Deg - 5f;
-            Vector3 caster = spec.CasterPos, opp = spec.OpponentPos;
+            Vector3 caster = casterPos, opp = opponentPos;
             var f = opp - caster; f.y = 0; f = f.sqrMagnitude > 1e-4f ? f.normalized : Vector3.forward;
             var right = Vector3.Cross(Vector3.up, f).normalized;
             // Who must be in frame: Mira, the opponent, and the volunteer standing by.
@@ -234,7 +226,7 @@ namespace World.Game
             Vector3 eye = default; float lo = 0, hi = 0;
             for (int pass = 0; pass < 8; pass++)
             {
-                float back = 3.4f + pass * 0.6f;
+                float back = CameraBack + pass * 0.6f;
                 eye = caster - f * back + right * 1.3f + Vector3.up * 2.2f;
                 lo = float.MaxValue; hi = float.MinValue;
                 foreach (var p in pts)
@@ -257,8 +249,16 @@ namespace World.Game
             var dd = target - eye;
             float yaw = BoardSpace.YawOf(dd);
             float pitch = -Mathf.Atan2(dd.y, new Vector2(dd.x, dd.z).magnitude) * Mathf.Rad2Deg;
+            // P2b: the stage sits in the lower middle of the picture: the top strip is for the referee's docked card, the
+            // bottom row for the stones and the hand.
+            pitch -= StageLiftDegrees;
             ctx.PlaceAvatar(eye - Vector3.up * WorldBootstrap.EyeHeight, yaw, pitch);
         }
+
+        /// <summary>Degrees the duel camera looks up from the stage, so the wizards sit below the docked card.</summary>
+        public const float StageLiftDegrees = 4f;
+        /// <summary>Metres behind the caster the duel camera starts (the whole caster, feet included, reads above the stones).</summary>
+        public const float CameraBack = 4.6f;
 
         public void End()
         {
@@ -272,6 +272,7 @@ namespace World.Game
             if (_ctx != null && _ctx.World != null && _ctx.World.GodCam != null) _ctx.World.GodCam.KeyboardPan = _prevPan;
             if (_ctx != null && _ctx.FirstPersonCamera != null && _prevFov > 0f) _ctx.FirstPersonCamera.fieldOfView = _prevFov;
             if (_stage != null) _stage.Struck -= OnStruck;
+            LedgerCard.DockTop = false;
             if (Props != null) Props.Machine.Cancel();
             if (_miraHidden && _mira != null && _mira.Actor != null) _mira.Actor.SetVisible(true);
             if (!_campaign && _mira != null && _mira.Actor != null) { _mira.Actor.PlayIdle(); _mira.Actor.FaceTowards(_mira.HomePosition + BoardSpace.DirOf(_mira.HomeYaw)); }
