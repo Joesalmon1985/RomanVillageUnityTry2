@@ -76,7 +76,9 @@ namespace World.Game
         public bool LeaveArmed { get; private set; }
         public bool Left { get; private set; }
         public const float LeaveConfirmSeconds = 4f;
-        private float _leaveArmedAt;
+        private readonly WorldActionMachine _seatMachine = new WorldActionMachine { PreviewTimeoutSeconds = LeaveConfirmSeconds };
+        private LogSeatAction _seatAction;
+        private string _ledgerKey;
         /// <summary>Judgement counts of this attempt as Sol keeps them: every judgement event, including strays and hold ends.</summary>
         public int TallyPerfect { get; private set; }
         public int TallyGreat { get; private set; }
@@ -188,6 +190,7 @@ namespace World.Game
             if (_sol != null) { _solScale = _sol.transform.localScale; _sol.Actor?.FaceTowards(Circle.Layout.DancerSpot); }
             SpeechBubbles.ShowInEncounter = true;
             Props = DanceStageProps.Build(_root.transform, Circle);
+            _seatAction = new LogSeatAction(this);
             if (_sol != null) Props.SolPoint = _sol.transform.position + Vector3.up * 1.6f;
             TouchStrips.ShapeResolver = ShapeAt; _shapeHooked = true;
             StartPhrase();
@@ -219,6 +222,7 @@ namespace World.Game
             _solBubble = 0;
             SpeechBubbles.ShowInEncounter = false;
             if (Player != null) Player.StopAll();
+            HideLedger();
             if (_shapeHooked && TouchStrips.ShapeResolver == (System.Func<Vector2, int>)ShapeAt) TouchStrips.ShapeResolver = null;
             _shapeHooked = false;
             foreach (var c in _tuneClicks) if (c != null) c.Stop();
@@ -245,7 +249,7 @@ namespace World.Game
             PressesHandled = 0; JudgementsSeen = 0;
             LivePerfect = LiveGreat = LiveOk = LiveMiss = 0;
             TallyPerfect = TallyGreat = TallyOk = TallyMiss = TallyStray = TallyHoldComplete = TallyHoldPartial = 0;
-            PauseState = PauseStage.None; ResumeCount = 0; LeaveArmed = false; OpenCard = Card.None; _tune = null; _lastResumeCount = 0;
+            PauseState = PauseStage.None; ResumeCount = 0; _seatMachine.Cancel(); OpenCard = Card.None; _tune = null; _lastResumeCount = 0;
             if (Props != null) Props.ClearTorches();
             _banner = null;
             SolSay(Attempts > 1 ? "Again! Strike each drum as its ember lands." : "Strike each drum as its ember lands. Four beats, then we dance!", 3.2f);
@@ -361,7 +365,7 @@ namespace World.Game
             _menuWasOpen = menu;
 
             if (!blocked) PollTaps();
-            if (LeaveArmed && Time.unscaledTime - _leaveArmedAt > LeaveConfirmSeconds) LeaveArmed = false;
+            _seatMachine.Tick(Time.unscaledTime);
             if (IsFinished) return;
 
             if (Phase != Screen.Result && IsPaused)
@@ -417,6 +421,7 @@ namespace World.Game
                 if (Input.GetKeyDown(KeyCode.RightBracket)) AdjustCalibration(+10);
             }
             Animate();
+            SyncLedger();
         }
 
         // ------------------------------------------------------------------ WU-5: world taps, pause, tally, bell, seat
@@ -445,18 +450,18 @@ namespace World.Game
             // A drum or strip: not a world command, except that a paused dance resumes when a drum is struck.
             if (pad > 0)
             {
-                LeaveArmed = false;
+                _seatMachine.TapElsewhere(Time.unscaledTime);
                 if (PauseState == PauseStage.Paused) Resume();
                 return TapKind.Drum;
             }
             switch (target)
             {
                 case DanceStageProps.Target.Seat: TapLogSeat(); return TapKind.Seat;
-                case DanceStageProps.Target.Sol: LeaveArmed = false; ToggleCard(Card.Tally); return TapKind.Sol;
-                case DanceStageProps.Target.Torch: LeaveArmed = false; ToggleCard(Card.Progress); SolSay(ProgressText(), 4f); return TapKind.Torch;
-                case DanceStageProps.Target.Bell: LeaveArmed = false; TapBell(); return TapKind.Bell;
+                case DanceStageProps.Target.Sol: _seatMachine.TapElsewhere(Time.unscaledTime); ToggleCard(Card.Tally); return TapKind.Sol;
+                case DanceStageProps.Target.Torch: _seatMachine.TapElsewhere(Time.unscaledTime); ToggleCard(Card.Progress); SolSay(ProgressText(), 4f); return TapKind.Torch;
+                case DanceStageProps.Target.Bell: _seatMachine.TapElsewhere(Time.unscaledTime); TapBell(); return TapKind.Bell;
             }
-            LeaveArmed = false;
+            _seatMachine.TapElsewhere(Time.unscaledTime);
             if (_tune != null) { TuneTap(Player.SmoothedNow); return TapKind.Nothing; }
             if (OpenCard != Card.None) OpenCard = Card.None;
             return TapKind.Nothing;
@@ -471,19 +476,50 @@ namespace World.Game
         public void TapLogSeat()
         {
             if (Phase != Screen.Result && !IsPaused) { Pause(); return; }
-            if (!LeaveArmed)
+            // Preview, then confirm: the shared WU-0 state machine (a private instance while the encounter blocks the world's own).
+            _seatMachine.Tap(_seatAction, Time.unscaledTime);
+        }
+
+        /// <summary>The log seat as a WU-0 world action: preview "Leave the dance?", confirm leaves. Moves to the shared WorldActions once it runs during encounters.</summary>
+        private sealed class LogSeatAction : IWorldAction
+        {
+            private readonly RhythmPartyEncounter _r;
+            public LogSeatAction(RhythmPartyEncounter r) { _r = r; }
+            public string Title => "The log seat";
+            public IEnumerable<string> Lines { get { yield return "Rest here, or leave the dance."; } }
+            public string PreviewLine => "Leave the dance?";
+            public WorldActionCheck Check() => WorldActionCheck.Allowed;
+            public void ShowPreview(bool on) { _r.LeaveArmed = on; _r.SyncLedger(); }
+            public bool Commit() { _r.LeaveDance(); return true; }
+        }
+
+        private void HideLedger() { if (_ledgerKey != null) { LedgerCard.Hide(); _ledgerKey = null; } }
+
+        /// <summary>Shows the open card, or the leave question, on the shared ledger tablet; hides it when nothing is open.</summary>
+        private void SyncLedger()
+        {
+            if (Props == null) return;
+            string key; string title; Transform anchor; LedgerMode mode = LedgerMode.Inspect; string question = null; string[] lines;
+            if (LeaveArmed) { key = "leave"; title = _seatAction.Title; anchor = Props.SeatAnchor; mode = LedgerMode.Preview; question = _seatAction.PreviewLine; lines = new[] { "Rest here, or leave the dance." }; }
+            else if (OpenCard != Card.None)
             {
-                LeaveArmed = true; _leaveArmedAt = Time.unscaledTime;
-                SolSay("Leave the dance? Tap the log seat again.", 3.5f);
-                return;
+                lines = CardText.Split('\n');
+                title = OpenCard == Card.Tally ? "Sol's tally" : OpenCard == Card.Progress ? "The block torches" : "The tuning bell";
+                anchor = OpenCard == Card.Tally ? Props.SolAnchor : OpenCard == Card.Progress ? Props.TorchAnchor(2) : Props.BellAnchor;
+                key = OpenCard + "|" + CardText;
             }
-            LeaveDance();
+            else { HideLedger(); return; }
+            if (key == _ledgerKey) return;
+            _ledgerKey = key;
+            var c = new LedgerContent { Title = title, Question = question };
+            foreach (var l in lines) c.Lines.Add(l);
+            LedgerCard.Show(c, anchor, mode);
         }
 
         /// <summary>Stops the audio and ends the dance at once (the confirmed exit).</summary>
         public void LeaveDance()
         {
-            LeaveArmed = false; Left = true;
+            LeaveArmed = false; Left = true; HideLedger();
             if (Player != null) Player.StopAll();
             foreach (var c in _tuneClicks) if (c != null) c.Stop();
             _queue.Clear();
@@ -499,7 +535,7 @@ namespace World.Game
             Player.Pause(t);
             SongTime = t;
             PauseState = PauseStage.Paused; Pauses++;
-            LeaveArmed = false;
+            _seatMachine.Cancel();
             SolSay("Rest a moment. Strike a drum when you are ready and I count four.", 5f);
             return true;
         }
@@ -510,13 +546,14 @@ namespace World.Game
             if (PauseState != PauseStage.Paused) return false;
             Player.Resume(4, Session.BeatToSeconds(1));
             PauseState = PauseStage.Counting; _lastResumeCount = 0; ResumeCount = 4;
-            LeaveArmed = false;
+            _seatMachine.Cancel();
             return true;
         }
 
         private void TickPaused(bool blocked)
         {
             SongTime = Player.SongTime; // frozen at the paused time until the four-count is over
+            for (int p = 1; p <= 4; p++) TouchStrips.Pressed(p); // sample (and drop) strip presses while paused so none is delivered after the resume
             if (PauseState == PauseStage.Paused)
             {
                 ResumeCount = 0;
@@ -953,26 +990,15 @@ namespace World.Game
         {
             float px(float v) => EncounterUi.Px(v);
             float sw = UnityEngine.Screen.width;
-            if (OpenCard != Card.None)
-            {
-                string title = OpenCard == Card.Tally ? "Sol's tally" : OpenCard == Card.Progress ? "The block torches" : "The tuning bell";
-                var r = EncounterUi.Fit(new Rect((sw - px(820)) / 2f, px(24), px(820), px(OpenCard == Card.Tally ? 250 : 190)), 6);
-                EncounterUi.Panel(r, new Color(0.06f, 0.05f, 0.04f, 0.94f));
-                EncounterUi.Label(new Rect(r.x, r.y + px(6), r.width, px(48)), title, EncounterUi.Header, EncounterUi.Gold, TextAnchor.MiddleCenter);
-                EncounterUi.Label(new Rect(r.x + px(24), r.y + px(56), r.width - px(48), r.height - px(100)), CardText, EncounterUi.Body, EncounterUi.Text, TextAnchor.UpperCenter);
-                EncounterUi.Label(new Rect(r.x, r.yMax - px(40), r.width, px(34)), "Tap the ground to close", EncounterUi.Hint, EncounterUi.Dim, TextAnchor.MiddleCenter);
-            }
             if (PauseState == PauseStage.Paused)
             {
                 var r = EncounterUi.Fit(new Rect((sw - px(700)) / 2f, px(300), px(700), px(120)), 6);
                 EncounterUi.Panel(r, new Color(0.06f, 0.05f, 0.04f, 0.9f));
-                EncounterUi.Label(new Rect(r.x, r.y + px(6), r.width, px(52)), LeaveArmed ? "Tap the log seat again to leave" : "Paused", EncounterUi.Header, LeaveArmed ? EncounterUi.Bad : EncounterUi.Gold, TextAnchor.MiddleCenter);
+                EncounterUi.Label(new Rect(r.x, r.y + px(6), r.width, px(52)), "Paused", EncounterUi.Header, EncounterUi.Gold, TextAnchor.MiddleCenter);
                 EncounterUi.Label(new Rect(r.x, r.y + px(60), r.width, px(50)), "Strike any drum to go on after a count of four", EncounterUi.Body, EncounterUi.Text, TextAnchor.MiddleCenter);
             }
             else if (PauseState == PauseStage.Counting && ResumeCount > 0)
                 EncounterUi.Shadow(new Rect(0, px(150), sw, px(170)), ResumeCount.ToString(), EncounterUi.Huge, EncounterUi.Gold, TextAnchor.MiddleCenter);
-            else if (LeaveArmed)
-                EncounterUi.Shadow(new Rect(0, px(300), sw, px(60)), "Tap the log seat again to leave", EncounterUi.Header, EncounterUi.Bad, TextAnchor.MiddleCenter);
         }
 
         /// <summary>A slim strip at the top: blocks with PASS/MISS, the mix stage, the beat and the judgement counts.</summary>

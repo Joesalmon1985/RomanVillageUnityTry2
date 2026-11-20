@@ -441,7 +441,13 @@ namespace World.Game.Tests
             StringAssert.Contains("OK " + res.Ok, card); StringAssert.Contains("Miss " + res.Miss, card);
             StringAssert.Contains("Holds kept " + res.HoldComplete + " of " + (res.HoldComplete + res.HoldPartial), card);
             StringAssert.Contains("Blocks kept " + res.PassedBlocks + " of 4", card);
+            yield return null;
+            Assert.IsTrue(LedgerCard.IsOpen, "Sol's tally is on the shared ledger card");
+            string all = string.Join(" / ", LedgerCard.Content.AllText());
+            StringAssert.Contains("Perfect " + res.Perfect, all); StringAssert.Contains("Miss " + res.Miss, all);
             Assert.AreEqual(RhythmPartyEncounter.TapKind.Nothing, r.TapAt(high), "tapping the ground closes it");
+            yield return null;
+            Assert.IsFalse(LedgerCard.IsOpen, "closed");
             Assert.AreEqual(RhythmPartyEncounter.Card.None, r.OpenCard);
             // The torches answer with the track, tempo, block and stage.
             Assert.AreEqual(RhythmPartyEncounter.TapKind.Torch, r.TapAt(Scr(props.TorchPoint(2))));
@@ -449,6 +455,8 @@ namespace World.Game.Tests
             StringAssert.Contains(r.PackId, r.CardText);
             r.TapAt(high);
         }
+
+        static IEnumerator WaitSeconds(float sec) { float end = Time.realtimeSinceStartup + sec; while (Time.realtimeSinceStartup < end) yield return null; }
 
         Vector2 high => new Vector2(Screen.width * 0.9f, Screen.height * 0.9f);
 
@@ -503,7 +511,9 @@ namespace World.Game.Tests
             }
             yield return Until(() => r.Phase == RhythmPartyEncounter.Screen.Result, 40f, "phrase did not end after the pause");
             var res = r.LastResult;
-            Assert.AreEqual(0, res.Great + res.Ok + res.Miss + res.HoldPartial, "judgement exact: the pause cost nothing (P" + res.Perfect + " G" + res.Great + " O" + res.Ok + " M" + res.Miss + " HP" + res.HoldPartial + " stray" + res.Stray + ", paused at beat " + r.Session.SecondsToBeat(P).ToString("0.00") + ")");
+            string odd = "";
+            foreach (var c in r.Session.AllCues) if (c.Credit < 0.999) odd += " [cue " + c.Index + " pad" + c.Pad + " t=" + c.Time.ToString("0.000") + " end=" + c.EndTime.ToString("0.000") + " hold=" + c.IsHold + " credit=" + c.Credit.ToString("0.00") + "]";
+            Assert.AreEqual(0, res.Great + res.Ok + res.Miss + res.HoldPartial, odd + " judgement exact: the pause cost nothing (P" + res.Perfect + " G" + res.Great + " O" + res.Ok + " M" + res.Miss + " HP" + res.HoldPartial + " stray" + res.Stray + ", paused at beat " + r.Session.SecondsToBeat(P).ToString("0.00") + ")");
             Assert.AreEqual(4, res.PassedBlocks); Assert.AreEqual(1, r.Pauses);
         }
 
@@ -520,16 +530,24 @@ namespace World.Game.Tests
             Assert.AreEqual(RhythmPartyEncounter.TapKind.Seat, r.TapAt(Scr(r.Props.SeatPoint)), "tap on the log seat");
             Assert.IsTrue(r.IsPaused, "the first tap during a phrase pauses");
             Assert.IsFalse(r.IsFinished);
+            yield return WaitSeconds(0.3f);
             Assert.AreEqual(RhythmPartyEncounter.TapKind.Seat, r.TapAt(Scr(r.Props.SeatPoint)));
             Assert.IsTrue(r.LeaveArmed, "the next tap asks to leave (preview)"); Assert.IsFalse(r.IsFinished, "not yet");
+            yield return WaitSeconds(0.3f);
+            Assert.IsTrue(LedgerCard.IsOpen && LedgerCard.Mode == LedgerMode.Preview, "the shared ledger asks: Leave the dance?");
+            StringAssert.Contains("Leave the dance?", LedgerCard.Content.Question);
             // Anything else cancels the preview.
             r.TapAt(high);
             Assert.IsFalse(r.LeaveArmed, "a tap elsewhere cancels");
+            yield return WaitSeconds(0.7f);
             r.TapAt(Scr(r.Props.SeatPoint)); Assert.IsTrue(r.LeaveArmed);
+            yield return WaitSeconds(0.3f);
             r.TapAt(Scr(r.Props.SeatPoint));
             Assert.IsTrue(r.IsFinished && r.Left, "second tap confirms the exit");
             Assert.IsFalse(player.AnyPlaying, "audio stopped at once");
             yield return Until(() => !EncounterHost.Instance.IsRunning, 2f, "dance did not end");
+            yield return null;
+            Assert.IsFalse(LedgerCard.IsOpen, "the ledger is closed with the dance");
             Assert.IsTrue(player == null, "the audio objects are gone");
             Assert.IsNull(TouchStrips.ShapeResolver, "the drums' shapes are unregistered after the dance");
             Assert.AreEqual(0, DanceCircle.Current.ActiveDancers);

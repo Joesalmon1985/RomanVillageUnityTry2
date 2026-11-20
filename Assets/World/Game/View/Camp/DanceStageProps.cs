@@ -22,6 +22,11 @@ namespace World.Game
         public Vector3 SeatPoint { get; private set; }
         public Vector3 BellPoint { get; private set; }
         public Vector3 SolPoint { get; set; }
+        /// <summary>Where the ledger cards unfold from (WU-0 LedgerCard).</summary>
+        public Transform SeatAnchor { get; private set; }
+        public Transform SolAnchor { get; private set; }
+        public Transform BellAnchor { get; private set; }
+        public Transform TorchAnchor(int i) => _torch[Mathf.Clamp(i, 0, TorchCount - 1)];
         public float BellSwing { get; private set; }
         public int BellRings { get; private set; }
         public int Strikes { get; private set; }
@@ -79,13 +84,16 @@ namespace World.Game
             Prim(PrimitiveType.Cylinder, "Totem", seat, new Color(0.45f, 0.33f, 0.22f), new Vector3(0, 0.95f, 0.45f), new Vector3(0.12f, 0.5f, 0.12f));
             Prim(PrimitiveType.Sphere, "Totem head", seat, new Color(0.80f, 0.68f, 0.45f), new Vector3(0, 1.55f, 0.45f), new Vector3(0.3f, 0.3f, 0.3f));
 
+            SeatAnchor = seat;
             SolPoint = lay.DrummerSpot + Vector3.up * 1.4f;
+            SolAnchor = new GameObject("Sol ledger anchor").transform; SolAnchor.SetParent(transform, false); SolAnchor.position = SolPoint;
 
             // Tuning bell on a post, beside Sol's big drum.
             var bellRoot = new GameObject("Tuning bell").transform;
             bellRoot.SetParent(transform, false);
             bellRoot.position = lay.CirclePoint(34f, 5.9f);
             BellPoint = bellRoot.position + Vector3.up * 1.5f;
+            BellAnchor = bellRoot;
             Prim(PrimitiveType.Cylinder, "Post", bellRoot, new Color(0.40f, 0.29f, 0.19f), new Vector3(0, 1.0f, 0), new Vector3(0.14f, 1.0f, 0.14f));
             Prim(PrimitiveType.Cube, "Beam", bellRoot, new Color(0.40f, 0.29f, 0.19f), new Vector3(0, 1.95f, 0), new Vector3(0.9f, 0.1f, 0.1f));
             _bell = new GameObject("Bell swing").transform;
