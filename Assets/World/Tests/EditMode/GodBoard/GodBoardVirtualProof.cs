@@ -322,7 +322,8 @@ namespace World.Sim.Tests
             }
         }
 
-        [Test]
+        // The study plays 9 option sets x 48 seeds plus 5 finalists x 4 virtual players: 440 to 700 s on this machine, far over the 180 s default timeout.
+        [Test, Timeout(1800000)]
         public void TuningStudy_WriteOptions()
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();

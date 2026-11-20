@@ -725,6 +725,37 @@ namespace World.Game.Tests
             Assert.AreEqual("", Dir.PlayerSpace);
         }
 
+        /// <summary>Decision 11: going down the glade's stair from the hub and asking Mira to lead out puts the player back on the hub cell and heading.</summary>
+        [UnityTest, Timeout(600000)]
+        public IEnumerator LeadMeOut_AfterSettingOutFromTheHub_ReturnsToTheHubCellAndHeading()
+        {
+            yield return StartCampaign();
+            Interiors.FactsOverride = f => true;
+            W.StopAuto();
+            var home = W.Cell; int heading = (W.Heading + 3) % 6;
+            InteriorDirector.Instance.SetHubPose(home, heading);
+            MarkerRef.TryParse("glade/stair", out var stairRef);
+            var stair = Interiors.LinkAt(stairRef);
+            W.Teleport(stair.Cell + WalkLattice.Dir(stair.OutHeading), stair.OutHeading + 3);
+            yield return Frames(3);
+            W.Forward();
+            float end = Time.realtimeSinceStartup + 40f;
+            while ((Interiors.Current == null || Interiors.IsCrossing || W.IsGliding) && Time.realtimeSinceStartup < end) yield return null;
+            Assert.AreEqual("quarry_upper", Interiors.Current, "down the stair");
+            yield return Frames(3);
+            Assert.IsTrue(Dir.LeadMeOut());
+            end = Time.realtimeSinceStartup + 120f;
+            while ((Interiors.Current != null || Interiors.IsCrossing || Interiors.IsLeadingOut) && Time.realtimeSinceStartup < end) yield return null;
+            yield return Frames(3);
+            Assert.IsNull(Interiors.Current, "on the surface");
+            Assert.AreEqual(home, W.Cell, "on the hub cell");
+            Assert.AreEqual(heading, W.Heading, "with the heading it set out with");
+            Assert.AreEqual(ViewMode.FirstPerson, ViewSwitcher.Instance.CurrentView);
+            Assert.IsFalse(W.IsLocked);
+            Assert.IsFalse(InteriorLighting.Instance.Underground, "the sky's light again");
+            Assert.AreEqual(CampaignPhase.Running, S.Campaign.Phase, "the campaign is kept");
+        }
+
         [UnityTest, Timeout(300000)]
         public IEnumerator Pouch_NamesTheCarriedCrystals_AndTheJournalBookOpensTheJournal()
         {

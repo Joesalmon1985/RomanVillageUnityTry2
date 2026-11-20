@@ -421,6 +421,52 @@ namespace World.Game.Tests
             Assert.AreEqual(L("ash_cut/cut").Cell, W.Cell);
         }
 
+        /// <summary>Decision 11: ways up return to the hub pose the player set out from; with none (a start straight into an interior) they end at the stair.</summary>
+        [UnityTest, Timeout(240000)]
+        public IEnumerator WaysUp_ReturnToTheHubPoseTheyLeftFrom_AndWithNone_ToTheStair()
+        {
+            yield return LoadBuilt(InteriorScripts.AuthoredPack, f => true);
+            var dir = InteriorDirector.Instance;
+            W.StopAuto();
+            var home = W.Cell; int heading = (W.Heading + 2) % 6;
+            Assert.IsFalse(Interiors.IsCrossing);
+            dir.SetHubPose(home, heading);
+            MarkerRef.TryParse("glade/quarry_upper/safe", out var safe);
+            // Down, then "Lead me out": the hub cell and heading, the walking view, a free walker, the pose spent.
+            Assert.IsTrue(Interiors.Enter(safe));
+            yield return Idle();
+            Assert.AreEqual("quarry_upper", Interiors.Current);
+            Assert.IsTrue(dir.HubReturn.HasValue, "the hub pose is kept while underground");
+            Assert.IsTrue(Interiors.LeadOut());
+            float end = Time.realtimeSinceStartup + 90f;
+            while ((Interiors.IsLeadingOut || Interiors.IsCrossing || W.IsAutoWalking || Interiors.Current != null) && Time.realtimeSinceStartup < end) yield return null;
+            yield return null;
+            Assert.IsNull(Interiors.Current);
+            Assert.AreEqual(home, W.Cell, "Lead me out ends on the hub cell");
+            Assert.AreEqual(heading, W.Heading, "with the heading it set out with");
+            Assert.AreEqual(ViewMode.FirstPerson, ViewSwitcher.Instance.CurrentView);
+            Assert.IsFalse(W.IsLocked);
+            Assert.IsFalse(dir.HubReturn.HasValue, "the pose is spent");
+            // The immediate exit does the same.
+            dir.SetHubPose(home, heading);
+            Assert.IsTrue(Interiors.Enter(safe));
+            yield return Idle();
+            Assert.IsTrue(Interiors.Exit());
+            yield return Idle();
+            Assert.IsNull(Interiors.Current);
+            Assert.AreEqual(home, W.Cell, "Exit ends on the hub cell");
+            Assert.AreEqual(heading, W.Heading);
+            // No hub pose (a start straight into the interior): the stair, as before.
+            dir.ClearHubPose();
+            Assert.IsTrue(Interiors.Enter(safe));
+            yield return Idle();
+            Assert.IsFalse(dir.HubReturn.HasValue);
+            Assert.IsTrue(Interiors.Exit());
+            yield return Idle();
+            Assert.IsNull(Interiors.Current);
+            Assert.AreEqual(L("glade/stair").Cell, W.Cell, "no hub pose: the glade's stair");
+        }
+
         // ---------------- save, light, budget ----------------
 
         [UnityTest, Timeout(240000)]

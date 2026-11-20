@@ -187,16 +187,9 @@ namespace World.Game
             if (Failure != null) yield break;
             yield return null;
             Interiors.FactsOverride = null;
-            if (!C(W.Cell == stair.Cell, "Lead me out did not end at the glade stair (" + W.Cell + " vs " + stair.Cell + ")")) yield break;
-            if (!C(ViewSwitcher.Instance.CurrentView == ViewMode.FirstPerson, "not in the walking view after the expedition")) yield break;
+            // Decision 11: leaving the dungeon puts the player back on the hub cell with the heading and view they set out with.
+            if (!Back(home, "Lead me out of the crystal expedition")) yield break;
             Done.Add("crystal expedition");
-            // The way home to the hub is a walk (owner decision pending: the dungeon does not teleport the player back).
-            if (!C(W.WalkTo(home.Cell), "no walk from the glade stair to the hub cell")) yield break;
-            yield return Until(() => !W.IsAutoWalking && !W.IsGliding, 300f, "the walk back to the hub");
-            if (Failure != null) yield break;
-            W.Teleport(home.Cell, home.Heading); // same cell: only the turn to the old heading
-            yield return null; yield return null;
-            if (!Back(home, "walk back from the crystal expedition")) yield break;
 
             // State kept through all of it.
             if (!C(S.Table.Phase == phase && S.Table.Paused && S.Table.ActiveTicks == frozen, "state: the god board table changed during the tour")) yield break;

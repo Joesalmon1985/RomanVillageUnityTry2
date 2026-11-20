@@ -55,6 +55,15 @@ namespace World.Game
         public float Fade => _fade;
         public Transform SurfaceRoot => _surfaceRoot;
 
+        /// <summary>
+        /// Where the player stood in the hub clearing when they set out (the last on-lattice pose there before they left it
+        /// for an interior). Decision 11 (20 Nov 2026): leaving an interior for the surface puts them back here.
+        /// </summary>
+        public struct HubPose { public Cell Cell; public int Heading; public ViewMode View; }
+        private HubPose? _hubSeen, _hubReturn;
+        /// <summary>The pose "Lead me out" and the other ways up return to, or null (the player did not come from the hub).</summary>
+        public HubPose? HubReturn => _hubReturn;
+
         public static InteriorDirector Create(WorldBootstrap boot)
         {
             var go = new GameObject("Interiors");
@@ -364,7 +373,27 @@ namespace World.Game
             if (!IsCrossing) UpdateCurrent(false);
             Reveal();
             if (LeadingOut && !IsCrossing) ContinueLeadOut();
+            TrackHub();
         }
+
+        private void TrackHub()
+        {
+            var w = PlayerWalker.Instance;
+            var s = State;
+            if (w == null || s == null || IsCrossing || Interiors.Current != null || w.IsOffLattice || w.IsAutoWalking || w.IsLocked) return;
+            var camp = ExpeditionSpace.Camp(s);
+            if (!camp.Hub) return;
+            var d = w.Position - camp.Hearth; d.y = 0;
+            if (d.magnitude > CampLayout.HubRadius) return;
+            var v = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.CurrentView : ViewMode.FirstPerson;
+            _hubSeen = new HubPose { Cell = w.Cell, Heading = w.Heading, View = v };
+        }
+
+        /// <summary>Tests and tools: the pose to come back to, as if the player had stood there in the hub.</summary>
+        public void SetHubPose(Cell cell, int heading, ViewMode view = ViewMode.FirstPerson) => _hubSeen = new HubPose { Cell = cell, Heading = heading, View = view };
+
+        /// <summary>Tests: forget both the hub pose seen and the one to return to (a start straight into an interior).</summary>
+        public void ClearHubPose() { _hubSeen = null; _hubReturn = null; }
 
         private void SyncDoorsOnly()
         {
@@ -486,7 +515,7 @@ namespace World.Game
             }
             var other = _links.Find(x => x.End == l.To);
             if (other == null) return;
-            StartCoroutine(Cross(l, other.Cell, other.OutHeading, l.End, other.End));
+            StartCoroutine(Cross(l, other.Cell, other.OutHeading, l.End, other.End, true));
         }
 
         private void OnAutoEnded(bool arrived)
@@ -516,7 +545,7 @@ namespace World.Game
             if (!FindWayOut(w.Cell, out _, out var surface, out _)) return false;
             var top = _links.Find(x => x.End == surface.To);
             if (top == null) return false;
-            StartCoroutine(Cross(LinkOn(w.Cell), top.Cell, top.OutHeading, surface.End, top.End));
+            StartCoroutine(Cross(LinkOn(w.Cell), top.Cell, top.OutHeading, surface.End, top.End, true));
             return true;
         }
 
@@ -528,7 +557,7 @@ namespace World.Game
             if (!FindWayOut(w.Cell, out var first, out _, out _)) { SpeechBubbles.Say(null, "There is no open way out from here.", 3f); return false; }
             LeadingOut = true;
             if (IsCrossing) return true;
-            if (w.Cell == first.Cell) { StartCoroutine(Cross(first, _links.Find(x => x.End == first.To).Cell, _links.Find(x => x.End == first.To).OutHeading, first.End, first.To)); return true; }
+            if (w.Cell == first.Cell) { StartCoroutine(Cross(first, _links.Find(x => x.End == first.To).Cell, _links.Find(x => x.End == first.To).OutHeading, first.End, first.To, true)); return true; }
             if (!w.WalkTo(first.Cell)) { LeadingOut = false; return false; }
             return true;
         }
@@ -607,9 +636,18 @@ namespace World.Game
         /// player placed at the other end, then a few metres out of it while the view clears. The walker is locked
         /// throughout (about a second).
         /// </summary>
-        private IEnumerator Cross(InteriorLink fromEnd, Cell toCell, int toHeading, MarkerRef fromRef, MarkerRef toRef)
+        private IEnumerator Cross(InteriorLink fromEnd, Cell toCell, int toHeading, MarkerRef fromRef, MarkerRef toRef, bool wayUp = false)
         {
             var w = PlayerWalker.Instance;
+            // Decision 11: down from the surface keeps the hub pose the player set out from; up to the surface returns to it.
+            bool toHub = false; ViewMode hubView = ViewMode.FirstPerson;
+            if (toRef.IsInterior && Interiors.Current == null && _hubSeen.HasValue) _hubReturn = _hubSeen;
+            else if (wayUp && !toRef.IsInterior && _hubReturn.HasValue)
+            {
+                var hp = _hubReturn.Value;
+                toCell = hp.Cell; toHeading = hp.Heading; hubView = hp.View; toHub = true;
+                _hubReturn = null;
+            }
             IsCrossing = true;
             CrossingCount++;
             Interiors.RaiseCrossing(fromRef, toRef);
@@ -656,6 +694,7 @@ namespace World.Game
             w.Teleport(toCell, toHeading);
             w.RemoveLock(CrossLock);
             IsCrossing = false;
+            if (toHub && ViewSwitcher.Instance != null) ViewSwitcher.Instance.SetView(hubView);
             UpdateCurrent(true);
         }
 

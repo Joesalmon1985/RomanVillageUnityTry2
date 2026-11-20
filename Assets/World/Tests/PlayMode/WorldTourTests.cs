@@ -53,11 +53,13 @@ namespace World.Game.Tests
             var tour = new WorldTour(m => Assert.Fail(m));
             yield return tour.Run();
             Assert.IsNull(tour.Failure);
-            foreach (var where in new[] { "god board", "council", "rhythm", "healer's lodge", "duel ring", "crystal expedition", "walk back from the crystal expedition" })
+            foreach (var where in new[] { "god board", "council", "rhythm", "healer's lodge", "duel ring", "crystal expedition", "Lead me out of the crystal expedition" })
                 CollectionAssert.Contains(tour.Done, where);
             Assert.IsTrue(tour.Done.Contains("crystal expedition"));
             Assert.IsNotNull(S.Campaign, "the expedition started a campaign");
         }
+
+        // (the tour itself checks the dungeon return: "Lead me out" ends on the hub cell, heading and view)
 
         /// <summary>The Esc menu's Clear view button flips the one setting; the board HUD, the plague buttons and the duel panel all follow it.</summary>
         [UnityTest, Timeout(300000)]
