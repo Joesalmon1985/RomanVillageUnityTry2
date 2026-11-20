@@ -42,7 +42,7 @@ namespace World.Game
         public bool LogOpen { get; private set; }
         private int _logSeen;
 
-        private void Awake() { _d = GetComponent<GodBoardDirector>(); }
+        private void Awake() { _d = GetComponent<GodBoardDirector>(); if (_d != null) GodBoardNightLight.Attach(_d); }
 
         /// <summary>Other components' controls on the board (the plague toggle, G2-2): presses inside them are not board presses.</summary>
         public static Func<Vector2, bool> ExtraOver;
@@ -219,7 +219,7 @@ namespace World.Game
             else
             {
                 if (_d.HasMessage) Status(s, t, W);
-                Ledge(s, t, W);
+                LedgeBlocks();
                 if (TradeOpen && TradeTab == 1 && !GameOverShown) TradeModal(s, t, W);
             }
             MomentCardDraw(W);
