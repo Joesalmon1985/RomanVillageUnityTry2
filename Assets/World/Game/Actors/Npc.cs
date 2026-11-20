@@ -280,6 +280,7 @@ namespace World.Game
         {
             UpdateWalk();
             if (!IsWalking) (Actor as IMotionShaper)?.SpeedScale(false, 0f, 0f);
+            UpdateBodyLanguage();
             if (IsWalking || Directed) { _wasNear = false; IsGreetingShown = false; return; }
             var views = ViewSwitcher.Instance;
             if (views == null || Actor == null) return;
@@ -299,6 +300,37 @@ namespace World.Game
                 Actor.FaceTowards(transform.position + BoardSpace.DirOf(HomeYaw));
             }
             _wasNear = near;
+        }
+
+        /// <summary>P1: within this many metres a standing villager turns its head to look at the player.</summary>
+        public const float LookRange = 9f;
+        /// <summary>Optional: someone this villager is talking with (it looks at them; set by conversing pairs).</summary>
+        public Transform LookPartner;
+        /// <summary>P1: true while this villager has the word in a wordless conversation (<see cref="ConverseGroup"/>): it gestures.</summary>
+        public bool Chatting;
+        private float _bodyLangAt;
+
+        /// <summary>
+        /// P1 polish: talk gestures while a bubble shows, the head turning to the player when near (or to a partner), for
+        /// the placeholder body. Checked five times a second (the bubbles list is walked).
+        /// </summary>
+        private void UpdateBodyLanguage()
+        {
+            if (!(Actor is PlaceholderActor pa)) return;
+            if (Time.time < _bodyLangAt) return;
+            _bodyLangAt = Time.time + 0.2f + (GetInstanceID() & 7) * 0.005f;
+            bool encounter = EncounterHost.Instance != null && EncounterHost.Instance.IsRunning;
+            pa.Talking = !encounter && (Chatting && !IsWalking || HasShownBubble());
+            Vector3? look = null;
+            var views = ViewSwitcher.Instance;
+            if (!IsWalking && !encounter && views != null && views.CurrentView != ViewMode.God)
+            {
+                var pp = views.Avatar.Position;
+                var d = pp - transform.position; d.y = 0;
+                if (d.magnitude <= LookRange) look = pp + Vector3.up * 1.6f;
+            }
+            if (!look.HasValue && LookPartner != null && !IsWalking) look = LookPartner.position + Vector3.up * 1.6f;
+            pa.LookAt(look);
         }
 
         /// <summary>True while one of this villager's speech bubbles is on screen (its name plate then hides).</summary>

@@ -13,7 +13,11 @@ namespace World.Game
             /// <summary>Package N: a come-here wave (calling the player over) and a builder's hammering.</summary>
             Beckon = "beckon", Hammer = "hammer",
             /// <summary>Both arms overhead, clapping (the council's supporters).</summary>
-            ClapHigh = "clapHigh";
+            ClapHigh = "clapHigh",
+            /// <summary>P1: a two-handed staff blow (sparring), a guard with both forearms up, an open-armed explaining sweep (referee, talk).</summary>
+            Strike = "strike", Block = "block", Gesture = "gesture",
+            /// <summary>P1: a listener's nod (head only).</summary>
+            Nod = "nod";
     }
 
     /// <summary>
@@ -42,7 +46,7 @@ namespace World.Game
         public float TurnSpeed = 300f;
         public Color TunicColor { get; private set; }
 
-        private Transform _body, _head, _armL, _armR, _legL, _legR;
+        private Transform _body, _head, _armL, _armR, _legL, _legR, _kneeL, _kneeR;
         private string _oneShot; private float _oneShotT, _oneShotLen;
         private float _targetYaw; private bool _turning;
         private Vector3 _lastPos; private float _walkBlend, _phase;
@@ -151,10 +155,15 @@ namespace World.Game
             _body = new GameObject("Body").transform; _body.SetParent(transform, false);
             _legL = Pivot(_body, "LegL", new Vector3(-0.12f, 0.85f, 0));
             _legR = Pivot(_body, "LegR", new Vector3(0.12f, 0.85f, 0));
+            // P1: two-segment legs (thigh, and a shin on a knee pivot) so a stepping leg bends and the seat folds.
+            _kneeL = Pivot(_legL, "KneeL", new Vector3(0, -0.43f, 0));
+            _kneeR = Pivot(_legR, "KneeR", new Vector3(0, -0.43f, 0));
             foreach (var leg in new[] { _legL, _legR })
+                Signs.Prim(PrimitiveType.Capsule, leg, "Leg", new Vector3(0, -0.22f, 0), new Vector3(0.16f, 0.25f, 0.16f), mSkin);
+            foreach (var knee in new[] { _kneeL, _kneeR })
             {
-                Signs.Prim(PrimitiveType.Capsule, leg, "Leg", new Vector3(0, -0.42f, 0), new Vector3(0.15f, 0.43f, 0.15f), mSkin);
-                Signs.Prim(PrimitiveType.Capsule, leg, "Boot", new Vector3(0, -0.70f, 0.02f), new Vector3(0.19f, 0.16f, 0.22f), mFur);
+                Signs.Prim(PrimitiveType.Capsule, knee, "Shin", new Vector3(0, -0.2f, 0), new Vector3(0.14f, 0.23f, 0.14f), mSkin);
+                Signs.Prim(PrimitiveType.Capsule, knee, "Boot", new Vector3(0, -0.29f, 0.02f), new Vector3(0.19f, 0.16f, 0.22f), mFur);
             }
             Signs.Prim(PrimitiveType.Capsule, _body, "Tunic", new Vector3(0, 1.12f, 0), new Vector3(0.46f, 0.42f, 0.33f), mTunic);
             Signs.Prim(PrimitiveType.Cylinder, _body, "Skirt", new Vector3(0, 0.80f, 0), new Vector3(0.54f, 0.17f, 0.42f), mFur);
@@ -212,6 +221,10 @@ namespace World.Game
                 case ActorKeys.Beckon: len = 1.4f; break;
                 case ActorKeys.Hammer: len = 0.9f; break;
                 case ActorKeys.ClapHigh: len = 1.6f; break;
+                case ActorKeys.Strike: len = 0.75f; break;
+                case ActorKeys.Block: len = 0.7f; break;
+                case ActorKeys.Gesture: len = 1.3f; break;
+                case ActorKeys.Nod: len = 0.8f; break;
                 default: return false;
             }
             _oneShot = key; _oneShotT = 0; _oneShotLen = len;
@@ -240,9 +253,20 @@ namespace World.Game
             foreach (var r in _renderers) if (r != null) r.enabled = visible;
         }
 
+        /// <summary>P1: an actor no camera sees (and not in a one-shot) animates every fourth frame with the summed time.</summary>
+        public static bool OffscreenLod = true;
+        private float _lodDt;
+
         private void Update()
         {
             float dt = Time.deltaTime;
+            if (OffscreenLod && _oneShot == null && _renderers != null && _renderers.Length > 0 && _renderers[0] != null && !_renderers[0].isVisible)
+            {
+                _lodDt += dt;
+                if (((Time.frameCount + GetInstanceID()) & 3) != 0) return;
+                dt = _lodDt;
+            }
+            _lodDt = 0f;
             if (_turning)
             {
                 float y = Mathf.MoveTowardsAngle(transform.eulerAngles.y, _targetYaw, TurnSpeed * dt);
@@ -253,15 +277,39 @@ namespace World.Game
             var p = transform.position;
             var v = p - _lastPos; v.y = 0;
             _lastPos = p;
-            float speed = dt > 0 ? v.magnitude / dt : 0;
-            _walkBlend = Mathf.MoveTowards(_walkBlend, Mathf.Clamp01(speed / 2f), dt * 4f);
-            _phase += dt * (2f + speed * 1.6f);
+            float moved = v.magnitude;
+            if (moved > 3f) moved = 0f; // a teleport (PlaceAt, SetPosition) is not a step
+            float speed = dt > 0 ? moved / dt : 0;
+            _speed = Mathf.Lerp(_speed, speed, 1f - Mathf.Exp(-10f * dt));
+            float turnLeft = _turning ? Mathf.Abs(Mathf.DeltaAngle(transform.eulerAngles.y, _targetYaw)) : 0f;
+            // A turn on the spot is a shuffle of small steps (about 0.5 m of stepping per half turn).
+            float shuffle = _turning && _speed < 0.3f ? Mathf.Min(TurnSpeed * dt, turnLeft) / 180f * 0.5f : 0f;
+            float moving = Mathf.Clamp01(_speed / 0.6f);
+            _walkBlend = Mathf.MoveTowards(_walkBlend, Mathf.Max(moving, shuffle > 0f ? 0.45f : 0f), dt * 5f);
+            _phase = Gait.Advance(_phase, moved + shuffle, LegLength, Mathf.Max(_speed, 0.8f));
+            if (_walkBlend < 0.01f) _phase = Mathf.Round(_phase / Mathf.PI) * Mathf.PI; // the next walk starts from legs together
+            var g = Gait.Evaluate(_phase, _walkBlend, Mathf.Max(_speed, 0.8f), LegLength);
 
-            float t = Time.time;
-            float swing = Mathf.Sin(_phase) * 32f * _walkBlend;
-            float bob = Mathf.Sin(t * 2.1f) * 0.012f * (1 - _walkBlend) + Mathf.Abs(Mathf.Sin(_phase)) * 0.04f * _walkBlend;
-            Vector3 armL = new Vector3(swing * 0.8f, 0, -6f), armR = new Vector3(-swing * 0.8f, 0, 6f);
-            float bodyPitch = 0, headPitch = Mathf.Sin(t * 0.7f) * 2f, lift = 0, roll = 0, headYaw = 0;
+            float t = Time.time + _seed * 37f;
+            float idle = 1f - _walkBlend;
+            Vector3 armL = new Vector3(g.ArmL, 0, -6f), armR = new Vector3(g.ArmR, 0, 6f);
+            float bodyPitch = g.Pitch, headPitch = Mathf.Sin(t * 0.7f) * 2f, lift = 0, roll = g.Roll, headYaw = 0;
+            float bob = g.Bob + Mathf.Sin(t * 1.9f) * 0.008f * idle; // breathing when still
+            float legLx = g.LegL, legRx = g.LegR, shiftX = 0f;
+            Idle(dt, t, idle, ref armL, ref armR, ref bodyPitch, ref roll, ref headPitch, ref headYaw, ref shiftX);
+            Talk(dt, t, ref armL, ref armR, ref bodyPitch, ref headPitch, ref headYaw);
+            // The head leads a turn; then a look target (the player near by, a partner in conversation) holds it.
+            if (_turning) headYaw += Mathf.Clamp(Mathf.DeltaAngle(transform.eulerAngles.y, _targetYaw), -40f, 40f) * 0.7f;
+            _lookBlend = Mathf.MoveTowards(_lookBlend, _lookAt.HasValue ? 1f : 0f, dt * 3f);
+            if (_lookBlend > 0f && _lookAt.HasValue)
+            {
+                var lp = transform.InverseTransformPoint(_lookAt.Value);
+                float ly = Mathf.Clamp(Mathf.Atan2(lp.x, lp.z) * Mathf.Rad2Deg, -70f, 70f);
+                float lpitch = Mathf.Clamp(-Mathf.Atan2(lp.y - 1.65f, new Vector2(lp.x, lp.z).magnitude) * Mathf.Rad2Deg, -20f, 25f);
+                float w = Mathf.SmoothStep(0, 1, _lookBlend);
+                headYaw = Mathf.Lerp(headYaw, ly, w); headPitch = Mathf.Lerp(headPitch, lpitch, w);
+            }
+            CarryArms(ref armL, ref armR);
 
             // held pose (additive; None changes nothing)
             if (Pose != ActorPose.None && Pose != _poseShown) { _poseOld = _poseBlend > 0.02f ? _poseShown : Pose; _poseShown = Pose; _poseMix = _poseOld == Pose ? 1f : 0f; }
@@ -337,6 +385,33 @@ namespace World.Game
                         lift = Mathf.Max(lift, Mathf.Abs(Mathf.Sin(_oneShotT * 5f)) * 0.07f * env);
                         break;
                     }
+                    case ActorKeys.Strike:
+                    {
+                        // Wind up over the shoulder, swing down and through, recover.
+                        float wind = u < 0.35f ? Mathf.SmoothStep(0, 1, u / 0.35f) : 0f;
+                        float hit = u >= 0.35f ? Mathf.Clamp01((u - 0.35f) / 0.2f) : 0f;
+                        float rec = u >= 0.6f ? Mathf.SmoothStep(0, 1, (u - 0.6f) / 0.4f) : 0f;
+                        float ax = Mathf.Lerp(Mathf.Lerp(-30f, -165f, wind), -55f, hit);
+                        ax = Mathf.Lerp(ax, armR.x, rec);
+                        armR = new Vector3(ax, 0, -10f); armL = new Vector3(ax + 8f, 0, 10f);
+                        bodyPitch = Mathf.Lerp(-8f * wind + 18f * hit, 0f, rec); lift = 0.03f * hit * (1f - rec);
+                        break;
+                    }
+                    case ActorKeys.Block:
+                        armL = Vector3.Lerp(armL, new Vector3(-120f, 0, 28f), env); armR = Vector3.Lerp(armR, new Vector3(-120f, 0, -28f), env);
+                        bodyPitch = -10f * env; headPitch += 10f * env;
+                        break;
+                    case ActorKeys.Gesture:
+                    {
+                        float sweep = Mathf.Sin(u * Mathf.PI * 2f);
+                        armR = Vector3.Lerp(armR, new Vector3(-75f, 0, 40f + sweep * 30f), env);
+                        armL = Vector3.Lerp(armL, new Vector3(-50f, 0, -25f - sweep * 15f), env * 0.8f);
+                        bodyPitch = 5f * env; headYaw += sweep * 12f * env;
+                        break;
+                    }
+                    case ActorKeys.Nod:
+                        headPitch += Mathf.Max(0f, Mathf.Sin(u * Mathf.PI * 3f)) * 16f * env; bodyPitch += 3f * env;
+                        break;
                     case ActorKeys.Hammer:
                     {
                         float k = Mathf.Abs(Mathf.Sin(u * Mathf.PI * 2f));
@@ -364,13 +439,138 @@ namespace World.Game
                 var pose = new Vector3(-90f - Mathf.Clamp(down, -40f, 30f), 0, Mathf.Clamp(side, -60f, 60f) + 4f);
                 armR = Vector3.Lerp(armR, pose, _pointBlend);
             }
-            _body.localPosition = new Vector3(0, bob + lift - (Seated ? 0.42f : 0f), 0);
+            if (Seated) shiftX = 0f;
+            _body.localPosition = new Vector3(shiftX, bob + lift - (Seated ? 0.42f : 0f), 0);
             _body.localRotation = Quaternion.Euler(bodyPitch, 0, roll);
             _head.localRotation = Quaternion.Euler(headPitch, headYaw, 0);
             _armL.localRotation = Quaternion.Euler(armL);
             _armR.localRotation = Quaternion.Euler(armR);
-            if (Seated) { _legL.localRotation = Quaternion.Euler(-88f, 4f, 0); _legR.localRotation = Quaternion.Euler(-80f, -6f, 0); }
-            else { _legL.localRotation = Quaternion.Euler(-swing, 0, 0); _legR.localRotation = Quaternion.Euler(swing, 0, 0); }
+            if (Seated)
+            {
+                _legL.localRotation = Quaternion.Euler(-88f, 4f, 0); _legR.localRotation = Quaternion.Euler(-80f, -6f, 0);
+                _kneeL.localRotation = Quaternion.Euler(70f, 0, 0); _kneeR.localRotation = Quaternion.Euler(62f, 0, 0);
+            }
+            else
+            {
+                // The legs hang from the body; lean them back against its pitch and its sideways shift so the feet stay planted.
+                float back = -bodyPitch, side = -Mathf.Asin(Mathf.Clamp(shiftX / LegLength, -0.5f, 0.5f)) * Mathf.Rad2Deg - roll;
+                _legL.localRotation = Quaternion.Euler(-legLx + back, 0, side);
+                _legR.localRotation = Quaternion.Euler(-legRx + back, 0, side);
+                // The knee bends while its leg swings forward (lifting the foot clear), a little more when running.
+                float c = Mathf.Cos(_phase), knee = Mathf.Lerp(38f, 75f, Gait.RunBlend(Mathf.Max(_speed, 0.8f))) * _walkBlend;
+                _kneeL.localRotation = Quaternion.Euler(Mathf.Max(0f, c) * knee + 3f, 0, 0);
+                _kneeR.localRotation = Quaternion.Euler(Mathf.Max(0f, -c) * knee + 3f, 0, 0);
+            }
+            LegSwing = Mathf.Abs(legLx - legRx);
+        }
+
+        // ------------------------------------------------------------------ P1: idle life, talk, look, carry
+
+        /// <summary>Hip height above the feet (m): the gait's leg length.</summary>
+        public const float LegLength = 0.85f;
+        /// <summary>Test probe: the angle between the legs this frame (0 when standing with the feet together).</summary>
+        public float LegSwing { get; private set; }
+        /// <summary>This person's idle phase 0..1 (from the id): breathing, weight shifts and fidgets differ between people.</summary>
+        public float IdlePhase { get { if (_idleRnd == null) InitIdle(); return _seed; } }
+        /// <summary>Smoothed ground speed (m/s).</summary>
+        public float Speed => _speed;
+        /// <summary>While true the arms gesture as in speech (Npc sets it while one of its bubbles shows).</summary>
+        public bool Talking;
+        /// <summary>Turns the head (not the body) towards a world point; null looks ahead again.</summary>
+        public void LookAt(Vector3? worldPoint) { _lookAt = worldPoint; }
+        public Vector3? LookPoint => _lookAt;
+
+        public enum CarryStyle { None, Shoulder, Arms }
+        public CarryStyle Carrying { get; private set; }
+
+        /// <summary>Carries a load (a box in the given colour) on the right shoulder or in both arms; None drops it.</summary>
+        public void SetCarry(CarryStyle style, Color load)
+        {
+            Carrying = style;
+            if (_load != null) { Destroy(_load); _load = null; }
+            if (style == CarryStyle.None || load.a < 0.01f) return; // alpha 0: the pose only (the caller carries its own prop)
+            var m = MaterialFactory.Shared(load);
+            _load = style == CarryStyle.Shoulder
+                ? Signs.Prim(PrimitiveType.Cube, _body, "Load", new Vector3(0.2f, 1.62f, -0.04f), new Vector3(0.34f, 0.28f, 0.52f), m)
+                : Signs.Prim(PrimitiveType.Cube, _body, "Load", new Vector3(0f, 1.08f, 0.36f), new Vector3(0.46f, 0.34f, 0.32f), m);
+            var col = _load.GetComponent<Collider>(); if (col != null) Destroy(col);
+            _renderers = GetComponentsInChildren<Renderer>();
+        }
+
+        private float _seed, _speed, _lookBlend, _talkBlend, _glanceCur, _glanceTarget, _glanceAt, _fidgetAt, _fidgetT, _fidgetLen;
+        private int _fidget = -1;
+        private Vector3? _lookAt;
+        private GameObject _load;
+        private PropRandom _idleRnd;
+
+        private void InitIdle()
+        {
+            _seed = Gait.Seed01(ActorId);
+            _idleRnd = new PropRandom(Mathf.FloorToInt(_seed * 100000f) + 7);
+            _glanceAt = 1f + _seed * 4f; _fidgetAt = 3f + _seed * 9f;
+        }
+
+        private void Idle(float dt, float t, float idle, ref Vector3 armL, ref Vector3 armR, ref float pitch, ref float roll, ref float headPitch, ref float headYaw, ref float shiftX)
+        {
+            if (_idleRnd == null) InitIdle();
+            idle *= 1f - 0.75f * _poseBlend; // a held pose (the council's crowds) keeps its own body language
+            // Weight shift from foot to foot, slow and a little irregular.
+            float ws = Mathf.Sin(t * 0.31f) * 0.7f + Mathf.Sin(t * 0.83f + 1.3f) * 0.3f;
+            shiftX = ws * 0.035f * idle;
+            roll += ws * 2.2f * idle;
+            // Glances: now and then the head turns to look somewhere and back.
+            _glanceAt -= dt;
+            if (_glanceAt <= 0f)
+            {
+                _glanceTarget = Mathf.Abs(_glanceTarget) > 1f ? 0f : _idleRnd.Range(-55f, 55f);
+                _glanceAt = _glanceTarget == 0f ? _idleRnd.Range(2.5f, 6f) : _idleRnd.Range(0.8f, 2.2f);
+            }
+            _glanceCur = Mathf.MoveTowards(_glanceCur, _glanceTarget, dt * 140f);
+            headYaw += _glanceCur * idle;
+            // Fidgets: scratch the head, hands to the hips, rub the hands, roll the shoulders back. Only when nothing else holds the arms.
+            bool free = _oneShot == null && Pose == ActorPose.None && !_pointAt.HasValue && Carrying == CarryStyle.None && !Talking;
+            if (_fidget < 0)
+            {
+                _fidgetAt -= dt;
+                if (_fidgetAt <= 0f && free && idle > 0.9f) { _fidget = Mathf.FloorToInt(_idleRnd.Next() * 4f) % 4; _fidgetT = 0f; _fidgetLen = _idleRnd.Range(1.4f, 2.8f); }
+                else if (_fidgetAt <= 0f) _fidgetAt = 1f;
+                return;
+            }
+            _fidgetT += dt;
+            float u = Mathf.Clamp01(_fidgetT / _fidgetLen);
+            float env = Mathf.Clamp01(Mathf.Sin(u * Mathf.PI) * 2.2f) * idle * (free ? 1f : 0f);
+            switch (_fidget)
+            {
+                case 0: // scratch the back of the head
+                    armR = Vector3.Lerp(armR, new Vector3(-155f + Mathf.Sin(_fidgetT * 16f) * 6f, 0, -40f), env); headPitch += 8f * env; break;
+                case 1: // hands on the hips
+                    armL = Vector3.Lerp(armL, new Vector3(10f, 0, -38f), env); armR = Vector3.Lerp(armR, new Vector3(10f, 0, 38f), env); pitch -= 3f * env; break;
+                case 2: // rub the hands
+                    armL = Vector3.Lerp(armL, new Vector3(-48f, 0, 20f + Mathf.Sin(_fidgetT * 12f) * 5f), env);
+                    armR = Vector3.Lerp(armR, new Vector3(-48f, 0, -20f - Mathf.Sin(_fidgetT * 12f) * 5f), env); headPitch += 6f * env; break;
+                default: // roll the shoulders back, chest out
+                    armL = Vector3.Lerp(armL, new Vector3(28f, 0, -14f), env); armR = Vector3.Lerp(armR, new Vector3(28f, 0, 14f), env); pitch -= 6f * env; headPitch -= 8f * env; break;
+            }
+            if (u >= 1f) { _fidget = -1; _fidgetAt = _idleRnd.Range(5f, 13f); }
+        }
+
+        private void Talk(float dt, float t, ref Vector3 armL, ref Vector3 armR, ref float pitch, ref float headPitch, ref float headYaw)
+        {
+            _talkBlend = Mathf.MoveTowards(_talkBlend, Talking && _oneShot == null ? 1f : 0f, dt * 4f);
+            if (_talkBlend <= 0f) return;
+            float w = Mathf.SmoothStep(0, 1, _talkBlend);
+            // Beats of the hands: the right hand leads, the left joins on stressed words; the head nods with them.
+            float gR = Mathf.Max(0f, Mathf.Sin(t * 2.7f)), gL = Mathf.Max(0f, Mathf.Sin(t * 1.9f + 2f));
+            float open = Mathf.Max(0f, Mathf.Sin(t * 0.6f)); // now and then both palms open outwards
+            armR = Vector3.Lerp(armR, new Vector3(-38f - gR * 32f, 0, 10f + open * 28f), w);
+            armL = Vector3.Lerp(armL, new Vector3(-22f - gL * 26f, 0, -8f - open * 24f), w);
+            pitch += 4f * w; headPitch += Mathf.Sin(t * 5.3f) * 4f * w; headYaw += Mathf.Sin(t * 0.9f) * 8f * w;
+        }
+
+        private void CarryArms(ref Vector3 armL, ref Vector3 armR)
+        {
+            if (Carrying == CarryStyle.Shoulder) armR = new Vector3(-158f, 0, -14f);
+            else if (Carrying == CarryStyle.Arms) { armL = new Vector3(-58f, 0, 16f); armR = new Vector3(-58f, 0, -16f); }
         }
     }
 }

@@ -206,7 +206,19 @@ namespace World.Game
             int phase = Mathf.FloorToInt(_clock / 1.6f);
             float u = Mathf.Repeat(_clock, 1.6f) / 1.6f;
             float k = Mathf.Sin(Mathf.Clamp01(u * 2f) * Mathf.PI) * (u < 0.5f ? 1f : 0f);
-            if (phase != _lunger) { _lunger = phase; Sparrers[phase % 2].Actor?.PlayOneShot(ActorKeys.Cheer); }
+            if (phase != _lunger)
+            {
+                // P1: the lunger swings the staff, the other raises a guard; the referee calls every third exchange and
+                // an onlooker reacts now and then. Onlookers and the referee follow the fight with their heads.
+                _lunger = phase;
+                Sparrers[phase % 2].Actor?.PlayOneShot(ActorKeys.Strike);
+                Sparrers[(phase + 1) % 2].Actor?.PlayOneShot(ActorKeys.Block);
+                if (Referee != null && !Referee.Directed && phase % 3 == 0 && Referee.Actor != null && !Referee.Actor.IsPlayingOneShot && !Referee.IsGreetingShown)
+                { Referee.FaceTowards((_base[0] + _base[1]) * 0.5f); Referee.Actor.PlayOneShot(ActorKeys.Gesture); }
+                if (Onlookers != null && phase % 4 == 1) { var o = Onlookers[(phase / 4) % 2]; if (o != null && o.Actor != null && !o.Actor.IsPlayingOneShot) o.Actor.PlayOneShot(phase % 8 == 1 ? ActorKeys.Clap : ActorKeys.Cheer); }
+                if (Onlookers != null) foreach (var o in Onlookers) if (o != null) o.LookPartner = Sparrers[phase % 2].transform;
+                if (Referee != null) Referee.LookPartner = Sparrers[phase % 2].transform;
+            }
             for (int i = 0; i < 2; i++)
             {
                 var n = Sparrers[i];

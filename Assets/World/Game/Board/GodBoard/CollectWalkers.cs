@@ -32,6 +32,8 @@ namespace World.Game
             public Leg Leg;
             public Vector3 Home, Target;
             public GameObject Go, Load, Halo, Trail;
+            /// <summary>P1: the jointed body (legs and arms swing with the ground covered).</summary>
+            public MeshFigure Fig;
             public float Delay, Clock;
             public bool Loaded;
             public int Index;
@@ -68,6 +70,17 @@ namespace World.Game
         {
             if (Instance == this) Instance = null;
             if (_mat != null) Destroy(_mat);
+            foreach (var m in _meshes.Values) if (m != null) Destroy(m);
+        }
+
+        private readonly Dictionary<string, Mesh> _meshes = new Dictionary<string, Mesh>();
+
+        private Mesh Cached(string key, System.Action<MeshBuilder> make)
+        {
+            if (_meshes.TryGetValue(key, out var m) && m != null) return m;
+            var mb = new MeshBuilder(); make(mb);
+            m = mb.ToMesh(key); _meshes[key] = m;
+            return m;
         }
 
         private Color PeopleColour(int p)
@@ -159,23 +172,32 @@ namespace World.Game
         {
             var col = PeopleColour(w.People);
             var skin = new Color(0.88f, 0.70f, 0.52f);
-            var mb = new MeshBuilder();
-            mb.Box(new Vector3(0, 1.1f, 0), new Vector3(1.3f, 1.6f, 0.8f), col);
-            mb.Box(new Vector3(0, 2.25f, 0), new Vector3(0.8f, 0.8f, 0.8f), skin);
-            mb.Box(new Vector3(-0.2f, 0.3f, 0), new Vector3(0.28f, 0.6f, 0.3f), col * 0.6f);
-            mb.Box(new Vector3(0.2f, 0.3f, 0), new Vector3(0.28f, 0.6f, 0.3f), col * 0.6f);
-            mb.Cylinder(new Vector3(0, 2.7f, 0), 1.0f, 1.0f, 0.15f, 10, Color.Lerp(col, Color.white, 0.6f)); // a bright cap, so they read from above
-            // G1-6b: an overhead pin in the good's colour with a dark rim, so the villager reads from the whole-island view
-            mb.Cylinder(new Vector3(0, 3.4f, 0), 1.45f, 1.45f, 0.12f, 14, new Color(0.08f, 0.07f, 0.06f));
-            mb.Cylinder(new Vector3(0, 3.55f, 0), 1.15f, 1.15f, 0.12f, 14, PortMarkers.GoodColor(w.Good));
-            var go = mb.ToObject("Collector " + w.People + "/" + w.Corner + "->" + w.Hex, _root, _mat);
+            string ck = ColorUtility.ToHtmlStringRGB(col);
+            // P1: a jointed figure (torso, head, cap and pin in one mesh; legs and arms on pivots) so the walk reads.
+            var torso = Cached("cw/torso/" + ck + "/" + (int)w.Good, mb =>
+            {
+                mb.Box(new Vector3(0, 1.3f, 0), new Vector3(1.2f, 1.1f, 0.75f), col);
+                mb.Box(new Vector3(0, 0.82f, 0), new Vector3(1.05f, 0.25f, 0.68f), col * 0.75f);
+                mb.Box(new Vector3(0, 2.2f, 0), new Vector3(0.72f, 0.72f, 0.72f), skin);
+                mb.Cylinder(new Vector3(0, 2.6f, 0), 0.9f, 0.9f, 0.15f, 10, Color.Lerp(col, Color.white, 0.6f)); // a bright cap, so they read from above
+                // G1-6b: an overhead pin in the good's colour with a dark rim, so the villager reads from the whole-island view
+                mb.Cylinder(new Vector3(0, 3.4f, 0), 1.45f, 1.45f, 0.12f, 14, new Color(0.08f, 0.07f, 0.06f));
+                mb.Cylinder(new Vector3(0, 3.55f, 0), 1.15f, 1.15f, 0.12f, 14, PortMarkers.GoodColor(w.Good));
+            });
+            var leg = Cached("cw/leg/" + ck, mb => { mb.Box(new Vector3(0, -0.4f, 0), new Vector3(0.32f, 0.8f, 0.34f), col * 0.6f); mb.Box(new Vector3(0, -0.76f, 0.06f), new Vector3(0.34f, 0.1f, 0.46f), new Color(0.22f, 0.15f, 0.09f)); });
+            var arm = Cached("cw/arm/" + ck, mb => { mb.Box(new Vector3(0, -0.36f, 0), new Vector3(0.26f, 0.72f, 0.28f), col * 0.85f); mb.Box(new Vector3(0, -0.78f, 0), new Vector3(0.24f, 0.18f, 0.24f), skin); });
+            var f = MeshFigure.Build("Collector " + w.People + "/" + w.Corner + "->" + w.Hex, _root, _mat, torso, leg, arm, 0.8f, 0.26f, 1.78f, 0.74f, 2);
+            f.Scale = Scale; f.Seed = (w.Corner * 0.37f + w.Index * 0.21f) % 1f;
+            w.Fig = f;
+            var go = f.Root.gameObject;
             go.transform.localScale = Vector3.one * Scale;
-            go.layer = 2;
-            var lm = new MeshBuilder();
-            lm.Box(Vector3.zero, new Vector3(0.8f, 0.7f, 0.8f), PortMarkers.GoodColor(w.Good));
-            w.Load = lm.ToObject("Load " + w.Good, go.transform, _mat);
-            w.Load.transform.localPosition = new Vector3(0, 1.5f, -0.55f);
-            w.Load.layer = 2;
+            var lm = Cached("cw/load/" + (int)w.Good, mb => mb.Box(Vector3.zero, new Vector3(0.8f, 0.6f, 0.6f), PortMarkers.GoodColor(w.Good)));
+            var load = new GameObject("Load " + w.Good); load.layer = 2;
+            load.transform.SetParent(f.Body, false);
+            load.AddComponent<MeshFilter>().sharedMesh = lm;
+            load.AddComponent<MeshRenderer>().sharedMaterial = _mat;
+            w.Load = load;
+            w.Load.transform.localPosition = new Vector3(0, 1.25f, 0.62f); // held in both arms in front of the chest
             w.Load.SetActive(false);
             return go;
         }
@@ -204,6 +226,17 @@ namespace World.Game
 
         private void Advance(Walker w, float dt)
         {
+            var before = w.Go.transform.position;
+            AdvanceLeg(w, dt);
+            if (w.Fig != null && w.Go != null && w.Go.activeSelf)
+            {
+                var d = w.Go.transform.position - before; d.y = 0;
+                w.Fig.Step(dt, d.magnitude, w.Leg == Leg.Gathering ? MeshFigure.Hold.Work : w.Loaded ? MeshFigure.Hold.Load : MeshFigure.Hold.Swing, w.Clock);
+            }
+        }
+
+        private void AdvanceLeg(Walker w, float dt)
+        {
             w.Clock += dt;
             switch (w.Leg)
             {
@@ -230,7 +263,7 @@ namespace World.Game
             float step = Speed * dt;
             bool arrived = d.magnitude <= step;
             var np = arrived ? to : p + d.normalized * step;
-            np.y = BoardSpace.GroundY + Mathf.Abs(Mathf.Sin(w.Clock * 9f)) * 0.5f * (arrived ? 0f : 1f);
+            np.y = BoardSpace.GroundY; // P1: the gait's own bob (the body dips over the stepping legs)
             w.Go.transform.position = np;
             if (d.sqrMagnitude > 0.01f) w.Go.transform.rotation = Quaternion.LookRotation(d.normalized, Vector3.up);
             return arrived;

@@ -45,6 +45,7 @@ namespace World.Game
         private float _actT, _actDur, _pendingAt = -1f;
         private SoldierAction _pending;
         private bool _walking, _wasMoving;
+        private float _moved;
         private float _phase, _speed, _dropT = -1f, _clock, _bulk = 1f, _purgeClock;
         private Vector3 _last;
 
@@ -174,6 +175,7 @@ namespace World.Game
                 pos = Vector3.MoveTowards(pos, new Vector3(Target.x, Target.y, Target.z), maxStep);
                 transform.position = pos;
                 var d = pos - _last; d.y = 0;
+                _moved = d.magnitude;
                 float sp = dt > 0f ? d.magnitude / dt : 0f;
                 _speed = Mathf.Lerp(_speed, sp, 0.3f);
                 _walking = SimMoving || _speed > 0.6f;
@@ -208,7 +210,11 @@ namespace World.Game
             }
             float walkAmp = _walking ? 1f : 0f;
             float slow = Wear == Wear.BadlyHurt ? 0.6f : Wear == Wear.Hurt ? 0.85f : 1f;
-            _phase += dt * (_walking ? 9f * slow : 1.2f);
+            // P1: the stride follows the ground covered (feet do not slide), within a sane cadence; a march on the spot keeps stepping.
+            float scale = Mathf.Max(0.01f, transform.lossyScale.y);
+            float stepLen = Gait.StepLength(0.84f, 32f * slow);
+            float rate = _walking ? Mathf.Clamp(Mathf.PI * (_moved / scale) / stepLen, dt * 5f * slow, dt * 16f) : dt * 1.2f;
+            _phase += rate; _moved = 0f;
             float s = Mathf.Sin(_phase);
             // The limp: the left leg takes short, stiff steps; the body dips when the weight lands on it. Worse when badly hurt.
             float limp = Wear == Wear.BadlyHurt ? 1f : Wear == Wear.Hurt ? 0.55f : 0f;

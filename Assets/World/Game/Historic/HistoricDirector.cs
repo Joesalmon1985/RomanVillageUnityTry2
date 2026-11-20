@@ -482,7 +482,7 @@ namespace World.Game
         private readonly List<Actor> _actors = new List<Actor>();
         private Mesh _fallMesh;
 
-        private sealed class Walker { public GameObject Go; public Transform T; public bool Seen; public int Key = -1; public float Id; }
+        private sealed class Walker { public GameObject Go; public Transform T; public bool Seen; public int Key = -1; public float Id; public MeshFigure Fig; public bool Loaded; public Vector3 Last; }
         private sealed class Actor { public Walker W; public Vector3 A, B; public float T; public bool Fell; }
 
         private Mesh WalkerMesh(int people, int ware)
@@ -492,25 +492,51 @@ namespace World.Game
             {
                 var mb = new MeshBuilder();
                 var load = ware >= 0 ? HistoricArt.WareColour((Ware)ware) : new Color(0, 0, 0, 0);
-                HistoricArt.Walker(mb, PeopleColour(people), load);
+                HistoricArt.WalkerTorso(mb, PeopleColour(people), load);
                 m = mb.ToMesh("Walker" + key);
                 _walkerMeshes[key] = m;
             }
             return m;
         }
 
+        private Mesh _walkerLeg;
+        private Mesh WalkerArm(int people)
+        {
+            int key = -1 - people;
+            if (!_walkerMeshes.TryGetValue(key, out var m)) { var mb = new MeshBuilder(); HistoricArt.WalkerArm(mb, PeopleColour(people)); m = mb.ToMesh("WalkerArm" + people); _walkerMeshes[key] = m; }
+            return m;
+        }
+
+        /// <summary>Test probe (P1): the largest leg spread among the carriers shown now (0 when nobody is walking).</summary>
+        public float CarrierLegSwing { get { float s = 0f; foreach (var w in _walkers.Values) if (w.Go.activeSelf && w.Fig != null) s = Mathf.Max(s, w.Fig.LegSwing); return s; } }
+
         private Walker GetWalker(int people, int ware)
         {
             Walker w = _pool.Count > 0 ? _pool.Pop() : null;
+            if (_walkerLeg == null) { var mb = new MeshBuilder(); HistoricArt.WalkerLeg(mb); _walkerLeg = mb.ToMesh("WalkerLeg"); }
             if (w == null)
             {
                 w = new Walker();
-                w.Go = Obj("Walker", _root, WalkerMesh(people, ware));
+                // P1: a jointed figure (legs and arms on pivots) whose stride follows the ground it covers.
+                w.Fig = MeshFigure.Build("Walker", _root, _mat, WalkerMesh(people, ware), _walkerLeg, WalkerArm(people), 0.8f, 0.15f, 1.5f, 0.39f, 2);
+                w.Go = w.Fig.Root.gameObject;
                 w.T = w.Go.transform;
             }
-            else w.Go.GetComponent<MeshFilter>().sharedMesh = WalkerMesh(people, ware);
+            else w.Fig.SetMeshes(WalkerMesh(people, ware), _walkerLeg, WalkerArm(people));
+            w.Loaded = ware >= 0;
+            w.Fig.Seed = (people * 0.31f + _pool.Count * 0.17f) % 1f;
+            w.Last = new Vector3(float.NaN, 0, 0);
             w.Go.SetActive(true);
             return w;
+        }
+
+        /// <summary>Steps a walker's limbs by the ground it covered since the last frame.</summary>
+        private void Animate(Walker w, MeshFigure.Hold hold)
+        {
+            var p = w.T.position;
+            float d = float.IsNaN(w.Last.x) ? 0f : BoardSpace.Flat(p - w.Last);
+            w.Last = p;
+            w.Fig.Step(Time.deltaTime, d, hold, _clock);
         }
 
         private void Release(Walker w) { w.Go.SetActive(false); _pool.Push(w); }
@@ -546,9 +572,10 @@ namespace World.Game
                 var target = Vector3.Lerp(a, b, u) + side * (((j.Id % 5) - 2) * 0.6f);
                 var cur = w.T.position;
                 cur = Vector3.Lerp(cur, target, 1f - Mathf.Exp(-9f * Time.deltaTime));
-                cur.y = Mathf.Abs(Mathf.Sin(_clock * 9f + w.Id)) * 0.12f;
+                cur.y = 0f;
                 if (dir.sqrMagnitude > 0.01f) w.T.rotation = Quaternion.Slerp(w.T.rotation, Quaternion.LookRotation(dir, Vector3.up), 0.2f);
                 w.T.position = cur;
+                Animate(w, w.Loaded ? MeshFigure.Hold.Load : MeshFigure.Hold.Swing);
             }
             _gone.Clear();
             foreach (var kv in _walkers) if (!kv.Value.Seen) _gone.Add(kv.Key);
@@ -592,10 +619,11 @@ namespace World.Game
                 float t = a.T;
                 Vector3 p;
                 if (t < 1.2f) p = Vector3.Lerp(a.A, a.B, t / 1.2f);
-                else if (t < 1.8f) p = a.B + Vector3.down * 0.15f * Mathf.Sin((t - 1.2f) / 0.6f * Mathf.PI);
+                else if (t < 1.8f) p = a.B;
                 else p = Vector3.Lerp(a.B, a.A, Mathf.Clamp01((t - 1.8f) / 1.2f));
-                p.y += Mathf.Abs(Mathf.Sin(_clock * 9f + i)) * 0.1f;
                 a.W.T.position = p;
+                // Out with empty hands, chop or dig at the tree, back (a woodcutter carries the log home).
+                Animate(a.W, t >= 1.2f && t < 1.8f ? MeshFigure.Hold.Work : a.W.Loaded && t >= 1.8f ? MeshFigure.Hold.Load : MeshFigure.Hold.Swing);
                 var d = (t < 1.8f ? a.B - a.A : a.A - a.B); d.y = 0;
                 if (d.sqrMagnitude > 0.01f) a.W.T.rotation = Quaternion.LookRotation(d, Vector3.up);
                 if (t >= 3f) { Release(a.W); _actors.RemoveAt(i); }

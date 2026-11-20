@@ -221,24 +221,50 @@ namespace World.Game
             }
         }
 
+        private readonly float[] _builderNext = new float[2];
+
+        /// <summary>
+        /// The builders shuttle planks from the stack to the flank. P1: a plank rides on the right shoulder (held there)
+        /// on the way out; at the scaffold they turn to it and hammer for a few seconds; at the stack they stoop for the next.
+        /// </summary>
         private void UpdateBuilders()
         {
             if (Builders == null) return;
+            const float R = TempleView.Radius;
             for (int i = 0; i < Builders.Length; i++)
             {
                 var b = Builders[i];
                 if (b == null) continue;
+                var pa = b.Actor as PlaceholderActor;
                 bool towardsFlank = b.Goal.HasValue && BoardSpace.Flat(b.Goal.Value - _flank) < 3f;
-                _planks[i].gameObject.SetActive(b.IsWalking && towardsFlank);
+                bool carrying = b.IsWalking && towardsFlank;
+                _planks[i].gameObject.SetActive(carrying);
+                if (pa != null)
+                {
+                    var want = carrying ? PlaceholderActor.CarryStyle.Shoulder : PlaceholderActor.CarryStyle.None;
+                    if (pa.Carrying != want) pa.SetCarry(want, Color.clear);
+                }
                 if (b.IsWalking)
                 {
                     float yaw = b.transform.eulerAngles.y;
-                    _planks[i].SetPositionAndRotation(b.transform.position + Vector3.up * 1.25f + BoardSpace.DirOf(yaw) * 0.1f, Quaternion.Euler(0, yaw, 0));
+                    var right = Quaternion.Euler(0, yaw, 0) * Vector3.right;
+                    _planks[i].SetPositionAndRotation(b.transform.position + Vector3.up * (pa != null ? 1.72f : 1.25f) + right * (pa != null ? 0.22f : 0f) + BoardSpace.DirOf(yaw) * 0.1f, Quaternion.Euler(0, yaw, 0));
+                    _builderNext[i] = 0f;
                     continue;
                 }
-                if (Time.time < _nextBuilder) continue;
-                _nextBuilder = Time.time + 1.7f;
-                var next = BoardSpace.Flat(b.transform.position - _stack) < BoardSpace.Flat(b.transform.position - _flank) ? _flank : _stack;
+                bool atFlank = BoardSpace.Flat(b.transform.position - _flank) < BoardSpace.Flat(b.transform.position - _stack);
+                if (_builderNext[i] <= 0f)
+                {
+                    // Just arrived: work here a while (hammering at the scaffold, a stoop at the stack).
+                    _builderNext[i] = Time.time + (atFlank ? 4.2f + i * 0.9f : 1.6f + i * 0.4f);
+                    if (atFlank) b.FaceTowards(Frame.W(-R - 1.6f, 1.85f));
+                    else { b.FaceTowards(_stack); b.Actor?.PlayOneShot(ActorKeys.Greet); }
+                }
+                if (atFlank && b.Actor != null && !b.Actor.IsPlayingOneShot && Time.time < _builderNext[i] - 0.4f) b.Actor.PlayOneShot(ActorKeys.Hammer);
+                if (Time.time < _builderNext[i] || Time.time < _nextBuilder) continue;
+                _nextBuilder = Time.time + 0.6f;
+                _builderNext[i] = 0f;
+                var next = atFlank ? _stack : _flank;
                 b.WalkTo(next + Vector3.right * (i * 1.3f - 0.65f));
             }
         }

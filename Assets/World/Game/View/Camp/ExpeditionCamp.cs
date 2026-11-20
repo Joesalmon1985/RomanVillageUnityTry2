@@ -87,6 +87,7 @@ namespace World.Game
                 n.Doing = () => "We leave when Mira says. The crystals will keep.";
                 Companions[i] = n;
             }
+            ConverseGroup.Start(transform, Companions[0].transform, Companions[1].transform); // P1: they talk while they wait
         }
     }
 
