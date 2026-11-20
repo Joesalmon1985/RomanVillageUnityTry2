@@ -317,15 +317,14 @@ namespace World.Game.Tests
             Assert.Greater(sp.z, 0, "Mira in front of the spawn view");
             var hit = PointerInput.Raycast(sp);
             Assert.AreSame(mira, hit.Target, "the pointer hits Mira");
-            // A tap on the ground (a hex tile) inspects it with a small world-anchored label.
+            // WU-1b: a tap on plain ground (a hex tile) walks there (it no longer opens an inspect label).
             var ground = W.Position + W.transform.forward * 6f + W.transform.right * 2.5f;
             var gsp = cam.WorldToScreenPoint(ground);
             var g = PointerInput.Raycast(gsp);
             Assert.IsTrue(g.HasGround, "ground under the pointer");
             Assert.IsInstanceOf<HexView>(g.Target, "the ground is a hex tile");
-            Assert.AreEqual(TapOutcome.Inspect, PointerInput.TapAt(gsp));
-            Assert.AreNotEqual(0, SpeechBubbles.InspectHandle, "inspect label open");
-            Assert.AreEqual(((HexView)g.Target).Title, SpeechBubbles.TitleOf(SpeechBubbles.InspectHandle), "the label names the hex tile");
+            Assert.AreEqual(TapOutcome.Walk, PointerInput.TapAt(gsp));
+            W.StopAuto();
             // Tapping Mira talks: her bubble with the duel reply.
             Assert.AreEqual(TapOutcome.Interact, PointerInput.TapAt(sp));
             Assert.IsTrue(DialoguePanel.IsOpen);

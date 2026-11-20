@@ -219,6 +219,7 @@ namespace World.Game.Tests
 
             // Night: the per-pixel budget is unchanged by the extra torches.
             Assert.AreEqual(6, WorldLights.PixelBudget);
+            LightDecorator.Instance.ScanNow(); // the rebuilt views get their fire lights at the next scan (WU-8: the scan is not frame-exact after a rebuild)
             Assert.GreaterOrEqual(WorldLights.Registered, lightsBefore + dress.TownTorches);
             DayNight.Instance.SetHour(23.0);
             LightDecorator.Instance.ScanNow();

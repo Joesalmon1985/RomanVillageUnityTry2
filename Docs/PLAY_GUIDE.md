@@ -119,5 +119,7 @@ Builds/Windows/WorldMVP.exe -autoplay <name> -novsync -screen-fullscreen 0 -scre
 | `plague_epidemic` | a 7 brings an epidemic (feed line, sky, demons), the overlay shows 48 nodes, a banish on foot removes a demon |
 | `war_burn` | a soldier reaches an unguarded camp, it burns, a ruin shows, the owner's table points drop |
 | `board_to_historic` | dev.godboard.eve: the switch plays, temples fall, castle scaffolds start, trees render, the player walks |
+| `world_ui_tour` | WU-8: from the hub of dev.godboard, enter and leave all six destinations in a row (temple to god board, council, rhythm, healer's lodge, duel ring, Mira's crystal expedition: down the glade stair, Lead me out, walk home) and check the same hub cell and heading each time, the sim state kept, and no wireframe type in the player |
+| `phone_frametime` | WU-8: 60 s of frames on dev.godboard seed 7 (use the phone-sized window); logs average fps and ms and the worst frame |
 
 Set-up that would need luck or minutes (cards in hand, an AI offer, a points lead, extra soldiers) is prepared by `World.Sim.Table.SmokeSetup` in the sim; everything else goes through commands and the views' public methods. `first_scene` is the older smoke run.
