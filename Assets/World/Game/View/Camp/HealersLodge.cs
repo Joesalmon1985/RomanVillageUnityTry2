@@ -212,7 +212,7 @@ namespace World.Game
         private Vector3 Rack => Frame.W(4.9f, 1.2f);
         private Vector3 SortSpot => Frame.W(1.8f, BodyRadius + 2.0f);
         private Vector3 Baskets => Frame.W(1.5f, BodyRadius + 1.0f);
-        private Vector3 TableDrop => Frame.W(-2.6f, 5.8f);
+        private Vector3 TableDrop => Frame.W(-4.35f, 5.35f);
 
         /// <summary>The healer turns to a point (the map table when asked how bad it is), points at it and explains.</summary>
         public void ShowTo(Vector3 point)

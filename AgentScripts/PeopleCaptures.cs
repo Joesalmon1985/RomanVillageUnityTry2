@@ -196,7 +196,7 @@ public static class PeopleCaptures
                 {
                     var sb = new StringBuilder();
                     sb.Append("npcs " + Npc.All.Count);
-                    var h = HistoricDirector.Instance; if (h != null) sb.Append(" carriers " + h.WalkersShown + " swing " + h.CarrierLegSwing.ToString("F1"));
+                    var h = HistoricDirector.Instance; if (h != null) sb.Append(" carriers " + h.WalkersShown + " swing " + h.CarrierLegSwing.ToString("F1") + " gait " + h.CarrierGaitSpeed.ToString("F2") + " bulge " + h.CarrierRouteBulge.ToString("F1"));
                     var d = GodBoardDirector.Instance; if (d != null && d.Collectors != null) sb.Append(" collectors " + d.Collectors.Active.Count);
                     sb.Append(" screen " + Screen.width + "x" + Screen.height);
                     var ring = DuelRing.Instance; if (ring != null) sb.Append(" ring O " + ring.Frame.O + " yaw " + ring.Frame.Yaw + " s0 " + ring.Sparrers[0].transform.position + " s1 " + ring.Sparrers[1].transform.position);
