@@ -21,8 +21,8 @@ namespace World.Sim.Plague
         public const int MaxDemons = 3;
         public static int OutbreaksToFall = 8;
         public static int EpidemicDemons = 3;
-        /// <summary>Infection draw every N-th round (1 = every round, the rule). Proof variants only; read by GodBoardModule.</summary>
-        public static int InfectEvery = 1;
+        /// <summary>Balance F1 (owner decision 2026-11-20): a new god board game draws infection cards every 3rd round. Stored per game in <see cref="PlagueState.InfectEvery"/>.</summary>
+        public const int DefaultInfectEvery = 3;
         /// <summary>The rate track advances on every N-th epidemic only (1 = every epidemic, the rule). Proof variants only.</summary>
         public static int RateEvery = 1;
 
@@ -254,6 +254,7 @@ namespace World.Sim.Plague
                 Cured = new bool[4],
                 Eradicated = new bool[4],
                 Strengthened = new bool[4],
+                InfectEvery = PlagueRules.DefaultInfectEvery,
                 Rng = s.Rng.Fork("plague"),
             };
             for (int i = 1; i <= PlagueGraphData.NodeCount; i++) p.Deck.Add(i);

@@ -34,9 +34,9 @@ namespace World.Sim.War
         public bool[] AtWar;
         public int Trained, Died, Purged, Burned, Looted;
         /// <summary>
-        /// Tuning flag for WA-11's tie rule (G0-3; owner has not ruled yet). Literal: two or more peoples sharing the top score
-        /// are at war, so a fresh game with everyone tied is at war. OnlyWhenNotEveryoneTied (default): tied leaders fight only
-        /// when not every people shares the top score.
+        /// Tuning flag for WA-11's tie rule. A new god board game gets NeverWhenTied (balance F1, owner decision 2026-11-20); a save
+        /// keeps the value it was written with. Literal: two or more peoples sharing the top score are at war, so a fresh game with
+        /// everyone tied is at war. OnlyWhenNotEveryoneTied: tied leaders fight only when not every people shares the top score.
         /// </summary>
         public TieRule TiedLeadersFight = TieRule.OnlyWhenNotEveryoneTied;
         /// <summary>True once the war has been stopped for good (G0-3: the island fell, PL-10). Tick then does nothing.</summary>
@@ -50,7 +50,7 @@ namespace World.Sim.War
         Literal = 0,
         /// <summary>Tied leaders fight only when at least one people is below the top score.</summary>
         OnlyWhenNotEveryoneTied = 1,
-        /// <summary>G1-3 option, not the default: peoples tied at the top never fight; only a single leader WarLead ahead is at war.</summary>
+        /// <summary>The default since balance F1: peoples tied at the top never fight; only a single leader WarLead ahead is at war.</summary>
         NeverWhenTied = 2,
     }
 

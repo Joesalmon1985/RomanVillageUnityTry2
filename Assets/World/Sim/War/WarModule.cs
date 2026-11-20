@@ -23,6 +23,7 @@ namespace World.Sim.War
                 Rng = s.Rng.Fork("war"),
                 Points = new int[peopleCount],
                 AtWar = new bool[peopleCount * peopleCount],
+                TiedLeadersFight = TieRule.NeverWhenTied, // balance F1 (owner decision 2026-11-20): tied leaders never fight
             };
         }
 

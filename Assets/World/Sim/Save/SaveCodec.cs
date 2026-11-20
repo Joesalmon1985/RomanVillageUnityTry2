@@ -38,6 +38,8 @@ namespace World.Sim.Save
     public static class SaveCodec
     {
         /// <summary>
+        /// 9 = balance F1: PlagueState.InfectEvery (new games 3); WarState.TiedLeadersFight defaults to NeverWhenTied in new games.
+        /// A version 8 save loads by migration with InfectEvery 1 and keeps its saved tie rule (the old behaviour).
         /// 8 = the Historic age on the god board (G4-2): WorldState.Historic (castles, finite resources, Historic buildings and
         /// carriers); a god board game whose age has ended steps into Historic. Version 7 loads by migration.
         /// 7 = the war on the god board (G0-3): WorldState.War (null in a Legacy game), Table.ClosedCorners and
@@ -52,7 +54,7 @@ namespace World.Sim.Save
         /// StrategyState.DraftNextStep; 24 cards; economy targets and per-terrain batch sizes in the tuning).
         /// 2 = unified economy (14 wares, 20 building types, outbreaks, military comparison). Older saves are refused.
         /// </summary>
-        public const int CurrentVersion = 8;
+        public const int CurrentVersion = 9;
 
         /// <summary>Oldest save version this build reads.</summary>
         public const int OldestVersion = 4;

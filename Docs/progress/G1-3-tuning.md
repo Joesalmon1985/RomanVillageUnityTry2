@@ -50,3 +50,18 @@ Cells: rounds to win (median) / island falls / war share of rounds / player wins
 | F3 F1 + win 13 | 22 / 8.3% / 25.9% / 31.3% | 24 / 2.1% / 22.6% / 25.0% | 28.5 / 20.8% / 22.8% / 0.0% | 23 / 6.3% / 22.0% / 37.5% |
 | D5 F3 + war lead 3 | 22 / 2.1% / 13.2% / 31.3% | 22 / 0.0% / 10.8% / 35.4% | 25 / 4.2% / 9.9% / 0.0% | 22 / 4.2% / 11.1% / 31.3% |
 | D8 infect every 2nd + grace 10 + win 13 + ties never + lead 3 | 21.5 / 0.0% / 12.2% / 35.4% | 21 / 2.1% / 10.6% / 22.9% | 25 / 6.3% / 11.2% / 0.0% | 22 / 2.1% / 11.0% / 29.2% |
+
+## After F1 (20 Nov 2026): F1 is now the default
+
+Option F1 (infection draw every 3rd round, tied leaders never fight, win at 10) became the default of new god board games (`PlagueState.InfectEvery` = 3, `WarState.TiedLeadersFight = NeverWhenTied`; see `BALANCE_F1.md`). The "Default" knobs of the proof are now F1, so the rows of the study above that say "Default" (the old rules) are now written `Before F1` in the harness; this document is not regenerated. Fresh figures of the shipped defaults, 48 seeds each (full table in `G1-3-proof.md`):
+
+| Player | Rounds to win (median, min-max) | Island falls | War share of rounds | Player wins |
+|---|---|---|---|---|
+| Quick | 17 (10-26) | 0 of 48 | 20.3% | 18 of 48 (37.5%) |
+| Slow | 18 (10-29) | 0 of 48 | 14.3% | 13 of 48 (27.1%) |
+| Absent | 21 (14-33) | 3 of 48 (6.3%) | 17.3% | 0 of 48 |
+| AI seat | 18 (11-26) | 0 of 48 | 15.9% | 17 of 48 (35.4%) |
+| AI seat + banish | 17.5 (10-26) | 0 of 48 | 16.7% | 20 of 48 (41.7%) |
+| All-AI table | 18 (12-26) | 1 of 48 | 16.7% | - |
+
+Met: war under 30%, Quick wins 30-50%, Absent under 5% wins, falls under 10% (Absent 6.3%, inside the 5-20% band for a player who never banishes). Unmet by design: rounds to win 25-40 (the owner keeps 10 points).

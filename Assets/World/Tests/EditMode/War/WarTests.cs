@@ -333,11 +333,23 @@ namespace World.Sim.Tests
         public void WarState_TiedLeadersAreAtWarWithEachOther_OthersAtPeace()
         {
             var s = NewState(4);
+            s.War.TiedLeadersFight = TieRule.OnlyWhenNotEveryoneTied; // the pre-F1 reading; new games default to NeverWhenTied
             WarRules.SetPoints(s, new[] { 6, 6, 2, 1 }, null);
             Assert.IsTrue(WarApi.AtWar(s, 0, 1));
             Assert.IsFalse(WarApi.AtWar(s, 0, 2));
             Assert.IsFalse(WarApi.AtWar(s, 2, 3));
             Assert.AreEqual(-1, WarApi.Leader(s));
+        }
+
+        [Test]
+        public void WarState_TiedLeadersNeverFight_ByDefault_ALeadOfTwoStillDoes()
+        {
+            var s = NewState(4);
+            Assert.AreEqual(TieRule.NeverWhenTied, s.War.TiedLeadersFight);
+            WarRules.SetPoints(s, new[] { 6, 6, 2, 1 }, null);
+            Assert.IsFalse(s.War.AtWar.Any(x => x), "WA-11 (balance F1): peoples tied at the top never fight");
+            WarRules.SetPoints(s, new[] { 6, 3, 3, 3 }, null);
+            Assert.IsTrue(WarApi.AtWar(s, 0, 1) && WarApi.AtWar(s, 0, 2) && WarApi.AtWar(s, 0, 3));
         }
 
         [Test]
