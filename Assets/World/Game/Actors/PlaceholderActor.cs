@@ -447,7 +447,7 @@ namespace World.Game
         /// <summary>Test probe: the angle between the legs this frame (0 when standing with the feet together).</summary>
         public float LegSwing { get; private set; }
         /// <summary>This person's idle phase 0..1 (from the id): breathing, weight shifts and fidgets differ between people.</summary>
-        public float IdlePhase => _seed;
+        public float IdlePhase { get { if (_idleRnd == null) InitIdle(); return _seed; } }
         /// <summary>Smoothed ground speed (m/s).</summary>
         public float Speed => _speed;
         /// <summary>While true the arms gesture as in speech (Npc sets it while one of its bubbles shows).</summary>
@@ -489,6 +489,7 @@ namespace World.Game
         private void Idle(float dt, float t, float idle, ref Vector3 armL, ref Vector3 armR, ref float pitch, ref float roll, ref float headPitch, ref float headYaw, ref float shiftX)
         {
             if (_idleRnd == null) InitIdle();
+            idle *= 1f - 0.75f * _poseBlend; // a held pose (the council's crowds) keeps its own body language
             // Weight shift from foot to foot, slow and a little irregular.
             float ws = Mathf.Sin(t * 0.31f) * 0.7f + Mathf.Sin(t * 0.83f + 1.3f) * 0.3f;
             shiftX = ws * 0.035f * idle;
