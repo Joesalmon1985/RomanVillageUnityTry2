@@ -97,6 +97,7 @@ namespace World.Game
                 _planks.Add(pg.transform);
             }
             AltarApproach = Frame.W(0, R + 1.2f);
+            HubArt.Glow(root, Frame.W(0, R + 2.5f) + Vector3.up * 2.4f, 13f, 1.4f);
             LandViews.AddClearing(Frame.O.x, Frame.O.z, 13f);
         }
 

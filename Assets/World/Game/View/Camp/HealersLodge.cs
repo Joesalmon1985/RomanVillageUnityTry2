@@ -99,6 +99,7 @@ namespace World.Game
             var tap = HubArt.Pick<LodgeTap>(root, "Lodge tap", Frame, new Vector3(0, 1.2f, 0), new Vector3(BodyRadius * 2f, 2.4f, BodyRadius * 2f));
             tap.Lodge = this;
             Door = Frame.W(0, BodyRadius + 2.3f);
+            HubArt.Glow(root, Frame.W(0, BodyRadius + 1.6f) + Vector3.up * 2.2f, 11f, 1.4f);
             RunnerRest = Frame.W(6f, -9f);
         }
 

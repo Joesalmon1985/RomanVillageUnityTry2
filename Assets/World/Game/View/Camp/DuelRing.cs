@@ -84,6 +84,7 @@ namespace World.Game
             body.layer = 2;
             var tap = HubArt.Pick<RingTap>(root, "Ring tap", Frame, new Vector3(0, 0.3f, 0), new Vector3(FenceRadius * 2f, 0.6f, FenceRadius * 2f));
             tap.Ring = this;
+            HubArt.Glow(root, Frame.W(0, FenceRadius + 0.5f) + Vector3.up * 2.6f, 12f, 1.5f);
         }
 
         private void BuildPeople()

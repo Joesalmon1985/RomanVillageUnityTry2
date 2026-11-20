@@ -41,6 +41,17 @@ namespace World.Game
             return go.AddComponent<T>();
         }
 
+        /// <summary>A warm point light (a hearth, a torch) so a place reads at night.</summary>
+        public static Light Glow(Transform parent, Vector3 world, float range, float intensity)
+        {
+            var g = new GameObject("Glow");
+            g.transform.SetParent(parent, false);
+            g.transform.position = world;
+            var l = g.AddComponent<Light>();
+            l.type = LightType.Point; l.range = range; l.intensity = intensity; l.color = new Color(1f, 0.74f, 0.42f);
+            return l;
+        }
+
         public static void Basket(MeshBuilder mb, Vector3 p, Color contents, int kind)
         {
             mb.Cylinder(p, 0.55f, 0.45f, 0.5f, 8, CampBuilder.WoodLight);

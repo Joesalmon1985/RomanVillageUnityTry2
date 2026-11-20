@@ -304,29 +304,30 @@ namespace World.Game
             var spawn = WalkLattice.ToWorld(Spawn);
             float view = WalkLattice.Yaw(SpawnHeading);
             // Temple left of ahead (the forecourt faces the hearth), the lodge one turn left and behind, the ring one turn right and behind.
-            Hub1("HUB-TEMPLE", "temple", board, spawn, view, -14f, 28f, 46f, 9f);
-            Hub1("HUB-HEALER", "lodge", board, spawn, view, -100f, 22f, 42f, 7f);
-            Hub1("HUB-DUEL", "ring", board, spawn, view, 105f, 22f, 44f, 7f);
+            Hub1("HUB-TEMPLE", "temple", board, spawn, view, new[] { -14f, -28f, 0f, -40f, 14f }, 28f, 46f, 9f);
+            Hub1("HUB-HEALER", "lodge", board, spawn, view, new[] { -100f, -85f, -125f }, 22f, 42f, 7f);
+            Hub1("HUB-DUEL", "ring", board, spawn, view, new[] { 105f, 90f, 125f }, 22f, 44f, 7f);
         }
 
         /// <summary>Finds clear ground nearest the wanted bearing (from the spawn) and distance, strictest test first, and records the place.</summary>
-        private void Hub1(string zone, string kind, Board board, Vector3 spawn, float view, float bearing, float rMin, float rMax, float radius)
+        private void Hub1(string zone, string kind, Board board, Vector3 spawn, float view, float[] bearings, float rMin, float rMax, float radius)
         {
-            for (int pass = 0; pass < 3; pass++)
-            {
-                float rad = pass == 1 ? radius * 0.55f : radius;
-                for (float r = rMin; r <= rMax; r += 3f)
-                    for (int k = 0; k < 25; k++)
-                    {
-                        float off = ((k + 1) / 2) * 6f * (k % 2 == 0 ? 1 : -1);
-                        var p = spawn + BoardSpace.DirOf(view + bearing + off) * r; p.y = 0;
-                        if (!HubFree(board, p, radius, pass, rad)) continue;
-                        _places.Add(new HubPlace(zone, kind, p, BoardSpace.YawOf(Hearth - p), radius));
-                        return;
-                    }
-            }
-            // No clear ground (a cramped board): stand it on the bearing anyway, so the place still exists.
-            var q = spawn + BoardSpace.DirOf(view + bearing) * rMin; q.y = 0;
+            foreach (float bearing in bearings)
+                for (int pass = 0; pass < 3; pass++)
+                {
+                    float rad = pass == 1 ? radius * 0.55f : radius;
+                    for (float r = rMin; r <= rMax; r += 3f)
+                        for (int k = 0; k < 7; k++)
+                        {
+                            float off = ((k + 1) / 2) * 6f * (k % 2 == 0 ? 1 : -1);
+                            var p = spawn + BoardSpace.DirOf(view + bearing + off) * r; p.y = 0;
+                            if (!HubFree(board, p, radius, pass, rad)) continue;
+                            _places.Add(new HubPlace(zone, kind, p, BoardSpace.YawOf(Hearth - p), radius));
+                            return;
+                        }
+                }
+            // No clear ground (a cramped board): stand it on the first bearing anyway, so the place still exists.
+            var q = spawn + BoardSpace.DirOf(view + bearings[0]) * rMin; q.y = 0;
             _places.Add(new HubPlace(zone, kind, q, BoardSpace.YawOf(Hearth - q), radius));
         }
 
