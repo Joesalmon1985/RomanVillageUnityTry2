@@ -148,7 +148,12 @@ namespace World.Game
         }
 
         /// <summary>True when a GUI point is on the open card.</summary>
-        public static bool Contains(Vector2 gui) => IsOpen && LastRect.width > 0 && LastRect.Contains(gui);
+        public static bool Contains(Vector2 gui)
+        {
+            if (!IsOpen) return false;
+            var cam = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.ActiveCamera : Camera.main;
+            return CurrentLayout(cam).Card.Contains(gui);
+        }
 
         /// <summary>The layout for the current screen.</summary>
         public static LedgerLayout CurrentLayout(Camera cam)
