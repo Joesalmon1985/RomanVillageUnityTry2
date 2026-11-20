@@ -23,6 +23,8 @@ namespace World.Game
             boot.SetViewpoint(walker, god, views);
 
             go.AddComponent<PointerController>();
+            go.AddComponent<WorldActionController>(); // WU-0: preview / confirm, tap guard, E key
+            go.AddComponent<LedgerCardView>();
             go.AddComponent<SpeechBubblesView>();
             go.AddComponent<DialoguePanel>();
             go.AddComponent<MapScreenView>();
