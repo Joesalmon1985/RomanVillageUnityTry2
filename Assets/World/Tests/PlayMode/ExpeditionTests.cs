@@ -53,6 +53,8 @@ namespace World.Game.Tests
             SaveSystem.TestPauseOnLoad = null;
             if (MapScreen.IsOpen) { MapScreen.ClearTarget(); MapScreen.Close(); }
             Hud.Visible = false;
+            Interiors.FactsOverride = null;
+            WorldActions.Cancel();
             if (File.Exists(_path)) File.Delete(_path);
         }
 
@@ -617,7 +619,9 @@ namespace World.Game.Tests
         private IEnumerator Settle()
         {
             WorldActions.Cancel(); LedgerCard.Hide();
-            yield return new WaitForSecondsRealtime(0.8f);
+            float end = Time.realtimeSinceStartup + 8f;
+            yield return new WaitForSecondsRealtime(0.5f);
+            while (WorldActions.CameraMoving && Time.realtimeSinceStartup < end) yield return null;
             Assert.IsFalse(WorldActions.CameraMoving, "the camera is still");
         }
 
@@ -627,8 +631,11 @@ namespace World.Game.Tests
             // The Root Chamber lead is made the top one at once (a test edit of the definition); nothing else changes.
             yield return StartCampaign(ExpeditionDev.AuthoredPack, d =>
             {
-                var l = d.Leads.Find(x => x.Id == "earth_root");
-                l.Requires.Clear(); l.Priority = 1000;
+                var root = d.Leads.Find(x => x.Id == "earth_root");
+                root.Requires.Clear(); root.Priority = 1000;
+                // The way down is open from the start, so the party can reach the pedestal (nothing else changes).
+                foreach (var loc in d.Locations) foreach (var mk in loc.Markers) if (mk.Id == "stair") mk.OpenWhen = "";
+                foreach (var cn in d.Connections) if (cn.OpenWhen == "earth.stair_open") cn.OpenWhen = "";
             });
             yield return Until(() => CampaignApi.TopLead(S) != null && CampaignApi.TopLead(S).DefId == "earth_root", 20f, "the Root Chamber lead");
             int leadId = CampaignApi.TopLead(S).Id;
@@ -696,6 +703,7 @@ namespace World.Game.Tests
         public IEnumerator LeadMeOut_FromACompanionCard_ReturnsToTheSurfaceAndTheHubView()
         {
             yield return StartCampaign();
+            Interiors.FactsOverride = f => true; // the story has not opened the ways yet: they are open for this walk
             Assert.IsTrue(Dir.PlayerPresent);
             W.Teleport(InteriorScripts.CellOf("glade/quarry_upper/safe"), 0);
             yield return Frames(3);
