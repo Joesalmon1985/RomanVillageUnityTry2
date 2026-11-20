@@ -102,6 +102,7 @@ public static class PeopleCaptures
                     _dist = a.Length > 2 ? float.Parse(a[2], ci) : 4f; _height = a.Length > 3 ? float.Parse(a[3], ci) : 1.6f; _side = a.Length > 4 ? float.Parse(a[4], ci) : 0f;
                     _lookH = a.Length > 5 ? float.Parse(a[5], ci) : 1.0f;
                     _target = Resolve(t);
+                    KillCams(); _cam = null; // each script run is a new assembly: cameras of earlier runs are found by name
                     if (_target == null || _target() == null) return "cam: no target " + t;
                     if (_cam == null)
                     {
@@ -114,7 +115,7 @@ public static class PeopleCaptures
                     Follow(_cam);
                     return "cam " + t + " at " + _target().position;
                 }
-            case "nocam": if (_cam != null) UnityEngine.Object.Destroy(_cam.gameObject); _cam = null; _target = null; return "nocam";
+            case "nocam": KillCams(); _cam = null; _target = null; return "nocam";
             case "collectors":
                 {
                     // Visual only: sends N collecting villagers from the corner nearest the player to a producing hex (reflection on the private spawn).
@@ -170,6 +171,11 @@ public static class PeopleCaptures
     }
 
     static Transform _crowd;
+
+    static void KillCams()
+    {
+        foreach (var c in Camera.allCameras) if (c != null && c.name == "P1 capture camera") UnityEngine.Object.DestroyImmediate(c.gameObject);
+    }
 
     static Func<Transform> Resolve(string t)
     {
