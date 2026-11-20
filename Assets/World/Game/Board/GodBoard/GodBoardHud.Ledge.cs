@@ -178,7 +178,7 @@ namespace World.Game
                 case "hourglass": return GodBoardLedger.Hourglass(vm);
                 case "chronicler": { var l = new List<string>(); foreach (var f in _d.Feed) l.Add(f.Text); return GodBoardLedger.Chronicler(l); }
                 case "prince": return GodBoardLedger.Prince(GodBoardDirector.AdviserOn, _d.LastHintLine);
-                case "totem": return GodBoardLedger.Totem(PlagueIsOn != null && PlagueIsOn());
+                case "totem": return GodBoardLedger.Totem(TotemOn);
                 case "sack": return GodBoardLedger.Sack(vm, DiscardChosen);
             }
             return new LedgerContent { Title = what };
@@ -257,7 +257,7 @@ namespace World.Game
                 }
                 case "totem":
                 {
-                    if (PlagueToggle != null) PlagueToggle();
+                    TotemToggle();
                     return WorldActions.Inspect(InspectObj("totem", WorldZones.HexPlague, "totem", rect));
                 }
                 case "hourglass":
@@ -385,6 +385,15 @@ namespace World.Game
                 return "Give " + GodBoardLedger.Goods(cost) + " for " + GodBoardLedger.Goods(gain) + ".";
             }
             return "Tap a basket to give, then a good on the mat to get. The bank takes " + vm.BankRateBase + ".";
+        }
+
+        /// <summary>The demon-ward totem works the plague overlay through WU-3's public hooks (the old round-icon hooks as a fallback).</summary>
+        public static bool TotemAvailable => PlagueViews.Instance != null || PlagueToggle != null;
+        public static bool TotemOn => PlagueViews.Instance != null ? PlagueViews.OverlayOn : PlagueIsOn != null && PlagueIsOn();
+        private static void TotemToggle()
+        {
+            if (PlagueViews.Instance != null) PlagueViews.ToggleOverlayFromTotem();
+            else if (PlagueToggle != null) PlagueToggle();
         }
 
         private static int[] MissingFor(int[] hand, int[] cost)

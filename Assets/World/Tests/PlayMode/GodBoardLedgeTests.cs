@@ -521,5 +521,39 @@ namespace World.Game.Tests
             Assert.AreEqual(WorldTapResult.Inspected, _hud.TapLedge("basket:0"));
             StringAssert.Contains("Logs: 4", string.Join("|", LedgerCard.Content.AllText()));
         }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator ClearView_OneSetting_ShowsBoardHudAndPlagueButtonsTogether()
+        {
+            yield return ToMyTurn();
+            GodBoardSettings.Override = null;
+            bool saved = GodBoardSettings.ClearView;
+            try
+            {
+                GodBoardSettings.ClearView = false;
+                for (int i = 0; i < 4; i++) yield return null;
+                Assert.IsFalse(PlagueHud.ClearView, "the plague reads the same setting");
+                Assert.IsFalse(_hud.Texts.Contains("[Road]"));
+                Assert.IsFalse(_hud.Texts.Any(x => x.StartsWith("[Plague")), "world first: no Plague button");
+                Assert.IsNull(GodBoardHud.PlagueToggle);
+                Assert.IsTrue(GodBoardHud.TotemAvailable, "the totem still works the overlay");
+                bool was = GodBoardHud.TotemOn;
+                _hud.TapLedge("totem");
+                Assert.AreNotEqual(was, GodBoardHud.TotemOn, "the totem toggles the overlay");
+                _hud.TapLedge("totem"); WorldActions.Cancel();
+                // one toggle: both layers come back
+                PlagueHud.ClearView = true;
+                for (int i = 0; i < 4; i++) yield return null;
+                Assert.IsTrue(GodBoardSettings.ClearView, "one setting is the source of truth");
+                Assert.IsTrue(_hud.Texts.Contains("[Road]"), "the board HUD is back: " + string.Join("|", _hud.Texts));
+                Assert.IsTrue(_hud.Texts.Any(x => x.StartsWith("[Plague")), "the Plague button is back: " + string.Join("|", _hud.Texts));
+                Assert.IsFalse(_hud.Rig.Shown);
+                GodBoardSettings.ClearView = false;
+                for (int i = 0; i < 4; i++) yield return null;
+                Assert.IsFalse(_hud.Texts.Any(x => x.StartsWith("[Plague")));
+                Assert.IsTrue(_hud.Rig.Shown);
+            }
+            finally { GodBoardSettings.ClearView = saved; }
+        }
     }
 }

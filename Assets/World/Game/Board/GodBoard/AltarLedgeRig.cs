@@ -660,8 +660,8 @@ namespace World.Game
                 case "totem":
                 {
                     Place(it, r, 0.95f);
-                    bool on = GodBoardHud.PlagueIsOn != null && GodBoardHud.PlagueIsOn();
-                    bool can = GodBoardHud.PlagueToggle != null;
+                    bool on = GodBoardHud.TotemOn;
+                    bool can = GodBoardHud.TotemAvailable;
                     foreach (Transform t in it.Model) if (t.name == "Eye") SetGlow(t.gameObject, on ? new Color(1f, 0.3f, 0.2f, 1f) : new Color(0.25f, 0.08f, 0.05f, 0.4f));
                     Paint(it.Model.Find("Pole").gameObject, can ? Wood : new Color(0.25f, 0.23f, 0.21f));
                     return;
