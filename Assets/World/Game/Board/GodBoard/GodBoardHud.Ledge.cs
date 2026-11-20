@@ -357,7 +357,10 @@ namespace World.Game
             var vm = _d.Model;
             // the carved band
             _rects.Add(_band);
-            FillNoHit(_band, StoneDark);
+            var bleed = new Rect(0f, _band.y, Screen.width, Screen.height - _band.y);
+            _rects.Add(bleed);
+            FillNoHit(bleed, StoneDark);
+            FillNoHit(new Rect(0f, _band.y, Screen.width, 4f * _lu), StoneLit);
             FillNoHit(new Rect(_band.x, _band.y, _band.width, 4f * _lu), StoneLit);
             FillNoHit(new Rect(_band.x, _band.y + 4f * _lu, _band.width, 2f * _lu), new Color(0.1f, 0.09f, 0.08f));
             for (float cx = _band.x + 22f * _lu; cx < _band.xMax; cx += 44f * _lu) FillNoHit(new Rect(cx, _band.y + 8f * _lu, _lu, _band.height - 12f * _lu), new Color(0f, 0f, 0f, 0.16f));

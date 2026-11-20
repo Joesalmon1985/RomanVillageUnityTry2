@@ -245,9 +245,32 @@ namespace World.Game
             RefitCamera();
         }
 
+        private float _ledgeFrac;
+
+        /// <summary>The share of the screen height the altar ledge takes at the bottom (0 in Clear view): the island is fitted above it (WU-2).</summary>
+        public float LedgeFraction
+        {
+            get
+            {
+                if (GodBoardSettings.ClearView) return 0f;
+                var hud = GetComponent<GodBoardHud>();
+                if (hud == null) return 0f;
+                hud.LayoutLedge();
+                return Mathf.Clamp((Screen.height - hud.LedgeBand.y) / Mathf.Max(1f, Screen.height), 0f, 0.45f);
+            }
+        }
+
+        private float BoardAspect() => Mathf.Max(0.5f, (float)Screen.width / Mathf.Max(1f, Screen.height * (1f - _ledgeFrac)));
+
+        private void ApplyRect(float k)
+        {
+            float f = _ledgeFrac * k;
+            BoardCam.rect = new Rect(0f, f, 1f, 1f - f);
+        }
+
         private void RefitCamera()
         {
-            float aspect = Mathf.Max(0.5f, (float)Screen.width / Mathf.Max(1, Screen.height));
+            float aspect = BoardAspect();
             float tan = Mathf.Tan(BoardFov * 0.5f * Mathf.Deg2Rad);
             _fitHeight = Mathf.Max(_halfZ / tan, _halfX / (tan * aspect)) * 1.02f;
             if (_height <= 0f) { _height = _fitHeight; _focus = new Vector3(_centreX, 0, _centreZ); }
@@ -308,6 +331,7 @@ namespace World.Game
             _savedPointer = PointerInput.InputEnabled; PointerInput.InputEnabled = false;
             _savedHudVisible = Hud.Visible; Hud.Visible = false;
             RenderSettingsFogOff();
+            _ledgeFrac = LedgeFraction;
             if (_height <= 0f || Mathf.Abs(_height - _fitHeight) < 1e-3f) { RefitCamera(); _height = _fitHeight; _focus = new Vector3(_centreX, 0, _centreZ); }
             BoardCam.enabled = true;
             Pieces.gameObject.SetActive(true);
@@ -334,6 +358,7 @@ namespace World.Game
         private void EndFall()
         {
             View = BoardView.Altar;
+            BoardCam.rect = new Rect(0, 0, 1, 1);
             BoardCam.enabled = false;
             Pieces.gameObject.SetActive(false);
             var avatar = _boot.Avatar;
@@ -673,6 +698,7 @@ namespace World.Game
         private void ApplyCamera(float u, bool rising)
         {
             float k = u * u * (3f - 2f * u);
+            ApplyRect(rising ? k : 1f - k);
             if (rising)
             {
                 BoardPose(out var p, out var r);
@@ -689,6 +715,14 @@ namespace World.Game
 
         private void ApplyBoardCamera()
         {
+            float frac = LedgeFraction;
+            if (Mathf.Abs(frac - _ledgeFrac) > 0.002f)
+            {
+                float level = _fitHeight > 0f && _height > 0f ? ZoomLevel : 1f;
+                _ledgeFrac = frac; RefitCamera();
+                _height = Mathf.Clamp(_fitHeight / Mathf.Max(0.01f, level), _fitHeight * 0.22f, _fitHeight);
+            }
+            ApplyRect(1f);
             BoardPose(out var p, out var r);
             BoardCam.transform.SetPositionAndRotation(p, r);
             BoardCam.fieldOfView = BoardFov;
@@ -697,7 +731,7 @@ namespace World.Game
         private void ClampFocus()
         {
             float tan = Mathf.Tan(BoardFov * 0.5f * Mathf.Deg2Rad);
-            float aspect = Mathf.Max(0.5f, (float)Screen.width / Mathf.Max(1, Screen.height));
+            float aspect = BoardAspect();
             float hz = _height * tan, hx = hz * aspect;
             float mx = Mathf.Max(0f, _halfX - hx * 0.5f), mz = Mathf.Max(0f, _halfZ - hz * 0.5f);
             _focus.x = Mathf.Clamp(_focus.x, _centreX - mx, _centreX + mx);
