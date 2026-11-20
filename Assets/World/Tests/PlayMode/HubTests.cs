@@ -21,6 +21,8 @@ namespace World.Game.Tests
         [SetUp] public void SetUp() { GodBoardDirector.RiseSeconds = 0.05f; CouncilDirector.Disabled = true; }
         [TearDown] public void TearDown() { GodBoardDirector.RiseSeconds = 2.4f; CouncilDirector.Disabled = false; }
 
+        private static readonly string[] HubZones = { WorldZones.HubTemple, WorldZones.HubCouncil, WorldZones.HubRhythm, WorldZones.HubHealer, WorldZones.HubCave, WorldZones.HubDuel };
+
         private IEnumerator Start(string id)
         {
             yield return SceneManager.LoadSceneAsync("World", LoadSceneMode.Single);
@@ -60,8 +62,8 @@ namespace World.Game.Tests
             Assert.Greater(DayNight.Instance.Night, 0.5f, "the hub opens at night");
             var layout = new CampLayout(S.Board);
             Assert.IsTrue(layout.Hub);
-            foreach (var z in HubZoneTag.AllZones) Assert.IsNotNull(HubZoneTag.Find(z), "zone " + z);
-            Assert.AreEqual(6, HubZoneTag.All.Count);
+            foreach (var z in HubZones) Assert.IsNotNull(HubInstaller.Zone(z), "zone " + z);
+            Assert.AreEqual(6, HubInstaller.Root.GetComponentsInChildren<WorldZone>().Length);
             // The people of each place.
             Need("temple_keeper"); Need("temple_builder_0"); Need("temple_builder_1");
             Need("council_steward");
@@ -74,18 +76,18 @@ namespace World.Game.Tests
             // The first view (half of the 70 degree vertical view on a 2:1 phone is about 56 degrees each way): temple, tower, circle, Mira.
             var spawn = WalkLattice.ToWorld(layout.Spawn); float yaw = WalkLattice.Yaw(layout.SpawnHeading);
             Assert.AreEqual(layout.SpawnHeading, PlayerWalker.Instance.Heading, "the walker starts on the layout's heading");
-            Assert.Less(Mathf.Abs(Bearing(spawn, yaw, HubZoneTag.Find(HubZoneTag.Temple).transform.position)), 56f, "temple in the first view");
+            Assert.Less(Mathf.Abs(Bearing(spawn, yaw, HubInstaller.Zone(WorldZones.HubTemple).transform.position)), 56f, "temple in the first view");
             Assert.Less(Mathf.Abs(Bearing(spawn, yaw, CouncilDirector.Instance.Site.Position)), 56f, "tower in the first view");
             Assert.Less(Mathf.Abs(Bearing(spawn, yaw, layout.DanceCircleCentre)), 56f, "circle in the first view");
             Assert.Less(Mathf.Abs(Bearing(spawn, yaw, layout.MiraSpot)), 56f, "Mira in the first view");
             // The ring and the lodge are one turn away (60 to 150 degrees off the spawn heading).
-            foreach (var z in new[] { HubZoneTag.Healer, HubZoneTag.Duel })
+            foreach (var z in new[] { WorldZones.HubHealer, WorldZones.HubDuel })
             {
-                float b = Mathf.Abs(Bearing(spawn, yaw, HubZoneTag.Find(z).transform.position));
+                float b = Mathf.Abs(Bearing(spawn, yaw, HubInstaller.Zone(z).transform.position));
                 Assert.That(b, Is.InRange(56f, 150f), z + " is one turn away");
             }
             // The lodge keeps away from the council's herbs place.
-            Assert.Greater(BoardSpace.Flat(HubZoneTag.Find(HubZoneTag.Healer).transform.position - CouncilDirector.Instance.Site.Loc[4]), 20f);
+            Assert.Greater(BoardSpace.Flat(HubInstaller.Zone(WorldZones.HubHealer).transform.position - CouncilDirector.Instance.Site.Loc[4]), 20f);
             // The legacy look is unchanged: no hub on a board that was not dealt.
             Assert.IsNotNull(GameObject.Find("Hub ground"));
         }
@@ -100,7 +102,7 @@ namespace World.Game.Tests
             Assert.AreEqual("Make the offering", keeper.Options[0].Label);
             Assert.AreEqual(TablePhase.NotOpened, S.Table.Phase);
             // The player walks up: the keeper greets and walks to the altar.
-            PlayerWalker.Instance.Teleport(f.Frame.W(0, 14f), f.Frame.Yaw + 180f, 6f);
+            PlayerWalker.Instance.Teleport(f.Frame.W(0, 10f), f.Frame.Yaw + 180f, 6f);
             yield return Until(() => f.Greeted && BoardSpace.Flat(keeper.transform.position - f.AltarApproach) < 1.6f, 20f, "keeper greets and walks to the altar");
             // The offering: the keeper takes the same path as the altar (Sacrifice).
             keeper.Options[0].OnChoose();
@@ -117,6 +119,9 @@ namespace World.Game.Tests
             var door = f.GetComponentInChildren<TempleDoorway>();
             Assert.IsNotNull(door, "the doorway is a hit target");
             PlayerWalker.Instance.Teleport(f.Frame.W(0, 12f), f.Frame.Yaw + 180f, 6f);
+            door.Interact();
+            yield return new WaitForSecondsRealtime(0.6f);
+            Assert.AreEqual(TablePhase.NotOpened, S.Table.Phase, "the first tap only previews");
             door.Interact();
             Step(2);
             Assert.AreEqual(TablePhase.Setup, S.Table.Phase);
@@ -170,7 +175,7 @@ namespace World.Game.Tests
             Assert.AreEqual("Lead me to the spires", sol.Options[0].Label);
             Assert.IsTrue(SolGuide.Instance.LeadToSpire());
             Assert.IsNotNull(PlayerWalker.Instance.Following, "the player follows Sol");
-            Assert.Less(BoardSpace.Flat(sol.transform.position - HubZoneTag.Find(HubZoneTag.Rhythm).transform.position), 20f, "Sol stays at the cold circle until he leads");
+            Assert.Less(BoardSpace.Flat(sol.transform.position - HubInstaller.Zone(WorldZones.HubRhythm).transform.position), 20f, "Sol stays at the cold circle until he leads");
         }
 
         [UnityTest, Timeout(180000)]
@@ -202,7 +207,7 @@ namespace World.Game.Tests
             var lodge = HealersLodge.Instance;
             Assert.IsFalse(lodge.PlagueRuns);
             StringAssert.Contains("sickness is gone", lodge.HealerSays());
-            Assert.IsNotNull(HubZoneTag.Find(HubZoneTag.Healer));
+            Assert.IsNotNull(HubInstaller.Zone(WorldZones.HubHealer));
         }
 
         [UnityTest, Timeout(180000)]

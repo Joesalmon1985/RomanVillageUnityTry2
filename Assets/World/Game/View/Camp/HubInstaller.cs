@@ -26,27 +26,44 @@ namespace World.Game
             Root.SetParent(boot.transform, false);
             BuildGround(Root, layout);
 
-            if (layout.TryPlace(HubZoneTag.Temple, out var temple))
+            if (layout.TryPlace(WorldZones.HubTemple, out var temple))
             {
                 TempleForecourt.Build(Root, boot, temple);
-                HubZoneTag.Add(Root, HubZoneTag.Temple, temple.Position, temple.Radius);
+                Mark(Root, WorldZones.HubTemple, temple.Position, temple.Radius);
             }
             var dir = CouncilDirector.Instance;
             if (dir != null && CouncilSteward.Build(Root, boot) != null)
-                HubZoneTag.Add(Root, HubZoneTag.Council, dir.Site.Position, 8f);
-            HubZoneTag.Add(Root, HubZoneTag.Rhythm, layout.DanceCircleCentre, 8f);
-            if (layout.TryPlace(HubZoneTag.Healer, out var lodge))
+                Mark(Root, WorldZones.HubCouncil, dir.Site.Position, 8f);
+            Mark(Root, WorldZones.HubRhythm, layout.DanceCircleCentre, 8f);
+            if (layout.TryPlace(WorldZones.HubHealer, out var lodge))
             {
                 HealersLodge.Build(Root, boot, lodge);
-                HubZoneTag.Add(Root, HubZoneTag.Healer, lodge.Position, lodge.Radius);
+                Mark(Root, WorldZones.HubHealer, lodge.Position, lodge.Radius);
             }
             ExpeditionCamp.Build(Root, layout);
-            HubZoneTag.Add(Root, HubZoneTag.Cave, layout.MiraSpot, 6f);
-            if (layout.TryPlace(HubZoneTag.Duel, out var ring))
+            Mark(Root, WorldZones.HubCave, layout.MiraSpot, 6f);
+            if (layout.TryPlace(WorldZones.HubDuel, out var ring))
             {
                 DuelRing.Build(Root, ring, layout);
-                HubZoneTag.Add(Root, HubZoneTag.Duel, ring.Position, ring.Radius);
+                Mark(Root, WorldZones.HubDuel, ring.Position, ring.Radius);
             }
+        }
+
+        /// <summary>A zone marker object at a destination, tagged with its <see cref="WorldZone"/> id.</summary>
+        private static void Mark(Transform parent, string zone, Vector3 at, float radius)
+        {
+            var go = new GameObject("Zone " + zone);
+            go.transform.SetParent(parent, false);
+            go.transform.position = at;
+            WorldZone.Tag(go, zone);
+        }
+
+        /// <summary>The hub's marker for a zone (not the altar's own tag).</summary>
+        public static WorldZone Zone(string zone)
+        {
+            if (Root == null) return null;
+            foreach (var z in Root.GetComponentsInChildren<WorldZone>()) if (z.ZoneId == zone) return z;
+            return null;
         }
 
         /// <summary>One level, plain green ground over the island part of the hub radius (cells whose corners are all on the island).</summary>

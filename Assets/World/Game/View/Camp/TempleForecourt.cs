@@ -151,7 +151,8 @@ namespace World.Game
             if (State != null && State.Historic != null) { if (Keeper != null) Keeper.Interact(); return; }
             var d = GodBoardDirector.Instance;
             if (d == null || d.OwnTemple == null) return;
-            d.TrySacrifice();
+            var altar = d.OwnTemple.GetComponentInChildren<TempleAltar>();
+            if (altar != null) WorldActions.Tap(altar); // the same two-tap path as the altar: preview, then confirm
         }
 
         private void Update()
