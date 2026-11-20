@@ -71,7 +71,7 @@ namespace World.Game
                     var s = Npc.Find(NpcIds.Host);
                     return s != null && EncounterDirectory.TryStart(EncounterDirectory.RhythmParty, s);
                 });
-            Entry.Reach = 6f;
+            Entry.Reach = 4f;
             var upd = Entry.gameObject.AddComponent<SolEntryWords>(); upd.Entry = Entry;
         }
 

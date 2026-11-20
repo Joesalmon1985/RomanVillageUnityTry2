@@ -66,7 +66,7 @@ namespace World.Game
                     if (r != null) { LastLine = r; SpeechBubbles.Say(Steward, r, 3.5f); return false; }
                     return true;
                 });
-            Entry.Reach = 7f;
+            Entry.Reach = 4f;
         }
 
         private string DisputeLine()

@@ -229,7 +229,7 @@ namespace World.Game
         public IEnumerable<string> Lines => new[] { "A fenced ring where two villagers spar. The referee can set up a practice duel with Mira." };
         public string PreviewLine => "Fight a practice duel with Mira?";
         public Transform Anchor => transform;
-        public float KeyReach => 14f;
+        public float KeyReach => 7f; // E from the fence; the player at the altar (9 m) is not near the ring
         public int Commits { get; private set; }
         /// <summary>The referee's conversation stays as the long-form way in.</summary>
         public void Interact() => WorldActions.Tap(this);

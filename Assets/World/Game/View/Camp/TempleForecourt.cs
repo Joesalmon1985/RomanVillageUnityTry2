@@ -105,7 +105,7 @@ namespace World.Game
                     return d.CheckSacrifice();
                 },
                 () => { if (Offering || Keeper == null) return false; BeginOffering(); return true; });
-            Offer.Reach = 10f;
+            Offer.Reach = 0f; // E near the temple picks the altar itself (the same offering); the pen is a tap target only
             for (int i = 0; i < 2; i++)
             {
                 var plank = new MeshBuilder();
