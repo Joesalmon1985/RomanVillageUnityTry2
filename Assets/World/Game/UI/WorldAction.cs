@@ -326,14 +326,14 @@ namespace World.Game
             switch (m.State)
             {
                 case WorldActionState.Preview:
-                    LedgerCard.Show(LedgerContent.From(m.Current, ((IWorldAction)m.Current).PreviewLine, null), AnchorOf(m.Current), LedgerMode.Preview);
+                    LedgerCard.Show(LedgerContent.From(m.Current, ((IWorldAction)m.Current).PreviewLine, null), AnchorOf(m.Current), LedgerMode.Preview, m.Current as Component);
                     break;
                 case WorldActionState.Inspect:
-                    LedgerCard.Show(LedgerContent.From(m.Current, null, null), AnchorOf(m.Current), LedgerMode.Inspect);
+                    LedgerCard.Show(LedgerContent.From(m.Current, null, null), AnchorOf(m.Current), LedgerMode.Inspect, m.Current as Component);
                     break;
                 case WorldActionState.Refused:
                 case WorldActionState.Disabled:
-                    LedgerCard.Show(LedgerContent.From(m.Current, null, m.Reason), AnchorOf(m.Current), LedgerMode.Refused);
+                    LedgerCard.Show(LedgerContent.From(m.Current, null, m.Reason), AnchorOf(m.Current), LedgerMode.Refused, m.Current as Component);
                     break;
                 default:
                     LedgerCard.Hide();

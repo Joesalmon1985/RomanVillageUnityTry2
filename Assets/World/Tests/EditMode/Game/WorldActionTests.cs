@@ -203,6 +203,20 @@ namespace World.Game.EditTests
         }
 
         [Test]
+        public void LedgerKeepsClearOfTheObject()
+        {
+            var safe = ScreenSafeArea.SimulatedNotch(844, 390);
+            var c = new LedgerContent { Title = "The altar", Question = "Sacrifice a lamb?" };
+            c.Lines.Add("Sacrifice a lamb here to open the god board.");
+            foreach (var obj in new[] { new Rect(380, 100, 90, 120), new Rect(60, 150, 100, 80), new Rect(600, 40, 150, 200) })
+            {
+                var L = LedgerLayout.Compute(844, 390, safe, (Rect?)obj, c);
+                Assert.IsFalse(L.Card.Overlaps(obj), "card " + L.Card + " covers the object " + obj);
+                Assert.IsTrue(safe.Contains(L.Card.min) && safe.Contains(L.Card.max - Vector2.one * 0.01f));
+            }
+        }
+
+        [Test]
         public void LedgerTextRefusesOddsAndDice()
         {
             Assert.IsNull(LedgerText.Violation("Sacrifice a lamb here to open the god board."));

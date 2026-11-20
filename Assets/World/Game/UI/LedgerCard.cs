@@ -73,32 +73,53 @@ namespace World.Game
         public const int MaxFont = 30;
 
         /// <summary>The card for a screen, its safe area (GUI coordinates), the anchor's screen point (GUI, or null) and its text.</summary>
-        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Vector2? anchor, LedgerContent content)
+        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Vector2? anchor, LedgerContent content) =>
+            Compute(screenW, screenH, safe, anchor.HasValue ? new Rect(anchor.Value, Vector2.zero) : (Rect?)null, content);
+
+        /// <summary>As above with the object's screen bounds: the card goes beside them (never over them when there is room).</summary>
+        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Rect? anchor, LedgerContent content)
         {
             var L = new LedgerLayout();
             L.FontSize = Mathf.Clamp(Mathf.RoundToInt(screenH * 0.042f), MinFont, MaxFont);
             L.TitleSize = Mathf.RoundToInt(L.FontSize * 1.25f);
             L.Pad = Mathf.Round(L.FontSize * 0.7f);
             float w = Mathf.Min(safe.width * 0.48f, L.FontSize * 26f);
-            w = Mathf.Max(w, Mathf.Min(safe.width - 2 * L.Pad, L.FontSize * 14f));
-            float charsPerLine = Mathf.Max(8f, (w - 2 * L.Pad) / (L.FontSize * 0.52f));
-            float lines = 0;
-            if (content != null)
-                foreach (var l in content.Lines) lines += Mathf.Max(1f, Mathf.Ceil(l.Length / charsPerLine));
-            float extra = 0;
-            if (content != null && !string.IsNullOrEmpty(content.Question)) extra += Mathf.Ceil(content.Question.Length / charsPerLine) * L.FontSize * 1.35f + L.Pad * 0.5f;
-            if (content != null && !string.IsNullOrEmpty(content.Refusal)) extra += Mathf.Ceil(content.Refusal.Length / charsPerLine) * L.FontSize * 1.35f + L.Pad * 0.5f;
-            float h = L.Pad * 2 + L.TitleSize * 1.4f + lines * L.FontSize * 1.35f + extra;
-            h = Mathf.Max(h, WorldHitTarget.MinSide(screenH));
-            h = Mathf.Min(h, safe.height - 2 * L.Pad);
-            // Beside the anchor, on the side with more room; centred when no anchor.
+            float minW = Mathf.Min(safe.width - 2 * L.Pad, L.FontSize * 14f);
+            w = Mathf.Max(w, minW);
+            var LL = L;
+            float Height(float width)
+            {
+                float charsPerLine = Mathf.Max(8f, (width - 2 * LL.Pad) / (LL.FontSize * 0.52f));
+                float lines = 0, extra = 0;
+                if (content != null)
+                {
+                    foreach (var l in content.Lines) lines += Mathf.Max(1f, Mathf.Ceil(l.Length / charsPerLine));
+                    if (!string.IsNullOrEmpty(content.Question)) extra += Mathf.Ceil(content.Question.Length / charsPerLine) * LL.FontSize * 1.35f + LL.Pad * 0.5f;
+                    if (!string.IsNullOrEmpty(content.Refusal)) extra += Mathf.Ceil(content.Refusal.Length / charsPerLine) * LL.FontSize * 1.35f + LL.Pad * 0.5f;
+                }
+                float hh = LL.Pad * 2 + LL.TitleSize * 1.4f + lines * LL.FontSize * 1.35f + extra;
+                hh = Mathf.Max(hh, WorldHitTarget.MinSide(screenH));
+                return Mathf.Min(hh, safe.height - 2 * LL.Pad);
+            }
+            float h = Height(w);
+            // Beside the object, on the side with more room (narrower if needed), else above or below; centred when no anchor.
             float x, y;
             if (anchor.HasValue)
             {
                 var a = anchor.Value;
-                bool right = a.x < safe.center.x;
-                x = right ? a.x + L.Pad * 2 : a.x - L.Pad * 2 - w;
-                y = a.y - h * 0.5f;
+                float gap = L.Pad * 2;
+                float roomR = safe.xMax - a.xMax - gap - L.Pad, roomL = a.xMin - safe.xMin - gap - L.Pad;
+                float roomT = a.yMin - safe.yMin - gap - L.Pad, roomB = safe.yMax - a.yMax - gap - L.Pad;
+                float side = Mathf.Max(roomR, roomL);
+                y = a.center.y - h * 0.5f; x = a.center.x - w * 0.5f;
+                if (side >= minW)
+                {
+                    w = Mathf.Min(w, side); h = Height(w);
+                    y = a.center.y - h * 0.5f;
+                    x = roomR >= roomL ? a.xMax + gap : a.xMin - gap - w;
+                }
+                else if (roomT >= h || roomB >= h) y = roomT >= roomB ? a.yMin - gap - h : a.yMax + gap;
+                else x = roomR >= roomL ? a.xMax + gap : a.xMin - gap - w; // no clear room: overlap the smaller side
             }
             else { x = safe.center.x - w / 2; y = safe.center.y - h / 2; }
             x = Mathf.Clamp(x, safe.xMin + L.Pad, safe.xMax - L.Pad - w);
@@ -120,6 +141,8 @@ namespace World.Game
         public static LedgerContent Content { get; private set; }
         public static LedgerMode Mode { get; private set; }
         public static Transform Anchor { get; private set; }
+        /// <summary>The thing whose screen bounds the card keeps clear of (the tapped object), or null.</summary>
+        public static Component Bounds { get; private set; }
         public static bool IsOpen => Content != null;
         /// <summary>Unscaled time the card was opened (for the unfold).</summary>
         public static float OpenedAt { get; private set; }
@@ -130,8 +153,9 @@ namespace World.Game
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics() { Content = null; Anchor = null; Changed = null; LastRect = default; }
 
-        public static void Show(LedgerContent content, Transform anchor, LedgerMode mode)
+        public static void Show(LedgerContent content, Transform anchor, LedgerMode mode, Component bounds = null)
         {
+            Bounds = bounds;
 #if UNITY_EDITOR
             var v = LedgerText.Violation(content);
             if (v != null) Debug.LogWarning("LedgerCard: text speaks of '" + v + "' (AB-1): " + string.Join(" / ", content.AllText()));
@@ -143,7 +167,7 @@ namespace World.Game
         public static void Hide()
         {
             if (Content == null) return;
-            Content = null; Anchor = null; LastRect = default;
+            Content = null; Anchor = null; Bounds = null; LastRect = default;
             Changed?.Invoke();
         }
 
@@ -158,11 +182,16 @@ namespace World.Game
         /// <summary>The layout for the current screen.</summary>
         public static LedgerLayout CurrentLayout(Camera cam)
         {
-            Vector2? a = null;
-            if (Anchor != null && cam != null)
+            Rect? a = null;
+            if (Bounds != null && cam != null && WorldHitTarget.ScreenBounds(Bounds, cam, out var br))
+            {
+                var screen = new Rect(0, 0, Screen.width, Screen.height);
+                if (br.Overlaps(screen) && br.width < Screen.width * 0.9f) a = br;
+            }
+            if (!a.HasValue && Anchor != null && cam != null)
             {
                 var s = cam.WorldToScreenPoint(Anchor.position);
-                if (s.z > 0) a = new Vector2(s.x, Screen.height - s.y);
+                if (s.z > 0) a = new Rect(s.x, Screen.height - s.y, 0, 0);
             }
             return LedgerLayout.Compute(Screen.width, Screen.height, ScreenSafeArea.Current(), a, Content);
         }

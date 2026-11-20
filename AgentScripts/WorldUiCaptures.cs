@@ -63,7 +63,7 @@ public static class WorldUiCaptures
                     if (d == null || d.OwnTemple == null) return "no altar";
                     float m = a.Length > 1 ? float.Parse(a[1], ci) : 10f;
                     var spot = d.OwnTemple.AltarSpot.position;
-                    var w = PlayerWalker.Instance;
+                    var w = PlayerWalker.Instance; w.StopAuto();
                     var dir = w.Position - spot; dir.y = 0; if (dir.sqrMagnitude < 1) dir = Vector3.forward;
                     var feet = spot + dir.normalized * m; feet.y = PlayerWalker.GroundHeight(feet);
                     w.Teleport(feet, BoardSpace.YawOf(spot - feet), 10f);
@@ -93,6 +93,13 @@ public static class WorldUiCaptures
                     int ph = (head[20] << 24) | (head[21] << 16) | (head[22] << 8) | head[23];
                     bool ok = pw == int.Parse(a[2]) && ph == int.Parse(a[3]);
                     return "check " + a[1] + " " + pw + "x" + ph + (ok ? " OK" : " WRONG SIZE");
+                }
+            case "where":
+                {
+                    var w = PlayerWalker.Instance; var d = GodBoardDirector.Instance;
+                    var cam = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.ActiveCamera : Camera.main;
+                    var spot = d.OwnTemple.AltarSpot.position;
+                    return "walker " + w.Position + " yaw " + w.Yaw + " auto " + w.IsAutoWalking + " cam " + cam.transform.position + " fwd " + cam.transform.forward + " altar " + spot + " screen " + cam.WorldToScreenPoint(spot);
                 }
             case "info":
                 return "screen " + Screen.width + "x" + Screen.height + " safe " + ScreenSafeArea.Current() + " state " + WorldActions.State
