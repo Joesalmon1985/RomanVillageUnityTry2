@@ -81,7 +81,11 @@ namespace World.Game
             Compute(screenW, screenH, safe, anchor, content, false);
 
         /// <summary>As above; with <paramref name="dockTop"/> the card is a wide strip along the top edge of the safe area (the council: the picture's middle and foot hold the places, notes and tablet; the top is sky).</summary>
-        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Rect? anchor, LedgerContent content, bool dockTop)
+        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Rect? anchor, LedgerContent content, bool dockTop) =>
+            Compute(screenW, screenH, safe, anchor, content, dockTop, false);
+
+        /// <summary>As above; with <paramref name="dockRight"/> (and not dockTop) the card is a column against the right edge of the safe area, centred vertically (the lodge's table view: the map on the left).</summary>
+        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Rect? anchor, LedgerContent content, bool dockTop, bool dockRight)
         {
             var L = new LedgerLayout();
             L.FontSize = Mathf.Clamp(Mathf.RoundToInt(screenH * 0.042f), MinFont, MaxFont);
@@ -114,6 +118,14 @@ namespace World.Game
                 w = Mathf.Max(w, Mathf.Min(safe.width - 2 * L.Pad, L.FontSize * 44f));
                 h = Height(w);
                 L.Card = new Rect(safe.center.x - w / 2, safe.yMin + L.Pad, w, h);
+                return L;
+            }
+            if (dockRight)
+            {
+                w = Mathf.Min(safe.width * 0.44f, L.FontSize * 24f);
+                w = Mathf.Max(w, minW);
+                h = Height(w);
+                L.Card = new Rect(safe.xMax - L.Pad - w, Mathf.Clamp(safe.center.y - h / 2, safe.yMin + L.Pad, safe.yMax - L.Pad - h), w, h);
                 return L;
             }
             // Beside the object, on the side with more room (narrower if needed), else above or below; centred when no anchor.
@@ -154,6 +166,8 @@ namespace World.Game
     {
         /// <summary>The council sets this while its camera is up: the card docks along the top edge (see <see cref="LedgerLayout.Compute(float, float, Rect, Rect?, LedgerContent, bool)"/>).</summary>
         public static bool DockTop;
+        /// <summary>The lodge's table view sets this: the card is a column at the right edge (see <see cref="LedgerLayout.Compute(float, float, Rect, Rect?, LedgerContent, bool, bool)"/>).</summary>
+        public static bool DockRight;
         public static LedgerContent Content { get; private set; }
         public static LedgerMode Mode { get; private set; }
         public static Transform Anchor { get; private set; }
@@ -169,7 +183,7 @@ namespace World.Game
         public static event Action Changed;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() { Content = null; Anchor = null; ScreenAnchor = null; Changed = null; LastRect = default; DockTop = false; }
+        private static void ResetStatics() { Content = null; Anchor = null; ScreenAnchor = null; Changed = null; LastRect = default; DockTop = false; DockRight = false; }
 
         public static void Show(LedgerContent content, Transform anchor, LedgerMode mode, Component bounds = null, IScreenAnchored screen = null)
         {
@@ -212,7 +226,7 @@ namespace World.Game
                 var s = cam.WorldToScreenPoint(Anchor.position);
                 if (s.z > 0) a = new Rect(s.x, Screen.height - s.y, 0, 0);
             }
-            return LedgerLayout.Compute(Screen.width, Screen.height, ScreenSafeArea.Current(), a, Content, DockTop);
+            return LedgerLayout.Compute(Screen.width, Screen.height, ScreenSafeArea.Current(), a, Content, DockTop, DockRight);
         }
     }
 

@@ -124,7 +124,7 @@ namespace World.Game
             }
             var hit = Raycast(screenPoint);
             // WU-0: generous hit targets: a world action whose screen bounds, grown to 7 % of the screen height, hold the tap.
-            if (hit.Target == null || hit.Target is HexView)
+            if (hit.Target == null || hit.Target is HexView || (hit.Target is LodgeInspect && LodgeTable.LeanActive))
             {
                 var near = WorldActions.PickEnlarged(screenPoint, ActiveCamera);
                 if (near != null) hit.Target = near;

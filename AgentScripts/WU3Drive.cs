@@ -83,6 +83,10 @@ public static class WU3Drive
                     WorldActions.Cancel(); li.Interact();
                     return "ledger " + WorldActions.State + " " + (LedgerCard.IsOpen ? LedgerCard.Content.Title : "closed");
                 }
+            case "taptable": WorldActions.Cancel(); return "taptable " + PointerInput.TapObject(t.Table) + " lean " + t.Leaning;
+            case "tapnode": WorldActions.Cancel(); return "tapnode " + PointerInput.TapObject(t.NodeTap(int.Parse(a[1]))) + " lean " + t.Leaning;
+            case "standup": t.EndLean(true); return "standup";
+            case "leanstate": { var cam = PlayerWalker.Instance.Camera; float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f; foreach (var dx in new[] { -1f, 1f }) foreach (var dz in new[] { -1f, 1f }) { var sp = cam.WorldToScreenPoint(t.TableTop + new Vector3(dx * t.IslandHalfW, 0, dz * t.IslandHalfD)); x0 = Mathf.Min(x0, sp.x); x1 = Mathf.Max(x1, sp.x); y0 = Mathf.Min(y0, Screen.height - sp.y); y1 = Mathf.Max(y1, Screen.height - sp.y); } return "island x " + x0 + ".." + x1 + " y " + y0 + ".." + y1 + " fov " + cam.fieldOfView + " asp " + cam.aspect + " half " + t.IslandHalfW + "," + t.IslandHalfD + " "; } case "leanstate2": return "lean " + t.Leaning + " pose " + PlayerWalker.Instance.Position + " pitch " + PlayerWalker.Instance.Pitch + " card " + (LedgerCard.IsOpen ? LedgerCard.LastRect.ToString() : "closed");
             case "cancel": WorldActions.Cancel(); return "cancelled";
             case "info":
                 return "props " + t.PropsShown + " lanterns " + t.LanternsLit + " peg " + t.PegStep + " demons " + PlagueApi.TotalDemons(s) + " outbreaks " + s.Plague.Outbreaks
