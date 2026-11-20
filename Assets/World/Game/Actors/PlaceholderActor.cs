@@ -46,7 +46,7 @@ namespace World.Game
         public float TurnSpeed = 300f;
         public Color TunicColor { get; private set; }
 
-        private Transform _body, _head, _armL, _armR, _legL, _legR;
+        private Transform _body, _head, _armL, _armR, _legL, _legR, _kneeL, _kneeR;
         private string _oneShot; private float _oneShotT, _oneShotLen;
         private float _targetYaw; private bool _turning;
         private Vector3 _lastPos; private float _walkBlend, _phase;
@@ -155,10 +155,15 @@ namespace World.Game
             _body = new GameObject("Body").transform; _body.SetParent(transform, false);
             _legL = Pivot(_body, "LegL", new Vector3(-0.12f, 0.85f, 0));
             _legR = Pivot(_body, "LegR", new Vector3(0.12f, 0.85f, 0));
+            // P1: two-segment legs (thigh, and a shin on a knee pivot) so a stepping leg bends and the seat folds.
+            _kneeL = Pivot(_legL, "KneeL", new Vector3(0, -0.43f, 0));
+            _kneeR = Pivot(_legR, "KneeR", new Vector3(0, -0.43f, 0));
             foreach (var leg in new[] { _legL, _legR })
+                Signs.Prim(PrimitiveType.Capsule, leg, "Leg", new Vector3(0, -0.22f, 0), new Vector3(0.16f, 0.25f, 0.16f), mSkin);
+            foreach (var knee in new[] { _kneeL, _kneeR })
             {
-                Signs.Prim(PrimitiveType.Capsule, leg, "Leg", new Vector3(0, -0.42f, 0), new Vector3(0.15f, 0.43f, 0.15f), mSkin);
-                Signs.Prim(PrimitiveType.Capsule, leg, "Boot", new Vector3(0, -0.70f, 0.02f), new Vector3(0.19f, 0.16f, 0.22f), mFur);
+                Signs.Prim(PrimitiveType.Capsule, knee, "Shin", new Vector3(0, -0.2f, 0), new Vector3(0.14f, 0.23f, 0.14f), mSkin);
+                Signs.Prim(PrimitiveType.Capsule, knee, "Boot", new Vector3(0, -0.29f, 0.02f), new Vector3(0.19f, 0.16f, 0.22f), mFur);
             }
             Signs.Prim(PrimitiveType.Capsule, _body, "Tunic", new Vector3(0, 1.12f, 0), new Vector3(0.46f, 0.42f, 0.33f), mTunic);
             Signs.Prim(PrimitiveType.Cylinder, _body, "Skirt", new Vector3(0, 0.80f, 0), new Vector3(0.54f, 0.17f, 0.42f), mFur);
@@ -440,13 +445,21 @@ namespace World.Game
             _head.localRotation = Quaternion.Euler(headPitch, headYaw, 0);
             _armL.localRotation = Quaternion.Euler(armL);
             _armR.localRotation = Quaternion.Euler(armR);
-            if (Seated) { _legL.localRotation = Quaternion.Euler(-88f, 4f, 0); _legR.localRotation = Quaternion.Euler(-80f, -6f, 0); }
+            if (Seated)
+            {
+                _legL.localRotation = Quaternion.Euler(-88f, 4f, 0); _legR.localRotation = Quaternion.Euler(-80f, -6f, 0);
+                _kneeL.localRotation = Quaternion.Euler(70f, 0, 0); _kneeR.localRotation = Quaternion.Euler(62f, 0, 0);
+            }
             else
             {
                 // The legs hang from the body; lean them back against its pitch and its sideways shift so the feet stay planted.
                 float back = -bodyPitch, side = -Mathf.Asin(Mathf.Clamp(shiftX / LegLength, -0.5f, 0.5f)) * Mathf.Rad2Deg - roll;
                 _legL.localRotation = Quaternion.Euler(-legLx + back, 0, side);
                 _legR.localRotation = Quaternion.Euler(-legRx + back, 0, side);
+                // The knee bends while its leg swings forward (lifting the foot clear), a little more when running.
+                float c = Mathf.Cos(_phase), knee = Mathf.Lerp(38f, 75f, Gait.RunBlend(Mathf.Max(_speed, 0.8f))) * _walkBlend;
+                _kneeL.localRotation = Quaternion.Euler(Mathf.Max(0f, c) * knee + 3f, 0, 0);
+                _kneeR.localRotation = Quaternion.Euler(Mathf.Max(0f, -c) * knee + 3f, 0, 0);
             }
             LegSwing = Mathf.Abs(legLx - legRx);
         }
