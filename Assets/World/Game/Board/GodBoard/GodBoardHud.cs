@@ -197,20 +197,31 @@ namespace World.Game
             GUI.depth = -10;
             var s = _d.S; var t = _d.T;
             float W = Screen.width / _u;
-            _under = DiscardVisible || GameOverShown;
+            bool clear = GodBoardSettings.ClearView;
+            _under = clear ? DiscardVisible || GameOverShown : GameOverShown;
+            if (!DiscardVisible && _pickActive) { System.Array.Clear(DiscardPick, 0, DiscardPick.Length); _pickActive = false; }
             if (LogOpen) _logSeen = _d.FeedTotal;
-            People(s, t);
-            Status(s, t, W);
-            IconRow(t);
-            Costs(s, t);
-            Stacks(s, t);
-            Hand(s, t, W);
-            HourglassButton(t);
-            Toasts(W);
-            LogTab();
-            OfferCards(s, t);
-            if (TradeOpen && !GameOverShown) TradeModal(s, t, W);
-            if (DiscardVisible) DiscardModal(s, t, W);
+            if (clear)
+            {
+                People(s, t);
+                Status(s, t, W);
+                IconRow(t);
+                Costs(s, t);
+                Stacks(s, t);
+                Hand(s, t, W);
+                HourglassButton(t);
+                Toasts(W);
+                LogTab();
+                OfferCards(s, t);
+                if (TradeOpen && !GameOverShown) TradeModal(s, t, W);
+                if (DiscardVisible) DiscardModal(s, t, W);
+            }
+            else
+            {
+                if (_d.HasMessage) Status(s, t, W);
+                Ledge(s, t, W);
+                if (TradeOpen && TradeTab == 1 && !GameOverShown) TradeModal(s, t, W);
+            }
             MomentCardDraw(W);
             if (GameOverShown) GameOverModal(s, t, W);
             if (TradePanel != null) TradePanel(TradeArea);
@@ -220,13 +231,7 @@ namespace World.Game
 
         private const float PanelW = 156f, PanelH = 42f;
 
-        private int SoldiersOf(WorldState s, int p)
-        {
-            int n = 0;
-            var l = s.War != null ? s.War.Soldiers : null;
-            if (l != null) foreach (var x in l) if (x.People == p) n++;
-            return n;
-        }
+        private int SoldiersOf(WorldState s, int p) => p >= 0 && p < Model.Soldiers.Length ? Model.Soldiers[p] : 0;
 
         private void People(WorldState s, TableState t)
         {
@@ -378,18 +383,7 @@ namespace World.Game
         private static readonly string[] KindNames = { "Road", "Camp", "City" };
         private static readonly int[] KindGlyph = { GRoad, GHouse, GCity };
 
-        private bool Affordable(TableState t, int kind)
-        {
-            int me = _d.Human;
-            if (t.Phase != TablePhase.Main || t.Current != me || t.Paused) return false;
-            var hand = t.Peoples[me].Hand;
-            switch (kind)
-            {
-                case 0: return TableRules.RoadsLeft(t, me) > 0 && TableRules.CanPay(hand, TableRules.RoadCost);
-                case 1: return TableRules.SettlementsLeft(t, me) > 0 && TableRules.CanPay(hand, TableRules.SettlementCost);
-                default: return TableRules.CitiesLeft(t, me) > 0 && TableRules.CanPay(hand, TableRules.CityCost);
-            }
-        }
+        private bool Affordable(TableState t, int kind) => Model.Kind[kind].Affordable;
 
         private static int[] CostOf(int kind) => kind == 0 ? TableRules.RoadCost : kind == 1 ? TableRules.SettlementCost : TableRules.CityCost;
 
@@ -562,6 +556,9 @@ namespace World.Game
             Text(Sub(r, _u, 82f, 38f, w - 92f, 66f), m.Text, 12f, new Color(0.96f, 0.93f, 0.86f, a), false, TextAnchor.MiddleLeft, true);
         }
 
-        private int PointsOf(int p) => p >= 0 && p < _d.Points.Length ? _d.Points[p] : 0;
+        private int PointsOf(int p) => p >= 0 && p < Model.Points.Length ? Model.Points[p] : 0;
+
+        /// <summary>The view model both the ledge and this Clear view read (rebuilt once per frame).</summary>
+        public GodBoardViewModel Model => _d.Model;
     }
 }

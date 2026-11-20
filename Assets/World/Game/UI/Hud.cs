@@ -249,6 +249,12 @@ namespace World.Game
             float tw = UiStyle.Px(230), th = UiStyle.Px(46), tx = r.xMax - pad - 2 * tw - UiStyle.Px(12);
             if (Tab(new Rect(tx, y, tw, th), "Controls", MenuPage == Page.Controls)) MenuPage = Page.Controls;
             if (Tab(new Rect(tx + tw + UiStyle.Px(12), y, tw, th), "How to play", MenuPage == Page.HowToPlay)) MenuPage = Page.HowToPlay;
+            // WU-2: the god board's Clear view setting (the plain on-screen controls instead of the altar ledge), saved per player.
+            if (GodBoardDirector.Instance != null)
+            {
+                bool cv = GodBoardSettings.ClearView;
+                if (GUI.Button(new Rect(r.x + pad + UiStyle.Px(300), y, UiStyle.Px(330), th), "Clear view: " + (cv ? "on" : "off"), UiStyle.Button)) GodBoardSettings.ClearView = !cv;
+            }
             y += UiStyle.Px(60);
 
             float bh = UiStyle.Px(54);

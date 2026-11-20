@@ -85,8 +85,72 @@ namespace World.Game
         /// <summary>The costs card was tapped: lights only that kind of legal spot (a second tap on the same row puts it out).</summary>
         public void SetBuildMode(BuildKind k)
         {
+            CancelSpotPreview();
             BuildMode = BuildMode == k ? BuildKind.None : k;
             _marksTick = -1;
+        }
+
+        // ---------------------------------------------------------------- WU-2: the view model, the action guard, spot previews
+
+        private GodBoardViewModel _model; private int _modelFrame = -1;
+        /// <summary>The presentation-neutral model of the table for the human, rebuilt once per frame (the ledge and the Clear view read it).</summary>
+        public GodBoardViewModel Model { get { if (_model == null || _modelFrame != Time.frameCount) FreshModel(); return _model; } }
+        /// <summary>The model rebuilt from the sim right now (after a command or a direct state change).</summary>
+        public GodBoardViewModel FreshModel() { _model = new GodBoardViewModel(S, Human); _modelFrame = Time.frameCount; return _model; }
+
+        /// <summary>Seconds in which the same build or trade command is not sent twice.</summary>
+        public const float DuplicateWindow = 0.5f;
+        /// <summary>How many repeated commands the guard has stopped (tests).</summary>
+        public int DuplicatesBlocked { get; private set; }
+        private string _lastKey; private float _lastKeyAt = -100f; private string _endSentTurn;
+        private string TurnKey => T == null ? "" : T.Round + ":" + T.TurnIndex + ":" + T.Current;
+
+        private static string KeyOf(Command c)
+        {
+            switch (c)
+            {
+                case PlaceTableSettlement a: return "S" + a.Corner;
+                case PlaceTableRoad a: return "R" + a.HexEdge;
+                case UpgradeTableCity a: return "C" + a.Corner;
+                case BankTrade a: return "B" + (int)a.Give + ">" + (int)a.Get;
+                case OfferTrade a: return "O" + a.To;
+                case AnswerOffer a: return "A" + a.OfferId;
+                case EndTurn _: return "E";
+                default: return null;
+            }
+        }
+
+        private readonly Dictionary<long, BoardSpotAction> _spotActions = new Dictionary<long, BoardSpotAction>();
+        private string _spotTurn = "";
+
+        /// <summary>The cached preview action of a spot (one instance per spot per turn, so a second tap confirms the same one).</summary>
+        public BoardSpotAction SpotAction(BuildKind kind, int spot)
+        {
+            string tk = TurnKey + "/" + (T != null ? T.Phase.ToString() : "");
+            if (tk != _spotTurn) { _spotActions.Clear(); _spotTurn = tk; }
+            long key = (long)kind * 1000000L + spot;
+            if (!_spotActions.TryGetValue(key, out var a)) { a = new BoardSpotAction(this, kind, spot); _spotActions[key] = a; }
+            return a;
+        }
+
+        /// <summary>True when the board would light this spot for this kind now (illegal spots are never offered).</summary>
+        public bool IsSpotOffered(BuildKind kind, int spot)
+        {
+            RefreshMarks(true);
+            switch (kind)
+            {
+                case BuildKind.Road: return _edges.Contains(spot);
+                case BuildKind.Settlement: return _corners.Contains(spot);
+                case BuildKind.City: return _upgrades.Contains(spot);
+                default: return false;
+            }
+        }
+
+        /// <summary>Hides the ghost piece and closes an open spot preview (build mode changed, turn ended, board left).</summary>
+        public void CancelSpotPreview()
+        {
+            if (WorldActions.Machine.Current is BoardSpotAction && WorldActions.Open) WorldActions.Cancel();
+            if (Pieces != null) Pieces.HideGhost();
         }
 
         private WorldBootstrap _boot;
@@ -286,10 +350,23 @@ namespace World.Game
         private CommandResult Submit(Command c)
         {
             c.PlayerId = Human;
+            // WU-2: the per-turn action guard. End turn goes once per turn; a build, trade or answer is not sent twice within a moment.
+            string key = KeyOf(c);
+            string turn = TurnKey;
+            if (key != null)
+            {
+                bool dup = c is EndTurn ? _endSentTurn == turn : (key == _lastKey && Time.unscaledTime - _lastKeyAt < DuplicateWindow);
+                if (dup) { DuplicatesBlocked++; return CommandResult.Reject("duplicate", "Already done."); }
+            }
             var r = _boot.Sim.Submit(c);
             LastResult = r;
             if (!r.Ok) Say(string.IsNullOrEmpty(r.Message) ? r.Reason : r.Message);
-            else { _marksTick = -1; }
+            else
+            {
+                _marksTick = -1;
+                if (key != null) { _lastKey = key; _lastKeyAt = Time.unscaledTime; if (c is EndTurn) _endSentTurn = turn; }
+                FreshModel();
+            }
             return r;
         }
 
@@ -304,35 +381,65 @@ namespace World.Game
         public void Say(string text) { Message = text ?? ""; _messageUntil = Time.unscaledTime + 3.5f; }
         public bool HasMessage => Time.unscaledTime < _messageUntil && Message.Length > 0;
 
-        /// <summary>A press at a screen point (pixels, origin bottom-left): the nearest legal spot gets its command. Returns what was sent, or null.</summary>
-        public string TapAt(Vector2 screen)
+        /// <summary>The nearest legal spot to a screen point (pixels, bottom-left origin), or false.</summary>
+        public bool NearestSpot(Vector2 screen, out BuildKind kind, out int spot)
         {
-            if (View != BoardView.Board || GameOver) return null;
+            kind = BuildKind.None; spot = -1;
             RefreshMarks(true);
             float scale = Screen.height / 390f;
-            float best = TapRadiusPx * Mathf.Max(1f, scale);
-            string what = null; int spot = -1;
-            var topo = S.Board.Topology;
+            float best = Mathf.Max(TapRadiusPx * Mathf.Max(1f, scale), WorldHitTarget.MinSide(Screen.height) * 0.5f);
             foreach (int c in _corners)
             {
                 float d = Vector2.Distance(screen, ScreenOfCorner(c));
-                if (d < best) { best = d; what = "corner"; spot = c; }
+                if (d < best) { best = d; kind = BuildKind.Settlement; spot = c; }
             }
             foreach (int c in _upgrades)
             {
                 float d = Vector2.Distance(screen, ScreenOfCorner(c));
-                if (d < best) { best = d; what = "city"; spot = c; }
+                if (d < best) { best = d; kind = BuildKind.City; spot = c; }
             }
             foreach (int e in _edges)
             {
                 float d = Vector2.Distance(screen, ScreenOfEdge(e)) + 3f;
-                if (d < best) { best = d; what = "road"; spot = e; }
+                if (d < best) { best = d; kind = BuildKind.Road; spot = e; }
             }
-            if (what == null) return null;
-            if (what == "corner") PlaceSettlement(spot);
-            else if (what == "city") UpgradeCity(spot);
+            return spot >= 0;
+        }
+
+        /// <summary>
+        /// A press at a screen point (WU-2): the nearest legal spot gets a ghost piece (preview); a second press on the same spot
+        /// sends its command once; a press where no legal spot is cancels the preview. Returns "preview road 5" on a preview,
+        /// "road 5" when the command was sent, or null.
+        /// </summary>
+        public string TapAt(Vector2 screen)
+        {
+            if (View != BoardView.Board || GameOver) return null;
+            if (!NearestSpot(screen, out var kind, out int spot))
+            {
+                if (WorldActions.Open) WorldActions.TapElsewhere();
+                return null;
+            }
+            var res = WorldActions.Tap(SpotAction(kind, spot));
+            string name = kind == BuildKind.Road ? "road" : kind == BuildKind.City ? "city" : "corner";
+            switch (res)
+            {
+                case WorldTapResult.Previewed: return "preview " + name + " " + spot;
+                case WorldTapResult.Confirmed: return name + " " + spot;
+                default: return null;
+            }
+        }
+
+        /// <summary>The older one-tap press (AutoPlay and tests): the nearest legal spot gets its command at once, no preview.</summary>
+        public string TapAtNow(Vector2 screen)
+        {
+            if (View != BoardView.Board || GameOver) return null;
+            if (!NearestSpot(screen, out var kind, out int spot)) return null;
+            CancelSpotPreview();
+            if (kind == BuildKind.Settlement) PlaceSettlement(spot);
+            else if (kind == BuildKind.City) UpgradeCity(spot);
             else PlaceRoad(spot);
-            return what + " " + spot;
+            string name = kind == BuildKind.Road ? "road" : kind == BuildKind.City ? "city" : "corner";
+            return name + " " + spot;
         }
 
         public Vector2 ScreenOfCorner(int c)
@@ -484,6 +591,7 @@ namespace World.Game
         public bool PressEscape()
         {
             if (!IsOpen) return false;
+            if (WorldActions.Open) { WorldActions.Cancel(); CancelSpotPreview(); return true; }
             var hud = GetComponent<GodBoardHud>();
             if (hud != null && hud.TradeOpen) { hud.CloseTrade(); return true; }
             Leave();
@@ -539,6 +647,7 @@ namespace World.Game
                 tv.Smoking = t != null && !t.Paused && tv.People == t.Current && (t.Phase == TablePhase.Setup || t.Phase == TablePhase.Main || t.Phase == TablePhase.Discard);
 
             if (Input.GetKeyDown(KeyCode.Escape)) PressEscape();
+            if (View == BoardView.Board && Input.GetKeyDown(KeyCode.H)) GodBoardSettings.ClearView = !GodBoardSettings.ClearView;
 
             if (View == BoardView.Rising || View == BoardView.Falling)
             {
@@ -558,6 +667,7 @@ namespace World.Game
                 ApplyBoardCamera();
             }
             if (IsOpen) { Pieces.Sync(); RefreshMarks(false); PrinceSaysHint(); }
+            if (Pieces != null && Pieces.HasGhost && !(WorldActions.State == WorldActionState.Preview && WorldActions.Machine.Current is BoardSpotAction)) Pieces.HideGhost();
         }
 
         private void ApplyCamera(float u, bool rising)

@@ -57,6 +57,12 @@ namespace World.Game
         bool Commit();
     }
 
+    /// <summary>An action or inspectable that lives on the screen rather than in the scene (the altar ledge, WU-2): its rect in GUI coordinates (top-left origin), for the ledger card to unfold from.</summary>
+    public interface IScreenAnchored
+    {
+        bool TryGetScreenRect(out Rect gui);
+    }
+
     /// <summary>A world action that is a scene object: where the ledger unfolds from and how far a key press reaches.</summary>
     public interface IWorldActionAnchor
     {
@@ -326,14 +332,14 @@ namespace World.Game
             switch (m.State)
             {
                 case WorldActionState.Preview:
-                    LedgerCard.Show(LedgerContent.From(m.Current, ((IWorldAction)m.Current).PreviewLine, null), AnchorOf(m.Current), LedgerMode.Preview, m.Current as Component);
+                    LedgerCard.Show(LedgerContent.From(m.Current, ((IWorldAction)m.Current).PreviewLine, null), AnchorOf(m.Current), LedgerMode.Preview, m.Current as Component, m.Current as IScreenAnchored);
                     break;
                 case WorldActionState.Inspect:
-                    LedgerCard.Show(LedgerContent.From(m.Current, null, null), AnchorOf(m.Current), LedgerMode.Inspect, m.Current as Component);
+                    LedgerCard.Show(LedgerContent.From(m.Current, null, null), AnchorOf(m.Current), LedgerMode.Inspect, m.Current as Component, m.Current as IScreenAnchored);
                     break;
                 case WorldActionState.Refused:
                 case WorldActionState.Disabled:
-                    LedgerCard.Show(LedgerContent.From(m.Current, null, m.Reason), AnchorOf(m.Current), LedgerMode.Refused, m.Current as Component);
+                    LedgerCard.Show(LedgerContent.From(m.Current, null, m.Reason), AnchorOf(m.Current), LedgerMode.Refused, m.Current as Component, m.Current as IScreenAnchored);
                     break;
                 default:
                     LedgerCard.Hide();
@@ -357,8 +363,11 @@ namespace World.Game
         public const float MoveMetres = 0.35f, TurnDegrees = 2.5f;
         private Vector3 _lastPos; private Quaternion _lastRot; private Camera _lastCam;
 
+        /// <summary>The god board owns the pointer (WU-2): its ledge and ghost previews use the same machine.</summary>
+        private static bool OnGodBoard => GodBoardDirector.Instance != null && GodBoardDirector.Instance.View == BoardView.Board;
+
         private static bool Blocked =>
-            !PointerInput.InputEnabled || Hud.MenuOpen || MapScreen.IsOpen
+            (!PointerInput.InputEnabled && !OnGodBoard) || Hud.MenuOpen || MapScreen.IsOpen
             || (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning);
 
         private void Update()
