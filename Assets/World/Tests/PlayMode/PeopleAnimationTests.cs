@@ -16,12 +16,12 @@ namespace World.Game.Tests
     {
         private readonly List<GameObject> _made = new List<GameObject>();
 
-        [SetUp] public void SetUp() { Time.captureFramerate = 60; }
+        [SetUp] public void SetUp() { Time.captureFramerate = 60; PlaceholderActor.OffscreenLod = false; }
 
         [TearDown]
         public void TearDown()
         {
-            Time.captureFramerate = 0;
+            Time.captureFramerate = 0; PlaceholderActor.OffscreenLod = true;
             foreach (var g in _made) if (g != null) Object.Destroy(g);
             _made.Clear();
         }

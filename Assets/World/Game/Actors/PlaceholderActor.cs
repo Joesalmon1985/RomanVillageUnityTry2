@@ -248,9 +248,20 @@ namespace World.Game
             foreach (var r in _renderers) if (r != null) r.enabled = visible;
         }
 
+        /// <summary>P1: an actor no camera sees (and not in a one-shot) animates every fourth frame with the summed time.</summary>
+        public static bool OffscreenLod = true;
+        private float _lodDt;
+
         private void Update()
         {
             float dt = Time.deltaTime;
+            if (OffscreenLod && _oneShot == null && _renderers != null && _renderers.Length > 0 && _renderers[0] != null && !_renderers[0].isVisible)
+            {
+                _lodDt += dt;
+                if (((Time.frameCount + GetInstanceID()) & 3) != 0) return;
+                dt = _lodDt;
+            }
+            _lodDt = 0f;
             if (_turning)
             {
                 float y = Mathf.MoveTowardsAngle(transform.eulerAngles.y, _targetYaw, TurnSpeed * dt);
