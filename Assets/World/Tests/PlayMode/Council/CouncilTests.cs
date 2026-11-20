@@ -992,7 +992,14 @@ namespace World.Game.Tests
             CouncilScene.ForceCloser = false; yield return new WaitForSecondsRealtime(1.5f);
             Assert.Less(Enc.Scene.CamPush, 0.2f, "not pushed on a big screen");
             CouncilScene.ForceCloser = true; yield return new WaitForSecondsRealtime(2f);
-            Assert.Greater(Enc.Scene.CamPush, 1f, "the camera moved closer to the worked places");
+            // P2b: the camera moves closer only while both worked places still fit the picture (far-apart ones pull it back to the tower)
+            var camV = Enc.Scene.ViewCamera;
+            for (int t = 2; t <= 12; t++)
+                if (E.Temp[t - 2] > 0 && E.Claimed[t - 2] < 0)
+                {
+                    var spw = camV.WorldToScreenPoint(Enc.Scene.PlaceCentre(t));
+                    Assert.IsTrue(spw.z > 0f && spw.x > 0f && spw.x < Screen.width, "worked place " + t + " is in the picture at " + spw + " (push " + Enc.Scene.CamPush + ")");
+                }
             Assert.IsTrue(Enc.Scene.Targets(Enc.Scene.ViewCamera).Exists(t => t.Name == "hand"), "the candidate's hand is still on screen");
             Assert.IsTrue(Enc.Scene.Targets(Enc.Scene.ViewCamera).Exists(t => t.Name == "recorder"), "the recorder is still on screen");
         }

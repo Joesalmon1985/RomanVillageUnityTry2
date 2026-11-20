@@ -95,7 +95,9 @@ Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.
 
 **Tell us:** Can you tell how dangerous things are from the lodge alone? Is banishing on foot worth doing? Is the table readable?
 
-**Known:** the island fills only about two thirds of the table; pebbles are small targets on a phone; figurines overlap when a node has three mixed demons. With the new balance (infections every third round) the plague is much milder than before.
+**P2b:** tap the table (or a pebble): the camera leans over it, the island fills the left of the picture, the ledger sits in a column on the right; walking or Esc stands you up where you were. Pebbles are enlarged tap targets (the nearest centre wins); figurines of mixed kinds stand apart; the tunnel is a violet-lipped groove.
+
+**Known:** with the new balance (infections every third round) the plague is much milder than before.
 
 ---
 
@@ -113,7 +115,9 @@ Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.
 
 **Tell us:** Is it clear which two places a proposal moves? Can you tell temporary from kept from claimed? Is the "same or different" listening game clear?
 
-**Known:** when the two framed places are far apart, both are small at phone size; the notes are small stones at the foot of the picture.
+**P2b:** a proposal that moves two far-apart places now keeps both in the picture (the camera pulls back rather than pushes), each marked with a pale pillar and a larger ghost; the notes are cream tablets about a tenth of the picture's height. At 844 x 390 the two places are still small people on the ground; the pillars and rings are what you read.
+
+**Known:** the people at a far place are small on a phone.
 
 ---
 
@@ -169,7 +173,9 @@ Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.
 
 **Tell us:** Can you play the duel without the old panel? Is it clear whose spell is being shaped?
 
-**Known:** your own wizard can fill the edge of the frame; the referee's card sits over the stage on a phone.
+**P2b:** the practice duel uses the wide over-the-shoulder camera (both wizards, posts and the stones row in frame); the referee's card is a strip along the top edge; the referee raises a hand at the start and points at the winner.
+
+**Known:** the opponent's beads and tally stick are small on a phone (tap them to read).
 
 ---
 
