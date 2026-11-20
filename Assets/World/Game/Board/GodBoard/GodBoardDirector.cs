@@ -146,7 +146,10 @@ namespace World.Game
                 People people = null;
                 foreach (var pe in s.Peoples) if (pe.Id == p) people = pe;
                 if (people == null) continue;
-                if (!TempleSites.Find(board, board.StartCorners[p], p == PlayerIds.Human ? layout.Dressing : null, out var at, out float yaw))
+                Vector3 at; float yaw; bool sited;
+                if (p == PlayerIds.Human && layout.TryPlace(WorldZones.HubTemple, out var hubTemple)) { at = hubTemple.Position; yaw = hubTemple.Yaw; sited = true; } // WU-1a: the hub's temple spot
+                else sited = TempleSites.Find(board, board.StartCorners[p], p == PlayerIds.Human ? layout.Dressing : null, out at, out yaw);
+                if (!sited)
                 { Debug.LogWarning("[GodBoard] no clear site for the temple of people " + p); continue; }
                 var tv = TempleView.Create(transform, people, at, yaw, p == Human);
                 _temples.Add(tv);

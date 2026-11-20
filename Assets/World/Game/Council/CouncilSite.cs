@@ -77,6 +77,7 @@ namespace World.Game
                 }
             }
             foreach (var pr in layout.Dressing) { var d2 = pr.Position - p; d2.y = 0; if (d2.magnitude < pr.Radius + radius + 1f) return "camp prop"; }
+            foreach (var pl in layout.Places) { var d3 = pl.Position - p; d3.y = 0; if (d3.magnitude < pl.Radius + radius + 1f) return "hub place"; }
             return null;
         }
 
@@ -142,6 +143,7 @@ namespace World.Game
                     var w = nominal + new Vector3(o.x, 0, o.y);
                     if (Blocked(board, layout, w, R * 0.7f + 1f) != null || !OkTerrain(board, w)) continue;
                     if ((w - tower).magnitude < 14f + R * 0.5f) continue;
+                    if (t == 6 && layout.TryPlace("HUB-HEALER", out var lodge) && (w - lodge.Position).magnitude < 20f) continue; // the healer's lodge stays away from the herbs place
                     site.Loc[i] = w; score += o.magnitude; found = true; break;
                 }
                 if (!found) { site.Loc[i] = nominal; score += 40f; site.Failures++; }
