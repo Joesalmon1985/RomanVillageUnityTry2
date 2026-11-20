@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace World.Game
@@ -17,11 +19,23 @@ namespace World.Game
         private static readonly bool[] _held = new bool[5], _pressed = new bool[5], _simHeld = new bool[5], _simPress = new bool[5];
         private static int _frame = -1;
 
+        /// <summary>
+        /// WU-5: while the dance runs it registers the drums' projected shapes here (screen point, pixels, origin
+        /// bottom-left, to pad 1-4 or 0). A tap on a drum's shape and a tap on its strip both press that pad; the shape
+        /// wins where both answer. Null on foot: the strips are then exactly the four quarters of the band.
+        /// </summary>
+        public static Func<Vector2, int> ShapeResolver;
+
+        private static readonly Dictionary<int, Vector2> _simTouch = new Dictionary<int, Vector2>();
+        private static readonly HashSet<int> _simBegan = new HashSet<int>();
+        private static bool _mouseDown;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics()
         {
             for (int i = 0; i < 5; i++) { _held[i] = _pressed[i] = _simHeld[i] = _simPress[i] = false; }
             _frame = -1;
+            ShapeResolver = null; _simTouch.Clear(); _simBegan.Clear(); _mouseDown = false;
         }
 
         /// <summary>Strip 1-4 under a screen point (pixels, origin bottom-left as Input.mousePosition), 0 outside the band.</summary>
@@ -42,9 +56,22 @@ namespace World.Game
         /// <summary>True if any touch is in the band this frame (pointer code ignores those touches).</summary>
         public static bool AnyTouchInBand()
         {
-            for (int i = 0; i < Input.touchCount; i++) if (StripAt(Input.GetTouch(i).position) > 0) return true;
+            for (int i = 0; i < Input.touchCount; i++) if (PadAt(Input.GetTouch(i).position) > 0) return true;
             return false;
         }
+
+        /// <summary>The pad a screen point presses: a drum's shape if the dance registered one there, else the strip under it, else 0.</summary>
+        public static int PadAt(Vector2 screenPoint)
+        {
+            if (ShapeResolver != null) { int p = ShapeResolver(screenPoint); if (p >= 1 && p <= 4) return p; }
+            return StripAt(screenPoint);
+        }
+
+        /// <summary>A virtual finger touches down at a screen point on the next frame (tests, AutoPlay); same path as a real touch.</summary>
+        public static void SimulateTouchBegin(int id, Vector2 screenPoint) { _simTouch[id] = screenPoint; _simBegan.Add(id); }
+
+        /// <summary>A virtual finger lifts.</summary>
+        public static void SimulateTouchEnd(int id) { _simTouch.Remove(id); _simBegan.Remove(id); }
 
         /// <summary>Presses a strip as if a touch began there on the next frame (tests, AutoPlay).</summary>
         public static void SimulatePress(int strip) { if (strip >= 1 && strip <= 4) _simPress[strip] = true; }
@@ -60,10 +87,28 @@ namespace World.Game
             for (int i = 0; i < Input.touchCount; i++)
             {
                 var t = Input.GetTouch(i);
-                int s = StripAt(t.position);
+                int s = PadAt(t.position);
                 if (s == 0) continue;
                 if (t.phase != TouchPhase.Ended && t.phase != TouchPhase.Canceled) _held[s] = true;
                 if (t.phase == TouchPhase.Began) _pressed[s] = true;
+            }
+            foreach (var kv in _simTouch)
+            {
+                int s = PadAt(kv.Value);
+                if (s == 0) continue;
+                _held[s] = true;
+                if (_simBegan.Contains(kv.Key)) _pressed[s] = true;
+            }
+            _simBegan.Clear();
+            if (ShapeResolver != null)
+            {
+                // The mouse stands in for a finger while the dance runs (desktop play); on foot a click is a pointer tap.
+                var m = (Vector2)Input.mousePosition;
+                bool down = Input.GetMouseButton(0);
+                int s = down ? PadAt(m) : 0;
+                if (s != 0) _held[s] = true;
+                if (Input.GetMouseButtonDown(0) && s != 0) _pressed[s] = true;
+                _mouseDown = down;
             }
         }
     }

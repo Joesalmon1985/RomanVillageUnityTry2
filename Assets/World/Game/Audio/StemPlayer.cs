@@ -113,6 +113,7 @@ namespace World.Game
         public double Schedule(double leadInSeconds, double phraseSeconds, double[] clickSongTimes)
         {
             StopAll();
+            IsPaused = false; ResumeAtDsp = double.NaN;
             double now = ClockDsp();
             StartDsp = now + leadInSeconds + ScheduleMargin;
             EndDsp = StartDsp + phraseSeconds;
@@ -171,6 +172,7 @@ namespace World.Game
             {
                 if (!IsScheduled) return double.NaN;
                 double t = SmoothedDsp() - StartDsp;
+                if (IsPaused && !IsResuming) return PausedSongTime;
                 if (t < _lastSong) t = _lastSong;
                 _lastSong = t;
                 return t;
@@ -205,6 +207,102 @@ namespace World.Game
                 foreach (var c in _clicks) if (c != null && c.isPlaying) c.Stop();
             }
             StartDsp = DrumsStartDsp = BassStartDsp = OtherStartDsp = EndDsp = double.NaN;
+            IsPaused = false; ResumeAtDsp = double.NaN;
+        }
+
+        // ---- Mid-song pause (owner Q-6): stop the audio, hold the song time, resume after a count of four ----
+
+        public bool IsPaused { get; private set; }
+        /// <summary>True from Resume until the song clock is moving again (the four-count).</summary>
+        public bool IsResuming => IsPaused && !double.IsNaN(ResumeAtDsp);
+        public double PausedSongTime { get; private set; }
+        /// <summary>dspTime at which a resumed song restarts at <see cref="PausedSongTime"/>; NaN while merely paused.</summary>
+        public double ResumeAtDsp { get; private set; } = double.NaN;
+        private double _phraseSeconds, _bassSong = double.NaN;
+
+        /// <summary>The audio clock now (dspTime, or the real-time fallback).</summary>
+        public double ClockNow => ClockDsp();
+
+        /// <summary>The smoothed audio clock (what song time is built from); for timing taps between phrases.</summary>
+        public double SmoothedNow => SmoothedDsp();
+
+        /// <summary>Stops every stem and click and freezes song time at <paramref name="songTime"/>.</summary>
+        public void Pause(double songTime)
+        {
+            if (!IsScheduled || IsPaused) return;
+            _phraseSeconds = EndDsp - StartDsp;
+            _bassSong = double.IsNaN(BassStartDsp) ? double.NaN : BassStartDsp - StartDsp;
+            PausedSongTime = songTime;
+            _lastSong = songTime; // song time never reads below this, so it stays frozen until the clock passes it again
+            IsPaused = true;
+            ResumeAtDsp = double.NaN;
+            if (AudioGuard.CanWriteControls)
+            {
+                foreach (var s in new[] { Drums, Bass, Other }) if (s != null) s.Stop();
+                foreach (var c in _clicks) if (c != null) c.Stop();
+            }
+        }
+
+        /// <summary>
+        /// Schedules the resume: <paramref name="count"/> clicks one beat apart, then every stem continues from the paused
+        /// song time on one dspTime. The song clock stays at the paused time until the last click has sounded.
+        /// </summary>
+        public void Resume(int count, double beatSeconds)
+        {
+            if (!IsPaused || IsResuming) return;
+            double now = ClockDsp();
+            double first = now + ScheduleMargin;
+            double resumeAt = first + count * beatSeconds;
+            double newStart = resumeAt - PausedSongTime;
+            StartDsp = newStart; DrumsStartDsp = newStart;
+            EndDsp = newStart + _phraseSeconds;
+            ResumeAtDsp = resumeAt;
+            if (AudioGuard.CanWriteControls)
+            {
+                PlayFrom(Drums, 0.0, PausedSongTime, newStart);
+                if (!double.IsNaN(_bassSong))
+                {
+                    BassStartDsp = OtherStartDsp = newStart + _bassSong;
+                    PlayFrom(Bass, _bassSong, PausedSongTime, newStart);
+                    PlayFrom(Other, _bassSong, PausedSongTime, newStart);
+                }
+                var hi = SynthAudio.Click(true); var lo = SynthAudio.Click(false);
+                if (_clicks.Length < count)
+                {
+                    var arr = new AudioSource[count];
+                    for (int i = 0; i < arr.Length; i++) { arr[i] = i < _clicks.Length ? _clicks[i] : Source("Click" + i, null); arr[i].loop = false; arr[i].volume = 0.55f; }
+                    _clicks = arr;
+                }
+                for (int i = 0; i < count; i++)
+                {
+                    _clicks[i].clip = i == 0 ? hi : lo;
+                    _clicks[i].PlayScheduled(first + i * beatSeconds);
+                }
+            }
+        }
+
+        /// <summary>Plays a looping stem that began at song time <paramref name="origin"/> from where it would be at <paramref name="songTime"/>.</summary>
+        private void PlayFrom(AudioSource s, double origin, double songTime, double newStart)
+        {
+            if (s == null || s.clip == null) return;
+            double len = s.clip.length;
+            double endAt = EndDsp;
+            if (songTime < origin) { s.timeSamples = 0; s.PlayScheduled(newStart + origin); }
+            else
+            {
+                double pos = ((songTime - origin) % len + len) % len;
+                s.timeSamples = Mathf.Clamp((int)(pos * s.clip.frequency), 0, s.clip.samples - 1);
+                s.PlayScheduled(newStart + songTime);
+            }
+            s.SetScheduledEndTime(endAt);
+        }
+
+        /// <summary>Called every frame by the owner: ends the pause once the four-count is over and the song clock is moving.</summary>
+        public bool TryFinishResume()
+        {
+            if (!IsResuming || ClockDsp() < ResumeAtDsp) return false;
+            IsPaused = false; ResumeAtDsp = double.NaN;
+            return true;
         }
 
         public bool AnyPlaying

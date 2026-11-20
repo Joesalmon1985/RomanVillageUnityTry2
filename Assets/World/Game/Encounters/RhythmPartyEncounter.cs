@@ -62,6 +62,40 @@ namespace World.Game
         public StemGains LastGains { get; private set; }
         public bool BassJoined { get; private set; }
 
+        // ---- WU-5: world props, tally, pause, tuning bell, log seat ----
+        public enum PauseStage { None, Paused, Counting }
+        public enum Card { None, Tally, Progress, Tune }
+        /// <summary>Performers, block torches, tuning bell and seat (built for the dance, removed with it).</summary>
+        public DanceStageProps Props { get; private set; }
+        public PauseStage PauseState { get; private set; }
+        public bool IsPaused => PauseState != PauseStage.None;
+        /// <summary>The four-count number on screen after a resume (4 3 2 1), 0 otherwise.</summary>
+        public int ResumeCount { get; private set; }
+        public int Pauses { get; private set; }
+        /// <summary>True after the first tap on the log seat that asks to leave; the second tap (within <see cref="LeaveConfirmSeconds"/>) leaves.</summary>
+        public bool LeaveArmed { get; private set; }
+        public bool Left { get; private set; }
+        public const float LeaveConfirmSeconds = 4f;
+        private float _leaveArmedAt;
+        /// <summary>Judgement counts of this attempt as Sol keeps them: every judgement event, including strays and hold ends.</summary>
+        public int TallyPerfect { get; private set; }
+        public int TallyGreat { get; private set; }
+        public int TallyOk { get; private set; }
+        public int TallyMiss { get; private set; }
+        public int TallyStray { get; private set; }
+        public int TallyHoldComplete { get; private set; }
+        public int TallyHoldPartial { get; private set; }
+        public Card OpenCard { get; private set; }
+        public double LastTuneMs { get; private set; } = double.NaN;
+        public bool TuneActive => _tune != null;
+        public double[] TuneClickTimes => _tune != null ? _tune.ClickTimes : null;
+        public int TuneMatched => _tune != null ? _tune.Matched : 0;
+        private TapAlongCalibration _tune;
+        private readonly List<AudioSource> _tuneClicks = new List<AudioSource>();
+        private readonly List<Vector2> _tapQueue = new List<Vector2>();
+        private int _lastResumeCount;
+        private bool _shapeHooked;
+
         /// <summary>When each cue's drum first lit this attempt: cue index -> (pad, song time). For tests and captures.</summary>
         public readonly Dictionary<int, (int Pad, double SongTime)> LitAt = new Dictionary<int, (int, double)>();
 
@@ -153,8 +187,13 @@ namespace World.Game
             _sol = _request != null ? null : (ctx.Npc != null ? ctx.Npc : Npc.Find(NpcIds.Host)); // Sol stays at the home camp
             if (_sol != null) { _solScale = _sol.transform.localScale; _sol.Actor?.FaceTowards(Circle.Layout.DancerSpot); }
             SpeechBubbles.ShowInEncounter = true;
+            Props = DanceStageProps.Build(_root.transform, Circle);
+            if (_sol != null) Props.SolPoint = _sol.transform.position + Vector3.up * 1.6f;
+            TouchStrips.ShapeResolver = ShapeAt; _shapeHooked = true;
             StartPhrase();
         }
+
+        private int ShapeAt(Vector2 screen) => DanceStageProps.DrumAt(Camera.main, Circle, screen);
 
         /// <summary>
         /// True when the dance may draw its text overlay (score strip, key hints, judgement words, banners, choice bar):
@@ -180,6 +219,9 @@ namespace World.Game
             _solBubble = 0;
             SpeechBubbles.ShowInEncounter = false;
             if (Player != null) Player.StopAll();
+            if (_shapeHooked && TouchStrips.ShapeResolver == (System.Func<Vector2, int>)ShapeAt) TouchStrips.ShapeResolver = null;
+            _shapeHooked = false;
+            foreach (var c in _tuneClicks) if (c != null) c.Stop();
             if (Stems != null && Stems.Source != null && Stems.Source.StartsWith("local pack"))
             { foreach (var c in new[] { Stems.Drums, Stems.Bass, Stems.Other }) if (c != null) UnityEngine.Object.Destroy(c); }
             if (_ctx != null && _ctx.World != null && _ctx.World.GodCam != null) _ctx.World.GodCam.KeyboardPan = _prevPan;
@@ -202,6 +244,9 @@ namespace World.Game
             for (int i = 0; i < 5; i++) { _padDown[i] = false; _touchDown[i] = false; }
             PressesHandled = 0; JudgementsSeen = 0;
             LivePerfect = LiveGreat = LiveOk = LiveMiss = 0;
+            TallyPerfect = TallyGreat = TallyOk = TallyMiss = TallyStray = TallyHoldComplete = TallyHoldPartial = 0;
+            PauseState = PauseStage.None; ResumeCount = 0; LeaveArmed = false; OpenCard = Card.None; _tune = null; _lastResumeCount = 0;
+            if (Props != null) Props.ClearTorches();
             _banner = null;
             SolSay(Attempts > 1 ? "Again! Strike each drum as its ember lands." : "Strike each drum as its ember lands. Four beats, then we dance!", 3.2f);
             _lastCountBeat = _lastBassBeat = _lastBeatCheered = int.MinValue;
@@ -287,6 +332,14 @@ namespace World.Game
             PlayerPrefs.Save();
         }
 
+        /// <summary>Sets the input offset (ms, clamped) and keeps it for the next dance and the next session.</summary>
+        public void SetCalibration(double ms)
+        {
+            Tuning.CalibrationMs = Math.Max(-250, Math.Min(250, ms));
+            PlayerPrefs.SetFloat(CalibrationPref, (float)Tuning.CalibrationMs);
+            PlayerPrefs.Save();
+        }
+
         public int CuesJudged
         {
             get
@@ -307,7 +360,15 @@ namespace World.Game
             bool blocked = menu || _menuWasOpen || Time.frameCount == _beginFrame;
             _menuWasOpen = menu;
 
-            if (Phase != Screen.Result)
+            if (!blocked) PollTaps();
+            if (LeaveArmed && Time.unscaledTime - _leaveArmedAt > LeaveConfirmSeconds) LeaveArmed = false;
+            if (IsFinished) return;
+
+            if (Phase != Screen.Result && IsPaused)
+            {
+                TickPaused(blocked);
+            }
+            else if (Phase != Screen.Result)
             {
                 double now = Player.SongTime;
                 SongTime = now;
@@ -323,13 +384,14 @@ namespace World.Game
                     {
                         if (Input.GetKeyDown(PadKeys[p - 1])) { _padDown[p] = true; HandlePress(p, now); }
                         if (Input.GetKeyUp(PadKeys[p - 1])) { _padDown[p] = false; HandleRelease(p, now); }
-                        // Touch strips 1-4 (P's TouchStrips; the same strips are the four moves on foot).
+                        // Touch strips 1-4 and the drums' own shapes (TouchStrips.PadAt; the strips are also the four moves on foot).
                         if (TouchStrips.Pressed(p) && !_touchDown[p]) { _touchDown[p] = true; HandlePress(p, now); }
                         else if (_touchDown[p] && !TouchStrips.Held(p)) { _touchDown[p] = false; HandleRelease(p, now); }
                     }
                     if (Input.GetKeyDown(KeyCode.LeftArrow)) ChooseRoute(SimRoute.Bar);
                     if (Input.GetKeyDown(KeyCode.RightArrow)) ChooseRoute(SimRoute.Balcony);
                     if (Session.RouteWindow == RouteWindowState.Open && Input.GetMouseButtonDown(0)) ChooseByTap(Input.mousePosition);
+                    if (Input.GetKeyDown(KeyCode.P)) Pause();
                 }
                 if (AutoRoute.HasValue && Session.RouteWindow == RouteWindowState.Open && Session.CurrentRoute != AutoRoute.Value) ChooseRoute(AutoRoute.Value);
                 Session.Advance(now);
@@ -339,13 +401,17 @@ namespace World.Game
                 Player.SetTargets(g.Drums, g.Bass, g.Other);
                 LastGains = g;
             }
-            else if (!blocked)
+            else
             {
-                if (Input.GetKeyDown(KeyCode.R)) Retry();
-                else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) Return();
-                else if (Input.GetKeyDown(KeyCode.Escape)) { EncounterKeys.ConsumeEscape(); Return(); }
+                if (_tune != null) TickTune(blocked);
+                else if (!blocked)
+                {
+                    if (Input.GetKeyDown(KeyCode.R)) Retry();
+                    else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) Return();
+                    else if (Input.GetKeyDown(KeyCode.Escape)) { EncounterKeys.ConsumeEscape(); Return(); }
+                }
             }
-            if (!blocked)
+            if (!blocked && _tune == null)
             {
                 if (Input.GetKeyDown(KeyCode.LeftBracket)) AdjustCalibration(-10);
                 if (Input.GetKeyDown(KeyCode.RightBracket)) AdjustCalibration(+10);
@@ -353,12 +419,246 @@ namespace World.Game
             Animate();
         }
 
+        // ------------------------------------------------------------------ WU-5: world taps, pause, tally, bell, seat
+
+        /// <summary>Tap at a screen point (pixels, origin bottom-left) as the pointer would deliver it; tests and captures use this.</summary>
+        public void InjectTap(Vector2 screen) => _tapQueue.Add(screen);
+
+        private void PollTaps()
+        {
+            if (Input.GetMouseButtonDown(0)) _tapQueue.Add(Input.mousePosition);
+            for (int i = 0; i < Input.touchCount; i++) { var t = Input.GetTouch(i); if (t.phase == TouchPhase.Began) _tapQueue.Add(t.position); }
+            if (_tapQueue.Count == 0) return;
+            var taps = _tapQueue.ToArray(); _tapQueue.Clear();
+            foreach (var tp in taps) { TapAt(tp); if (IsFinished) return; }
+        }
+
+        /// <summary>What a world tap hit: a drum shape or strip, Sol, a torch, the bell, the log seat, or nothing.</summary>
+        public enum TapKind { Nothing, Drum, Sol, Torch, Bell, Seat }
+
+        public TapKind TapAt(Vector2 screen)
+        {
+            var cam = Camera.main;
+            int pad = TouchStrips.PadAt(screen);
+            int torch = -1;
+            var target = pad == 0 && Props != null ? Props.TargetAt(cam, screen, out torch) : DanceStageProps.Target.None;
+            // A drum or strip: not a world command, except that a paused dance resumes when a drum is struck.
+            if (pad > 0)
+            {
+                LeaveArmed = false;
+                if (PauseState == PauseStage.Paused) Resume();
+                return TapKind.Drum;
+            }
+            switch (target)
+            {
+                case DanceStageProps.Target.Seat: TapLogSeat(); return TapKind.Seat;
+                case DanceStageProps.Target.Sol: LeaveArmed = false; ToggleCard(Card.Tally); return TapKind.Sol;
+                case DanceStageProps.Target.Torch: LeaveArmed = false; ToggleCard(Card.Progress); SolSay(ProgressText(), 4f); return TapKind.Torch;
+                case DanceStageProps.Target.Bell: LeaveArmed = false; TapBell(); return TapKind.Bell;
+            }
+            LeaveArmed = false;
+            if (_tune != null) { TuneTap(Player.SmoothedNow); return TapKind.Nothing; }
+            if (OpenCard != Card.None) OpenCard = Card.None;
+            return TapKind.Nothing;
+        }
+
+        private void ToggleCard(Card c) { OpenCard = OpenCard == c ? Card.None : c; }
+
+        /// <summary>
+        /// The log seat: during a phrase the first tap pauses (the owner's mid-song pause); paused or between phrases a tap
+        /// asks to leave and the second tap confirms (stops the audio and ends the dance). Moves to the shared WorldAction later.
+        /// </summary>
+        public void TapLogSeat()
+        {
+            if (Phase != Screen.Result && !IsPaused) { Pause(); return; }
+            if (!LeaveArmed)
+            {
+                LeaveArmed = true; _leaveArmedAt = Time.unscaledTime;
+                SolSay("Leave the dance? Tap the log seat again.", 3.5f);
+                return;
+            }
+            LeaveDance();
+        }
+
+        /// <summary>Stops the audio and ends the dance at once (the confirmed exit).</summary>
+        public void LeaveDance()
+        {
+            LeaveArmed = false; Left = true;
+            if (Player != null) Player.StopAll();
+            foreach (var c in _tuneClicks) if (c != null) c.Stop();
+            _queue.Clear();
+            IsFinished = true;
+        }
+
+        /// <summary>Pauses the phrase at the current song time: the audio stops, song time and the session hold still, scoring is untouched.</summary>
+        public bool Pause()
+        {
+            if (Session == null || Session.IsEnded || Phase == Screen.Result || IsPaused || Player == null || !Player.IsScheduled) return false;
+            double t = Player.SongTime;
+            Session.Advance(t); DrainSession();
+            Player.Pause(t);
+            SongTime = t;
+            PauseState = PauseStage.Paused; Pauses++;
+            LeaveArmed = false;
+            SolSay("Rest a moment. Strike a drum when you are ready and I count four.", 5f);
+            return true;
+        }
+
+        /// <summary>Resumes after a count of four, one beat apart; the phrase continues exactly where it stopped.</summary>
+        public bool Resume()
+        {
+            if (PauseState != PauseStage.Paused) return false;
+            Player.Resume(4, Session.BeatToSeconds(1));
+            PauseState = PauseStage.Counting; _lastResumeCount = 0; ResumeCount = 4;
+            LeaveArmed = false;
+            return true;
+        }
+
+        private void TickPaused(bool blocked)
+        {
+            SongTime = Player.SongTime; // frozen at the paused time until the four-count is over
+            if (PauseState == PauseStage.Paused)
+            {
+                ResumeCount = 0;
+                if (blocked) return;
+                for (int p = 1; p <= 4; p++) if (Input.GetKeyDown(PadKeys[p - 1])) { Resume(); return; }
+                if (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(KeyCode.Space)) Resume();
+                return;
+            }
+            double beatSec = Session.BeatToSeconds(1);
+            double left = Player.ResumeAtDsp - Player.ClockNow;
+            int n = Mathf.Clamp(Mathf.CeilToInt((float)(left / beatSec) - 1e-4f), 1, 4);
+            // The clicks are scheduled one beat apart; the number follows them (4 at the first click, 1 at the last).
+            if (n != _lastResumeCount) { _lastResumeCount = n; ResumeCount = n; Circle.CountPulse(); _sol?.Actor?.PlayOneShot(ActorKeys.Clap); }
+            if (Player.TryFinishResume())
+            {
+                PauseState = PauseStage.None; ResumeCount = 0;
+                SongTime = Player.SongTime;
+            }
+        }
+
+        private void TapBell()
+        {
+            Props.RingBell();
+            if (Phase != Screen.Result) { SolSay("Tune the bell between dances, not in the middle of one.", 3f); return; }
+            if (_tune != null) return;
+            StartTune();
+        }
+
+        /// <summary>Starts the tap-along: eight clicks half a second apart; tap along on any drum, key or the ground. Only between phrases.</summary>
+        public bool StartTune()
+        {
+            if (Phase != Screen.Result || _tune != null) return false;
+            double now = Player.ClockNow;
+            double first = now + 1.2;
+            _tune = new TapAlongCalibration(first);
+            OpenCard = Card.Tune;
+            LastTuneMs = double.NaN;
+            var hi = SynthAudio.Click(true); var lo = SynthAudio.Click(false);
+            while (_tuneClicks.Count < TapAlongCalibration.ClickCount)
+            {
+                var go = new GameObject("Tune click " + _tuneClicks.Count); go.transform.SetParent(_root.transform, false);
+                var a = go.AddComponent<AudioSource>(); a.spatialBlend = 0f; a.volume = 0.6f; a.playOnAwake = false; _tuneClicks.Add(a);
+            }
+            if (AudioGuard.CanWriteControls)
+                for (int i = 0; i < TapAlongCalibration.ClickCount; i++)
+                { _tuneClicks[i].clip = i % 4 == 0 ? hi : lo; _tuneClicks[i].PlayScheduled(_tune.ClickTimes[i]); }
+            SolSay("Eight clicks. Tap along on any drum.", 3.5f);
+            return true;
+        }
+
+        /// <summary>A tap-along tap at an audio-clock time.</summary>
+        public bool TuneTap(double clockTime)
+        {
+            if (_tune == null) return false;
+            bool ok = _tune.Tap(clockTime);
+            if (ok) Props.RingBell();
+            return ok;
+        }
+
+        private void TickTune(bool blocked)
+        {
+            if (!blocked)
+            {
+                double t = Player.SmoothedNow;
+                for (int p = 1; p <= 4; p++)
+                {
+                    if (Input.GetKeyDown(PadKeys[p - 1])) TuneTap(t);
+                    if (TouchStrips.Pressed(p)) TuneTap(t);
+                }
+                if (Input.GetKeyDown(KeyCode.Escape)) { EncounterKeys.ConsumeEscape(); CancelTune(); return; }
+            }
+            if (_tune != null && _tune.IsOver(Player.SmoothedNow)) FinishTune();
+        }
+
+        private void CancelTune() { _tune = null; if (OpenCard == Card.Tune) OpenCard = Card.None; foreach (var c in _tuneClicks) if (c != null) c.Stop(); }
+
+        private void FinishTune()
+        {
+            var t = _tune; _tune = null;
+            if (t.TryResult(out double ms))
+            {
+                SetCalibration(ms);
+                LastTuneMs = Tuning.CalibrationMs;
+                SolSay("Your drum runs " + SignedMs(Tuning.CalibrationMs) + " off the beat. Kept.", 4f);
+            }
+            else
+            {
+                SolSay("I only heard " + t.Matched + " taps. Ring the bell and try again.", 4f);
+            }
+        }
+
+        public static string SignedMs(double ms) => (ms >= 0 ? "+" : "") + ms.ToString("0") + " ms";
+
+        /// <summary>Sol's tally: exact judgement counts of this attempt, blocks kept and, once it is over, the result.</summary>
+        public string TallyText()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append("Perfect ").Append(TallyPerfect).Append("   Great ").Append(TallyGreat).Append("   OK ").Append(TallyOk).Append("   Miss ").Append(TallyMiss).Append('\n');
+            sb.Append("Strays ").Append(TallyStray).Append("   Holds kept ").Append(TallyHoldComplete).Append(" of ").Append(TallyHoldComplete + TallyHoldPartial).Append('\n');
+            int kept = 0, decided = 0;
+            for (int b = 0; b < Tuning.BlockCount; b++) { var r = Session.BlockResultOf(b); if (r != null) { decided++; if (r.Passed) kept++; } }
+            sb.Append("Blocks kept ").Append(kept).Append(" of ").Append(decided).Append(" judged (").Append(Tuning.BlockCount).Append(" in the phrase)");
+            if (LastResult != null)
+            {
+                sb.Append('\n').Append(LastResult.Success ? "The dance is alive." : "The dance faltered.");
+                if (LastResult.RouteOpened != RouteOutcome.None) sb.Append(' ').Append(ChoiceName(LastResult.RouteOpened == RouteOutcome.Bar ? SimRoute.Bar : SimRoute.Balcony)).Append('.');
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>The block torches' answer: track, tempo, which block of how many, the mix stage.</summary>
+        public string ProgressText()
+        {
+            int stage = Mathf.Clamp(Session.CurrentStage, 0, StageNames.Length - 1);
+            string where = Phase == Screen.Result ? "Phrase over" : SongTime < 0 ? "Count-in" : "Block " + (Session.CurrentBlock + 1) + " of " + Tuning.BlockCount;
+            return "Track " + (PackId ?? Chart.Id) + ", " + Math.Round(Chart.Bpm) + " BPM. " + where + ". Mix: " + StageNames[stage] + ".";
+        }
+
+        /// <summary>The text of the open card (for the screen and for tests).</summary>
+        public string CardText
+        {
+            get
+            {
+                switch (OpenCard)
+                {
+                    case Card.Tally: return TallyText();
+                    case Card.Progress: return ProgressText();
+                    case Card.Tune:
+                        return _tune != null ? "Tap along with the clicks: " + _tune.Matched + " of " + TapAlongCalibration.ClickCount + "\nOffset now " + SignedMs(Tuning.CalibrationMs)
+                            : "Offset " + SignedMs(Tuning.CalibrationMs) + " (kept)";
+                    default: return "";
+                }
+            }
+        }
+
         /// <summary>A tap above the touch band during the choice: left of the fire = Fire leap, right = Spirit call.</summary>
         private void ChooseByTap(Vector2 screen)
         {
-            if (TouchStrips.StripAt(screen) != 0) return;
+            if (TouchStrips.PadAt(screen) != 0) return;
             var cam = Camera.main;
             if (cam == null) return;
+            if (Props != null && Props.TargetAt(cam, screen, out _) != DanceStageProps.Target.None) return;
             var f = cam.WorldToScreenPoint(Circle.FireTop);
             if (f.z <= 0) return;
             ChooseRoute(screen.x < f.x ? SimRoute.Bar : SimRoute.Balcony);
@@ -420,6 +720,17 @@ namespace World.Game
         private void OnJudgement(Judgement j)
         {
             JudgementsSeen++;
+            switch (j.Kind)
+            {
+                case JudgementKind.Perfect: TallyPerfect++; break;
+                case JudgementKind.Great: TallyGreat++; break;
+                case JudgementKind.Ok: TallyOk++; break;
+                case JudgementKind.Miss: TallyMiss++; break;
+                case JudgementKind.Stray: TallyStray++; break;
+                case JudgementKind.HoldComplete: TallyHoldComplete++; break;
+                case JudgementKind.HoldPartial: TallyHoldPartial++; break;
+            }
+            if (Props != null && j.Kind != JudgementKind.Miss && j.Kind != JudgementKind.Stray && j.Kind != JudgementKind.HoldPartial) Props.Strike(j.Pad);
             string text; Color col;
             switch (j.Kind)
             {
@@ -507,6 +818,30 @@ namespace World.Game
                 }
             }
             for (int p = 1; p <= 4; p++) Circle.SetDrum(p, glow[p], col[p], held[p], ring[p]);
+            if (Props != null)
+            {
+                // Performers: the pose follows the family of each drum's next cue from the moment it appears until it is judged.
+                for (int p = 1; p <= 4; p++)
+                {
+                    string fam = null; double bestT = double.MaxValue;
+                    if (Phase != Screen.Result)
+                        foreach (var c in Session.UpcomingCues())
+                        {
+                            if (c.Pad != p || c.State == CueState.Done) continue;
+                            if (c.State != CueState.Holding && t < c.Time - FallSeconds) continue;
+                            if (c.Time < bestT) { bestT = c.Time; fam = c.Family; }
+                        }
+                    Props.SetPose(p, DanceStageProps.PoseForFamily(fam));
+                }
+                // Block torches: the playing block flickers, a kept block burns gold, a missed one is a dull ember.
+                for (int i = 0; i < DanceStageProps.TorchCount; i++)
+                {
+                    var res = Session.BlockResultOf(i);
+                    var st = res != null ? (res.Passed ? DanceStageProps.TorchState.Kept : DanceStageProps.TorchState.Missed)
+                        : (Phase != Screen.Result && i == Session.CurrentBlock && t >= 0 ? DanceStageProps.TorchState.Current : DanceStageProps.TorchState.Unlit);
+                    if (Props.TorchStateOf(i) != st) Props.SetTorch(i, st);
+                }
+            }
 
             // Count-in: the four clicks tap every drum; Sol beats time.
             if (live && t < 0 && wholeBeat >= -4 && wholeBeat != _lastCountBeat)
@@ -546,6 +881,7 @@ namespace World.Game
             double t = double.IsNaN(SongTime) ? 0 : SongTime;
             double beat = Session.SecondsToBeat(t);
 
+            DrawWorldReadouts();
             if (Phase == Screen.Result)
             {
                 // Let the ending play in the open for a moment before the panel covers the fire.
@@ -554,7 +890,7 @@ namespace World.Game
                     string title = LastResult.RouteOpened == RouteOutcome.Bar ? FireLeapName + "!" : SpiritCallName + "!";
                     if (OverlayOn) EncounterUi.Shadow(new Rect(0, px(150), sw, px(90)), title, EncounterUi.Big, LastResult.RouteOpened == RouteOutcome.Bar ? new Color(1f, 0.62f, 0.25f) : new Color(0.6f, 0.78f, 1f), TextAnchor.MiddleCenter);
                 }
-                else DrawResult();
+                else if (OpenCard == Card.None) DrawResult();
                 if (OverlayOn) DrawFooter();
                 return;
             }
@@ -607,6 +943,36 @@ namespace World.Game
                 EncounterUi.Shadow(br, _banner, EncounterUi.Header, _bannerColor, TextAnchor.MiddleCenter);
             }
             DrawFooter();
+        }
+
+        /// <summary>
+        /// What taps on world objects open (Sol's tally, the torches' progress, the bell's tap-along), the pause label and
+        /// the resume count. Drawn whether or not the H overlay is on: they answer a tap, they are not a permanent HUD.
+        /// </summary>
+        private void DrawWorldReadouts()
+        {
+            float px(float v) => EncounterUi.Px(v);
+            float sw = UnityEngine.Screen.width;
+            if (OpenCard != Card.None)
+            {
+                string title = OpenCard == Card.Tally ? "Sol's tally" : OpenCard == Card.Progress ? "The block torches" : "The tuning bell";
+                var r = EncounterUi.Fit(new Rect((sw - px(820)) / 2f, px(24), px(820), px(OpenCard == Card.Tally ? 250 : 190)), 6);
+                EncounterUi.Panel(r, new Color(0.06f, 0.05f, 0.04f, 0.94f));
+                EncounterUi.Label(new Rect(r.x, r.y + px(6), r.width, px(48)), title, EncounterUi.Header, EncounterUi.Gold, TextAnchor.MiddleCenter);
+                EncounterUi.Label(new Rect(r.x + px(24), r.y + px(56), r.width - px(48), r.height - px(100)), CardText, EncounterUi.Body, EncounterUi.Text, TextAnchor.UpperCenter);
+                EncounterUi.Label(new Rect(r.x, r.yMax - px(40), r.width, px(34)), "Tap the ground to close", EncounterUi.Hint, EncounterUi.Dim, TextAnchor.MiddleCenter);
+            }
+            if (PauseState == PauseStage.Paused)
+            {
+                var r = EncounterUi.Fit(new Rect((sw - px(700)) / 2f, px(300), px(700), px(120)), 6);
+                EncounterUi.Panel(r, new Color(0.06f, 0.05f, 0.04f, 0.9f));
+                EncounterUi.Label(new Rect(r.x, r.y + px(6), r.width, px(52)), LeaveArmed ? "Tap the log seat again to leave" : "Paused", EncounterUi.Header, LeaveArmed ? EncounterUi.Bad : EncounterUi.Gold, TextAnchor.MiddleCenter);
+                EncounterUi.Label(new Rect(r.x, r.y + px(60), r.width, px(50)), "Strike any drum to go on after a count of four", EncounterUi.Body, EncounterUi.Text, TextAnchor.MiddleCenter);
+            }
+            else if (PauseState == PauseStage.Counting && ResumeCount > 0)
+                EncounterUi.Shadow(new Rect(0, px(150), sw, px(170)), ResumeCount.ToString(), EncounterUi.Huge, EncounterUi.Gold, TextAnchor.MiddleCenter);
+            else if (LeaveArmed)
+                EncounterUi.Shadow(new Rect(0, px(300), sw, px(60)), "Tap the log seat again to leave", EncounterUi.Header, EncounterUi.Bad, TextAnchor.MiddleCenter);
         }
 
         /// <summary>A slim strip at the top: blocks with PASS/MISS, the mix stage, the beat and the judgement counts.</summary>
