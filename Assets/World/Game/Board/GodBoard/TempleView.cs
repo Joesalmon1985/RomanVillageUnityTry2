@@ -41,6 +41,7 @@ namespace World.Game
             v.PeopleName = people.Name.StartsWith("the ") ? char.ToUpper(people.Name[4]) + people.Name.Substring(5) : people.Name;
             v.Colour = PeopleColour(people);
             v.Build(playerAltar);
+            if (playerAltar) WorldZone.Tag(go, WorldZones.HubTemple); // WU-0: the hub's temple zone
             return v;
         }
 
@@ -178,13 +179,79 @@ namespace World.Game
     }
 
     /// <summary>The player's altar: pressing it (or E close by) sacrifices a lamb and opens the god board (GB-1).</summary>
-    public sealed class TempleAltar : MonoBehaviour, IInteractable, IInspectable
+    /// <summary>
+    /// The player's altar (GB-1), the first adopter of the WU-0 world action: the first tap (or E) previews (the altar
+    /// glows and the ledger asks "Sacrifice a lamb?"), the second tap confirms and sends <c>Sacrifice</c> once; a tap
+    /// elsewhere cancels. Refusals (too far, board closed) are said on the ledger.
+    /// </summary>
+    public sealed class TempleAltar : MonoBehaviour, IInteractable, IWorldAction, IWorldActionAnchor
     {
+        public const string Question = "Sacrifice a lamb?";
         public TempleView Temple;
+        private GameObject _glow;
+        private Material _glowMat;
+
         public string Prompt => "Sacrifice a lamb";
         public string Title => "The altar";
         public IEnumerable<string> Lines => new[] { "Sacrifice a lamb here to open the god board." };
-        public void Interact() { if (GodBoardDirector.Instance != null) GodBoardDirector.Instance.TrySacrifice(); }
+        public string PreviewLine => Question;
+        public Transform Anchor => Temple != null && Temple.AltarSpot != null ? Temple.AltarSpot : transform;
+        public float KeyReach => GodBoardDirector.AltarRange;
+        /// <summary>True while the preview highlight shows (tests).</summary>
+        public bool Highlighted => _glow != null && _glow.activeSelf;
+
+        /// <summary>The E key and older callers go through the same two-step path.</summary>
+        public void Interact() => WorldActions.Tap(this);
+
+        public WorldActionCheck Check()
+        {
+            var d = GodBoardDirector.Instance;
+            return d != null ? d.CheckSacrifice() : WorldActionCheck.Disable("There is no god board here.");
+        }
+
+        public bool Commit()
+        {
+            var d = GodBoardDirector.Instance;
+            return d != null && d.TrySacrifice();
+        }
+
+        public void ShowPreview(bool on)
+        {
+            if (on && _glow == null) BuildGlow();
+            if (_glow != null) _glow.SetActive(on);
+        }
+
+        private void OnEnable() => WorldActions.Register(this);
+        private void OnDisable() { WorldActions.Unregister(this); if (_glow != null) _glow.SetActive(false); }
+
+        private void Update()
+        {
+            if (_glow == null || !_glow.activeSelf) return;
+            float pulse = 0.55f + 0.3f * Mathf.Sin(Time.unscaledTime * 5f);
+            _glowMat.color = new Color(1f, 0.78f, 0.35f, pulse);
+        }
+
+        private void BuildGlow()
+        {
+            // A warm ring of light round the altar block and a halo over the lamb.
+            var mb = new MeshBuilder();
+            const int N = 32;
+            for (int i = 0; i < N; i++)
+            {
+                float a0 = i * Mathf.PI * 2 / N, a1 = (i + 1) * Mathf.PI * 2 / N;
+                var o0 = new Vector3(Mathf.Sin(a0), 0, Mathf.Cos(a0)); var o1 = new Vector3(Mathf.Sin(a1), 0, Mathf.Cos(a1));
+                mb.Quad(o0 * 1.9f, o0 * 2.3f, o1 * 2.3f, o1 * 1.9f, Color.white);
+                mb.Quad(o0 * 1.9f, o1 * 1.9f, o1 * 2.3f, o0 * 2.3f, Color.white);
+                var h = Vector3.up * 1.6f;
+                mb.Quad(h + o0 * 0.7f, h + o0 * 0.85f, h + o1 * 0.85f, h + o1 * 0.7f, Color.white);
+                mb.Quad(h + o0 * 0.7f, h + o1 * 0.7f, h + o1 * 0.85f, h + o0 * 0.85f, Color.white);
+            }
+            _glowMat = MaterialFactory.CreateGlow(new Color(1f, 0.78f, 0.35f, 0.8f), "AltarPreview");
+            var parent = Temple != null ? Temple.transform : transform;
+            _glow = mb.ToObject("AltarPreviewGlow", parent, _glowMat);
+            _glow.transform.localPosition = new Vector3(0, 1.0f, 0);
+            _glow.layer = 2;
+        }
     }
 
     /// <summary>Where a temple stands: clear ground near the people's first camp (no plot, path, patch or camp prop).</summary>
