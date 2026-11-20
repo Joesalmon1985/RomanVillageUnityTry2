@@ -15,6 +15,7 @@ namespace World.Game
         {
             InteriorDirector.Create(boot);
             InteriorScripts.Register();
+            FootprintStones.Create(boot.transform); // WU-6: the step band carved in the world
         }
     }
 }

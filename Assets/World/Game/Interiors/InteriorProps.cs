@@ -52,6 +52,9 @@ namespace World.Game
                 default: Plinth(root); break;
             }
             LandLook.PickBox(root.gameObject, new Vector3(0, 1.0f, 0), new Vector3(2.2f, 2.0f, 2.2f));
+            WorldZone.Tag(root.gameObject, WorldZones.CryInteract); // WU-6
+            if (thing.Link == null && md.Kind != MarkerKind.Exit && md.Kind != MarkerKind.Stairs)
+                root.gameObject.AddComponent<MiraActThing>().Thing = thing; // WU-6: Mira's act offered on a tap
         }
 
         // ---------------- helpers ----------------
