@@ -96,6 +96,13 @@ namespace World.Game
         /// <summary>The layout used by the last GUI pass (tests, captures).</summary>
         public DuelLayout LastLayout { get; private set; }
 
+        // ---- WU-7: the world objects (essence stones, hand, beads, tally sticks, referee, gate)
+        /// <summary>The duel's world objects; hidden while the Clear view setting is on (then <see cref="DuelLayout"/> draws the panel).</summary>
+        public DuelWorldProps Props { get; private set; }
+        /// <summary>True when the world objects (not the screen panel) carry the duel: <see cref="GodBoardSettings.ClearView"/> is off.</summary>
+        public bool WorldFirst => !GodBoardSettings.ClearView;
+        private readonly List<Vector2> _tapQueue = new List<Vector2>();
+
         private readonly List<int> _building = new List<int>();
         private EncounterContext _ctx;
         private GameObject _root;
@@ -159,6 +166,7 @@ namespace World.Game
 
             _firstTimer = State == null || State.Ward == null || State.Ward.CompletedDuelsVsMira == 0;
             NewDuel();
+            Props = DuelWorldProps.Build(this, _root.transform, ctx.FirstPersonCamera != null ? ctx.FirstPersonCamera : Camera.main);
         }
 
         private void BeginCampaign(EncounterContext ctx)
@@ -264,6 +272,7 @@ namespace World.Game
             if (_ctx != null && _ctx.World != null && _ctx.World.GodCam != null) _ctx.World.GodCam.KeyboardPan = _prevPan;
             if (_ctx != null && _ctx.FirstPersonCamera != null && _prevFov > 0f) _ctx.FirstPersonCamera.fieldOfView = _prevFov;
             if (_stage != null) _stage.Struck -= OnStruck;
+            if (Props != null) Props.Machine.Cancel();
             if (_miraHidden && _mira != null && _mira.Actor != null) _mira.Actor.SetVisible(true);
             if (!_campaign && _mira != null && _mira.Actor != null) { _mira.Actor.PlayIdle(); _mira.Actor.FaceTowards(_mira.HomePosition + BoardSpace.DirOf(_mira.HomeYaw)); }
             if (_root != null) Object.Destroy(_root);
@@ -366,6 +375,33 @@ namespace World.Game
             return r;
         }
 
+        /// <summary>Takes the orb at this place in the hand back (a tap on a socket). False if there is none.</summary>
+        public bool RemoveAt(int index)
+        {
+            if (Phase == Screen.Result || Phase == Screen.Stakes || index < 0 || index >= _building.Count) return false;
+            _building.RemoveAt(index);
+            return true;
+        }
+
+        /// <summary>A short line from the referee or the world (the toast).</summary>
+        public void Say(string line, float seconds = 2.2f) => ShowToast(line, seconds);
+
+        /// <summary>A tap at a screen point (pixels, origin bottom-left) on the world objects; tests and captures use this. Nothing in the Clear view.</summary>
+        public DuelTarget TapAt(Vector2 screen) => Props != null && WorldFirst ? Props.TapAt(screen) : DuelTarget.None;
+
+        /// <summary>Queues a tap for the next frame, as the pointer would deliver it.</summary>
+        public void InjectTap(Vector2 screen) => _tapQueue.Add(screen);
+
+        private void PollTaps(bool blocked)
+        {
+            if (Input.GetMouseButtonDown(0)) _tapQueue.Add(Input.mousePosition);
+            for (int i = 0; i < Input.touchCount; i++) { var t = Input.GetTouch(i); if (t.phase == TouchPhase.Began) _tapQueue.Add(t.position); }
+            if (_tapQueue.Count == 0) return;
+            var taps = _tapQueue.ToArray(); _tapQueue.Clear();
+            if (blocked || !WorldFirst) return;
+            foreach (var tp in taps) { TapAt(tp); if (IsFinished) return; }
+        }
+
         /// <summary>A new duel against the same opponent. Never in a lethal duel (one attempt, one result).</summary>
         public bool Rematch()
         {
@@ -422,12 +458,15 @@ namespace World.Game
                 if (step > 0) Session.Advance(step);
             }
             ProcessEvents();
-            if (_campaign) _stage.SetGathering(Phase == Screen.Active ? _building : null);
+            _stage.SetGathering(Phase == Screen.Active ? _building : null);
+            if (Props != null) Props.Tick(unscaledDt);
+            PollTaps(blocked || Phase == Screen.Stakes);
             if (!blocked) ReadKeys();
         }
 
         private void ReadKeys()
         {
+            if (Input.GetKeyDown(KeyCode.H)) GodBoardSettings.ClearView = !GodBoardSettings.ClearView; // Clear view: the screen panel instead of the world objects
             if (Phase == Screen.Result)
             {
                 if (Input.GetKeyDown(KeyCode.R)) Rematch();
@@ -527,7 +566,7 @@ namespace World.Game
             CueLog.Add(_cue);
         }
 
-        private static string Possessive(string name) => string.IsNullOrEmpty(name) ? "The opponent's" : name.EndsWith("s") ? name + "'" : name + "'s";
+        public static string Possessive(string name) => string.IsNullOrEmpty(name) ? "The opponent's" : name.EndsWith("s") ? name + "'" : name + "'s";
 
         private void ShowToast(string s, float seconds = 2.2f) { _toast = s; _toastUntil = Time.unscaledTime + seconds; }
 
@@ -550,10 +589,26 @@ namespace World.Game
             EncounterUi.CompactUnit = L.Compact ? L.U : 0f;
             try
             {
-                if (L.Compact) DrawCompact(L); else DrawDesktop(L);
+                if (WorldFirst) DrawWorldFirst(L);
+                else if (L.Compact) DrawCompact(L); else DrawDesktop(L);
             }
             finally { EncounterUi.CompactUnit = 0f; }
         }
+
+        /// <summary>World first: only the lethal stakes card (one readable line is needed for correctness) and a one-line toast stay on the screen.</summary>
+        private void DrawWorldFirst(DuelLayout L)
+        {
+            if (Phase == Screen.Stakes) { DrawStakes(L); return; }
+            var toast = Toast;
+            if (toast == null) return;
+            EncounterUi.Panel(L.Toast, new Color(0.25f, 0.08f, 0.06f, 0.92f));
+            EncounterUi.Label(L.Toast, toast, L.Compact ? EncounterUi.Hint : EncounterUi.Body, EncounterUi.Text, TextAnchor.MiddleCenter);
+        }
+
+        /// <summary>The referee's words for the end of the duel (the result head, line and footnote).</summary>
+        public string ResultHead() { ResultText(out var h, out _, out _); return h; }
+        public string ResultLine() { ResultText(out _, out var l, out _); return l; }
+        public string ResultNote() => ResultFootnote();
 
         private string Subtitle()
         {

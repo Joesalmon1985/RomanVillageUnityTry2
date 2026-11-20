@@ -33,6 +33,7 @@ namespace World.Game.Tests
         public void ResetDuelAfter()
         {
             CampaignDuel.ResetSession();
+            GodBoardSettings.Override = null;
             DuelLayout.SafeAreaOverride = null;
             if (SaveSystem.PathOverride != null) { try { File.Delete(SaveSystem.PathOverride); } catch { } SaveSystem.PathOverride = null; }
         }
@@ -541,6 +542,7 @@ namespace World.Game.Tests
         public IEnumerator Layout_LiveDuel_UsesTheSafeArea()
         {
             yield return Load();
+            GodBoardSettings.Override = true; // the Clear view layer: DuelLayout draws the panel
             WardDuelEncounter.TuningOverride = SlowOpponent();
             DuelLayout.SafeAreaOverride = new Rect(40, 0, Screen.width - 80, Screen.height - 20);
             Assert.IsTrue(CampaignDuel.StartRequest(CampaignDuel.Friendly(WardOpponents.FriendlyOrrin)));
@@ -557,6 +559,122 @@ namespace World.Game.Tests
             // Expandable history (compact) folds back.
             e.ToggleHistory(); Assert.IsTrue(e.HistoryExpanded);
             e.ToggleHistory(); Assert.IsFalse(e.HistoryExpanded);
+            EncounterHost.Instance.Abort();
+        }
+
+        // ------------------------------------------------------------------ WU-7: the duel as world objects (campaign modes)
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator WorldObjects_Friendly_StonesBuildTakeBackAndCast_TallyAndBeadsEqualTheSession()
+        {
+            yield return Load();
+            GodBoardSettings.Override = false;
+            WardDuelEncounter.TuningOverride = SlowOpponent();
+            Assert.IsTrue(CampaignDuel.StartRequest(CampaignDuel.Friendly(WardOpponents.FriendlyOrrin, "Orrin", "orrin")));
+            var e = WardDuelEncounter.Current;
+            yield return null; yield return null;
+            Assert.IsTrue(e.Props.RigVisible);
+            // Mira's Ward by stones: build, take the first orb back, add it again, lock by preview and confirm.
+            yield return DuelWorldTaps.Build(e, Essence.Flame, Essence.Flame, Essence.Vine);
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Socket, 0);
+            DuelWorldTaps.AssertHand(e, Essence.Flame, Essence.Vine);
+            yield return DuelWorldTaps.Build(e, Essence.Flame);
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return DuelWorldTaps.PreviewConfirm(e, DuelTarget.Hand);
+            Assert.AreEqual(WardDuelEncounter.Screen.Active, e.Phase);
+            CollectionAssert.AreEqual(new[] { (int)Essence.Flame, (int)Essence.Vine, (int)Essence.Flame }, e.PlayerWard);
+            // Mira casts two weaves by stones; the opponent is silent (60 s), so the beads and the tally are Mira's.
+            for (int n = 0; n < 2; n++)
+            {
+                yield return Until(() => e.Session.MsUntilPlayerMayCast == 0, 3f, "recovery");
+                yield return DuelWorldTaps.Build(e, Essence.Vine, n == 0 ? Essence.Flame : Essence.Vine, Essence.Vine);
+                yield return new WaitForSecondsRealtime(0.3f);
+                yield return DuelWorldTaps.PreviewConfirm(e, DuelTarget.Hand);
+                Assert.AreEqual(n + 1, e.Session.PlayerHistory.Count);
+            }
+            yield return null;
+            Assert.AreEqual(e.Session.PlayerCastsLeft, e.Props.BeadsLit(true));
+            Assert.AreEqual(e.Session.RivalCastsLeft, e.Props.BeadsLit(false));
+            int f = 0, ec = 0, fd = 0;
+            foreach (var h in e.Session.PlayerHistory) { f += h.Fractures; ec += h.Echoes; fd += h.Fades; }
+            CollectionAssert.AreEqual(new[] { f, ec, fd }, e.Props.TallyTotals(true), "tally totals equal PlayerHistory");
+            int rf = 0, re = 0, rd = 0;
+            foreach (var h in e.Session.RivalHistory) { rf += h.Fractures; re += h.Echoes; rd += h.Fades; }
+            CollectionAssert.AreEqual(new[] { rf, re, rd }, e.Props.TallyTotals(false), "the opponent's tally equals RivalHistory");
+            // Every stone is on the screen at the real hit size.
+            var safe = ScreenSafeArea.Current();
+            float min = WorldHitTarget.MinSide(Screen.height);
+            for (int i = 0; i < e.Props.StoneCount; i++)
+            {
+                var r = e.Props.HitRectOf(DuelTarget.Stone, i);
+                Assert.IsTrue(r.HasValue); Assert.GreaterOrEqual(r.Value.width, min - 0.5f); Assert.GreaterOrEqual(r.Value.height, min - 0.5f);
+                Assert.IsTrue(safe.Contains(r.Value.center), "stone " + i + " is on the screen");
+            }
+            Assert.IsNull(e.Props.RevealedInAir());
+            EncounterHost.Instance.Abort();
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator WorldObjects_Lethal_StakesCardFirst_GateLeaveIsASurrender_OneResolve()
+        {
+            yield return ToKeeperThreshold();
+            GodBoardSettings.Override = false;
+            int alive = Alive();
+            WardDuelEncounter.TuningOverride = SlowOpponent();
+            var e = CommitAndStage();
+            yield return null; yield return null;
+            Assert.AreEqual(WardDuelEncounter.Screen.Stakes, e.Phase, "the stakes card comes first");
+            Assert.IsFalse(e.Props.RigVisible, "the stones wait for the card");
+            Assert.AreEqual(DuelTarget.None, e.TapAt(new Vector2(Screen.width * 0.5f, Screen.height * 0.1f)), "no world tap during the stakes card");
+            Assert.IsTrue(e.BeginWard());
+            yield return null; yield return null;
+            Assert.IsTrue(e.Props.RigVisible);
+            yield return DuelWorldTaps.Build(e, Essence.Flame, Essence.Flame, Essence.Vine);
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return DuelWorldTaps.PreviewConfirm(e, DuelTarget.Hand);
+            Assert.AreEqual(WardDuelEncounter.Screen.Active, e.Phase);
+            // The gate: a preview that says what it costs, and the second tap is the surrender.
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Gate);
+            StringAssert.Contains("Garrick will pay for this. Leave?", LedgerCard.Content.Question);
+            Assert.IsFalse(e.Surrendered, "the preview surrenders nothing");
+            Assert.AreEqual(0, CampaignDuel.ResolvesSent);
+            yield return new WaitForSecondsRealtime(0.32f);
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Gate);
+            Assert.IsTrue(e.Surrendered);
+            Assert.AreEqual(DuelResult.Surrender, e.Resolution);
+            Assert.AreEqual(1, CampaignDuel.ResolvesSent);
+            Assert.AreEqual(alive - 1, Alive(), "surrender counts as a defeat");
+            yield return Until(() => e.HoldOver, 5f, "hold");
+            yield return new WaitForSecondsRealtime(0.7f);
+            // The result: there is no rematch in a lethal duel; the gate returns.
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Caster);
+            Assert.AreEqual(WorldActionState.Refused, e.Props.Machine.State, "no rematch in a lethal duel");
+            yield return new WaitForSecondsRealtime(0.32f);
+            yield return DuelWorldTaps.PreviewConfirm(e, DuelTarget.Gate);
+            yield return Until(() => !EncounterHost.Instance.IsRunning, 3f, "the gate returns");
+            Assert.AreEqual(1, S.Campaign.Resolved.Count);
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator ClearView_DrawsDuelLayout_AndHidesTheWorldObjects_OneSetting()
+        {
+            yield return Load();
+            GodBoardSettings.Override = true;
+            WardDuelEncounter.TuningOverride = SlowOpponent();
+            Assert.IsTrue(CampaignDuel.StartRequest(CampaignDuel.Friendly(WardOpponents.FriendlyOrrin, "Orrin", "orrin")));
+            var e = WardDuelEncounter.Current;
+            yield return null; yield return null; yield return null;
+            Assert.IsFalse(e.WorldFirst);
+            Assert.IsFalse(e.Props.RigVisible, "the stones are hidden in the Clear view");
+            Assert.AreEqual(DuelTarget.None, e.TapAt(new Vector2(Screen.width * 0.5f, Screen.height * 0.1f)), "world taps do nothing in the Clear view");
+            Assert.IsNotNull(e.LastLayout, "DuelLayout draws the panel");
+            Assert.IsTrue(e.AddEssence(Essence.Flame), "the panel's own buttons call the same methods");
+            GodBoardSettings.Override = false; // the one setting, switched off: the world objects return
+            yield return null; yield return null;
+            Assert.IsTrue(e.WorldFirst);
+            Assert.IsTrue(e.Props.RigVisible);
+            yield return DuelWorldTaps.Build(e, Essence.Vine);
+            DuelWorldTaps.AssertHand(e, Essence.Flame, Essence.Vine);
             EncounterHost.Instance.Abort();
         }
 

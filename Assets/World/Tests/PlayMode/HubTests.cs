@@ -241,5 +241,42 @@ namespace World.Game.Tests
             yield return Until(() => ring.State == DuelRing.Errand.None, 60f, "Mira walks back");
             Assert.Less(BoardSpace.Flat(mira.transform.position - home), 2f);
         }
+
+        /// <summary>WU-7: the duel's gate leaves by preview then confirm and the player is back at the ring where he stood; Mira walks home.</summary>
+        [UnityTest, Timeout(180000)]
+        public IEnumerator Duel_GateLeavesByTwoTaps_AndTheHubViewIsBackAtTheRing()
+        {
+            yield return Start(GodBoardStart.Id);
+            GodBoardSettings.Override = false;
+            try
+            {
+                var ring = DuelRing.Instance;
+                var mira = Need(NpcIds.Mira);
+                var home = mira.transform.position;
+                var av = _boot.Avatar;
+                Vector3 pos = av.Position; float yaw = av.Yaw, pitch = av.Pitch;
+                Assert.IsTrue(ring.StartDuel());
+                yield return Until(() => ring.State == DuelRing.Errand.Dueling, 40f, "Mira walks over");
+                var e = WardDuelEncounter.Current;
+                Assert.IsNotNull(e);
+                yield return null; yield return null;
+                Assert.IsTrue(e.Props.RigVisible, "the stones stand at the ring");
+                Assert.IsNotNull(Object.FindFirstObjectByType<DuelWorldProps>());
+                yield return DuelWorldTaps.Tap(e, DuelTarget.Gate);
+                Assert.IsTrue(EncounterHost.Instance.IsRunning, "one tap on the gate only previews");
+                yield return new WaitForSecondsRealtime(0.32f);
+                yield return DuelWorldTaps.Tap(e, DuelTarget.Gate);
+                yield return Until(() => !EncounterHost.Instance.IsRunning, 3f, "the gate leaves");
+                yield return Until(() => ring.State == DuelRing.Errand.None, 60f, "Mira walks back to the camp");
+                Assert.Less(BoardSpace.Flat(mira.transform.position - home), 2f, "Mira is home");
+                Assert.Less(Vector3.Distance(av.Position, pos), 0.05f, "the player stands where he stood at the ring");
+                Assert.Less(Mathf.Abs(Mathf.DeltaAngle(av.Yaw, yaw)), 0.5f);
+                Assert.Less(Mathf.Abs(av.Pitch - pitch), 0.5f);
+                yield return null;
+                Assert.IsNull(Object.FindFirstObjectByType<DuelWorldProps>(), "the stones are gone");
+                Assert.IsNotNull(DuelRing.Instance, "the ring stands");
+            }
+            finally { GodBoardSettings.Override = null; }
+        }
     }
 }

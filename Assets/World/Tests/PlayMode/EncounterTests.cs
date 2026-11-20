@@ -32,6 +32,7 @@ namespace World.Game.Tests
         {
             if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) EncounterHost.Instance.Abort();
             WardDuelEncounter.TuningOverride = null; WardDuelEncounter.SeedOverride = null;
+            GodBoardSettings.Override = null;
             RhythmPartyEncounter.TuningOverride = null; RhythmPartyEncounter.StemDirOverride = null;
         }
 
@@ -230,6 +231,142 @@ namespace World.Game.Tests
             Assert.AreEqual(WardOutcome.Forfeited, session.Outcome);
             Assert.AreEqual(3, Boot.Sim.State.Ward.CompletedDuelsVsMira, "abort records nothing");
             AssertAvatarRestored("aborted duel");
+        }
+
+        // ------------------------------------------------------------------ WU-7: the duel as world objects
+
+        static WardTuning SlowRecovery() => new WardTuning
+        {
+            PlayerRecoveryMs = 2500, MiraFirstCastMinMs = 60000, MiraFirstCastMaxMs = 60000, MiraThinkMinMs = 60000, MiraThinkMaxMs = 60000,
+        };
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Stones_BuildTakeBackAndCast_RecoveryBlocksASecondCast_BeadsAndTallyMatchTheSession()
+        {
+            yield return Load();
+            GodBoardSettings.Override = false;
+            WardDuelEncounter.TuningOverride = SlowRecovery();
+            yield return StartDuel();
+            var e = WardDuelEncounter.Current;
+            yield return null; yield return null;
+            Assert.IsTrue(e.WorldFirst); Assert.IsNotNull(e.Props); Assert.IsTrue(e.Props.RigVisible, "the stones are in the view");
+            Assert.AreEqual(3, e.Props.StoneCount, "three essences in the first duel: three stones");
+
+            // Setup: tap three stones, take the middle orb back, add one: the Ward in the hand is Flame, Vine, Frost.
+            yield return DuelWorldTaps.Build(e, Essence.Flame, Essence.Frost, Essence.Vine);
+            DuelWorldTaps.AssertHand(e, Essence.Flame, Essence.Frost, Essence.Vine);
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Socket, 1);
+            DuelWorldTaps.AssertHand(e, Essence.Flame, Essence.Vine);
+            yield return DuelWorldTaps.Build(e, Essence.Frost);
+            DuelWorldTaps.AssertHand(e, Essence.Flame, Essence.Vine, Essence.Frost);
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Stone, 0);
+            Assert.AreEqual(3, e.Building.Count, "a full hand takes no fourth orb");
+            // Locking the Ward is a preview first, a confirm second.
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Hand);
+            Assert.AreEqual(WardDuelEncounter.Screen.Setup, e.Phase, "the first tap on the hand only previews");
+            Assert.AreEqual("Lock this Ward?", LedgerCard.Content.Question);
+            yield return new WaitForSecondsRealtime(0.32f);
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Hand);
+            Assert.AreEqual(WardDuelEncounter.Screen.Active, e.Phase);
+            CollectionAssert.AreEqual(new[] { (int)Essence.Flame, (int)Essence.Vine, (int)Essence.Frost }, e.PlayerWard);
+            yield return new WaitForSecondsRealtime(0.65f);
+
+            // Active: two orbs are not a weave (refused, nothing cast); three are, by preview then confirm.
+            yield return DuelWorldTaps.Build(e, Essence.Vine, Essence.Frost);
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Hand);
+            Assert.AreEqual(WorldActionState.Refused, e.Props.Machine.State);
+            Assert.AreEqual(0, e.Session.PlayerHistory.Count);
+            yield return DuelWorldTaps.Build(e, Essence.Flame);
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return DuelWorldTaps.PreviewConfirm(e, DuelTarget.Hand);
+            Assert.AreEqual(1, e.Session.PlayerHistory.Count, "one cast");
+            CollectionAssert.AreEqual(new[] { (int)Essence.Vine, (int)Essence.Frost, (int)Essence.Flame }, e.Session.PlayerHistory[0].Weave);
+            Assert.AreEqual(0, e.Building.Count, "the orbs flew");
+            yield return null;
+            Assert.AreEqual(e.Session.PlayerCastsLeft, e.Props.BeadsLit(true), "beads equal the casts left (caster)");
+            Assert.AreEqual(e.Session.RivalCastsLeft, e.Props.BeadsLit(false), "beads equal the casts left (opponent)");
+
+            // Recovery blocks a second cast: the tap is refused in words and nothing is cast.
+            Assert.Greater(e.Session.MsUntilPlayerMayCast, 0, "the hand is recovering");
+            yield return DuelWorldTaps.Build(e, Essence.Flame, Essence.Flame, Essence.Vine);
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Hand);
+            Assert.AreEqual(WorldActionState.Refused, e.Props.Machine.State);
+            StringAssert.Contains("recovering", LedgerCard.Content.Refusal);
+            Assert.AreEqual(1, e.Session.PlayerHistory.Count, "no second cast while recovering");
+            yield return Until(() => e.Session.MsUntilPlayerMayCast == 0, 4f, "recovery");
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return DuelWorldTaps.PreviewConfirm(e, DuelTarget.Hand);
+            Assert.AreEqual(2, e.Session.PlayerHistory.Count, "the second cast once the hand has recovered");
+            yield return null;
+            Assert.AreEqual(e.Session.PlayerCastsLeft, e.Props.BeadsLit(true));
+
+            // The tally stick's pegs equal the history's totals, and each row is sorted (so no position can be read from it).
+            int f = 0, ec = 0, fd = 0;
+            foreach (var h in e.Session.PlayerHistory) { f += h.Fractures; ec += h.Echoes; fd += h.Fades; }
+            CollectionAssert.AreEqual(new[] { f, ec, fd }, e.Props.TallyTotals(true), "tally totals equal PlayerHistory");
+            for (int r = 0; r < 2; r++)
+            {
+                var row = e.Props.TallyRow(true, r);
+                for (int k = 1; k < 3; k++) Assert.GreaterOrEqual(row[k], row[k - 1], "tally row " + r + " is sorted");
+            }
+            // The ledger of the stick says the same in words.
+            yield return DuelWorldTaps.Tap(e, DuelTarget.TallyCaster);
+            Assert.AreEqual(WorldActionState.Inspect, e.Props.Machine.State);
+            StringAssert.Contains("In all: " + DuelWorldProps.Plural(f, "fracture", "fractures"), string.Join(" | ", LedgerCard.Content.Lines));
+            Assert.IsNull(LedgerText.Violation(LedgerCard.Content));
+            // The Ward of the opponent is never in the air before the end.
+            Assert.IsNull(e.Props.RevealedInAir());
+            Assert.IsNull(e.Session.RevealedRivalWard);
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator Duel_NoLocusInTheWorldBeforeTheEnd_ResultRevealsBothWardsInTheAir_RematchAndGateReturn()
+        {
+            yield return Load();
+            GodBoardSettings.Override = false;
+            WardDuelEncounter.TuningOverride = SlowMira();
+            yield return StartDuel();
+            var e = WardDuelEncounter.Current;
+            yield return null; yield return null;
+            Lock(e, PlayerWard);
+            yield return PlayToEnd(e, 2);
+            yield return null;
+            // Before the end every word the world gives is a count or an essence name of a cast weave; none names a place.
+            foreach (var t in new[] { DuelTarget.Referee, DuelTarget.TallyCaster, DuelTarget.TallyOpponent, DuelTarget.BeadsCaster, DuelTarget.BeadsOpponent, DuelTarget.Hand })
+            {
+                var words = string.Join(" | ", e.Props.LedgerWords(t)).ToLowerInvariant();
+                Assert.IsNull(LedgerText.Violation(words), t + " speaks of dice or odds");
+                foreach (var bad in new[] { "locus", "position", "first place", "second place", "third place", "left place", "middle place" })
+                    StringAssert.DoesNotContain(bad, words, t + " names a place");
+            }
+            Assert.IsNull(e.Props.RevealedInAir(), "no Ward in the air before the end");
+            // Finish the duel by casting to the end (the keys path), then the referee steps in.
+            yield return PlayToEnd(e);
+            Assert.AreEqual(WardDuelEncounter.Screen.Result, e.Phase);
+            yield return null; yield return null;
+            var air = e.Props.RevealedInAir();
+            Assert.IsNotNull(air, "both Wards are revealed in the air at the end");
+            var want = new System.Collections.Generic.List<int>(e.Session.RevealedPlayerWard); want.AddRange(e.Session.RevealedRivalWard);
+            CollectionAssert.AreEqual(want, air);
+            yield return Until(() => LedgerCard.IsOpen && LedgerCard.Content.Title == "The referee", 3f, "the referee speaks at the end");
+            StringAssert.Contains("rematch", string.Join(" ", LedgerCard.Content.Lines).ToLowerInvariant());
+            // Tap the caster: a rematch (preview, confirm); the gate then leaves (preview, confirm) and the player is back where he stood.
+            yield return new WaitForSecondsRealtime(0.7f);
+            var card = LedgerCard.LastRect; // a tap on the tablet closes it
+            e.TapAt(new Vector2(card.center.x, Screen.height - card.center.y));
+            Assert.IsFalse(LedgerCard.IsOpen, "a tap on the tablet closes it");
+            yield return DuelWorldTaps.PreviewConfirm(e, DuelTarget.Caster);
+            Assert.AreEqual(WardDuelEncounter.Screen.Setup, e.Phase, "tapping the caster rematches");
+            yield return null;
+            Assert.IsNull(e.Props.RevealedInAir(), "the Wards are hidden again");
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Gate);
+            Assert.AreEqual("Leave the duel?", LedgerCard.Content.Question);
+            Assert.IsTrue(EncounterHost.Instance.IsRunning, "a preview leaves nothing");
+            yield return new WaitForSecondsRealtime(0.32f);
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Gate);
+            yield return Until(() => !EncounterHost.Instance.IsRunning, 2f, "the gate leaves the duel");
+            AssertAvatarRestored("left by the gate");
+            Assert.IsFalse(LedgerCard.IsOpen, "the ledger closes with the duel");
         }
 
         [UnityTest, Timeout(60000)]
