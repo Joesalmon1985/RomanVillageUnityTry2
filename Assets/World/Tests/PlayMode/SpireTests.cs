@@ -148,5 +148,39 @@ namespace World.Game.Tests
             Assert.AreEqual("gospel_temple", LocalRhythmPacks.PackIdOfSpire(2));
             Assert.AreEqual("gospel_storm", LocalRhythmPacks.PackIdOfSpire(3));
         }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator DanceAtASpire_HasPerformersTorchesDrumShapes_AndTheLogSeatLeavesWithConfirm()
+        {
+            yield return Start();
+            Raise(Element.Fire, 0);
+            var sp = _d.Stage(0);
+            _boot.Avatar.PlaceExact(sp.Layout.DancerSpot, sp.Layout.DancerYaw, 0f);
+            sp.Interact();
+            var r = EncounterHost.Instance.Current as RhythmPartyEncounter;
+            Assert.IsNotNull(r, "the dance started at the spire");
+            yield return null; yield return null;
+            Assert.IsNotNull(r.Props, "performers, torches, bell and seat stand on the spire's stage");
+            Assert.AreSame(sp.Circle, r.Props.Circle);
+            Assert.IsNotNull(TouchStrips.ShapeResolver);
+            for (int p = 1; p <= 4; p++)
+            {
+                var s = Camera.main.WorldToScreenPoint(sp.Circle.DrumTop(p));
+                Assert.AreEqual(p, TouchStrips.PadAt(new Vector2(s.x, s.y)), "drum " + p + " shape at the spire");
+            }
+            r.TapLogSeat();
+            Assert.IsTrue(r.IsPaused, "the seat pauses the dance at a spire too");
+            yield return new WaitForSecondsRealtime(0.3f);
+            r.TapLogSeat();
+            Assert.IsTrue(r.LeaveArmed && !r.IsFinished, "preview first");
+            yield return new WaitForSecondsRealtime(0.3f);
+            r.TapLogSeat();
+            Assert.IsTrue(r.IsFinished, "confirmed");
+            Assert.IsFalse(r.Player.AnyPlaying, "audio stopped");
+            float end = Time.realtimeSinceStartup + 2f;
+            while (EncounterHost.Instance.IsRunning && Time.realtimeSinceStartup < end) yield return null;
+            Assert.IsFalse(EncounterHost.Instance.IsRunning);
+            Assert.IsNull(TouchStrips.ShapeResolver, "shapes unregistered");
+        }
     }
 }

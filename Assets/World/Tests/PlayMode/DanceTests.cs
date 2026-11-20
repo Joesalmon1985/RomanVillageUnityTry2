@@ -552,5 +552,50 @@ namespace World.Game.Tests
             Assert.IsNull(TouchStrips.ShapeResolver, "the drums' shapes are unregistered after the dance");
             Assert.AreEqual(0, DanceCircle.Current.ActiveDancers);
         }
+
+        [UnityTest, Timeout(150000)]
+        public IEnumerator TuningBell_TapAlong_SavesTheOffset_SurvivesAReload_AndChangesJudgement()
+        {
+            bool had = PlayerPrefs.HasKey(RhythmPartyEncounter.CalibrationPref);
+            float old = PlayerPrefs.GetFloat(RhythmPartyEncounter.CalibrationPref, 0f);
+            PlayerPrefs.SetFloat(RhythmPartyEncounter.CalibrationPref, 0f);
+            try
+            {
+                yield return Load();
+                yield return StartDance();
+                var r = RhythmPartyEncounter.Current;
+                Assert.AreEqual(0.0, r.Tuning.CalibrationMs, 1e-9, "no offset saved yet");
+                r.AutoPlayEnabled = true; r.AutoRoute = SimRoute.Bar;
+                yield return Until(() => r.Phase == RhythmPartyEncounter.Screen.Result, 60f, "phrase did not end");
+                // The bell is for between phrases: tap it, eight clicks follow, tap along 35 ms late.
+                Assert.AreEqual(RhythmPartyEncounter.TapKind.Bell, r.TapAt(Scr(r.Props.BellPoint)));
+                Assert.IsTrue(r.TuneActive);
+                var clicks = r.TuneClickTimes;
+                Assert.AreEqual(8, clicks.Length);
+                for (int i = 0; i < clicks.Length; i++) Assert.IsTrue(r.TuneTap(clicks[i] + 0.035), "tap " + i + " matched its click");
+                Assert.AreEqual(8, r.TuneMatched);
+                yield return Until(() => !r.TuneActive, 12f, "tap-along did not finish");
+                Assert.AreEqual(35.0, r.Tuning.CalibrationMs, 1e-9, "median offset in ms");
+                Assert.AreEqual(35.0, r.LastTuneMs, 1e-9);
+                Assert.AreEqual(35f, PlayerPrefs.GetFloat(RhythmPartyEncounter.CalibrationPref, -1f), 1e-4f, "saved");
+                Assert.IsTrue(r.Return());
+                yield return Until(() => !EncounterHost.Instance.IsRunning, 2f, "dance did not end");
+                yield return null;
+
+                // A reload: a new dance reads the saved offset, and judges by it (CalibrationMs = +35: a press 35 ms late is Perfect).
+                yield return StartDance();
+                var r2 = RhythmPartyEncounter.Current;
+                Assert.AreNotSame(r, r2);
+                Assert.AreEqual(35.0, r2.Tuning.CalibrationMs, 1e-9, "the offset survived");
+                var c0 = r2.Session.AllCues[0];
+                var j = r2.HandlePress(c0.Pad, c0.Time + 0.035);
+                Assert.AreEqual(JudgementKind.Perfect, j.Kind, "35 ms late judged Perfect with the saved offset");
+                Assert.AreEqual(0.0, j.DeltaMs, 1.0);
+            }
+            finally
+            {
+                if (had) PlayerPrefs.SetFloat(RhythmPartyEncounter.CalibrationPref, old); else PlayerPrefs.DeleteKey(RhythmPartyEncounter.CalibrationPref);
+            }
+        }
     }
 }
