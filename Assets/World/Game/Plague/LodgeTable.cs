@@ -284,10 +284,12 @@ namespace World.Game
             LandLook.Part(root, "Post", mb.ToMesh("warning post"), null, true);
             var bodyMesh = LandLook.Cached("lodge/lantern", m =>
             {
-                m.Box(new Vector3(0, 0.17f, 0), new Vector3(0.24f, 0.30f, 0.24f), new Color(0.30f, 0.22f, 0.15f));
+                var wd = new Color(0.30f, 0.22f, 0.15f);
+                m.Box(new Vector3(0, 0.02f, 0), new Vector3(0.26f, 0.04f, 0.26f), wd);
+                foreach (float cx in new[] { -0.115f, 0.115f }) foreach (float cz in new[] { -0.115f, 0.115f }) m.Box(new Vector3(cx, 0.17f, cz), new Vector3(0.03f, 0.3f, 0.03f), wd);
                 m.Cone(new Vector3(0, 0.32f, 0), 0.19f, 0.14f, 4, new Color(0.22f, 0.15f, 0.10f));
             });
-            var flameMesh = LandLook.Cached("lodge/flame", m => m.Box(new Vector3(0, 0.17f, 0), new Vector3(0.15f, 0.2f, 0.15f), Color.white));
+            var flameMesh = LandLook.Cached("lodge/flame", m => m.Box(new Vector3(0, 0.17f, 0), new Vector3(0.17f, 0.24f, 0.17f), Color.white));
             for (int i = 0; i < PlagueRules.OutbreaksToFall; i++)
             {
                 float y = i < 4 ? 4.0f : 3.2f;
@@ -638,7 +640,7 @@ namespace World.Game
                 _root = new GameObject("Banish charm");
                 Model(_root.transform, out _tip);
             }
-            if (_cam != w.Camera) { _cam = w.Camera; _root.transform.SetParent(_cam.transform, false); _root.transform.localPosition = new Vector3(0.24f, -0.12f, 0.5f); _root.transform.localRotation = Quaternion.Euler(-25f, 20f, 15f); }
+            if (_cam != w.Camera) { _cam = w.Camera; _root.transform.SetParent(_cam.transform, false); _root.transform.localPosition = new Vector3(0.2f, -0.2f, 0.55f); _root.transform.localRotation = Quaternion.Euler(-25f, 20f, 15f); _root.transform.localScale = Vector3.one * 0.4f; }
             bool show = PlagueApi.Active(s) && s.Historic == null && !_v.Elevated && (_v.Dir == null || !_v.Dir.IsOpen)
                         && !(EncounterHost.Instance != null && EncounterHost.Instance.IsRunning);
             if (_root.activeSelf != show) _root.SetActive(show);
