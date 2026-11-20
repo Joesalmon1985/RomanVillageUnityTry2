@@ -6,6 +6,7 @@ using UnityEngine;
 using World.Game;
 using World.Sim;
 using World.Sim.Table;
+using World.Sim.Encounters.Council;
 
 /// <summary>
 /// WU-0 capture driver for the world-first UI (Docs/WORLD_UI_PLAN.md, P-6): the three ratios with a simulated notch
@@ -173,6 +174,51 @@ public static class WorldUiCaptures
                     sb.Append(" minside " + WorldHitTarget.MinSide(Screen.height));
                     return sb.ToString();
                 }
+            // ---- WU-4: the council
+            case "council":
+                {
+                    int home = CouncilDirector.Instance != null ? CouncilDirector.Instance.HomeSettlement : 0;
+                    CouncilDirector.Disabled = true;
+                    CouncilFixture.StageExample(boot.Sim.State, home, 0);
+                    CouncilEncounter.AiDelay = 600f;
+                    if (boot.Views != null) boot.Views.SetView(ViewMode.FirstPerson);
+                    return "council " + EncounterDirectory.TryStart(CouncilEncounter.Id, null, home);
+                }
+            case "ctap": return "ctap " + CouncilEncounter.Current.TapTarget(cmd.Substring(5)) + " state " + WorldActions.State;
+            case "ctapnow": return "ctapnow " + CouncilEncounter.Current.TapTargetNow(cmd.Substring(8));
+            case "cadv":
+                {
+                    var enc = CouncilEncounter.Current; var sc = enc.Council; var e = sc.Election;
+                    if (e.Phase == ElectionPhase.Ready) enc.Do(new CouncilPush { Settlement = enc.SettlementId, ExpectedSeq = e.ActionSeq });
+                    else if (e.Phase == ElectionPhase.Choosing)
+                    {
+                        var p = CouncilScene.BuildProposals(e)[a.Length > 1 ? int.Parse(a[1]) : 0];
+                        enc.Do(new CouncilChoose { Settlement = enc.SettlementId, PushId = e.PushId, Tray = p.Tray, Socket = e.Pending[p.Tray].Mode == TrayMode.Both ? -1 : p.Socket, ExpectedSeq = e.ActionSeq });
+                    }
+                    return "cadv phase " + e.Phase;
+                }
+            case "cbank": { var enc = CouncilEncounter.Current; var e = enc.E; var r = enc.Do(new CouncilBank { Settlement = enc.SettlementId, ExpectedSeq = e.ActionSeq }); return "cbank " + r.Ok + " " + r.Reason; }
+            case "cbust":
+                {
+                    var enc = CouncilEncounter.Current; var e = enc.E; int b0 = e.Busts;
+                    for (int i = 0; i < 400 && e.Busts == b0; i++)
+                    {
+                        if (e.Phase == ElectionPhase.Ready) enc.Do(new CouncilPush { Settlement = enc.SettlementId, ExpectedSeq = e.ActionSeq });
+                        else if (e.Phase == ElectionPhase.Choosing) { var p = CouncilScene.BuildProposals(e)[0]; enc.Do(new CouncilChoose { Settlement = enc.SettlementId, PushId = e.PushId, Tray = p.Tray, Socket = e.Pending[p.Tray].Mode == TrayMode.Both ? -1 : p.Socket, ExpectedSeq = e.ActionSeq }); }
+                        else if (e.Phase == ElectionPhase.BustPending) enc.Do(new CouncilAcceptBust { Settlement = enc.SettlementId, ExpectedSeq = e.ActionSeq });
+                        else break;
+                    }
+                    return "cbust busts " + e.Busts + " active " + e.Active + " phase " + e.Phase;
+                }
+            case "cinfo":
+                {
+                    var enc = CouncilEncounter.Current; var e = enc.E; var sc = enc.Scene;
+                    var sb = new StringBuilder("council phase " + e.Phase + " active " + e.Active + " push " + sc.CamPush.ToString("0.0") + " state " + WorldActions.State + " ghosts " + sc.GhostCount + " targets: ");
+                    foreach (var t in sc.Targets(sc.ViewCamera)) sb.Append(t.Name + "@" + t.Px.x.ToString("0") + "," + t.Px.y.ToString("0") + " ");
+                    return sb.ToString();
+                }
+            case "ccloser": CouncilScene.ForceCloser = a[1] == "on" ? true : a[1] == "off" ? false : (bool?)null; return "closer " + a[1];
+            case "cleave": CouncilEncounter.Current.Return(); return "left";
             case "hour": DayNight.Instance.SetHour(float.Parse(a[1], ci)); return "hour";
             case "pause": boot.Clock.Pause("WorldUiCapture"); return "paused";
             case "resume": boot.Clock.Resume("WorldUiCapture"); return "resumed";

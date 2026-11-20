@@ -43,7 +43,11 @@ namespace World.Game
              .Check(() => Sc.Election.Pending.Count == 3, "three example trays were expected")
              .Check(() => CouncilScene.Current.Proposals.Count == 3, "the three example proposals are not held out as notes")
              .Capture("council_fixture_forward")
-             .Call(() => Enc.TapTarget("note " + TrayWith(5, 8)))
+             .Call(() => Enc.TapTarget("note " + TrayWith(5, 8)))   // first tap: the preview (ghosts at both places)
+             .Wait(0.5f)
+             .Check(() => CouncilScene.Current.GhostCount == 2 && Sc.Election.Temp[5 - 2] == 0, "the first tap did not preview both places")
+             .Capture("council_fixture_preview")
+             .Call(() => Enc.TapTarget("note " + TrayWith(5, 8)))   // second tap: the whole pairing
              .Wait(2.2f)
              .Check(() => Sc.Election.Temp[5 - 2] > 0 && Sc.Election.Temp[8 - 2] > 0, "tapping the 5+8 tray did not move both catspaws")
              .Check(() => CouncilScene.Current.ViewMismatch(Sc) == null, "the view does not match the state")
@@ -166,7 +170,7 @@ namespace World.Game
                 switch (e.Phase)
                 {
                     case ElectionPhase.Ready:
-                        if (e.HasAdvanced && ShouldBank(e, advancesThisSitting, pressOnForBust, d)) { BankTap(enc); }
+                        if (e.HasAdvanced && ShouldBank(e, advancesThisSitting, pressOnForBust, d)) { string bt = BankTap(enc); yield return Wait(0.4f); enc.TapTarget(bt); }
                         else PressOn(enc);
                         break;
                     case ElectionPhase.Choosing:
@@ -180,7 +184,9 @@ namespace World.Game
                                 int score = 0; foreach (var st in props[i].Steps) score += st.Value;
                                 if (score > bestScore) { bestScore = score; best = i; }
                             }
-                            enc.TapTarget("note " + best);
+                            enc.TapTarget("note " + best);      // preview
+                            yield return Wait(0.4f);
+                            enc.TapTarget("note " + best);      // confirm
                             advancesThisSitting++;
                             break;
                         }
@@ -222,11 +228,12 @@ namespace World.Game
         }
 
         /// <summary>Bank by tapping a lead who has listeners (every other time) or the candidate's seal.</summary>
-        static void BankTap(CouncilEncounter enc)
+        static string BankTap(CouncilEncounter enc)
         {
             int t = FirstPaw();
-            if (t > 0 && (_alt++ % 2) == 1 && enc.TapTarget("lead " + t)) return;
-            enc.TapTarget("seal");
+            if (t > 0 && (_alt++ % 2) == 1 && enc.TapTarget("lead " + t)) return "lead " + t;
+            if ((_alt++ % 2) == 0 && enc.TapTarget("recorder")) return "recorder";
+            enc.TapTarget("seal"); return "seal";
         }
 
         static bool ShouldBank(ElectionState e, int advances, bool pressOnForBust, Demo d)

@@ -781,11 +781,15 @@ namespace World.Game
                 if (_notes[k].activeSelf != on) { _notes[k].SetActive(on); if (on) StampNote(_notes[k], Proposals[k]); }
                 if (!on) continue;
                 var camR = ViewCamera.transform.right; camR.y = 0; camR.Normalize();
-                var pos = ct.position + Vector3.up * (1.35f + 0.55f * (k / 3)) + camR * (0.7f + 0.6f * (k % 3));
+                // spaced by screen size (a tenth of the picture's height) so the notes stay apart and tappable on a phone
+                float dist = Vector3.Distance(ViewCamera.transform.position, ct.position);
+                float hM = 2f * dist * Mathf.Tan(ViewCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+                float gap = Mathf.Max(0.6f, hM * 0.11f);
+                var pos = ct.position + Vector3.up * (1.35f + Mathf.Max(0.55f, hM * 0.11f) * (k / 3)) + camR * (Mathf.Max(0.7f, hM * 0.09f) + gap * (k % 3));
                 _notes[k].transform.position = pos;
                 var toCam = (ViewCamera.transform.position - pos).normalized;
                 _notes[k].transform.rotation = Quaternion.FromToRotation(Vector3.up, toCam) * Quaternion.Euler(0, ViewCamera.transform.eulerAngles.y, 0);
-                float pulse = k == PointedProposal ? 1.12f : 1f;
+                float pulse = (k == PointedProposal ? 1.12f : 1f) * 1.4f;
                 _notes[k].transform.localScale = Vector3.one * pulse;
             }
         }
@@ -885,6 +889,10 @@ namespace World.Game
                 foreach (var t in tracks) { var d0 = _places[t - 2].C - cp; d0.y = 0; cen += d0; near = Mathf.Min(near, d0.magnitude); sum += d0.magnitude; }
                 cen /= tracks.Count; dir = FlatDir(cen);
                 push = Mathf.Clamp(Mathf.Min(sum / tracks.Count - 22f, near - 12f), 0f, 16f);
+                // the camp's fire stands between the tower and the places: never push the camera into its flames
+                var hz = Site.Hearth; var h0 = new Vector3(hz.x - cp.x, 0, hz.z - cp.z);
+                while (push > 0f && (h0 - dir * push).magnitude < 8f) push -= 0.5f;
+                push = Mathf.Max(0f, push);
                 cp += dir * push;
             }
             float mn = 999f, mx = -999f, dsum = 0f; int n = 0; float refB = float.NaN;
