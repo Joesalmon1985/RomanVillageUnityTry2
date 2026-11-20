@@ -107,6 +107,10 @@ namespace World.Game
                     if (!ok) continue;
                     for (int n = 1; n <= PlagueGraphData.NodeCount && ok; n++) if (BoardSpace.Flat(NodePos(n) - p) < footprint + 6f) ok = false;
                     if (!ok) continue;
+                    // P3: never on a hub place (the war lodge stood on the duel ring and hid the sparring).
+                    var hub = HubInstaller.Layout;
+                    if (hub != null && hub.Places != null) foreach (var hp in hub.Places) if (BoardSpace.Flat(hp.Position - p) < hp.Radius + footprint + 1f) { ok = false; break; }
+                    if (!ok) continue;
                     _taken.Add(new Vector3(p.x, footprint, p.z));
                     at = p; yaw = BoardSpace.YawOf(c - p); return true;
                 }

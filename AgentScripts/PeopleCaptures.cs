@@ -115,6 +115,7 @@ public static class PeopleCaptures
             case "ringview":
                 {
                     _dist = a.Length > 1 ? float.Parse(a[1], ci) : DuelRing.FenceRadius + 1.5f; _height = a.Length > 2 ? float.Parse(a[2], ci) : 2.6f;
+                    _side = a.Length > 3 ? float.Parse(a[3], ci) : 0f; // degrees round the ring from the player's side
                     _ring = true; _target = () => DuelRing.Instance != null ? DuelRing.Instance.transform : null;
                     MakeCam(); return "ringview";
                 }
@@ -176,6 +177,21 @@ public static class PeopleCaptures
                     EditorApplication.update += f;
                     return "seq " + name + " x" + n;
                 }
+            case "ringnear":
+                {
+                    var sb = new StringBuilder(); var c = DuelRing.Instance.Frame.O;
+                    foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                    {
+                        if (!r.enabled || !r.gameObject.activeInHierarchy) continue;
+                        var b = r.bounds; var q = b.ClosestPoint(new Vector3(c.x, b.center.y, c.z));
+                        if ((new Vector2(q.x - c.x, q.z - c.z)).magnitude < 3f && b.size.magnitude < 60f)
+                        {
+                            var t = r.transform; string path = t.name; while (t.parent != null && path.Length < 120) { t = t.parent; path = t.name + "/" + path; }
+                            sb.Append(path + " size " + b.size.ToString("F1") + "; ");
+                        }
+                    }
+                    return sb.ToString();
+                }
             case "info":
                 {
                     var sb = new StringBuilder();
@@ -183,6 +199,8 @@ public static class PeopleCaptures
                     var h = HistoricDirector.Instance; if (h != null) sb.Append(" carriers " + h.WalkersShown + " swing " + h.CarrierLegSwing.ToString("F1"));
                     var d = GodBoardDirector.Instance; if (d != null && d.Collectors != null) sb.Append(" collectors " + d.Collectors.Active.Count);
                     sb.Append(" screen " + Screen.width + "x" + Screen.height);
+                    var ring = DuelRing.Instance; if (ring != null) sb.Append(" ring O " + ring.Frame.O + " yaw " + ring.Frame.Yaw + " s0 " + ring.Sparrers[0].transform.position + " s1 " + ring.Sparrers[1].transform.position);
+                    foreach (var c in Camera.allCameras) if (c.name == "P1 capture camera") sb.Append(" cam " + c.transform.position);
                     return sb.ToString();
                 }
         }
@@ -254,10 +272,11 @@ public static class PeopleCaptures
             var r = DuelRing.Instance; var p0 = r.Sparrers[0].transform.position; var p1 = r.Sparrers[1].transform.position;
             var mid = (p0 + p1) * 0.5f; var line = p1 - p0; line.y = 0; if (line.sqrMagnitude < 1e-3f) line = Vector3.right;
             var perp = Vector3.Cross(Vector3.up, line.normalized);
-            var centre = r.transform.position;
+            var centre = r.Frame.O; // the ring root sits at the hub origin; its frame is the ring
             // the side nearer the player's spawn side (towards the camera that the player would stand on)
             var pp = PlayerWalker.Instance != null ? PlayerWalker.Instance.Position : centre + perp;
             if (Vector3.Dot(pp - centre, perp) < 0f) perp = -perp;
+            perp = Quaternion.Euler(0, _side, 0) * perp;
             var at = centre + perp * _dist; at.y = mid.y + _height;
             _cam.transform.position = at;
             _cam.transform.LookAt(mid + Vector3.up * 0.9f);
