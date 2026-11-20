@@ -62,9 +62,25 @@ namespace World.Game.Tests
         {
             var a = _d.OwnTemple.AltarSpot.position;
             var w = PlayerWalker.Instance;
-            var dir = w.Position - a; dir.y = 0;
+            // WU-1b: in front of the temple (the forecourt side), clear of the hub's other entries (the steward's bench sits where the spawn is).
+            var dir = TempleForecourt.Instance != null ? TempleForecourt.Instance.Frame.Forward : w.Position - a; dir.y = 0;
             if (dir.sqrMagnitude < 1f) dir = Vector3.forward;
-            var feet = a + dir.normalized * metres; feet.y = PlayerWalker.GroundHeight(feet);
+            // Turn round the altar until no other registered action is within its own key reach of the spot (E would pick the nearest).
+            var chosen = dir.normalized;
+            for (int k = 0; k < 12; k++)
+            {
+                var cand = Quaternion.Euler(0, 30f * k, 0) * dir.normalized;
+                var spot = a + cand * metres;
+                bool clear = true;
+                foreach (var c in WorldActions.Registered)
+                {
+                    if (c == null || c is TempleAltar || !(c is IWorldActionAnchor an) || an.KeyReach <= 0f) continue;
+                    var ap = an.Anchor != null ? an.Anchor.position : c.transform.position;
+                    if (BoardSpace.Flat(ap - spot) <= an.KeyReach + 1f) { clear = false; break; }
+                }
+                if (clear) { chosen = cand; break; }
+            }
+            var feet = a + chosen * metres; feet.y = PlayerWalker.GroundHeight(feet);
             w.Teleport(feet, BoardSpace.YawOf(a - feet), 8f);
             yield return null;
             yield return new WaitForSecondsRealtime(0.35f);

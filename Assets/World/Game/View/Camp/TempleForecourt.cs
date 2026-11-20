@@ -23,6 +23,8 @@ namespace World.Game
         public Vector3 KeeperHome { get; private set; }
         public bool RuinShown { get; private set; }
         public bool Offering { get; private set; }
+        /// <summary>WU-1b: the keeper's two-tap entry (the lamb pen).</summary>
+        public HubEntryAction Offer { get; private set; }
         public bool Greeted { get; private set; }
         public string LastKeeperLine { get; private set; }
         public Transform Ruin { get; private set; }
@@ -86,8 +88,24 @@ namespace World.Game
             var body = HubArt.Make(root, "Forecourt", Frame, mb);
             body.layer = 2;
             // Hit target: a low slab over the whole forecourt (low, so a tap on a person or prop standing on it reaches them first).
-            var door = HubArt.Pick<TempleDoorway>(root, "Doorway", Frame, new Vector3(0, 0.25f, R + 2.6f), new Vector3(9.5f, 0.5f, 6f));
+            // WU-1b: only the doorway step (not the whole forecourt) is the hit target, so a ground tap on the paving walks there.
+            var door = HubArt.Pick<TempleDoorway>(root, "Doorway", Frame, new Vector3(0, 0.25f, R + 1.0f), new Vector3(3.6f, 0.5f, 1.8f));
             door.Forecourt = this;
+            // WU-1b: the lamb pen is the keeper's two-tap entry ("Take a lamb to the altar?"): the same call as "Make the offering".
+            Offer = HubEntryAction.Make(root, "Lamb pen offering", Frame.W(6.2f, R + 0.9f), Frame.Yaw, new Vector2(1.6f, 1.0f),
+                "The lamb pen", "Take a lamb to the altar?", "Make the offering",
+                () => new[] { "The keeper brings a lamb to the altar for the offering." },
+                () =>
+                {
+                    var st = State;
+                    if (st != null && st.Historic != null) return WorldActionCheck.Disable("The age has turned. The altar is silent.");
+                    var d = GodBoardDirector.Instance;
+                    if (d == null || d.OwnTemple == null) return WorldActionCheck.Disable("There is no temple here to keep.");
+                    if (Offering) return WorldActionCheck.Refuse("The keeper is already on the way.");
+                    return d.CheckSacrifice();
+                },
+                () => { if (Offering || Keeper == null) return false; BeginOffering(); return true; });
+            Offer.Reach = 0f; // E near the temple picks the altar itself (the same offering); the pen is a tap target only
             for (int i = 0; i < 2; i++)
             {
                 var plank = new MeshBuilder();

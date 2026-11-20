@@ -39,7 +39,41 @@ namespace World.Game
             c.Steward = Npc.Spawn("council_steward", "Council steward", "Keeps the council's tower and calls its disputes.", "Disputes are called at the tower.",
                 new Color(0.30f, 0.42f, 0.68f), c.Spot, site.Yaw + 180f);
             c.Steward.DialogueBuilder = c.Build;
+            c.BuildEntry(parent, dir, site.Yaw);
             return c;
+        }
+
+        /// <summary>WU-1b: the steward's two-tap entry, a stone bench beside him ("Hear the dispute?").</summary>
+        public HubEntryAction Entry { get; private set; }
+
+        private void BuildEntry(Transform parent, CouncilDirector dir, float yaw)
+        {
+            var at = Spot + new Vector3(Mathf.Cos(yaw * Mathf.Deg2Rad), 0, -Mathf.Sin(yaw * Mathf.Deg2Rad)) * 1.8f;
+            at.y = Spot.y;
+            Entry = HubEntryAction.Make(parent, "Steward bench", at, yaw, new Vector2(1.5f, 0.9f),
+                "The tower's bench", "Hear the dispute?", "Hear the dispute",
+                () => new[] { LastLine ?? DisputeLine() },
+                () =>
+                {
+                    var s = _boot.Sim.State;
+                    if (OfficeHolderSits) return WorldActionCheck.Disable("The disputes are settled.");
+                    if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return WorldActionCheck.Refuse("Not now.");
+                    return CanHold(s, dir.HomeSettlement) ? WorldActionCheck.Allowed : WorldActionCheck.Disable(DisputeLine());
+                },
+                () =>
+                {
+                    string r = dir.StewardOpen(Steward);
+                    if (r != null) { LastLine = r; SpeechBubbles.Say(Steward, r, 3.5f); return false; }
+                    return true;
+                });
+            Entry.Reach = 4f;
+        }
+
+        private string DisputeLine()
+        {
+            var dir = CouncilDirector.Instance;
+            var sc = dir != null ? CouncilApi.Get(_boot.Sim.State, dir.HomeSettlement) : null;
+            return sc != null && sc.Status == CouncilStatus.InProgress ? "The others are settling it among themselves." : NotYet;
         }
 
         private void Build(Npc n)

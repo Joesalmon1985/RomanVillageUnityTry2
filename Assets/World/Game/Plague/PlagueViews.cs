@@ -128,17 +128,43 @@ namespace World.Game
         {
             var mb = new MeshBuilder();
             var glow = new MeshBuilder();
+            var hubLayout = _boot != null && _boot.Sim != null ? new CampLayout(_boot.Sim.State.Board) : null;
+            bool hubOn = hubLayout != null && hubLayout.Hub; var hubC = hubOn ? hubLayout.Hearth : Vector3.zero;
             for (int t = 0; t < PlagueGraphData.TrailCount; t++)
             {
                 int kind = PlagueGraphData.TrailKind[t];
                 var a = NodePos(PlagueGraphData.TrailA[t] - 1); var b = NodePos(PlagueGraphData.TrailB[t] - 1);
                 if (kind == 2) continue; // the tunnel runs under the ground: only the overlay draws it
+                // WU-1b: no sand-coloured strips across the hub's green clearing (one passed a few metres from the spawn and read as a flat slab);
+                // the overlay and the lodge's map table still draw the trail.
+                if (!HubClip(ref a, ref b, hubOn, hubC)) continue;
                 mb.Strip(a + Vector3.up * 0.14f, b + Vector3.up * 0.14f, kind == 1 ? 2.6f : 1.8f, kind == 1 ? new Color(0.70f, 0.58f, 0.34f) : new Color(0.62f, 0.53f, 0.38f));
                 glow.Strip(a + Vector3.up * 0.3f, b + Vector3.up * 0.3f, 3.2f, kind == 1 ? new Color(0.9f, 0.7f, 0.2f, 1f) : new Color(0.55f, 0.50f, 0.34f, 1f));
             }
             var pathObj = LandLook.Part(_ground.transform, "Trails", mb.ToMesh("plague trails"), LandLook.Unlit, false);
             _brightTrails = LandLook.Part(_ground.transform, "Bright trails", glow.ToMesh("plague trails bright"), LandLook.Additive, false);
             pathObj.layer = 2; _brightTrails.layer = 2;
+        }
+
+        /// <summary>Cuts a trail segment to the part outside the hub clearing; false when none is left (keeps the longer outside part).</summary>
+        private static bool HubClip(ref Vector3 a, ref Vector3 b, bool on, Vector3 c)
+        {
+            if (!on) return true;
+            float r = CampLayout.HubRadius;
+            var d = b - a; d.y = 0;
+            var f = a - c; f.y = 0;
+            float A = Vector3.Dot(d, d), B = 2f * Vector3.Dot(f, d), C = Vector3.Dot(f, f) - r * r;
+            if (A < 1e-6f) return C > 0f;
+            float disc = B * B - 4f * A * C;
+            if (disc <= 0f) return true; // misses the clearing
+            float sq = Mathf.Sqrt(disc), t0 = (-B - sq) / (2f * A), t1 = (-B + sq) / (2f * A);
+            if (t1 <= 0f || t0 >= 1f) return true;
+            float lo = Mathf.Clamp01(t0), hi = Mathf.Clamp01(t1);
+            float before = lo, after = 1f - hi; // outside parts: [0, lo] and [hi, 1]
+            var pa = a; var pb = b;
+            if (before >= after) { if (before < 0.02f) return false; b = pa + (pb - pa) * lo; }
+            else { if (after < 0.02f) return false; a = pa + (pb - pa) * hi; }
+            return true;
         }
 
         // ---------------------------------------------------------------- the overlay layer above the island

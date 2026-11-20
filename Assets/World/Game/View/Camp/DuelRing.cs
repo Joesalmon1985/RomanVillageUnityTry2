@@ -119,6 +119,34 @@ namespace World.Game
             n.Options.Add(DialogueOption.Leave("Not now"));
         }
 
+        private GameObject _glow; private Material _glowMat;
+
+        /// <summary>WU-1b: a warm ring round the fence while the duel is previewed (no command).</summary>
+        public void SetPreview(bool on)
+        {
+            if (on && _glow == null)
+            {
+                var mb = new MeshBuilder();
+                const int N = 36;
+                for (int i = 0; i < N; i++)
+                {
+                    float a0 = i * Mathf.PI * 2 / N, a1 = (i + 1) * Mathf.PI * 2 / N;
+                    var o0 = new Vector3(Mathf.Sin(a0), 0, Mathf.Cos(a0)); var o1 = new Vector3(Mathf.Sin(a1), 0, Mathf.Cos(a1));
+                    float r0 = FenceRadius + 0.2f, r1 = FenceRadius + 0.8f;
+                    mb.Quad(o0 * r0, o0 * r1, o1 * r1, o1 * r0, Color.white);
+                    mb.Quad(o0 * r0, o1 * r0, o1 * r1, o0 * r1, Color.white);
+                }
+                _glowMat = MaterialFactory.CreateGlow(new Color(1f, 0.78f, 0.35f, 0.7f), "RingPreview");
+                _glow = mb.ToObject("RingPreviewGlow", transform, _glowMat);
+                _glow.transform.position = Frame.O + Vector3.up * 0.12f;
+                _glow.layer = 2;
+            }
+            if (_glow != null) _glow.SetActive(on);
+        }
+
+        /// <summary>True while the preview ring shows (tests).</summary>
+        public bool PreviewShown => _glow != null && _glow.activeSelf;
+
         /// <summary>A tap on the ring: the referee offers the duel.</summary>
         public void Tap() { if (Referee != null) Referee.Interact(); }
 
@@ -193,12 +221,28 @@ namespace World.Game
     }
 
     /// <summary>A tap on the ring: the referee offers the practice duel.</summary>
-    public sealed class RingTap : MonoBehaviour, IInteractable, IInspectable
+    public sealed class RingTap : MonoBehaviour, IInteractable, IWorldAction, IWorldActionAnchor
     {
         public DuelRing Ring;
         public string Prompt => "Practice duel";
         public string Title => "The practice ring";
-        public IEnumerable<string> Lines => new[] { "A fenced ring where two villagers spar. The referee can set up a practice duel." };
-        public void Interact() { if (Ring != null) Ring.Tap(); }
+        public IEnumerable<string> Lines => new[] { "A fenced ring where two villagers spar. The referee can set up a practice duel with Mira." };
+        public string PreviewLine => "Fight a practice duel with Mira?";
+        public Transform Anchor => transform;
+        public float KeyReach => 7f; // E from the fence; the player at the altar (9 m) is not near the ring
+        public int Commits { get; private set; }
+        /// <summary>The referee's conversation stays as the long-form way in.</summary>
+        public void Interact() => WorldActions.Tap(this);
+        public WorldActionCheck Check()
+        {
+            if (Ring == null || Npc.Find(NpcIds.Mira) == null) return WorldActionCheck.Disable("Mira is not here to duel.");
+            if (Ring.State != DuelRing.Errand.None) return WorldActionCheck.Refuse("Mira is already on her way.");
+            if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return WorldActionCheck.Refuse("Not now.");
+            return WorldActionCheck.Allowed;
+        }
+        public bool Commit() { bool ok = Ring != null && Ring.StartDuel(); if (ok) Commits++; return ok; }
+        public void ShowPreview(bool on) { if (Ring != null) Ring.SetPreview(on); }
+        private void OnEnable() => WorldActions.Register(this);
+        private void OnDisable() => WorldActions.Unregister(this);
     }
 }
