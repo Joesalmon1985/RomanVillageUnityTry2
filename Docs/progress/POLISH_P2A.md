@@ -25,6 +25,42 @@
 
 ## Tests
 
-See the table at the end (filled from the actual runs).
+PlayMode on editor 6000.3.28f1, all green on the final code (the three that failed on the first full run were test-side and re-run alone green: Interior 16/16, the Expedition Mira-menu test 1/1):
+
+| Suite | Result |
+|---|---|
+| GodBoardLedgeTests | 21/21 (5 new) |
+| GodBoardTests | 10/10 |
+| GodBoardVillagerTests | 7/7 |
+| RhythmPartyTests | 4/4 |
+| SpireTests | 7/7 |
+| WorldUiTests | 6/6 |
+| HubTests | 18/18 |
+| WorldTourTests | 2/2 |
+| InteriorTests | 16/16 (1 new) |
+| DanceTests | 17/17 (2 new) |
+| ExpeditionTests | 14/14 (book/volumes asserts added to an existing test; Mira's menu list updated). The full class ran 13/14 on the final code before the last test edit; the one test was re-run alone |
+
+consoleErrors 0 from game code at every compile. Not run: EditMode suites, `dotnet test`, the rest of the PlayMode suite.
+
+## AutoPlay (rebuilt player, `BuildWindows.Run` 101 MB, 0 errors; windowed 844x390, `-novsync`)
+
+`world_ui_tour` OK (41 s), `board_first_round` OK (21 s), `board_trade_discard` OK (14 s), `duel_dance` OK (53 s). Logs `Builds/logs/p2a_*.log` (local). `ProjectSettings/ProjectSettings.asset` untouched (no line-ending diff). No registry write.
+
+## Captures (local only, `Evidence/worldui/`, never committed; 844x390 with simulated notch, 1024x768, 1920x1080)
+
+- Board: `after_board_*`, `after_mat_*`, `after_matpeople_*` (all three sizes), `after_jetty_844x390`. Before: `..\wt-wu2b\Evidence\worldui\wu2b_mat_*`.
+- Rhythm: `before_dance_844x390` and `after_dance_*`, `after_pause_tally_*` (all three), `after_bell_844x390`, `after_bell_preview_844x390`.
+- Dungeon: `after_stair_preview_*`, `after_journal_*` (all three), `after_mira_844x390` (pouch and journal book on Mira's belt).
+- Driver: `AgentScripts/P2aDrive.cs` (bell, stair, journal, jetty helpers) with the existing `WorldUiCaptures` and `Wu5Drive`.
+
+## Not done / open
+
+- The mat strip adds one row (about 60 px at 390 high), so the island is a little smaller while trading; the camera refit is instant per frame as the ledge slides.
+- A people's offer from the mat is always 1 for 1 (quantities were possible in the old window; the sim still accepts any). Counter-offers do not exist in the sim.
+- Jetty tap only tells; it does not open the mat. A camp built beside a jetty is still what makes its rate yours.
+- The dungeon pouch and book are still small drawings; the larger tap volumes help but a ray that hits Mira's own collider first can still win from far away (Mira's menu offers the pouch when a slot is free).
+- The standing bell was captured only on the home circle; at a spire it is built the same way (`SpireTests` pass) but was not captured.
+- Doors keep the WU-6 `MiraActThing` preview; only stairs and exits (`InteriorWay`) were new. The old bubble code in `InteriorThing.Interact` remains as the fallback for a way with no ledger action.
 
 New tests: `GodBoardLedgeTests` (mat lies on the ledge and the ledge slides; mat offers to peoples preview then send the right `OfferTrade`, also to all; jetty tap shows its rate as picture chips and sends nothing; ledge tablets open above the ledge; footprint stones hidden during the rise), `DanceTests` (standing bell tapped outside a dance tunes and keeps the offset, hides in a dance; Paused label clear of the tally card, props lit), `InteriorTests` (stair preview then confirm, no bubble), `ExpeditionTests` (book view, larger pouch and book volumes; Mira's menu list updated).
