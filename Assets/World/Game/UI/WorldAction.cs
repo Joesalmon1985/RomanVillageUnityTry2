@@ -385,7 +385,9 @@ namespace World.Game
                     WorldActions.NoteCameraMove();
                 _lastCam = cam; _lastPos = t.position; _lastRot = t.rotation;
             }
-            if (Blocked) { if (WorldActions.Open) WorldActions.Cancel(); return; }
+            // the council (WU-4) takes its own taps but previews on this machine: leave its previews alone while its encounter runs
+            bool council = EncounterHost.Instance != null && EncounterHost.Instance.Current is CouncilEncounter && !Hud.MenuOpen && !MapScreen.IsOpen;
+            if (Blocked) { if (WorldActions.Open && !council) WorldActions.Cancel(); return; }
             if (Input.GetKeyDown(KeyCode.Backspace)) WorldActions.Cancel();
             if (Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) KeyPress();
         }

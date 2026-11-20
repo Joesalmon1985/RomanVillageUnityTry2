@@ -131,7 +131,7 @@ namespace World.Game.Tests
             yield return Stage();
             yield return Until(() => Enc.Scene.Proposals.Count == 3, 10f, "three notes held out");
             CheckTargets("choosing");
-            Assert.IsTrue(Enc.TapTarget("note 0")); yield return WaitReady();
+            Assert.IsTrue(Enc.TapTargetNow("note 0")); yield return WaitReady();
             yield return Until(() => Enc.Scene.Targets(Enc.Scene.ViewCamera).Exists(t => t.Name == "seal"), 10f, "ready targets");
             CheckTargets("ready");
         }
@@ -193,8 +193,8 @@ namespace World.Game.Tests
         {
             yield return Stage();
             int adv0 = E.Advances;
-            for (int i = 0; i < 6; i++) Enc.TapTarget("note 1"); // six taps in one frame, then more over time
-            for (int i = 0; i < 20; i++) { yield return null; Enc.TapTarget("note " + (i % 3)); Enc.TapTarget("hand"); }
+            for (int i = 0; i < 6; i++) Enc.TapTargetNow("note 1"); // six taps in one frame, then more over time
+            for (int i = 0; i < 20; i++) { yield return null; Enc.TapTargetNow("note " + (i % 3)); Enc.TapTargetNow("hand"); }
             yield return WaitReady();
             Assert.AreEqual(1, E.Advances - adv0, "exactly one move committed");
             int moved = 0; foreach (int p in E.Temp) if (p > 0) moved++;
@@ -213,7 +213,7 @@ namespace World.Game.Tests
             Assert.GreaterOrEqual(tray, 0, "a tray with two copies of dispute 5");
             yield return WaitReady();
             yield return Until(() => Enc.Scene.Proposals.Exists(pp => pp.Tray == tray), 10f, "the double is held out as a note");
-            Assert.IsTrue(Enc.TapTarget("note " + Enc.Scene.Proposals.FindIndex(pp => pp.Tray == tray)));
+            Assert.IsTrue(Enc.TapTargetNow("note " + Enc.Scene.Proposals.FindIndex(pp => pp.Tray == tray)));
             yield return WaitReady();
             Assert.AreEqual(2, E.Temp[5 - 2], "the catspaw on dispute 5 moved two places");
             Assert.AreEqual(1, E.CatspawsInPlay, "one catspaw");
@@ -224,7 +224,7 @@ namespace World.Game.Tests
         public IEnumerator ListenersVersusSettled_MatchTheEngine_AfterEachEvent()
         {
             yield return Stage();
-            Enc.TapTarget("note 0");
+            Enc.TapTargetNow("note 0");
             yield return WaitReady();
             Assert.AreEqual(2, Enc.Scene.AgentsShown, "two catspaws at the places being worked");
             yield return Until(() => Enc.Scene.ViewMismatch(Sc) == null, 10f, "after the advance");
@@ -233,7 +233,7 @@ namespace World.Game.Tests
             Assert.AreEqual(2, listeners, "one person won at each of the two places, listening, not settled");
             Assert.AreEqual(0, settled, "nothing banked yet");
             CouncilEncounter.AiDelay = 600f;
-            Assert.IsTrue(Enc.TapTarget("seal"));
+            Assert.IsTrue(Enc.TapTargetNow("seal"));
             yield return WaitReady();
             yield return Until(() => Enc.Scene.AgentsShown == 0, 10f, "catspaws gone after the bank");
             yield return Until(() => Enc.Scene.ViewMismatch(Sc) == null, 10f, "after the bank");
@@ -248,7 +248,7 @@ namespace World.Game.Tests
         public IEnumerator BankedSupport_ShowsAgain_WhenTheTurnComesBackToThePlayer()
         {
             yield return Stage(true, 0, 5150);
-            Enc.TapTarget("note 0"); yield return WaitReady(); Enc.TapTarget("seal"); yield return WaitReady();
+            Enc.TapTargetNow("note 0"); yield return WaitReady(); Enc.TapTargetNow("seal"); yield return WaitReady();
             yield return Until(() => E.Active == E.PlayerSeat && E.Phase != ElectionPhase.Complete, 60f, "the player's turn again");
             CouncilEncounter.AiDelay = 600f;
             yield return WaitReady();
@@ -271,7 +271,7 @@ namespace World.Game.Tests
         public IEnumerator States_ReadFromPoseAndZone_BankHandsOverANote_ListenersEndAtZero()
         {
             yield return Stage();
-            Enc.TapTarget("note 0"); yield return WaitReady();
+            Enc.TapTargetNow("note 0"); yield return WaitReady();
             yield return Until(() => Enc.Scene.ViewMismatch(Sc) == null, 10f, "after the advance");
             int listeners = 0, undecided = 0;
             for (int t = 2; t <= 12; t++)
@@ -288,7 +288,7 @@ namespace World.Game.Tests
             Assert.AreEqual(2, listeners); Assert.Greater(undecided, 40);
             int handed0 = Enc.Scene.NotesHanded;
             CouncilEncounter.AiDelay = 600f;
-            Assert.IsTrue(Enc.TapTarget("seal"));
+            Assert.IsTrue(Enc.TapTargetNow("seal"));
             yield return Until(() => Enc.Scene.NotesHanded >= handed0 + 2, 8f, "each lead handed a note to a banked listener");
             yield return Until(() => Enc.Scene.Settled, 10f, "settled");
             int notes = 0, settled = 0;
@@ -314,12 +314,12 @@ namespace World.Game.Tests
                 var e = E;
                 if (Enc == null || !Enc.Scene.Settled || Enc.InTransition) continue;
                 if (e.Active != e.PlayerSeat) continue;
-                if (e.Phase == ElectionPhase.Ready) Enc.TapTarget("hand");
+                if (e.Phase == ElectionPhase.Ready) Enc.TapTargetNow("hand");
                 else if (e.Phase == ElectionPhase.Choosing)
                 {
                     var props = Enc.Scene.Proposals; if (props.Count == 0) continue;
                     int best = 0; for (int k = 0; k < props.Count; k++) if (props[k].Steps.Count > props[best].Steps.Count) best = k;
-                    Enc.TapTarget("note " + best);
+                    Enc.TapTargetNow("note " + best);
                 }
                 else if (e.Phase == ElectionPhase.BustPending) break;
             }
@@ -329,7 +329,7 @@ namespace World.Game.Tests
         public IEnumerator Bust_ReturnsOnlyTheUnsettled_ViewEqualsState_BankedSupportStays()
         {
             yield return Stage(true, 0, 12345);
-            Enc.TapTarget("note 0"); yield return WaitReady(); Enc.TapTarget("seal"); yield return WaitReady();
+            Enc.TapTargetNow("note 0"); yield return WaitReady(); Enc.TapTargetNow("seal"); yield return WaitReady();
             int bankedBefore = 0; for (int t = 2; t <= 12; t++) if (E.BankedAt(0, t) > 0) bankedBefore++;
             Assert.Greater(bankedBefore, 0);
             yield return Until(() => E.Active == E.PlayerSeat && E.Phase != ElectionPhase.Complete, 60f, "the player's turn again");
@@ -360,7 +360,7 @@ namespace World.Game.Tests
             yield return WaitReady();
             Assert.IsTrue(Enc.Scene.PetitionShown, "the petition roll hangs at the candidate's hip");
             int pushes = E.Pushes;
-            Assert.IsTrue(Enc.TapTarget("petition"));
+            Assert.IsTrue(Enc.TapTargetNow("petition"));
             yield return WaitReady();
             Assert.IsTrue(E.PetitionSpent, "the petition was spent");
             Assert.AreEqual(pushes + 1, E.Pushes, "one fresh push");
@@ -376,7 +376,7 @@ namespace World.Game.Tests
             Assert.AreEqual(ElectionPhase.BustPending, E.Phase);
             yield return WaitReady();
             int busts = E.Busts;
-            Enc.TapTarget("seal");
+            Enc.TapTargetNow("seal");
             yield return WaitReady();
             Assert.AreEqual(busts + 1, E.Busts, "the setback was taken");
             Assert.IsFalse(E.PetitionSpent, "the petition is kept");
@@ -388,7 +388,7 @@ namespace World.Game.Tests
         {
             yield return Stage(true, 0, seed);
             CouncilEncounter.AiDelay = 600f; // the rival does not move while we listen
-            Enc.TapTarget("note 0"); yield return WaitReady(); Enc.TapTarget("seal"); yield return WaitReady();
+            Enc.TapTargetNow("note 0"); yield return WaitReady(); Enc.TapTargetNow("seal"); yield return WaitReady();
             Assert.AreNotEqual(E.PlayerSeat, E.Active, "a rival's turn");
         }
 
@@ -472,9 +472,9 @@ namespace World.Game.Tests
                     {
                         yield return new WaitForSecondsRealtime(0.1f);
                         if (!Enc.Scene.Settled) continue;
-                        if (el.Phase == ElectionPhase.Ready) { if (el.Pushes >= 25) break; Enc.TapTarget(el.HasAdvanced ? "seal" : "hand"); }
-                        else if (el.Phase == ElectionPhase.Choosing) Enc.TapTarget("note 0");
-                        else if (el.Phase == ElectionPhase.BustPending) Enc.TapTarget("seal");
+                        if (el.Phase == ElectionPhase.Ready) { if (el.Pushes >= 25) break; Enc.TapTargetNow(el.HasAdvanced ? "seal" : "hand"); }
+                        else if (el.Phase == ElectionPhase.Choosing) Enc.TapTargetNow("note 0");
+                        else if (el.Phase == ElectionPhase.BustPending) Enc.TapTargetNow("seal");
                     }
                     else if (pass == 1 && !visited && Enc.View == CouncilEncounter.ViewKind.Forward && !Enc.InTransition && Enc.TurnLeft())
                     {
@@ -551,7 +551,7 @@ namespace World.Game.Tests
             yield return WaitReady();
             yield return Until(() => Enc.Scene.Proposals.Count == 3, 10f, "the notes are back in hand");
             int adv = E.Advances;
-            Assert.IsTrue(Enc.TapTarget("note 1"));
+            Assert.IsTrue(Enc.TapTargetNow("note 1"));
             yield return WaitReady();
             Assert.AreEqual(adv + 1, E.Advances, "one move from the loaded push");
         }
@@ -594,9 +594,9 @@ namespace World.Game.Tests
         {
             yield return Stage();
             Assert.IsFalse(Enc.TurnLeft(), "no listening on your own turn");
-            Enc.TapTarget("note 0"); yield return WaitReady();
+            Enc.TapTargetNow("note 0"); yield return WaitReady();
             CouncilEncounter.AiDelay = 600f;
-            Enc.TapTarget("seal"); yield return WaitReady();
+            Enc.TapTargetNow("seal"); yield return WaitReady();
             Assert.IsTrue(Enc.TapTarget("lantern"), "the bench lantern turns the view");
             yield return Until(() => !Enc.InTransition, 5f, "turn");
             Assert.AreEqual(CouncilEncounter.ViewKind.Left, Enc.View);

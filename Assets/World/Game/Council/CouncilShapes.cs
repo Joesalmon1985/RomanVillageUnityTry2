@@ -328,5 +328,32 @@ namespace World.Game
 
         public static Mesh Disc3(Color c, int sides = 18) => Cached("disc3" + ColorUtility.ToHtmlStringRGB(c) + sides, mb => mb.Cylinder(Vector3.zero, 0.5f, 0.5f, 0.06f, sides, c));
         public static Mesh BoxMesh(Color c) => Cached("box" + ColorUtility.ToHtmlStringRGB(c), mb => mb.Box(new Vector3(0, 0.5f, 0), Vector3.one, c));
+
+        // ---------------------------------------------------------------- ground marks (WU-4)
+
+        static Mesh Annulus(string key, float inner, float outer, int segs)
+        {
+            if (Cache.TryGetValue(key, out var m) && m != null) return m;
+            var v = new List<Vector3>(); var tris = new List<int>();
+            for (int i = 0; i < segs; i++)
+            {
+                float a = i * Mathf.PI * 2f / segs;
+                v.Add(new Vector3(Mathf.Cos(a) * inner, 0, Mathf.Sin(a) * inner)); v.Add(new Vector3(Mathf.Cos(a) * outer, 0, Mathf.Sin(a) * outer));
+            }
+            for (int i = 0; i < segs; i++)
+            {
+                int a = i * 2, b = i * 2 + 1, c = ((i + 1) % segs) * 2, d = ((i + 1) % segs) * 2 + 1;
+                tris.AddRange(new[] { a, b, d, a, d, c });   // up
+                tris.AddRange(new[] { a, d, b, a, c, d });   // and down (seen from below at the edge of a mound)
+            }
+            m = new Mesh { name = "council/" + key }; m.SetVertices(v); m.SetTriangles(tris, 0); m.RecalculateBounds();
+            var n = new Vector3[v.Count]; for (int i = 0; i < n.Length; i++) n[i] = Vector3.up; m.normals = n;
+            Cache[key] = m; return m;
+        }
+
+        /// <summary>A flat open ring of outer radius 1 on the ground (y = 0), for listeners and place frames.</summary>
+        public static Mesh GroundRing(float inner = 0.72f) => Annulus("gring" + inner, inner, 1f, 28);
+        /// <summary>A flat filled disc of radius 1 on the ground, for settled supporters.</summary>
+        public static Mesh GroundDisc() => Annulus("gdisc", 0f, 1f, 24);
     }
 }
