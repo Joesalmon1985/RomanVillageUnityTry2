@@ -75,6 +75,58 @@ public static class WorldUiCaptures
                     return "altar " + r + " " + WorldActions.State;
                 }
             case "cancel": WorldActions.Cancel(); return "cancelled";
+            // ---- WU-1b: the hub's views ----
+            case "hubturn":
+                {
+                    // hubturn K: the spawn cell with the spawn heading turned K sixths (negative = left); the prince's guide is off.
+                    var layout = new CampLayout(boot.Sim.State.Board);
+                    if (PrinceDirector.Instance != null) PrinceDirector.Instance.enabled = false;
+                    WorldActions.Cancel(); GroundWalk.ClearMarker();
+                    foreach (int h in SpeechBubbles.OpenHandles()) SpeechBubbles.Close(h);
+                    PlayerWalker.Instance.StopAuto();
+                    PlayerWalker.Instance.Teleport(layout.Spawn, ((layout.SpawnHeading + int.Parse(a[1])) % 6 + 6) % 6);
+                    return "hubturn " + a[1] + " heading " + PlayerWalker.Instance.Heading;
+                }
+            case "tapground":
+                {
+                    // tapground D: tap plain ground D metres ahead on the screen (a real raycast tap).
+                    var w = PlayerWalker.Instance; var cam = w.Camera;
+                    float dist = a.Length > 1 ? float.Parse(a[1], ci) : 9f;
+                    foreach (var off in new[] { 0f, 2f, -2f, 4f, -4f })
+                    {
+                        var p = w.Position + BoardSpace.DirOf(w.Yaw) * dist + new Vector3(off, 0, 0); p.y = BoardSpace.GroundY;
+                        var sp = cam.WorldToScreenPoint(p);
+                        if (sp.z <= 0 || !PointerInput.EmptyScene(sp)) continue;
+                        var o = PointerInput.TapAt(sp);
+                        return "tapground " + o + " goal " + GroundWalk.Goal + " at " + sp;
+                    }
+                    return "tapground: no free ground";
+                }
+            case "entry":
+                {
+                    // entry ring|pen|bench|sol: preview that entry's ledger.
+                    WorldActions.Cancel();
+                    IWorldAction act = null;
+                    switch (a[1])
+                    {
+                        case "ring": act = DuelRing.Instance.GetComponentInChildren<RingTap>(); break;
+                        case "pen": act = TempleForecourt.Instance.Offer; break;
+                        case "bench": act = CouncilSteward.Instance.Entry; break;
+                        case "sol": act = SolGuide.Instance.Entry; break;
+                    }
+                    return "entry " + a[1] + " " + (act != null ? WorldActions.Tap(act).ToString() : "none") + " " + WorldActions.State;
+                }
+            case "lookat":
+                {
+                    // lookat ring|pen|bench|sol DIST: stand DIST metres from that entry, looking at it.
+                    var w = PlayerWalker.Instance; w.StopAuto();
+                    Vector3 at; switch (a[1]) { case "ring": at = DuelRing.Instance.Frame.O; break; case "pen": at = TempleForecourt.Instance.Offer.transform.position; break; case "bench": at = CouncilSteward.Instance.Entry.transform.position; break; default: at = SolGuide.Instance.Entry.transform.position; break; }
+                    float m = a.Length > 2 ? float.Parse(a[2], ci) : 10f;
+                    var from = WalkLattice.ToCell(at + (new Vector3(0, 0, 0) + (WorldBootstrap.Instance.transform.position - at).normalized * 0f) + Vector3.back * m);
+                    var feet = WalkLattice.ToWorld(from);
+                    w.Teleport(from, WalkLattice.HeadingOf(BoardSpace.YawOf(at - feet)));
+                    return "lookat " + a[1] + " cell " + from;
+                }
             // ---- WU-2: the altar ledge scenarios
             case "open1":
                 {
