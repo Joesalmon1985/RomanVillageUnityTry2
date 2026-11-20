@@ -47,7 +47,7 @@ namespace World.Game
         private static readonly Color Skin = new Color(0.78f, 0.58f, 0.42f), Linen = new Color(0.86f, 0.80f, 0.66f), Gold = new Color(1f, 0.82f, 0.32f);
         private static readonly Color[] GoodCol =
         {
-            new Color(0.50f, 0.32f, 0.16f), new Color(0.74f, 0.34f, 0.19f), new Color(0.93f, 0.78f, 0.30f), new Color(0.95f, 0.94f, 0.89f), new Color(0.60f, 0.62f, 0.66f),
+            new Color(0.40f, 0.26f, 0.13f), new Color(0.80f, 0.36f, 0.20f), new Color(0.93f, 0.78f, 0.30f), new Color(0.95f, 0.94f, 0.89f), new Color(0.60f, 0.62f, 0.66f),
         };
 
         public static AltarLedgeRig Create(GodBoardHud hud, GodBoardDirector d)
@@ -178,7 +178,7 @@ namespace World.Game
             var c = GoodCol[g];
             switch (g)
             {
-                case 0: { var go = Prim(PrimitiveType.Cylinder, parent, at, new Vector3(0.075f, 0.11f, 0.075f) * s, c, new Vector3(0f, yaw, 90f)); return go; }
+                case 0: { var go = Prim(PrimitiveType.Cylinder, parent, at, new Vector3(0.075f, 0.11f, 0.075f) * s, c, new Vector3(0f, yaw, 90f)); Prim(PrimitiveType.Cylinder, go.transform, Vector3.zero, new Vector3(0.8f, 1.03f, 0.8f), new Color(0.86f, 0.68f, 0.42f)); return go; }
                 case 1: return Prim(PrimitiveType.Cube, parent, at, new Vector3(0.16f, 0.075f, 0.09f) * s, c, new Vector3(0f, yaw, 0f));
                 case 2: return Prim(PrimitiveType.Capsule, parent, at + new Vector3(0f, 0.03f * s, 0f), new Vector3(0.085f, 0.1f, 0.085f) * s, c, new Vector3(0f, yaw, 8f));
                 case 3: return Prim(PrimitiveType.Sphere, parent, at, new Vector3(0.16f, 0.11f, 0.14f) * s, c);
@@ -245,7 +245,7 @@ namespace World.Game
             }
             else if (id == "trader")
             {
-                Person(m, new Vector3(-0.1f, 0f, 0.05f), new Color(0.42f, 0.24f, 0.30f), new Color(0.62f, 0.18f, 0.12f), true);
+                Person(m, new Vector3(-0.1f, 0f, 0.05f), new Color(0.42f, 0.24f, 0.30f), new Color(0.62f, 0.18f, 0.12f), true, 1.15f);
                 var roll = new GameObject("Roll").transform; roll.SetParent(m, false);
                 Prim(PrimitiveType.Cylinder, roll, new Vector3(0.2f, 0.08f, -0.14f), new Vector3(0.13f, 0.26f, 0.13f), new Color(0.55f, 0.18f, 0.12f), new Vector3(0f, 20f, 90f));
                 Prim(PrimitiveType.Cylinder, roll, new Vector3(0.2f, 0.08f, -0.14f), new Vector3(0.135f, 0.05f, 0.135f), new Color(0.85f, 0.62f, 0.28f), new Vector3(0f, 20f, 90f));
@@ -326,7 +326,7 @@ namespace World.Game
             }
             else if (id == "chronicler")
             {
-                Person(m, new Vector3(-0.08f, -0.08f, 0.08f), new Color(0.34f, 0.36f, 0.30f), new Color(0.3f, 0.25f, 0.2f), false, 0.95f);
+                Person(m, new Vector3(-0.08f, -0.06f, 0.08f), new Color(0.34f, 0.36f, 0.30f), new Color(0.3f, 0.25f, 0.2f), false, 1.1f);
                 Prim(PrimitiveType.Cube, m, new Vector3(0.05f, 0.012f, -0.2f), new Vector3(0.42f, 0.012f, 0.22f), new Color(0.93f, 0.88f, 0.74f), new Vector3(0f, -12f, 0f));
                 Prim(PrimitiveType.Cylinder, m, new Vector3(0.05f, 0.42f, -0.17f), new Vector3(0.07f, 0.17f, 0.07f), new Color(0.93f, 0.88f, 0.74f), new Vector3(0f, 0f, 90f));
                 Prim(PrimitiveType.Cylinder, m, new Vector3(0.32f, 0.07f, -0.1f), new Vector3(0.05f, 0.07f, 0.05f), new Color(0.9f, 0.86f, 0.7f)).name = "Candle";
@@ -334,9 +334,9 @@ namespace World.Game
             }
             else if (id == "prince")
             {
-                Person(m, Vector3.zero, new Color(0.20f, 0.26f, 0.52f), Gold, false);
-                Prim(PrimitiveType.Cylinder, m, new Vector3(0f, 0.86f, 0f), new Vector3(0.2f, 0.045f, 0.2f), Gold).name = "Crown";
-                for (int k = 0; k < 4; k++) Prim(PrimitiveType.Cube, m, new Vector3(Mathf.Cos(k * 1.57f) * 0.08f, 0.92f, Mathf.Sin(k * 1.57f) * 0.08f), new Vector3(0.035f, 0.06f, 0.035f), Gold).name = "Crown";
+                Person(m, Vector3.zero, new Color(0.20f, 0.26f, 0.52f), Gold, false, 1.12f);
+                Prim(PrimitiveType.Cylinder, m, new Vector3(0f, 0.96f, 0f), new Vector3(0.22f, 0.05f, 0.22f), Gold).name = "Crown";
+                for (int k = 0; k < 4; k++) Prim(PrimitiveType.Cube, m, new Vector3(Mathf.Cos(k * 1.57f) * 0.09f, 1.02f, Mathf.Sin(k * 1.57f) * 0.09f), new Vector3(0.035f, 0.06f, 0.035f), Gold).name = "Crown";
             }
             else if (id == "totem")
             {
@@ -425,7 +425,7 @@ namespace World.Game
             float w = (At(r.xMax, r.center.y, z) - At(r.xMin, r.center.y, z)).magnitude;
             float h = (At(r.center.x, r.yMin, z) - At(r.center.x, r.yMax, z)).magnitude;
             it.transform.position = onSlab ? foot : At(r.center.x, r.yMax, z);
-            it.transform.rotation = Quaternion.identity;
+            it.transform.rotation = onSlab ? Quaternion.Euler(0f, Jitter(it.Id) * 14f, 0f) : Quaternion.identity;
             it.Hit.transform.position = c;
             it.Hit.transform.rotation = Cam.transform.rotation;
             it.Hit.size = new Vector3(w, h, 0.05f);
@@ -433,6 +433,8 @@ namespace World.Game
             it.Model.localScale = Vector3.one * h * modelScale * (onSlab ? ModelBoost : 1f);
             if (!onSlab) it.Model.rotation = Cam.transform.rotation;
         }
+
+        private static float Jitter(string id) { int h = 17; foreach (char ch in id) h = h * 31 + ch; return ((h & 1023) / 1023f) * 2f - 1f; }
 
         // ---------------------------------------------------------------- per frame
 
@@ -526,7 +528,7 @@ namespace World.Game
                 {
                     it.Sig = show.ToString();
                     Clear(it.Dyn);
-                    for (int i = 0; i < show; i++) Good(g, it.Dyn, PileSpots[i] * 1.2f, 1.6f, i * 47f);
+                    for (int i = 0; i < show; i++) Good(g, it.Dyn, PileSpots[i] * 1.3f + new Vector3(0f, 0.02f, 0f), 2.1f, i * 47f);
                 }
                 _shown[g] = show;
                 bool lacks = _hud.Lacks(g);
@@ -729,14 +731,14 @@ namespace World.Game
                 if (it.Sig != sig)
                 {
                     it.Sig = sig; Clear(it.Dyn);
-                    for (int i = 0; i < n; i++) Good(g, it.Dyn, new Vector3((i - (n - 1) * 0.5f) * 0.42f, 0f, 0f), 2.6f, i * 35f);
+                    for (int i = 0; i < n; i++) Good(g, it.Dyn, new Vector3((i - (n - 1) * 0.5f) * 0.5f, 0f, 0f), 3.2f, i * 35f);
                 }
                 SetGlow(it.Model.Find("Ring").gameObject, g >= 0 ? new Color(1f, 0.8f, 0.3f, 0.35f) : new Color(0, 0, 0, 0));
             }
             else if (id.StartsWith("mat-get:"))
             {
                 int g = int.Parse(id.Substring(8));
-                if (it.Sig != "x") { it.Sig = "x"; Clear(it.Dyn); Good(g, it.Dyn, Vector3.zero, 3.4f, 25f); }
+                if (it.Sig != "x") { it.Sig = "x"; Clear(it.Dyn); Good(g, it.Dyn, Vector3.zero, 3.8f, 25f); }
                 bool sel = _hud.BankGet == g;
                 it.Dyn.localPosition = new Vector3(0f, 0.5f + (sel ? 0.08f : 0f), -0.06f);
                 SetGlow(it.Model.Find("Ring").gameObject, sel ? new Color(1f, 0.8f, 0.3f, 0.75f) : new Color(0, 0, 0, 0));
