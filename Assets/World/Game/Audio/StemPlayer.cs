@@ -172,7 +172,9 @@ namespace World.Game
             {
                 if (!IsScheduled) return double.NaN;
                 double t = SmoothedDsp() - StartDsp;
-                if (IsPaused && !IsResuming) return PausedSongTime;
+                // Frozen for the whole pause including the four-count: the smoothed clock runs up to 100 ms ahead of the raw DSP clock, so
+                // near the end of the count it already read past the paused time (1 to 4 ms) while TryFinishResume still waited for the raw clock.
+                if (IsPaused) return PausedSongTime;
                 if (t < _lastSong) t = _lastSong;
                 _lastSong = t;
                 return t;
