@@ -247,6 +247,14 @@ namespace World.Game
 
         // ------------------------------------------------------------------------------ 4
 
+        private static int _diag;
+        private static string WarDiag()
+        {
+            var sb = new System.Text.StringBuilder("phase=" + T.Phase + " war01=" + WarApi.AtWar(S, 0, 1) + " pts=" + string.Join(",", S.War.Points) + " settlements=" + S.War.Settlements.Count + " soldiers=" + S.War.Soldiers.Count);
+            foreach (var x in S.War.Soldiers) sb.Append(" [" + x.People + " node" + x.Node + " corner" + x.Corner + " ord" + x.Order + " tgt" + x.OrderTarget + " path" + x.Path.Count + " mv" + x.Moving + "]");
+            return sb.ToString();
+        }
+
         private static bool RuinShown()
         {
             foreach (var r in S.War.Ruins)
@@ -267,8 +275,8 @@ namespace World.Game
              .Call(() => { corners = SmokeSetup.GrantSettlements(S, victim, 2); if (corners.Count < 2) throw new Exception("could not grant camps"); })
              .Tick(3)
              .Check(() => WarApi.AtWar(S, 0, victim), "the lead did not start a war")
-             .Call(() => { foreach (int c in corners) SmokeSetup.RemoveGarrison(S, victim, c); pts0 = TableRules.Points(S, victim); })
-             .StepUntil(() => S.War.Burned > 0, 60000, "no camp burned")
+             .Call(() => { foreach (int c in corners) SmokeSetup.RemoveGarrison(S, victim, c); for (int p = 0; p < S.Peoples.Count; p++) if (p != victim) { SmokeSetup.AddSoldier(S, p); SmokeSetup.AddSoldier(S, p); } pts0 = TableRules.Points(S, victim); })
+             .StepUntil(() => S.War.Burned > 0, 60000, "no camp burned", () => { if (++_diag % 3000 == 1) Debug.Log("[AutoPlay] war_burn diag " + WarDiag()); })
              .Tick(2)
              .Check(() => S.War.Ruins.Count > 0, "no ruin appeared")
              .Check(() => TableRules.Points(S, victim) < pts0, "the table's points did not drop")

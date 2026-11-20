@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using World.Sim.War;
 
 namespace World.Sim.Table
 {
@@ -42,6 +43,23 @@ namespace World.Sim.Table
                 list.Add(c);
             }
             return list;
+        }
+
+        /// <summary>
+        /// A trained soldier standing at the people's home camp (what its lodge turns out in time). Home garrisons of one never
+        /// leave, so a raid needs one more. Returns the soldier, or null when the people has no home camp.
+        /// </summary>
+        public static Soldier AddSoldier(WorldState s, int people)
+        {
+            var w = s.War;
+            if (w == null) return null;
+            int corner = -1;
+            foreach (var st in w.Settlements) if (st.People == people && st.IsHome) { corner = st.Corner; break; }
+            if (corner < 0) return null;
+            var x = new Soldier { Id = w.NextSoldierId++, People = people, BaseAttack = 14, Corner = corner, Node = 0 };
+            x.Hp = WarApi.MaxHealth(x);
+            w.Soldiers.Add(x);
+            return x;
         }
 
         /// <summary>Sends the people's soldiers standing at the corner away (the camp is left unguarded). Returns how many.</summary>
