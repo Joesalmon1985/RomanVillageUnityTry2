@@ -55,11 +55,17 @@ namespace World.Game
         bool _finished;
         Camera _cam; Transform _camParent; Vector3 _camLocalPos; Quaternion _camLocalRot; float _camFov;
         Vector3 _fromPos; Quaternion _fromRot; float _camT = 1f;
-        float _yaw, _pitch, _fov, _yawV, _pitchV, _fovV; float _focusUntil; List<int> _focus = new List<int>();
+        float _yaw, _pitch, _fov, _yawV, _pitchV, _fovV, _pushV; float _focusUntil; List<int> _focus = new List<int>();
         public float CamYaw => _yaw; public float CamPitch => _pitch; public float CamFov => _fov;
         float _lockUntil, _aiAt, _finishAt = -1f, _phaseUntil, _readyAt, _backAt = -1f;
         bool _onHand, _onTray, _onSeal, _carryPending, _leaveSent, _frameInit;
         int _aideBubble, _speakerBubble, _lineCounter;
+        // WU-4: two-tap actions on the shared WorldAction machine
+        readonly Dictionary<string, CouncilAction> _acts = new Dictionary<string, CouncilAction>();
+        CouncilTablet _tablet; bool _immediate; float _push;
+        public CouncilTablet Tablet => _tablet ?? (_tablet = new CouncilTablet(this));
+        /// <summary>Tap on the ledger card of an open preview confirms; the card is where the player looks.</summary>
+        public int PreviewsShown { get; private set; }
         EncounterSfx _sfx;
         AudioClip _good, _bad;
         GameObject _sfxRoot;
@@ -94,10 +100,27 @@ namespace World.Game
             _lockUntil = Time.unscaledTime + 0.45f;
             _aiAt = Time.unscaledTime + 1.0f;
             if (ctx.World != null && ctx.World.GodCam != null) { }
+            LedgerCard.DockTop = true;
+            HideTotems();
         }
+
+        // The camp's tall totem stands between the tower and the places and fills the middle of the picture: hidden while the council camera is up.
+        readonly List<Renderer> _hiddenTotems = new List<Renderer>();
+        void HideTotems()
+        {
+            foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (r == null || !r.enabled || r.name != "Totem" || r.bounds.size.y < 3f) continue;
+                if ((r.bounds.center - _cam.transform.position).sqrMagnitude > 60f * 60f) continue;
+                r.enabled = false; _hiddenTotems.Add(r);
+            }
+        }
+        void ShowTotems() { foreach (var r in _hiddenTotems) if (r != null) r.enabled = true; _hiddenTotems.Clear(); }
 
         public void End()
         {
+            WorldActions.Cancel(); LedgerCard.Hide(); Scene?.ClearPreview();
+            LedgerCard.DockTop = false; ShowTotems();
             if (_cam != null)
             {
                 _cam.transform.SetParent(_camParent, false);
@@ -139,6 +162,7 @@ namespace World.Game
             var sc = Council; var e = sc?.Election;
             if (e == null) { _finished = true; return; }
             UpdateCamera(dt);
+            CheckPreview();
             float now = Time.unscaledTime;
             bool menu = Hud.MenuOpen;
             if (!menu)
@@ -175,6 +199,7 @@ namespace World.Game
         {
             var sc = Council; var e = sc?.Election; var l = new List<int>();
             if (e == null) return l;
+            if (Scene.Previewing && Scene.PreviewTracks.Count > 0) return Scene.PreviewTracks;
             if (Time.unscaledTime < _focusUntil) return _focus;
             bool mine = e.PlayerSeat >= 0 && e.Active == e.PlayerSeat;
             if (mine && e.Phase == ElectionPhase.Choosing)
@@ -188,6 +213,8 @@ namespace World.Game
             return l;
         }
 
+        public void ClearFocus() { _focusUntil = 0f; }
+
         public void FocusOn(IEnumerable<int> tracks, float seconds)
         {
             _focus = new List<int>(tracks); _focusUntil = Time.unscaledTime + seconds;
@@ -195,8 +222,12 @@ namespace World.Game
 
         void SmoothForward(float dt)
         {
-            Scene.Frame(WantedFrame(), Mathf.Max(0.5f, _cam.aspect), out float yaw, out float pitch, out float fov);
-            if (!_frameInit) { _yaw = yaw; _pitch = pitch; _fov = fov; _frameInit = true; }
+            bool closer = CouncilScene.CloserCamera(Screen.height);
+            Scene.Frame(WantedFrame(), Mathf.Max(0.5f, _cam.aspect), out float yaw, out float pitch, out float fov, out float push, out Vector3 pdir, closer);
+            if (!_frameInit) { _yaw = yaw; _pitch = pitch; _fov = fov; _push = push; _frameInit = true; }
+            _push = Mathf.SmoothDamp(_push, push, ref _pushV, 0.55f, 30f, dt);
+            if (pdir.sqrMagnitude > 0.01f) Scene.PushDir = pdir;
+            Scene.CamPush = _push;
             _yaw = Mathf.SmoothDampAngle(_yaw, yaw, ref _yawV, 0.55f, 60f, dt);
             _pitch = Mathf.SmoothDamp(_pitch, pitch, ref _pitchV, 0.55f, 40f, dt);
             _fov = Mathf.SmoothDamp(_fov, fov, ref _fovV, 0.55f, 40f, dt);
@@ -228,6 +259,8 @@ namespace World.Game
             if (Time.frameCount == _beginFrame) return;
             if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.Keypad4) || Input.GetKeyDown(KeyCode.Keypad7)) TurnLeft();
             if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.Keypad6) || Input.GetKeyDown(KeyCode.Keypad9)) TurnRight();
+            if ((Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.E)) && WorldActions.State == WorldActionState.Preview && WorldActions.Machine.Current is CouncilAction ka) TapAction(ka);
+            if (Input.GetKeyDown(KeyCode.Backspace)) WorldActions.Cancel();
             if (Input.GetMouseButtonDown(0)) TapScreen(Input.mousePosition);
             for (int i = 0; i < Input.touchCount; i++)
             {
@@ -256,7 +289,14 @@ namespace World.Game
             string target;
             if (View == ViewKind.Forward) target = CouncilScene.Pick(Scene.Targets(_cam), screenBL);
             else target = LeftTargetAt(L.ToSafe(screenBL, Screen.width, Screen.height));
-            if (target == null) return false;
+            var gui = new Vector2(screenBL.x, Screen.height - screenBL.y);
+            if (View == ViewKind.Forward && LedgerCard.Contains(gui))
+            {
+                // the card of a preview is a second place to confirm; a tablet's card just stays
+                if (WorldActions.State == WorldActionState.Preview && WorldActions.Machine.Current is IWorldAction open) { TapsHandled++; if (target == null || !(target.StartsWith("note ") || target == "recorder" || target == "ladder")) { TapAction((CouncilAction)open); return true; } }
+                else return true;
+            }
+            if (target == null) { if (View == ViewKind.Forward && WorldActions.Open) WorldActions.TapElsewhere(); return false; }
             LastTarget = target;
             float now = Time.unscaledTime;
             if (now < _lockUntil || InTransition || Hud.MenuOpen) return true; // swallowed: a held tap or a tap during a camera turn
@@ -271,15 +311,23 @@ namespace World.Game
         void ForwardTap(SettlementCouncil sc, ElectionState e, string target)
         {
             bool mine = e.PlayerSeat >= 0 && e.Active == e.PlayerSeat;
-            if (target == "lantern") { TurnLeft(); return; }
+            if (target == "lantern") { WorldActions.Cancel(); TurnLeft(); return; }
+            if (target == "tablet") { WorldActions.Inspect(Tablet); return; }
+            if (target == "ladder") { if (_immediate) Return(); else TapAction(Act("leave", CouncilAction.Kind.Leave, null)); return; }
             if (!Scene.Settled || !mine) return;
+            bool preview = WorldActions.State == WorldActionState.Preview;
             if (target == "hand" || target.StartsWith("paw "))
             {
+                if (preview && !_immediate) { WorldActions.Cancel(); return; }  // the tap that cancels does nothing else
                 if (e.Phase == ElectionPhase.Ready) Send(new CouncilPush { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
             }
-            else if (target == "seal" || target.StartsWith("lead "))
+            else if (target == "seal" || target == "recorder" || target.StartsWith("lead "))
             {
-                if (e.Phase == ElectionPhase.Ready && e.HasAdvanced) Send(new CouncilBank { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
+                if (e.Phase == ElectionPhase.Ready && e.HasAdvanced)
+                {
+                    if (_immediate) Send(new CouncilBank { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
+                    else TapAction(Act("bank", CouncilAction.Kind.Bank, null));
+                }
                 else if (e.Phase == ElectionPhase.BustPending && target == "seal") Send(new CouncilAcceptBust { Settlement = SettlementId, ExpectedSeq = e.ActionSeq });
             }
             else if (target == "petition")
@@ -296,9 +344,47 @@ namespace World.Game
                     foreach (var p in Scene.Proposals) if (p.Touches(t)) { chosen = p; n++; }
                     if (n != 1) chosen = null; // several proposals reach this place: the player taps the note they mean
                 }
-                if (chosen != null) Commit(e, chosen);
+                if (chosen == null) { if (preview) WorldActions.Cancel(); }
+                else if (_immediate) Commit(e, chosen);
+                else TapAction(Act("p" + e.PushId + ":" + chosen.Tray + ":" + chosen.Socket, CouncilAction.Kind.Proposal, chosen));
             }
         }
+
+        CouncilAction Act(string key, CouncilAction.Kind kind, CouncilProposal p)
+        {
+            if (!_acts.TryGetValue(key, out var a)) { a = new CouncilAction(this, kind, p, E != null ? E.PushId : 0); _acts[key] = a; }
+            return a;
+        }
+
+        /// <summary>One tap on a two-tap action: the first previews, the second (after the machine's double-tap guard) sends once.</summary>
+        public WorldTapResult TapAction(CouncilAction a)
+        {
+            var r = WorldActions.Tap(a);
+            if (r == WorldTapResult.Previewed) PreviewsShown++;
+            if (r == WorldTapResult.Confirmed) _lockUntil = Time.unscaledTime + 0.3f;
+            return r;
+        }
+
+        /// <summary>The machine's confirm lands here: send the command for the action (once).</summary>
+        public bool CommitAction(CouncilAction a)
+        {
+            var e = E; if (e == null) return false;
+            switch (a.K)
+            {
+                case CouncilAction.Kind.Proposal: { int before = Accepted; Commit(e, a.P); return Accepted > before; }
+                case CouncilAction.Kind.Bank: { int before = Accepted; Send(new CouncilBank { Settlement = SettlementId, ExpectedSeq = e.ActionSeq }); return Accepted > before; }
+                default: Return(); return true;
+            }
+        }
+
+        /// <summary>A preview that no longer fits the state (the turn passed, the trays changed) is dropped.</summary>
+        void CheckPreview()
+        {
+            var m = WorldActions.Machine;
+            if (m.State == WorldActionState.Preview && m.Current is CouncilAction a && !a.Check().Ok) WorldActions.Cancel();
+            if (m.State != WorldActionState.Preview && Scene != null && Scene.Previewing && !_confirming) Scene.ClearPreview();
+        }
+        bool _confirming;
 
         void Commit(ElectionState e, CouncilProposal p)
         {
@@ -311,6 +397,13 @@ namespace World.Game
         {
             var r = Do(c);
             if (r.Ok) _lockUntil = Time.unscaledTime + 0.3f;
+        }
+
+        /// <summary>Old one-tap path for tests and scripts that do not care about the preview: a note, the seal or a lead commits at once.</summary>
+        public bool TapTargetNow(string name)
+        {
+            _immediate = true;
+            try { return TapTarget(name); } finally { _immediate = false; }
         }
 
         /// <summary>Taps the centre of a named target of the current view (AutoPlay and tests: the same path as a real tap).</summary>

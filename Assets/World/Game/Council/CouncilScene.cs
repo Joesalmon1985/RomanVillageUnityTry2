@@ -37,6 +37,8 @@ namespace World.Game
         public float LiftCur, AwayStart;
         public bool Jog, HasVia; public Vector3 Via; public float ViaUntil;
         public GameObject Note;
+        /// <summary>WU-4: turned towards a previewed catspaw / stepped forward in a bank preview (still undecided or listening in the engine's terms); the ground ring.</summary>
+        public bool Turned, Stepped; public GameObject Ring;
     }
 
     /// <summary>A dispute location: its objective, its people and the spots the crowd uses.</summary>
@@ -98,7 +100,7 @@ namespace World.Game
         /// <summary>Set by the encounter while it is open; the candidate and the aide stand where this camera looks.</summary>
         public Camera ViewCamera;
         public float TowerGround { get; private set; }
-        public Vector3 CamPos => new Vector3(Site.Position.x, TowerGround + TowerH + 1.2f, Site.Position.z);
+        public Vector3 CamPos => new Vector3(Site.Position.x + PushDir.x * CamPush, TowerGround + TowerH + 1.2f, Site.Position.z + PushDir.z * CamPush);
         public static float GroundAt(Vector3 p) => PlayerWalker.GroundHeight(p) + 0.02f;
 
         readonly Place[] _places = new Place[11];
@@ -218,6 +220,7 @@ namespace World.Game
             BuildPeople(sc);
             BuildCandidates(sc);
             Bench = CouncilBench.Build(this);
+            BuildWu4();
             RegisterClearings();
             Debug.Log("[Council] village built: tower at " + Site.Position + ", fan yaw " + Site.Yaw.ToString("0") + ", " + Site.Why);
         }
@@ -386,6 +389,7 @@ namespace World.Game
             SyncAgents(e, shown, dt);
             SyncCandidate(sc, e, shown, dt);
             SyncProposals(sc, e);
+            SyncWu4(sc, e, shown, dt);
         }
 
         static readonly int[] RowCap = { 5, 8, 11 };
@@ -451,6 +455,13 @@ namespace World.Game
                         target = p.Home; yaw = react && !p.IsLead ? YawTo(p.Home, Site.Position) : p.HomeYaw;
                         break;
                 }
+                // WU-4 previews: the next people turn and lean in towards a previewed catspaw; a bank preview steps the listeners forward
+                bool turned = false, stepped = false;
+                if (ns == PState.Undecided && !p.IsLead && _turn.TryGetValue(pl.Track, out int nTurn) && i >= settled + listening && i < settled + listening + nTurn)
+                { turned = true; target = Vector3.Lerp(p.Home, O, 0.3f); yaw = YawTo(target, O); }
+                else if (ns == PState.Listening && PreviewBank && !p.IsLead)
+                { stepped = true; target = Vector3.Lerp(target, SettledSlot(pl, i, out int prow), 0.55f); yaw = YawTo(target, Site.Position); }
+                p.Turned = turned; p.Stepped = stepped;
                 if (p.HasVia && ns == PState.Settled)
                 {
                     target = lead.Home - pl.Fwd * 1.0f; yaw = YawTo(target, lead.Home); lift = 0f;
@@ -467,16 +478,16 @@ namespace World.Game
                 }
                 else moving = MoveActor(p.A.transform, target, yaw, spd, dt, pl.Ground + p.LiftCur);
                 p.Arrived = !moving;
-                if (moving) MoversBusy++;
+                if (moving && !turned && !stepped) MoversBusy++;
                 if (p.HasVia && !moving) Handover(pl, p);
                 if (!moving && !p.HasVia) p.Jog = false;
                 p.A.Seated = ns == PState.Undecided && p.SitsAtHome && !moving;
                 switch (ns)
                 {
                     case PState.Settled: p.A.Pose = (moving || p.HasVia) && p.Jog ? ActorPose.Joining : ActorPose.Cheer; break;
-                    case PState.Listening: p.A.Pose = ActorPose.Listen; break;
+                    case PState.Listening: p.A.Pose = stepped ? ActorPose.Cheer : ActorPose.Listen; break;
                     case PState.Away: p.A.Pose = now - p.AwayStart < 0.9f ? ActorPose.Dismiss : ActorPose.Droop; break;
-                    default: p.A.Pose = p.IsLead ? ActorPose.None : ActorPose.Doubt; break;
+                    default: p.A.Pose = turned ? ActorPose.Listen : (p.IsLead ? ActorPose.None : ActorPose.Doubt); break;
                 }
                 if (ns == PState.Settled && !moving && !p.HasVia && now >= p.NextPleased) { p.A.PlayOneShot(ActorKeys.ClapHigh); p.NextPleased = now + UnityEngine.Random.Range(5f, 10f); }
             }
@@ -631,7 +642,7 @@ namespace World.Game
         Vector3 AnchorOnGround(float u, float v, float minDist, float maxDist)
         {
             var cam = ViewCamera;
-            var tp = new Vector3(Site.Position.x, TowerGround, Site.Position.z);
+            var tp = CamFoot;
             if (cam == null) return tp;
             var ray = cam.ViewportPointToRay(new Vector3(u, 1f - v, 0f));
             var pl = new Plane(Vector3.up, new Vector3(0, TowerGround, 0));
@@ -770,11 +781,15 @@ namespace World.Game
                 if (_notes[k].activeSelf != on) { _notes[k].SetActive(on); if (on) StampNote(_notes[k], Proposals[k]); }
                 if (!on) continue;
                 var camR = ViewCamera.transform.right; camR.y = 0; camR.Normalize();
-                var pos = ct.position + Vector3.up * (1.35f + 0.55f * (k / 3)) + camR * (0.7f + 0.6f * (k % 3));
+                // spaced by screen size (a tenth of the picture's height) so the notes stay apart and tappable on a phone
+                float dist = Vector3.Distance(ViewCamera.transform.position, ct.position);
+                float hM = 2f * dist * Mathf.Tan(ViewCamera.fieldOfView * 0.5f * Mathf.Deg2Rad);
+                float gap = Mathf.Max(0.6f, hM * 0.11f);
+                var pos = ct.position + Vector3.up * (1.35f + Mathf.Max(0.55f, hM * 0.11f) * (k / 3)) + camR * (Mathf.Max(0.7f, hM * 0.09f) + gap * (k % 3));
                 _notes[k].transform.position = pos;
                 var toCam = (ViewCamera.transform.position - pos).normalized;
                 _notes[k].transform.rotation = Quaternion.FromToRotation(Vector3.up, toCam) * Quaternion.Euler(0, ViewCamera.transform.eulerAngles.y, 0);
-                float pulse = k == PointedProposal ? 1.12f : 1f;
+                float pulse = (k == PointedProposal ? 1.12f : 1f) * 1.4f;
                 _notes[k].transform.localScale = Vector3.one * pulse;
             }
         }
@@ -835,6 +850,12 @@ namespace World.Game
                 Add("seal", _seal.transform.position, 0.4f);
                 if (e.PetitionAvailable && _petition.activeSelf) Add("petition", _petition.transform.position, 0.4f);
             }
+            if (ViewCamera == cam && _recTable != null && _recTable.activeSelf)
+            {
+                Add("tablet", _tablet.transform.position, 0.45f);
+                if (mine && e.Phase == ElectionPhase.Ready && e.HasAdvanced) Add("recorder", _recSeal.transform.position, 0.4f);
+                Add("ladder", _ladder.transform.position + Vector3.up * 1.2f, 0.55f);
+            }
             if (_aide.gameObject.activeSelf && _carryT < 0f) Add("lantern", _aide.transform.position + Vector3.up * 1.3f + _aide.transform.right * 0.45f, 0.6f);
             return l;
         }
@@ -854,9 +875,26 @@ namespace World.Game
         // ================================================================== camera framing
 
         /// <summary>The view that shows the given places from the tower (all eleven when empty): yaw, pitch down and vertical field of view in degrees.</summary>
-        public void Frame(IList<int> tracks, float aspect, out float yaw, out float pitchDown, out float vfov)
+        public void Frame(IList<int> tracks, float aspect, out float yaw, out float pitchDown, out float vfov) =>
+            Frame(tracks, aspect, out yaw, out pitchDown, out vfov, out _, out _, false);
+
+        /// <summary>As above; with <paramref name="closer"/> (a phone) the camera also moves off the tower top towards the places in play (<paramref name="push"/> metres along <paramref name="dir"/>), never nearer than 12 m to one.</summary>
+        public void Frame(IList<int> tracks, float aspect, out float yaw, out float pitchDown, out float vfov, out float push, out Vector3 dir, bool closer)
         {
-            var cp = CamPos;
+            var cp = new Vector3(Site.Position.x, TowerGround + TowerH + 1.2f, Site.Position.z);
+            push = 0f; dir = PushDir;
+            if (closer && tracks != null && tracks.Count > 0)
+            {
+                var cen = Vector3.zero; float near = 999f, sum = 0f;
+                foreach (var t in tracks) { var d0 = _places[t - 2].C - cp; d0.y = 0; cen += d0; near = Mathf.Min(near, d0.magnitude); sum += d0.magnitude; }
+                cen /= tracks.Count; dir = FlatDir(cen);
+                push = Mathf.Clamp(Mathf.Min(sum / tracks.Count - 22f, near - 12f), 0f, 16f);
+                // the camp's fire stands between the tower and the places: never push the camera into its flames
+                var hz = Site.Hearth; var h0 = new Vector3(hz.x - cp.x, 0, hz.z - cp.z);
+                while (push > 0f && (h0 - dir * push).magnitude < 8f) push -= 0.5f;
+                push = Mathf.Max(0f, push);
+                cp += dir * push;
+            }
             float mn = 999f, mx = -999f, dsum = 0f; int n = 0; float refB = float.NaN;
             void Take(int t)
             {
