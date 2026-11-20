@@ -243,6 +243,10 @@ Rules for every package: `Assets/World/Game` reads state and sends commands only
 
 ---
 
+## Owner's answers (20 Nov 2026)
+
+Q-1 altar ledge; Q-2 world first by default, the HUD kept as a "Clear view" setting; Q-3 keep D-6 (Sol leads the player to the spires); Q-4 the healer's lodge is inspection only; Q-5 keep four moves on the hex lattice; Q-6 add the mid-song pause with a four-count; Q-7 council coloured ground rings and a closer camera on phones; Q-8 council proposals preview then confirm. All as recommended below.
+
 ## 6. Questions for the owner (each with a recommendation)
 
 | Id | Question | Recommendation |
