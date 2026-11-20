@@ -198,6 +198,20 @@ namespace World.Game
 
         // ---------------------------------------------------------------- opening and leaving
 
+        /// <summary>WU-0 preview: could the player sacrifice now? Reads state only (sim <c>Check</c>), says why not.</summary>
+        public WorldActionCheck CheckSacrifice(bool ignoreRange = false)
+        {
+            if (T == null) return WorldActionCheck.Disable("This game has no god board.");
+            if (IsOpen || View == BoardView.Falling) return WorldActionCheck.Disable("The god board is open.");
+            var altar = OwnTemple;
+            if (altar == null) return WorldActionCheck.Disable("There is no altar here.");
+            var w = PlayerWalker.Instance;
+            if (!ignoreRange && w != null && BoardSpace.Flat(altar.transform.position - w.Position) > AltarRange)
+                return WorldActionCheck.Refuse("Walk closer to the altar.");
+            var r = _boot.Sim.Check(new Sacrifice { PlayerId = Human });
+            return r.Ok ? WorldActionCheck.Allowed : WorldActionCheck.Refuse(r.Message);
+        }
+
         /// <summary>Casting at the altar: sends <c>Sacrifice</c> and starts the camera rise (GB-1).</summary>
         public bool TrySacrifice(bool ignoreRange = false)
         {

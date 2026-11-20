@@ -18,7 +18,7 @@ namespace World.Game
     }
 
     /// <summary>What a tap did (<see cref="PointerInput.LastTap"/>).</summary>
-    public enum TapOutcome { None, Bubble, Interact, Person, Cast, CastRefused, Inspect }
+    public enum TapOutcome { None, Bubble, Interact, Person, Cast, CastRefused, Inspect, Preview, Confirm, Refused, Cancelled, Ignored }
 
     /// <summary>
     /// The free mouse pointer (REFACTOR_SPEC 2.D "Pointer", appendix B); replaces the old Picker. Owner: package P.
@@ -113,7 +113,20 @@ namespace World.Game
         public static TapOutcome TapAt(Vector2 screenPoint)
         {
             var gui = new Vector2(screenPoint.x, Screen.height - screenPoint.y);
+            // WU-0: the open ledger tablet is part of the thing it unfolded from; in a preview it confirms.
+            if (LedgerCard.Contains(gui))
+            {
+                if (WorldActions.State == WorldActionState.Preview && WorldActions.Machine.Current is IWorldAction open)
+                    return Done(Outcome(WorldActions.Tap(open)), default);
+                return Done(TapOutcome.Ignored, default);
+            }
             var hit = Raycast(screenPoint);
+            // WU-0: generous hit targets: a world action whose screen bounds, grown to 7 % of the screen height, hold the tap.
+            if (hit.Target == null || hit.Target is HexView)
+            {
+                var near = WorldActions.PickEnlarged(screenPoint, ActiveCamera);
+                if (near != null) hit.Target = near;
+            }
             // Inside the ring of a proposal that can be cast from here, the press wins over a bubble's body or a
             // person standing on it (a reply line under the pointer still answers).
             bool ring = CastableAt(hit) && !SpeechBubbles.OverReply(gui);
@@ -149,6 +162,19 @@ namespace World.Game
         {
             var outcome = TapOutcome.None;
             var t = hit.Target;
+            // WU-0: tap once to preview, again to confirm; a tap on anything else only closes what is open.
+            if (t is IWorldAction wa)
+            {
+                outcome = Outcome(WorldActions.Tap(wa));
+                Done(outcome, hit);
+                RaiseTapped(hit);
+                return outcome;
+            }
+            if (WorldActions.Open)
+            {
+                WorldActions.TapElsewhere();
+                return Done(TapOutcome.Cancelled, hit);
+            }
             if (CastableAt(hit))
             {
                 var r = SpellCaster.TryCastAt(hit.Ground);
@@ -175,6 +201,19 @@ namespace World.Game
         }
 
         private static TapOutcome Done(TapOutcome o, PointerHit hit) { LastTap = o; LastHit = hit; return o; }
+
+        private static TapOutcome Outcome(WorldTapResult r)
+        {
+            switch (r)
+            {
+                case WorldTapResult.Previewed: return TapOutcome.Preview;
+                case WorldTapResult.Confirmed: return TapOutcome.Confirm;
+                case WorldTapResult.Refused: case WorldTapResult.Disabled: return TapOutcome.Refused;
+                case WorldTapResult.Cancelled: return TapOutcome.Cancelled;
+                case WorldTapResult.Inspected: return TapOutcome.Inspect;
+                default: return TapOutcome.Ignored;
+            }
+        }
 
         /// <summary>Shows what a person is with a "Follow" reply.</summary>
         public static void OfferFollow(IFollowable who, Component c)

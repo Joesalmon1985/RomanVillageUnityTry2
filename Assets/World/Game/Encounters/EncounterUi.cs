@@ -155,7 +155,7 @@ namespace World.Game
         public const float CompactBelowHeight = 700f;
 
         /// <summary>Tests and captures: a simulated safe area in GUI coordinates (top-left origin); null = <see cref="Screen.safeArea"/>.</summary>
-        public static Rect? SafeAreaOverride;
+        public static Rect? SafeAreaOverride { get => ScreenSafeArea.Override; set => ScreenSafeArea.Override = value; }
 
         public bool Compact;
         /// <summary>Compact unit (1 at 844 x 390); 0 on the desktop layout.</summary>
@@ -176,10 +176,7 @@ namespace World.Game
         /// <summary>The safe area of the current screen in GUI coordinates.</summary>
         public static Rect CurrentSafeArea()
         {
-            if (SafeAreaOverride.HasValue) return SafeAreaOverride.Value;
-            var sa = Screen.safeArea;
-            if (sa.width <= 0 || sa.height <= 0) return new Rect(0, 0, Screen.width, Screen.height);
-            return new Rect(sa.x, Screen.height - (sa.y + sa.height), sa.width, sa.height);
+            return ScreenSafeArea.Current();
         }
 
         public static DuelLayout ForScreen(bool help) => Compute(Screen.width, Screen.height, CurrentSafeArea(), help);

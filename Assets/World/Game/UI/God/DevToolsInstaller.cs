@@ -14,6 +14,9 @@ namespace World.Game
             CampaignDevTool.Register(); // the crystal campaign (I8)
             DressingDevTool.Register(); // dressed land from a dealt board (G1-4)
             PlaytestDevTool.Register(); // jump straight into the Ward duel or the rhythm party
+#if UNITY_EDITOR
+            ZoneOutlineTool.Register(boot); // WU-0: editor-only wireframe zone outline, off by default
+#endif
             var bar = boot.gameObject.AddComponent<GodToolbar>();
             bar.Bind(boot);
         }
