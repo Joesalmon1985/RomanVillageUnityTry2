@@ -2,6 +2,8 @@
 
 Written 18 Nov 2026 at the end of the design session with the owner. Read this page first in a fresh session, then `Docs/PRD_GODBOARD.md`.
 
+> **20 Nov 2026: the world-first UI is built on `godboard/main`. Read `Docs/progress/STATUS_2026-11-20.md` first, then `STATUS_2026-11-19.md`.**
+>
 > **19 Nov 2026 (evening): the build started.** Most of Slices 0 to 4 are built on branch `godboard/main` (worktree `..\wt-gb`), committed but not pushed and not merged into `historic/main`. **Read `Docs/progress/STATUS_2026-11-19.md` first**: branches, tests, how to try it, the decisions waiting on the owner (balance first) and the next steps. The steps below are the original plan.
 
 ## What was decided
