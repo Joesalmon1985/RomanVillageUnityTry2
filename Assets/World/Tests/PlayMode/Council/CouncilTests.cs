@@ -997,6 +997,62 @@ namespace World.Game.Tests
             Assert.IsTrue(Enc.Scene.Targets(Enc.Scene.ViewCamera).Exists(t => t.Name == "recorder"), "the recorder is still on screen");
         }
 
+#if UNITY_EDITOR
+        /// <summary>P2b: at 844 x 390 the framing holds both previewed places of every proposal (even the far-apart pair), a pillar marks each, and the notes are as tall as a hit target.</summary>
+        [UnityTest, Timeout(300000)]
+        public IEnumerator P2b_PreviewFraming_HoldsBothPlaces_At844x390_AndNotesAreBig()
+        {
+            UnityEditor.PlayModeWindow.GetRenderingResolution(out uint w0, out uint h0);
+            UnityEditor.PlayModeWindow.SetCustomRenderingResolution(844, 390, "P2b council 844x390");
+            try
+            {
+                for (int i = 0; i < 10 && Screen.height != 390; i++) yield return null;
+                ScreenSafeArea.Override = ScreenSafeArea.SimulatedNotch(Screen.width, Screen.height);
+                yield return Stage();
+                CouncilScene.ForceCloser = true;
+                yield return Until(() => Enc.Scene.Proposals.Count == 3, 10f, "three notes");
+                float H = Screen.height, W = Screen.width;
+                // the notes at the foot of the picture: each one at least the hit target tall, on screen
+                yield return new WaitForSecondsRealtime(1.5f);
+                var cam = Enc.Scene.ViewCamera;
+                for (int k = 0; k < 3; k++)
+                {
+                    Assert.IsTrue(WorldHitTarget.ScreenBounds(Enc.Scene.NoteObject(k).transform, cam, out var nr), "note " + k + " on screen");
+                    Assert.GreaterOrEqual(nr.height, WorldHitTarget.MinSide(H) * 0.8f, "note " + k + " is big enough: " + nr);
+                    Assert.Greater(nr.yMin, H * 0.5f, "the notes are at the foot of the picture");
+                }
+                float farthest = 0f;
+                for (int k = 0; k < 3; k++)
+                {
+                    WorldActions.Cancel();
+                    yield return new WaitForSecondsRealtime(2.5f);
+                    yield return TapPreview("note " + k);
+                    Assert.AreEqual(WorldActionState.Preview, WorldActions.State, "first tap previews note " + k);
+                    for (int w = 0; w < 16; w++)
+                    {
+                        yield return new WaitForSecondsRealtime(0.2f); // the camera glides (0.55 s smoothing)
+                        if (WorldActions.State != WorldActionState.Preview) Assert.Fail("preview dropped after " + (w + 1) * 0.2f + " s: state " + WorldActions.State + " phase " + E.Phase + " active " + E.Active + " reason " + WorldActions.Machine.Reason);
+                    }
+                    Assert.AreEqual(WorldActionState.Preview, WorldActions.State);
+                    Assert.AreEqual(2, Enc.Scene.BeaconCount, "a pillar over each previewed place");
+                    var tr = Enc.Scene.PreviewTracks; Assert.AreEqual(2, tr.Count);
+                    farthest = Mathf.Max(farthest, Vector3.Distance(Enc.Scene.PlaceCentre(tr[0]), Enc.Scene.PlaceCentre(tr[1])));
+                    var card = LedgerCard.CurrentLayout(cam).Card;
+                    foreach (int t in tr)
+                    {
+                        var sp = cam.WorldToScreenPoint(Enc.Scene.PlaceCentre(t));
+                        Assert.Greater(sp.z, 0f, "place " + t + " is in front of the camera");
+                        Assert.IsTrue(sp.x > W * 0.03f && sp.x < W * 0.97f, "place " + t + " inside the width at " + sp + " (note " + k + ")");
+                        Assert.IsTrue(sp.y > 0f && sp.y < H, "place " + t + " inside the height at " + sp);
+                        Assert.IsFalse(card.Contains(new Vector2(sp.x, H - sp.y)), "the docked card does not cover place " + t);
+                    }
+                }
+                Assert.Greater(farthest, 30f, "one of the example proposals has its two places far apart");
+            }
+            finally { CouncilScene.ForceCloser = null; UnityEditor.PlayModeWindow.SetCustomRenderingResolution(w0, h0, "restore"); ScreenSafeArea.Override = null; }
+        }
+#endif
+
         [UnityTest, Timeout(200000)]
         public IEnumerator AutoPlay_CouncilFixture_Passes()
         {
