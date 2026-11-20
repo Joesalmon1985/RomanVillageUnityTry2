@@ -97,7 +97,7 @@ namespace World.Game
                 x += w; i++;
             }
             // the carved rim along the back edge and its lit lip
-            var rim = Prim(PrimitiveType.Cube, _slab, new Vector3(0f, 0.09f, 0.985f), new Vector3(60f, 0.18f, 0.03f), StoneLight);
+            var rim = Prim(PrimitiveType.Cube, _slab, new Vector3(0f, 0.09f, 0.985f), new Vector3(60f, 0.18f, 0.03f), Stone);
             rim.name = "Rim";
             var groove = Prim(PrimitiveType.Cube, _slab, new Vector3(0f, 0.004f, 0.94f), new Vector3(60f, 0.01f, 0.02f), StoneDark);
             groove.name = "Groove";
@@ -253,15 +253,15 @@ namespace World.Game
             }
             else if (id == "mat")
             {
-                var cloth = Prim(PrimitiveType.Cube, m, new Vector3(0f, 0f, 0f), new Vector3(1f, 1f, 0.01f), new Color(0.30f, 0.12f, 0.08f)); cloth.name = "Cloth";
-                for (int k = 0; k < 5; k++) Prim(PrimitiveType.Cube, cloth.transform, new Vector3(0f, -0.4f + k * 0.2f, -0.6f), new Vector3(1f, 0.02f, 0.5f), new Color(0.56f, 0.38f, 0.18f));
+                var cloth = Prim(PrimitiveType.Cube, m, new Vector3(0f, 0f, 0f), new Vector3(1f, 1f, 0.01f), new Color(0.22f, 0.10f, 0.07f)); cloth.name = "Cloth";
+                for (int k = 0; k < 5; k++) Prim(PrimitiveType.Cube, cloth.transform, new Vector3(0f, -0.4f + k * 0.2f, -0.6f), new Vector3(1f, 0.02f, 0.5f), new Color(0.42f, 0.28f, 0.13f));
                 Prim(PrimitiveType.Cube, cloth.transform, new Vector3(0f, 0.05f, -0.6f), new Vector3(1f, 0.012f, 0.5f), new Color(0.25f, 0.08f, 0.05f));
                 Prim(PrimitiveType.Cylinder, m, new Vector3(0f, 0.5f, 0f), new Vector3(0.04f, 0.53f, 0.04f), WoodDark, new Vector3(0f, 0f, 90f)).name = "RodTop";
-                Prim(PrimitiveType.Cylinder, m, new Vector3(0f, -0.5f, 0f), new Vector3(0.05f, 0.53f, 0.05f), new Color(0.55f, 0.18f, 0.12f), new Vector3(0f, 0f, 90f)).name = "RodBottom";
+                Prim(PrimitiveType.Cylinder, m, new Vector3(0f, -0.5f, 0f), new Vector3(0.05f, 0.53f, 0.05f), new Color(0.38f, 0.14f, 0.09f), new Vector3(0f, 0f, 90f)).name = "RodBottom";
             }
             else if (id == "mat-give" || id.StartsWith("mat-get:"))
             {
-                var plate = Prim(PrimitiveType.Cylinder, m, new Vector3(0f, 0.5f, 0.02f), new Vector3(0.8f, 0.01f, 0.8f), new Color(0.62f, 0.44f, 0.26f), new Vector3(-90f, 0f, 0f)); plate.name = "Plate";
+                var plate = Prim(PrimitiveType.Cylinder, m, new Vector3(0f, 0.5f, 0.02f), new Vector3(0.8f, 0.01f, 0.8f), new Color(0.46f, 0.34f, 0.22f), new Vector3(-90f, 0f, 0f)); plate.name = "Plate";
                 if (id == "mat-give") plate.transform.localScale = new Vector3(0.8f, 0.01f, 0.8f);
                 var ring = Glow(m, new Vector3(0f, 0.5f, 0.04f), new Vector3(0.95f, 0.95f, 0.01f), new Color(0, 0, 0, 0)); ring.name = "Ring";
                 it.Dyn.localPosition = new Vector3(0f, 0.5f, -0.06f);
@@ -465,8 +465,8 @@ namespace World.Game
             float fl = 0.85f + 0.3f * Mathf.PerlinNoise(now * 3.1f, 0.2f), fr = 0.85f + 0.3f * Mathf.PerlinNoise(now * 2.7f, 5.3f);
             _torchL.transform.position = tl + new Vector3(0.6f, tscale * 1.2f, -1.2f); _torchR.transform.position = tr + new Vector3(-0.6f, tscale * 1.2f, -1.2f);
             float span = Mathf.Abs(tr.x - tl.x);
-            _torchL.range = _torchR.range = Mathf.Max(6f, span * 0.85f);
-            _torchL.intensity = 2.2f * fl; _torchR.intensity = 2.2f * fr;
+            _torchL.range = _torchR.range = Mathf.Max(6f, span * 0.7f);
+            _torchL.intensity = 1.5f * fl; _torchR.intensity = 1.5f * fr;
 
             var seen = new HashSet<string>();
             foreach (var kv in _hud.LedgeRects)
