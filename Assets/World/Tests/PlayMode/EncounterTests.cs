@@ -349,7 +349,7 @@ namespace World.Game.Tests
             var want = new System.Collections.Generic.List<int>(e.Session.RevealedPlayerWard); want.AddRange(e.Session.RevealedRivalWard);
             CollectionAssert.AreEqual(want, air);
             yield return Until(() => LedgerCard.IsOpen && LedgerCard.Content.Title == "The referee", 3f, "the referee speaks at the end");
-            StringAssert.Contains("rematch", string.Join(" ", LedgerCard.Content.Lines).ToLowerInvariant());
+            StringAssert.Contains("duel again", string.Join(" ", LedgerCard.Content.Lines).ToLowerInvariant());
             // Tap the caster: a rematch (preview, confirm); the gate then leaves (preview, confirm) and the player is back where he stood.
             yield return new WaitForSecondsRealtime(0.7f);
             var card = LedgerCard.LastRect; // a tap on the tablet closes it
