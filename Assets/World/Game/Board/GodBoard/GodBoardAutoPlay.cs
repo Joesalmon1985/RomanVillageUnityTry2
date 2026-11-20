@@ -135,6 +135,12 @@ namespace World.Game
         private static IEnumerator RunTour(AutoPlay a)
         {
             var tour = new WorldTour(m => a.Fail(m));
+            // Local captures: -tourshots <prefix> [-notch] saves <prefix>_<moment>.png at each moment of the tour (never committed).
+            string prefix = null; bool notch = false;
+            var args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length; i++) { if (args[i] == "-tourshots" && i + 1 < args.Length) prefix = args[i + 1]; if (args[i] == "-notch") notch = true; }
+            if (notch) ScreenSafeArea.Override = ScreenSafeArea.SimulatedNotch(Screen.width, Screen.height);
+            if (prefix != null) tour.Moment = m => ScreenCapture.CaptureScreenshot(prefix + "_" + m.Replace(' ', '_').Replace("'", "") + ".png");
             yield return tour.Run();
         }
 
