@@ -165,8 +165,8 @@ namespace World.Game
             n.Lines.Add(LastHealerLine);
             if (PlagueRuns && Plague != null)
             {
-                n.Options.Add(DialogueOption.Do("How bad is it?", () => { SpeechBubbles.Say(Healer, OutbreakSays(), 6f); if (Plague.Post != null) WorldActions.Inspect(Plague.Post); }));
-                n.Options.Add(DialogueOption.Do("Is my charm ready?", () => { SpeechBubbles.Say(Healer, CharmSays(), 5f); if (Plague.Charm != null) WorldActions.Inspect(Plague.Charm); }));
+                n.Options.Add(DialogueOption.Do("How bad is it?", () => { ShowTo(Plague.TableCentre); SpeechBubbles.Say(Healer, OutbreakSays(), 6f); if (Plague.Post != null) WorldActions.Inspect(Plague.Post); }));
+                n.Options.Add(DialogueOption.Do("Is my charm ready?", () => { if (Plague.Charm != null) ShowTo(Plague.Charm.transform.position); SpeechBubbles.Say(Healer, CharmSays(), 5f); if (Plague.Charm != null) WorldActions.Inspect(Plague.Charm); }));
             }
             n.Options.Add(DialogueOption.Leave("Thank you"));
         }
@@ -192,8 +192,131 @@ namespace World.Game
         }
         private string _news;
 
+        // ------------------------------------------------------------ P3: the healer and the assistant at work
+
+        /// <summary>What the healer and the assistant are doing now (tests, captures).</summary>
+        public enum Work { Idle, Walking, Grinding, Tending, Fetching, Sorting, Showing }
+        public Work HealerWork { get; private set; }
+        public Work AssistantWork { get; private set; }
+        /// <summary>The point the healer turned to when last asked (the map table, the charm peg); null before.</summary>
+        public Vector3? HealerShowed { get; private set; }
+        /// <summary>The herb bundle the assistant carries from the racks to the mortar (shown only while carried).</summary>
+        public GameObject Bundle { get; private set; }
+
+        private float _hNext, _aNext, _showUntil; private int _hStep, _aStep, _hReps, _aReps;
+        private Vector3 MortarSpot => Frame.W(-3.3f, 5.75f);
+        private Vector3 Mortar => Frame.W(-3.3f, 4.9f);
+        private Vector3 CotSpot => Frame.W(2.7f, 5.1f);
+        private Vector3 Cot => Frame.W(3.6f, 5.1f);
+        private Vector3 RackSpot => Frame.W(4.15f, 1.2f);
+        private Vector3 Rack => Frame.W(4.9f, 1.2f);
+        private Vector3 SortSpot => Frame.W(1.8f, BodyRadius + 2.0f);
+        private Vector3 Baskets => Frame.W(1.5f, BodyRadius + 1.0f);
+        private Vector3 TableDrop => Frame.W(-2.6f, 5.8f);
+
+        /// <summary>The healer turns to a point (the map table when asked how bad it is), points at it and explains.</summary>
+        public void ShowTo(Vector3 point)
+        {
+            if (Healer == null) return;
+            HealerShowed = point;
+            Healer.StopWalking();
+            Healer.Directed = true;
+            Healer.FaceTowards(point);
+            Healer.PointAt(point + Vector3.up * 0.2f);
+            HealerWork = Work.Showing; _showUntil = Time.time + 3.2f; _hStep = 0; _hNext = _showUntil + 1.5f;
+        }
+
+        private bool PlayerBusyWith(Npc n) => n.IsGreetingShown || (DialoguePanel.IsOpen && Healer == n);
+
+        private void UpdateHealer()
+        {
+            if (Healer == null) return;
+            if (HealerWork == Work.Showing)
+            {
+                if (Time.time < _showUntil) return;
+                Healer.PointAt(null); Healer.Directed = false; Healer.Actor?.PlayOneShot(ActorKeys.Gesture);
+                HealerWork = Work.Idle;
+                return;
+            }
+            if (_running || Healer.IsWalking || Time.time < _hNext) return;
+            if (PlayerBusyWith(Healer)) { HealerWork = Work.Idle; _hNext = Time.time + 1f; return; }
+            var a = Healer.Actor;
+            switch (_hStep)
+            {
+                case 0: // to the mortar
+                    if (Go(Healer, MortarSpot)) { HealerWork = Work.Walking; return; }
+                    Healer.FaceTowards(Mortar); _hReps = 0; _hStep = 1; _hNext = Time.time + 0.4f; return;
+                case 1: // grind for a while
+                    HealerWork = Work.Grinding; a?.PlayOneShot(ActorKeys.Grind);
+                    if (++_hReps >= 4) _hStep = 2;
+                    _hNext = Time.time + 1.9f; return;
+                case 2: // to the cot
+                    if (Go(Healer, CotSpot)) { HealerWork = Work.Walking; return; }
+                    Healer.FaceTowards(Cot); _hReps = 0; _hStep = 3; _hNext = Time.time + 0.4f; return;
+                default: // tend it, then back to the mortar
+                    HealerWork = Work.Tending; a?.PlayOneShot(ActorKeys.Tend);
+                    if (++_hReps >= 2) _hStep = 0;
+                    _hNext = Time.time + 2.4f + (_hStep == 0 ? 1.5f : 0f); return;
+            }
+        }
+
+        private void UpdateAssistant()
+        {
+            if (Assistant == null || Assistant.IsWalking || Time.time < _aNext) return;
+            if (PlayerBusyWith(Assistant)) { _aNext = Time.time + 1f; return; }
+            var a = Assistant.Actor;
+            switch (_aStep)
+            {
+                case 0: // sort the baskets by the door
+                    if (Go(Assistant, SortSpot)) { AssistantWork = Work.Walking; return; }
+                    Assistant.FaceTowards(Baskets);
+                    AssistantWork = Work.Sorting; a?.PlayOneShot(_aReps % 2 == 0 ? ActorKeys.Tend : ActorKeys.Nod);
+                    if (++_aReps >= 3) { _aReps = 0; _aStep = 1; }
+                    _aNext = Time.time + 2.6f; return;
+                case 1: // to the herb rack
+                    if (Go(Assistant, RackSpot)) { AssistantWork = Work.Walking; return; }
+                    Assistant.FaceTowards(Rack); AssistantWork = Work.Fetching; a?.PlayOneShot(ActorKeys.Fetch);
+                    _aStep = 2; _aNext = Time.time + 0.9f; return;
+                case 2: // take a bundle down
+                    SetBundle(true); _aStep = 3; _aNext = Time.time + 0.7f; return;
+                case 3: // carry it to the healer's table
+                    if (Go(Assistant, TableDrop)) { AssistantWork = Work.Walking; return; }
+                    Assistant.FaceTowards(Mortar); a?.PlayOneShot(ActorKeys.Nod);
+                    _aStep = 4; _aNext = Time.time + 0.6f; return;
+                default: // set it down, back to the baskets
+                    SetBundle(false); _aStep = 0; _aNext = Time.time + 0.5f; return;
+            }
+        }
+
+        /// <summary>Starts a walk unless already there (true while there is still a way to go).</summary>
+        private static bool Go(Npc n, Vector3 spot)
+        {
+            if (BoardSpace.Flat(n.transform.position - spot) < 0.35f) return false;
+            n.WalkSpeed = 1.3f; n.WalkTo(spot);
+            return true;
+        }
+
+        private void SetBundle(bool on)
+        {
+            var pa = Assistant != null ? Assistant.Actor as PlaceholderActor : null;
+            if (Bundle == null && on)
+            {
+                var mb = new MeshBuilder();
+                for (int i = 0; i < 5; i++) mb.Cone(new Vector3((i - 2) * 0.03f, -0.22f, 0), 0.035f, 0.3f, 5, i % 2 == 0 ? HubArt.Herb : HubArt.HerbDry);
+                mb.Cylinder(new Vector3(0, -0.05f, 0), 0.06f, 0.06f, 0.04f, 6, CampBuilder.Wood);
+                Bundle = mb.ToObject("Herb bundle", transform, MaterialFactory.CreateVertexColored(Color.white, "Herb bundle"));
+                Bundle.layer = 2;
+            }
+            if (Bundle == null) return;
+            if (on && pa != null) { Bundle.transform.SetParent(pa.Forearm(true), false); Bundle.transform.localPosition = new Vector3(0, -0.30f, 0.06f); Bundle.transform.localRotation = Quaternion.identity; }
+            else if (on) { Bundle.transform.SetParent(Assistant.transform, false); Bundle.transform.localPosition = new Vector3(0.3f, 1.1f, 0.3f); }
+            Bundle.SetActive(on);
+        }
+
         private void Update()
         {
+            UpdateHealer();
+            UpdateAssistant();
             if (!_running || Runner == null) return;
             if (_returnAt < 0f)
             {

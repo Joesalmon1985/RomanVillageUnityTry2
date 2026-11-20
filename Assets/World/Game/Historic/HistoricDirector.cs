@@ -482,7 +482,7 @@ namespace World.Game
         private readonly List<Actor> _actors = new List<Actor>();
         private Mesh _fallMesh;
 
-        private sealed class Walker { public GameObject Go; public Transform T; public bool Seen; public int Key = -1; public float Id; public MeshFigure Fig; public bool Loaded; public Vector3 Last; }
+        private sealed class Walker { public GameObject Go; public Transform T; public bool Seen; public int Key = -1; public float Id; public MeshFigure Fig; public bool Loaded; public Vector3 Last; public Vector3 A, B, C; public float U = -1f; }
         private sealed class Actor { public Walker W; public Vector3 A, B; public float T; public bool Fell; }
 
         private Mesh WalkerMesh(int people, int ware)
@@ -507,6 +507,12 @@ namespace World.Game
             return m;
         }
 
+        /// <summary>P3: carriers' legs never show more than a brisk walk (figure units per second, below <see cref="Gait.RunFrom"/>).</summary>
+        public const float CarrierGaitCap = 2.2f;
+        /// <summary>Test probe (P3): the fastest gait any carrier shows now (figure units per second).</summary>
+        public float CarrierGaitSpeed { get { float s = 0f; foreach (var w in _walkers.Values) if (w.Go.activeSelf && w.Fig != null) s = Mathf.Max(s, w.Fig.Speed); return s; } }
+        /// <summary>Test probe (P3): the largest sideways distance of a carrier from the straight line between its trip's ends (m).</summary>
+        public float CarrierRouteBulge { get { float s = 0f; foreach (var w in _walkers.Values) if (w.Go.activeSelf && w.U >= 0f) s = Mathf.Max(s, BoardSpace.Flat(w.C - (w.A + w.B) * 0.5f)); return s; } }
         /// <summary>Test probe (P1): the largest leg spread among the carriers shown now (0 when nobody is walking).</summary>
         public float CarrierLegSwing { get { float s = 0f; foreach (var w in _walkers.Values) if (w.Go.activeSelf && w.Fig != null) s = Mathf.Max(s, w.Fig.LegSwing); return s; } }
 
@@ -526,6 +532,8 @@ namespace World.Game
             w.Loaded = ware >= 0;
             w.Fig.Seed = (people * 0.31f + _pool.Count * 0.17f) % 1f;
             w.Last = new Vector3(float.NaN, 0, 0);
+            w.U = -1f;
+            w.Fig.MaxGaitSpeed = CarrierGaitCap;
             w.Go.SetActive(true);
             return w;
         }
@@ -560,19 +568,16 @@ namespace World.Game
                 if (a == Vector3.zero || b == Vector3.zero) continue;
                 float u = Mathf.Clamp01((j.Progress + 0.5f) / Mathf.Max(1, j.Ticks));
                 int key = j.Id;
-                if (!_walkers.TryGetValue(key, out var w))
-                {
-                    w = GetWalker(j.People, (int)j.Ware); w.Id = j.Id; _walkers[key] = w;
-                    w.T.position = Vector3.Lerp(a, b, u);
-                }
+                bool fresh = !_walkers.TryGetValue(key, out var w);
+                if (fresh) { w = GetWalker(j.People, (int)j.Ware); w.Id = j.Id; _walkers[key] = w; }
+                if (fresh || BoardSpace.Flat(w.A - a) > 0.5f || BoardSpace.Flat(w.B - b) > 0.5f) PlanRoute(w, a, b, j.Id);
                 w.Seen = true;
-                // The job's own lane: a small sideways offset so a stream of carriers is not a single line.
-                var dir = b - a; dir.y = 0;
-                var side = dir.sqrMagnitude > 0.01f ? Vector3.Cross(Vector3.up, dir.normalized) : Vector3.right;
-                var target = Vector3.Lerp(a, b, u) + side * (((j.Id % 5) - 2) * 0.6f);
-                var cur = w.T.position;
-                cur = Vector3.Lerp(cur, target, 1f - Mathf.Exp(-9f * Time.deltaTime));
+                // P3: the sim's trip progress stays authoritative (the carrier is where the job says, along its route); the
+                // smoothed parameter only hides the 10 Hz steps. The legs show at most a brisk walk (CarrierGaitCap).
+                w.U = fresh || w.U < 0f ? u : Mathf.Lerp(w.U, u, 1f - Mathf.Exp(-9f * Time.deltaTime));
+                var cur = Route(w, w.U);
                 cur.y = 0f;
+                var dir = Route(w, Mathf.Min(1f, w.U + 0.02f)) - Route(w, Mathf.Max(0f, w.U - 0.02f)); dir.y = 0;
                 if (dir.sqrMagnitude > 0.01f) w.T.rotation = Quaternion.Slerp(w.T.rotation, Quaternion.LookRotation(dir, Vector3.up), 0.2f);
                 w.T.position = cur;
                 Animate(w, w.Loaded ? MeshFigure.Hold.Load : MeshFigure.Hold.Swing);
@@ -581,6 +586,37 @@ namespace World.Game
             foreach (var kv in _walkers) if (!kv.Value.Seen) _gone.Add(kv.Key);
             foreach (int k in _gone) { Release(_walkers[k]); _walkers.Remove(k); }
         }
+
+        /// <summary>
+        /// P3: a carrier's route between its trip's ends: a gentle curve (quadratic) bowed to the side with more room from
+        /// the buildings between (the ends' own buildings excluded), plus the job's lane so a stream is not one line.
+        /// </summary>
+        private void PlanRoute(Walker w, Vector3 a, Vector3 b, int jobId)
+        {
+            w.A = a; w.B = b;
+            var dir = b - a; dir.y = 0;
+            float len = dir.magnitude;
+            var side = len > 0.01f ? Vector3.Cross(Vector3.up, dir / len) : Vector3.right;
+            float bow = Mathf.Clamp(len * 0.14f, 3f, 24f), lane = ((jobId % 5) - 2) * 0.6f;
+            var mid = (a + b) * 0.5f;
+            float best = -1f; var pick = mid;
+            foreach (float sgn in new[] { 1f, -1f })
+            {
+                var c = mid + side * (sgn * bow + lane);
+                float clear = float.MaxValue;
+                foreach (var bv in _buildings.Values)
+                {
+                    if (BoardSpace.Flat(bv.Pos - a) < 10f || BoardSpace.Flat(bv.Pos - b) < 10f) continue;
+                    for (int k = 1; k < 6; k++) clear = Mathf.Min(clear, BoardSpace.Flat(Bez(a, c, b, k / 6f) - bv.Pos));
+                }
+                // Ties (open country) bow by the job's id so streams of carriers spread to both sides.
+                if (clear > best + 0.5f || (Mathf.Abs(clear - best) <= 0.5f && (jobId & 1) == (sgn > 0 ? 0 : 1))) { best = clear; pick = c; }
+            }
+            w.C = pick;
+        }
+
+        private static Vector3 Bez(Vector3 a, Vector3 c, Vector3 b, float u) { float v = 1f - u; return v * v * a + 2f * v * u * c + u * u * b; }
+        private static Vector3 Route(Walker w, float u) => Bez(w.A, w.C, w.B, u);
 
         // ---------------------------------------------------------------- felling and planting actors
 

@@ -17,7 +17,9 @@ namespace World.Game
             /// <summary>P1: a two-handed staff blow (sparring), a guard with both forearms up, an open-armed explaining sweep (referee, talk).</summary>
             Strike = "strike", Block = "block", Gesture = "gesture",
             /// <summary>P1: a listener's nod (head only).</summary>
-            Nod = "nod";
+            Nod = "nod",
+            /// <summary>P3 (the healer's lodge): grinding in a mortar, tending a cot (stooped, smoothing), reaching up to a rack.</summary>
+            Grind = "grind", Tend = "tend", Fetch = "fetch";
     }
 
     /// <summary>
@@ -46,7 +48,7 @@ namespace World.Game
         public float TurnSpeed = 300f;
         public Color TunicColor { get; private set; }
 
-        private Transform _body, _head, _armL, _armR, _legL, _legR, _kneeL, _kneeR;
+        private Transform _body, _head, _armL, _armR, _legL, _legR, _kneeL, _kneeR, _elbowL, _elbowR;
         private string _oneShot; private float _oneShotT, _oneShotLen;
         private float _targetYaw; private bool _turning;
         private Vector3 _lastPos; private float _walkBlend, _phase;
@@ -60,10 +62,14 @@ namespace World.Game
         /// <summary>Varies the phase and the variant of a pose between people.</summary>
         public int PoseSeed;
         private ActorPose _poseShown = ActorPose.None, _poseOld = ActorPose.None; private float _poseBlend, _poseMix = 1f;
-        /// <summary>The arm pivot (a hand-sized thing can hang at its local (0, -0.62, 0.05)).</summary>
+        /// <summary>The arm pivot (the shoulder).</summary>
         public Transform Arm(bool right) => right ? _armR : _armL;
+        /// <summary>P3: the forearm pivot (the elbow); a hand-sized thing can hang at its local (0, -0.30, 0.05).</summary>
+        public Transform Forearm(bool right) => right ? _elbowR : _elbowL;
+        /// <summary>P3 test probe: how far the elbow is bent now (degrees, 0 = straight arm).</summary>
+        public float ElbowBend(bool right) { var e = right ? _elbowR : _elbowL; return e != null ? -Mathf.DeltaAngle(0f, e.localEulerAngles.x) : 0f; }
 
-        private struct PV { public Vector3 armL, armR; public bool keepL, keepR; public float pitch, roll, headPitch, headYaw, lift; }
+        private struct PV { public Vector3 armL, armR; public bool keepL, keepR; public float pitch, roll, headPitch, headYaw, lift, elbL, elbR; }
 
         private PV PoseValues(ActorPose p, float t)
         {
@@ -74,41 +80,41 @@ namespace World.Game
                 {
                     float s = Mathf.Sin(t * 2.4f + ph), s2 = Mathf.Sin(t * 2.4f + ph + 1.6f);
                     v.armL = new Vector3(s * 22f, 0, -(158f + s * 16f)); v.armR = new Vector3(s2 * 22f, 0, 158f + s2 * 16f);
-                    v.pitch = -7f; v.headPitch = -12f; v.lift = Mathf.Abs(Mathf.Sin(t * 2.6f + ph)) * 0.10f;
+                    v.pitch = -7f; v.headPitch = -12f; v.lift = Mathf.Abs(Mathf.Sin(t * 2.6f + ph)) * 0.10f; v.elbL = 18f + s * 10f; v.elbR = 18f + s2 * 10f;
                     break;
                 }
                 case ActorPose.Joining:
-                    v.keepL = true; v.armR = new Vector3(0, 0, 150f + Mathf.Sin(t * 10f + ph) * 22f); v.pitch = 4f; v.headPitch = -8f;
+                    v.keepL = true; v.armR = new Vector3(0, 0, 150f + Mathf.Sin(t * 10f + ph) * 22f); v.elbR = 25f + Mathf.Sin(t * 10f + ph + 1f) * 15f; v.pitch = 4f; v.headPitch = -8f;
                     break;
                 case ActorPose.Listen:
                 {
                     v.pitch = 26f; v.roll = Mathf.Sin(t * 0.9f + ph) * 6f; v.headPitch = -8f;
                     float g = Mathf.Clamp01((Mathf.Sin(t * 0.4f + ph) - 0.55f) * 4f);
                     v.headYaw = g * ((PoseSeed & 1) == 0 ? 48f : -48f);
-                    if ((PoseSeed & 1) == 0) { v.armR = new Vector3(-15f, 0, 148f); v.armL = new Vector3(-25f, 0, -6f); }
-                    else { v.armR = new Vector3(-118f, 0, -28f); v.armL = new Vector3(-30f, 0, -8f); }
+                    if ((PoseSeed & 1) == 0) { v.armR = new Vector3(-15f, 0, 120f); v.armL = new Vector3(-25f, 0, -6f); v.elbR = 125f; v.elbL = 20f; }
+                    else { v.armR = new Vector3(-70f, 0, -18f); v.armL = new Vector3(-30f, 0, -8f); v.elbR = 105f; v.elbL = 60f; }
                     break;
                 }
                 case ActorPose.Doubt:
                 {
                     v.pitch = -10f; v.headPitch = -5f; v.roll = Mathf.Sin(t * 0.5f + ph) * 2f;
-                    if (PoseSeed % 3 == 2) { v.armL = new Vector3(0, 0, -46f); v.armR = new Vector3(0, 0, 46f); }
-                    else { v.armL = new Vector3(-72f, 0, 42f); v.armR = new Vector3(-86f, 0, -42f); }
+                    if (PoseSeed % 3 == 2) { v.armL = new Vector3(0, 0, -46f); v.armR = new Vector3(0, 0, 46f); v.elbL = v.elbR = 75f; }
+                    else { v.armL = new Vector3(-30f, 0, 22f); v.armR = new Vector3(-38f, 0, -22f); v.elbL = 100f; v.elbR = 92f; }
                     if ((PoseSeed & 1) == 1) v.headYaw = Mathf.Sin(t * 7f + ph) * 26f * Mathf.Clamp01((Mathf.Sin(t * 0.35f + ph) - 0.4f) * 4f);
                     break;
                 }
                 case ActorPose.Address:
                     v.armL = new Vector3(-30f, 0, -(102f + Mathf.Sin(t * 1.2f) * 18f)); v.armR = new Vector3(-30f, 0, 102f + Mathf.Sin(t * 1.2f + 1.5f) * 18f);
-                    v.pitch = 8f; v.headYaw = Mathf.Sin(t * 0.8f) * 30f; v.lift = 0.02f;
+                    v.pitch = 8f; v.headYaw = Mathf.Sin(t * 0.8f) * 30f; v.lift = 0.02f; v.elbL = v.elbR = 12f;
                     break;
                 case ActorPose.Dismiss:
-                    v.armR = new Vector3(-80f, 0, 78f); v.armL = new Vector3(0, 0, -10f); v.pitch = 3f; v.headPitch = 6f; v.headYaw = -28f;
+                    v.armR = new Vector3(-80f, 0, 78f); v.armL = new Vector3(0, 0, -10f); v.elbR = 4f; v.elbL = 10f; v.pitch = 3f; v.headPitch = 6f; v.headYaw = -28f;
                     break;
                 case ActorPose.Droop:
                     v.keepL = true; v.keepR = true; v.pitch = 17f; v.headPitch = 24f;
                     break;
                 case ActorPose.Offer:
-                    v.keepL = true; v.armR = new Vector3(-84f, 0, -4f); v.pitch = 5f; v.headPitch = -4f;
+                    v.keepL = true; v.armR = new Vector3(-84f, 0, -4f); v.elbR = 4f; v.pitch = 5f; v.headPitch = -4f;
                     break;
             }
             return v;
@@ -181,11 +187,16 @@ namespace World.Game
             Signs.Prim(PrimitiveType.Cube, _head, "Nose", new Vector3(0, 0.08f, 0.14f), new Vector3(0.035f, 0.06f, 0.05f), mSkin);
             _armL = Pivot(_body, "ArmL", new Vector3(-0.29f, 1.38f, 0));
             _armR = Pivot(_body, "ArmR", new Vector3(0.29f, 1.38f, 0));
+            // P3: two-part arms (upper arm, and a forearm on an elbow pivot) so swings, carries, blows and gestures bend.
+            _elbowL = Pivot(_armL, "ElbowL", new Vector3(0, -0.28f, 0));
+            _elbowR = Pivot(_armR, "ElbowR", new Vector3(0, -0.28f, 0));
             foreach (var arm in new[] { _armL, _armR })
+                Signs.Prim(PrimitiveType.Capsule, arm, "Arm", new Vector3(0, -0.14f, 0), new Vector3(0.115f, 0.16f, 0.115f), mSkin);
+            foreach (var el in new[] { _elbowL, _elbowR })
             {
-                Signs.Prim(PrimitiveType.Capsule, arm, "Arm", new Vector3(0, -0.26f, 0), new Vector3(0.11f, 0.28f, 0.11f), mSkin);
-                Signs.Prim(PrimitiveType.Cylinder, arm, "Band", new Vector3(0, -0.40f, 0), new Vector3(0.13f, 0.035f, 0.13f), mFur);
-                Signs.Prim(PrimitiveType.Sphere, arm, "Hand", new Vector3(0, -0.58f, 0), Vector3.one * 0.1f, mSkin);
+                Signs.Prim(PrimitiveType.Capsule, el, "Forearm", new Vector3(0, -0.14f, 0), new Vector3(0.10f, 0.16f, 0.10f), mSkin);
+                Signs.Prim(PrimitiveType.Cylinder, el, "Band", new Vector3(0, -0.12f, 0), new Vector3(0.12f, 0.035f, 0.12f), mFur);
+                Signs.Prim(PrimitiveType.Sphere, el, "Hand", new Vector3(0, -0.30f, 0), Vector3.one * 0.1f, mSkin);
             }
             _renderers = GetComponentsInChildren<Renderer>();
         }
@@ -225,6 +236,9 @@ namespace World.Game
                 case ActorKeys.Block: len = 0.7f; break;
                 case ActorKeys.Gesture: len = 1.3f; break;
                 case ActorKeys.Nod: len = 0.8f; break;
+                case ActorKeys.Grind: len = 1.8f; break;
+                case ActorKeys.Tend: len = 2.2f; break;
+                case ActorKeys.Fetch: len = 1.5f; break;
                 default: return false;
             }
             _oneShot = key; _oneShotT = 0; _oneShotLen = len;
@@ -293,6 +307,10 @@ namespace World.Game
             float t = Time.time + _seed * 37f;
             float idle = 1f - _walkBlend;
             Vector3 armL = new Vector3(g.ArmL, 0, -6f), armR = new Vector3(g.ArmR, 0, 6f);
+            // P3 elbows: relaxed a little when standing, bending as the arm swings forward, pumped near 90 degrees when running.
+            float runArms = Gait.RunBlend(Mathf.Max(_speed, 0.8f)) * _walkBlend;
+            _eL = 10f + Mathf.Max(0f, -g.ArmL) * 0.7f * _walkBlend + 65f * runArms;
+            _eR = 10f + Mathf.Max(0f, -g.ArmR) * 0.7f * _walkBlend + 65f * runArms;
             float bodyPitch = g.Pitch, headPitch = Mathf.Sin(t * 0.7f) * 2f, lift = 0, roll = g.Roll, headYaw = 0;
             float bob = g.Bob + Mathf.Sin(t * 1.9f) * 0.008f * idle; // breathing when still
             float legLx = g.LegL, legRx = g.LegR, shiftX = 0f;
@@ -322,6 +340,8 @@ namespace World.Game
                 Vector3 aL = pn.keepL ? armL : pn.armL, aR = pn.keepR ? armR : pn.armR;
                 Vector3 oL = po.keepL ? armL : po.armL, oR = po.keepR ? armR : po.armR;
                 aL = Vector3.Lerp(oL, aL, m); aR = Vector3.Lerp(oR, aR, m);
+                float eL = Mathf.Lerp(po.keepL ? _eL : po.elbL, pn.keepL ? _eL : pn.elbL, m), eR = Mathf.Lerp(po.keepR ? _eR : po.elbR, pn.keepR ? _eR : pn.elbR, m);
+                _eL = Mathf.Lerp(_eL, eL, w); _eR = Mathf.Lerp(_eR, eR, w);
                 armL = Vector3.Lerp(armL, aL, w); armR = Vector3.Lerp(armR, aR, w);
                 bodyPitch = Mathf.Lerp(po.pitch, pn.pitch, m) * w; roll = Mathf.Lerp(po.roll, pn.roll, m) * w;
                 headPitch += Mathf.Lerp(po.headPitch, pn.headPitch, m) * w; headYaw = Mathf.Lerp(po.headYaw, pn.headYaw, m) * w;
@@ -336,15 +356,16 @@ namespace World.Game
                 switch (_oneShot)
                 {
                     case ActorKeys.Wave:
-                        armR = Vector3.Lerp(armR, new Vector3(0, 0, 150f + Mathf.Sin(_oneShotT * 14f) * 18f), Mathf.Clamp01(env * 2f));
+                        armR = Vector3.Lerp(armR, new Vector3(0, 0, 150f + Mathf.Sin(_oneShotT * 14f) * 8f), Mathf.Clamp01(env * 2f)); _eR = Mathf.Lerp(_eR, 30f + Mathf.Sin(_oneShotT * 14f) * 22f, Mathf.Clamp01(env * 2f));
                         break;
                     case ActorKeys.Greet:
                         bodyPitch = 18f * env; headPitch += 10f * env;
-                        armR = Vector3.Lerp(armR, new Vector3(-60f, 0, 10f), env);
+                        armR = Vector3.Lerp(armR, new Vector3(-60f, 0, 10f), env); _eR = Mathf.Lerp(_eR, 30f, env);
                         break;
                     case ActorKeys.Cheer:
                         armL = Vector3.Lerp(armL, new Vector3(0, 0, -160f), Mathf.Clamp01(env * 2f));
                         armR = Vector3.Lerp(armR, new Vector3(0, 0, 160f), Mathf.Clamp01(env * 2f));
+                        _eL = Mathf.Lerp(_eL, 20f, env); _eR = Mathf.Lerp(_eR, 20f, env);
                         lift = Mathf.Abs(Mathf.Sin(_oneShotT * 9f)) * 0.18f * env;
                         break;
                     case ActorKeys.Cast:
@@ -352,7 +373,7 @@ namespace World.Game
                         float push = u < 0.35f ? u / 0.35f : 1f - (u - 0.35f) / 0.65f;
                         armL = Vector3.Lerp(armL, new Vector3(-95f, 0, 15f), push);
                         armR = Vector3.Lerp(armR, new Vector3(-95f, 0, -15f), push);
-                        bodyPitch = -6f * push;
+                        bodyPitch = -6f * push; _eL = Mathf.Lerp(45f, 6f, push); _eR = _eL;
                         break;
                     }
                     case ActorKeys.Clap:
@@ -360,21 +381,25 @@ namespace World.Game
                         float c = Mathf.Abs(Mathf.Sin(_oneShotT * 12f));
                         armL = Vector3.Lerp(armL, new Vector3(-70f, 0, 30f * c + 5f), env);
                         armR = Vector3.Lerp(armR, new Vector3(-70f, 0, -30f * c - 5f), env);
+                        _eL = Mathf.Lerp(_eL, 55f, env); _eR = Mathf.Lerp(_eR, 55f, env);
                         break;
                     }
                     case ActorKeys.Surprise:
                         armL = Vector3.Lerp(armL, new Vector3(-40f, 0, -60f), env);
                         armR = Vector3.Lerp(armR, new Vector3(-40f, 0, 60f), env);
+                        _eL = Mathf.Lerp(_eL, 80f, env); _eR = Mathf.Lerp(_eR, 80f, env);
                         bodyPitch = -8f * env; lift = 0.06f * env;
                         break;
                     case ActorKeys.Stretch:
                         armL = Vector3.Lerp(armL, new Vector3(0, 0, -170f), env);
                         armR = Vector3.Lerp(armR, new Vector3(0, 0, 170f), env);
+                        _eL = Mathf.Lerp(_eL, 0f, env); _eR = Mathf.Lerp(_eR, 0f, env);
                         bodyPitch = -5f * env;
                         break;
                     case ActorKeys.Beckon:
                         // Arm out in front, forearm waving back towards the body.
-                        armR = Vector3.Lerp(armR, new Vector3(-80f + Mathf.Sin(_oneShotT * 11f) * 35f, 0, 12f), Mathf.Clamp01(env * 2f));
+                        armR = Vector3.Lerp(armR, new Vector3(-80f, 0, 12f), Mathf.Clamp01(env * 2f));
+                        _eR = Mathf.Lerp(_eR, 55f + Mathf.Sin(_oneShotT * 11f) * 45f, Mathf.Clamp01(env * 2f)); // the forearm waves back to the body
                         headPitch -= 4f * env;
                         break;
                     case ActorKeys.ClapHigh:
@@ -382,6 +407,7 @@ namespace World.Game
                         float c = Mathf.Abs(Mathf.Sin(_oneShotT * 10f));
                         armL = Vector3.Lerp(armL, new Vector3(0, 0, -(150f + 26f * c)), Mathf.Clamp01(env * 2f));
                         armR = Vector3.Lerp(armR, new Vector3(0, 0, 150f + 26f * c), Mathf.Clamp01(env * 2f));
+                        _eL = Mathf.Lerp(_eL, 35f * c, env); _eR = Mathf.Lerp(_eR, 35f * c, env);
                         lift = Mathf.Max(lift, Mathf.Abs(Mathf.Sin(_oneShotT * 5f)) * 0.07f * env);
                         break;
                     }
@@ -393,12 +419,16 @@ namespace World.Game
                         float rec = u >= 0.6f ? Mathf.SmoothStep(0, 1, (u - 0.6f) / 0.4f) : 0f;
                         float ax = Mathf.Lerp(Mathf.Lerp(-30f, -165f, wind), -55f, hit);
                         ax = Mathf.Lerp(ax, armR.x, rec);
-                        armR = new Vector3(ax, 0, -10f); armL = new Vector3(ax + 8f, 0, 10f);
+                        // The elbows cock with the staff behind the head and snap straight through the blow.
+                        float el = Mathf.Lerp(Mathf.Lerp(25f, 95f, wind), 6f, hit);
+                        el = Mathf.Lerp(el, _eR, rec);
+                        armR = new Vector3(ax, 0, -10f); armL = new Vector3(ax + 8f, 0, 10f); _eR = el; _eL = el + 6f;
                         bodyPitch = Mathf.Lerp(-8f * wind + 18f * hit, 0f, rec); lift = 0.03f * hit * (1f - rec);
                         break;
                     }
                     case ActorKeys.Block:
-                        armL = Vector3.Lerp(armL, new Vector3(-120f, 0, 28f), env); armR = Vector3.Lerp(armR, new Vector3(-120f, 0, -28f), env);
+                        armL = Vector3.Lerp(armL, new Vector3(-82f, 0, 28f), env); armR = Vector3.Lerp(armR, new Vector3(-82f, 0, -28f), env);
+                        _eL = Mathf.Lerp(_eL, 100f, env); _eR = Mathf.Lerp(_eR, 100f, env); // forearms up across the face
                         bodyPitch = -10f * env; headPitch += 10f * env;
                         break;
                     case ActorKeys.Gesture:
@@ -406,16 +436,48 @@ namespace World.Game
                         float sweep = Mathf.Sin(u * Mathf.PI * 2f);
                         armR = Vector3.Lerp(armR, new Vector3(-75f, 0, 40f + sweep * 30f), env);
                         armL = Vector3.Lerp(armL, new Vector3(-50f, 0, -25f - sweep * 15f), env * 0.8f);
+                        _eR = Mathf.Lerp(_eR, 30f - sweep * 15f, env); _eL = Mathf.Lerp(_eL, 50f, env * 0.8f);
                         bodyPitch = 5f * env; headYaw += sweep * 12f * env;
                         break;
                     }
                     case ActorKeys.Nod:
                         headPitch += Mathf.Max(0f, Mathf.Sin(u * Mathf.PI * 3f)) * 16f * env; bodyPitch += 3f * env;
                         break;
+                    case ActorKeys.Grind:
+                    {
+                        // Lean over the mortar, both hands on the pestle, grinding in small circles.
+                        float w = Mathf.Clamp01(env * 2.5f), c = _oneShotT * 8f;
+                        armR = Vector3.Lerp(armR, new Vector3(-48f + Mathf.Sin(c) * 9f, 0, -14f + Mathf.Cos(c) * 7f), w);
+                        armL = Vector3.Lerp(armL, new Vector3(-40f + Mathf.Sin(c) * 6f, 0, 20f), w);
+                        _eR = Mathf.Lerp(_eR, 70f + Mathf.Cos(c) * 10f, w); _eL = Mathf.Lerp(_eL, 75f, w);
+                        bodyPitch += 16f * w; headPitch += 18f * w; roll += Mathf.Sin(c) * 2f * w;
+                        break;
+                    }
+                    case ActorKeys.Tend:
+                    {
+                        // Stoop over the cot and smooth the bedding with both hands, side to side.
+                        float w = Mathf.Clamp01(env * 2f), sw = Mathf.Sin(_oneShotT * 4.5f);
+                        armR = Vector3.Lerp(armR, new Vector3(-62f, 0, -6f + sw * 16f), w); armL = Vector3.Lerp(armL, new Vector3(-62f, 0, 6f + sw * 16f), w);
+                        _eL = Mathf.Lerp(_eL, 22f, w); _eR = Mathf.Lerp(_eR, 22f, w);
+                        bodyPitch += 34f * w; headPitch += 10f * w; roll += sw * 3f * w;
+                        break;
+                    }
+                    case ActorKeys.Fetch:
+                    {
+                        // Reach up to the rack (on the toes), take a bundle down and hold it to the chest.
+                        float up = u < 0.5f ? Mathf.SmoothStep(0, 1, u / 0.3f) : 1f - Mathf.SmoothStep(0, 1, (u - 0.5f) / 0.35f);
+                        float hold = Mathf.SmoothStep(0, 1, (u - 0.55f) / 0.3f);
+                        armR = Vector3.Lerp(Vector3.Lerp(armR, new Vector3(-50f, 0, -10f), hold), new Vector3(-168f, 0, -8f), up);
+                        _eR = Mathf.Lerp(Mathf.Lerp(_eR, 95f, hold), 15f, up);
+                        armL = Vector3.Lerp(armL, new Vector3(-30f, 0, 10f), hold * 0.8f); _eL = Mathf.Lerp(_eL, 70f, hold * 0.8f);
+                        headPitch -= 22f * up; lift = 0.06f * up;
+                        break;
+                    }
                     case ActorKeys.Hammer:
                     {
                         float k = Mathf.Abs(Mathf.Sin(u * Mathf.PI * 2f));
                         armR = Vector3.Lerp(armR, new Vector3(-150f + 90f * k, 0, 8f), env);
+                        _eR = Mathf.Lerp(_eR, Mathf.Lerp(100f, 15f, k), env); // cocked at the top, straight on the blow
                         bodyPitch = 14f * env;
                         break;
                     }
@@ -437,7 +499,7 @@ namespace World.Game
                 float side = Mathf.Atan2(local.x, Mathf.Max(0.1f, local.z)) * Mathf.Rad2Deg;
                 float down = Mathf.Atan2(local.y - 1.4f, new Vector2(local.x, local.z).magnitude) * Mathf.Rad2Deg;
                 var pose = new Vector3(-90f - Mathf.Clamp(down, -40f, 30f), 0, Mathf.Clamp(side, -60f, 60f) + 4f);
-                armR = Vector3.Lerp(armR, pose, _pointBlend);
+                armR = Vector3.Lerp(armR, pose, _pointBlend); _eR = Mathf.Lerp(_eR, 3f, _pointBlend);
             }
             if (Seated) shiftX = 0f;
             _body.localPosition = new Vector3(shiftX, bob + lift - (Seated ? 0.42f : 0f), 0);
@@ -445,6 +507,9 @@ namespace World.Game
             _head.localRotation = Quaternion.Euler(headPitch, headYaw, 0);
             _armL.localRotation = Quaternion.Euler(armL);
             _armR.localRotation = Quaternion.Euler(armR);
+            if (Seated) { _eL = Mathf.Max(_eL, 35f); _eR = Mathf.Max(_eR, 35f); }
+            _elbowL.localRotation = Quaternion.Euler(-Mathf.Clamp(_eL, 0f, 150f), 0, 0);
+            _elbowR.localRotation = Quaternion.Euler(-Mathf.Clamp(_eR, 0f, 150f), 0, 0);
             if (Seated)
             {
                 _legL.localRotation = Quaternion.Euler(-88f, 4f, 0); _legR.localRotation = Quaternion.Euler(-80f, -6f, 0);
@@ -497,6 +562,7 @@ namespace World.Game
             _renderers = GetComponentsInChildren<Renderer>();
         }
 
+        private float _eL, _eR;
         private float _seed, _speed, _lookBlend, _talkBlend, _glanceCur, _glanceTarget, _glanceAt, _fidgetAt, _fidgetT, _fidgetLen;
         private int _fidget = -1;
         private Vector3? _lookAt;
@@ -542,12 +608,12 @@ namespace World.Game
             switch (_fidget)
             {
                 case 0: // scratch the back of the head
-                    armR = Vector3.Lerp(armR, new Vector3(-155f + Mathf.Sin(_fidgetT * 16f) * 6f, 0, -40f), env); headPitch += 8f * env; break;
+                    armR = Vector3.Lerp(armR, new Vector3(-150f, 0, -30f), env); _eR = Mathf.Lerp(_eR, 115f + Mathf.Sin(_fidgetT * 16f) * 12f, env); headPitch += 8f * env; break;
                 case 1: // hands on the hips
-                    armL = Vector3.Lerp(armL, new Vector3(10f, 0, -38f), env); armR = Vector3.Lerp(armR, new Vector3(10f, 0, 38f), env); pitch -= 3f * env; break;
+                    armL = Vector3.Lerp(armL, new Vector3(25f, 0, -40f), env); armR = Vector3.Lerp(armR, new Vector3(25f, 0, 40f), env); _eL = Mathf.Lerp(_eL, 70f, env); _eR = Mathf.Lerp(_eR, 70f, env); pitch -= 3f * env; break;
                 case 2: // rub the hands
-                    armL = Vector3.Lerp(armL, new Vector3(-48f, 0, 20f + Mathf.Sin(_fidgetT * 12f) * 5f), env);
-                    armR = Vector3.Lerp(armR, new Vector3(-48f, 0, -20f - Mathf.Sin(_fidgetT * 12f) * 5f), env); headPitch += 6f * env; break;
+                    armL = Vector3.Lerp(armL, new Vector3(-30f, 0, 20f + Mathf.Sin(_fidgetT * 12f) * 5f), env);
+                    armR = Vector3.Lerp(armR, new Vector3(-30f, 0, -20f - Mathf.Sin(_fidgetT * 12f) * 5f), env); _eL = Mathf.Lerp(_eL, 65f, env); _eR = Mathf.Lerp(_eR, 65f, env); headPitch += 6f * env; break;
                 default: // roll the shoulders back, chest out
                     armL = Vector3.Lerp(armL, new Vector3(28f, 0, -14f), env); armR = Vector3.Lerp(armR, new Vector3(28f, 0, 14f), env); pitch -= 6f * env; headPitch -= 8f * env; break;
             }
@@ -564,13 +630,15 @@ namespace World.Game
             float open = Mathf.Max(0f, Mathf.Sin(t * 0.6f)); // now and then both palms open outwards
             armR = Vector3.Lerp(armR, new Vector3(-38f - gR * 32f, 0, 10f + open * 28f), w);
             armL = Vector3.Lerp(armL, new Vector3(-22f - gL * 26f, 0, -8f - open * 24f), w);
+            _eR = Mathf.Lerp(_eR, 55f + gR * 30f - open * 20f, w); _eL = Mathf.Lerp(_eL, 45f + gL * 25f - open * 15f, w);
             pitch += 4f * w; headPitch += Mathf.Sin(t * 5.3f) * 4f * w; headYaw += Mathf.Sin(t * 0.9f) * 8f * w;
         }
 
         private void CarryArms(ref Vector3 armL, ref Vector3 armR)
         {
-            if (Carrying == CarryStyle.Shoulder) armR = new Vector3(-158f, 0, -14f);
-            else if (Carrying == CarryStyle.Arms) { armL = new Vector3(-58f, 0, 16f); armR = new Vector3(-58f, 0, -16f); }
+            // P3: the shoulder carry bends the elbow back so the hand steadies the load; the arms carry holds it on the forearms.
+            if (Carrying == CarryStyle.Shoulder) { armR = new Vector3(-125f, 0, -14f); _eR = 115f; }
+            else if (Carrying == CarryStyle.Arms) { armL = new Vector3(-35f, 0, 16f); armR = new Vector3(-35f, 0, -16f); _eL = _eR = 58f; }
         }
     }
 }

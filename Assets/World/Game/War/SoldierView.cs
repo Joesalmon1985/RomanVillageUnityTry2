@@ -150,7 +150,7 @@ namespace World.Game
                 case SoldierAction.Dodge: _actDur = 0.5f; DodgesPlayed++; break;
                 case SoldierAction.Purge: _actDur = 1.0f * k; PurgesPlayed++; break;
                 case SoldierAction.Cheer: _actDur = 1.5f; CheersPlayed++; break;
-                case SoldierAction.Die: _actDur = 0.7f; Dying = true; break;
+                case SoldierAction.Die: _actDur = FallEnd; Dying = true; break;
                 default: _actDur = 0f; break;
             }
         }
@@ -190,7 +190,8 @@ namespace World.Game
                 if (_purgeClock > 1.7f * SlowFactor) { _purgeClock = 0f; Play(SoldierAction.Purge); }
             }
             Animate(dt);
-            if (Dying && _actT > 3.4f) Finished = true;
+            if (Dying && _actT >= FadeStart) Dissolve(Mathf.Clamp01((_actT - FadeStart) / (DeathSeconds - FadeStart)));
+            if (Dying && _actT > DeathSeconds) Finished = true;
         }
 
         private void FaceToward(float yaw, float maxDeg)
@@ -230,7 +231,6 @@ namespace World.Game
             var bodyPos = new Vector3(0, -dip + (_walking && limp < 0.1f ? Mathf.Abs(s) * 0.07f : 0f), 0);
             float armLz = 0f, armLy = 0f, armRz = 0f;
             float u = _actDur > 0f ? Mathf.Clamp01(_actT / _actDur) : 0f;
-            float fade = 1f;
 
             switch (_act)
             {
@@ -272,12 +272,23 @@ namespace World.Game
                 }
                 case SoldierAction.Die:
                 {
-                    float k = Ease(Mathf.Clamp01(_actT / _actDur));
-                    bodyPitch = Mathf.Lerp(bodyPitch, -88f, k); bodyPos.z = -0.5f * k; bodyPos.y = 0.18f * k;
-                    armRx = Mathf.Lerp(armRx, -120f, k); legL = legR = 0f;
-                    // Lie a while, then sink and shrink away.
-                    float f = Mathf.Clamp01((_actT - 1.6f) / 1.6f);
-                    bodyPos.y -= 0.9f * f; fade = 1f - f;
+                    // P3: a real death. Stagger back a step or two (arms thrown out), the knees give (the body drops), fall
+                    // to the ground with a small bounce, lie still, then dissolve (Dissolve, no shrinking).
+                    float fwd = (Id & 1) == 0 ? 1f : -1f; // some fall on their face, some on their back
+                    float st = Mathf.Clamp01(_actT / StaggerEnd);
+                    float stagger = Mathf.Sin(st * Mathf.PI);
+                    float drop = Ease(Mathf.Clamp01((_actT - StaggerEnd * 0.6f) / 0.35f));
+                    float fall = Mathf.Clamp01((_actT - StaggerEnd) / (FallEnd - StaggerEnd));
+                    float k = fall * fall; // accelerates into the ground
+                    float bounce = _actT > FallEnd ? Mathf.Sin(Mathf.Clamp01((_actT - FallEnd) / 0.25f) * Mathf.PI) * 0.12f : 0f;
+                    bodyPitch = Mathf.Lerp(-16f * stagger * fwd - 6f, 86f * fwd, k) + bounce * 20f * -fwd;
+                    bodyRoll = Mathf.Sin(st * Mathf.PI * 3f) * 10f * (1f - k) + 8f * k;
+                    bodyPos.z = -0.45f * st * fwd + (fwd > 0 ? 0.15f : -0.35f) * k;
+                    bodyPos.y = -0.28f * drop * (1f - k) + 0.16f * k + bounce * 0.15f;
+                    armRx = Mathf.Lerp(Mathf.Lerp(armRx, -70f, stagger), fwd > 0 ? -150f : -30f, k);
+                    armLx = Mathf.Lerp(Mathf.Lerp(armLx, -100f, stagger), fwd > 0 ? -140f : 20f, k);
+                    armRz = 30f * stagger + 25f * k; armLz = -30f * stagger - 20f * k;
+                    legL = 22f * stagger * fwd * (1f - k) + 10f * k; legR = -12f * stagger * fwd * (1f - k) - 6f * k;
                     break;
                 }
             }
@@ -285,12 +296,41 @@ namespace World.Game
             float baseScaleY = _bulk;
             var sc = _body.localScale; _body.localScale = new Vector3(sc.x, baseScaleY, sc.z);
             _body.localRotation = Quaternion.Euler(bodyPitch, bodyYaw, bodyRoll);
-            if (fade < 1f) _body.localScale = new Vector3(_body.localScale.x, baseScaleY * Mathf.Max(0.02f, fade), _body.localScale.z) ;
             _legL.localRotation = Quaternion.Euler(legL, 0, 0);
             _legR.localRotation = Quaternion.Euler(legR, 0, 0);
             _armR.localRotation = Quaternion.Euler(armRx, 0, 8f + armRz);
             _armL.localRotation = Quaternion.Euler(armLx * (HasShield ? 1f : 0.6f), armLy, -4f + armLz);
             if (_marker != null && Dying && _marker.activeSelf) _marker.SetActive(false);
+        }
+
+        /// <summary>P3 death timing (s): stagger, fall onto the ground, lie still, dissolve, gone.</summary>
+        public const float StaggerEnd = 0.55f, FallEnd = 1.15f, FadeStart = 2.3f, DeathSeconds = 3.4f;
+        /// <summary>Test probe: how far the body has dissolved (0..1).</summary>
+        public float Dissolved { get; private set; }
+        /// <summary>Test probe: the body's scale (the death never shrinks it).</summary>
+        public Vector3 BodyScale => _body != null ? _body.localScale : Vector3.one;
+
+        private static Material _dissolveMat;
+        private static readonly int DissolveId = Shader.PropertyToID("_Dissolve");
+        private MaterialPropertyBlock _mpb;
+
+        /// <summary>The body's parts switch to the dissolving material (same look, WORLD_DISSOLVE) and vanish in blocks.</summary>
+        private void Dissolve(float f)
+        {
+            if (_dissolveMat == null)
+            {
+                _dissolveMat = new Material(LandLook.Lit) { name = "Land lit dissolve" };
+                _dissolveMat.EnableKeyword("WORLD_DISSOLVE");
+            }
+            if (_mpb == null)
+            {
+                _mpb = new MaterialPropertyBlock();
+                foreach (var r in _body.GetComponentsInChildren<MeshRenderer>())
+                    if (r.sharedMaterial == LandLook.Lit) r.sharedMaterial = _dissolveMat;
+            }
+            Dissolved = f;
+            _mpb.SetFloat(DissolveId, f);
+            foreach (var r in _body.GetComponentsInChildren<MeshRenderer>()) r.SetPropertyBlock(_mpb);
         }
 
         /// <summary>A pose probe for tests: the arm's pitch now.</summary>

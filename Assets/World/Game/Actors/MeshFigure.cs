@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace World.Game
@@ -13,17 +14,24 @@ namespace World.Game
     {
         public enum Hold { Swing, Load, Work }
 
-        public Transform Root, Body, LegL, LegR, ArmL, ArmR;
-        public MeshFilter TorsoFilter, LegLFilter, LegRFilter, ArmLFilter, ArmRFilter;
+        public Transform Root, Body, LegL, LegR, ArmL, ArmR, KneeL, KneeR;
+        public MeshFilter TorsoFilter, LegLFilter, LegRFilter, ArmLFilter, ArmRFilter, ShinLFilter, ShinRFilter;
         public float Phase, Speed, Moving;
         /// <summary>Hip height at figure scale 1 (the leg length used by the gait).</summary>
         public float LegLength = 0.8f;
         /// <summary>World units per figure unit (the root's scale).</summary>
         public float Scale = 1f;
+        /// <summary>
+        /// P3: the fastest gait shown (figure units per second; default no limit). Above it the legs keep this walking
+        /// cadence and stride while the root covers more ground (Historic carriers keep the sim's trip timing but walk).
+        /// </summary>
+        public float MaxGaitSpeed = float.PositiveInfinity;
         /// <summary>Per-figure 0..1 (idle sway and work timing differ).</summary>
         public float Seed;
         /// <summary>Test probe: the angle between the legs this frame.</summary>
         public float LegSwing { get; private set; }
+        /// <summary>P3 test probe: the larger knee bend this frame (degrees).</summary>
+        public float KneeBend { get; private set; }
 
         /// <summary>Builds the five parts under a new root (meshes shared; parts on <paramref name="layer"/>).</summary>
         public static MeshFigure Build(string name, Transform parent, Material mat, Mesh torso, Mesh leg, Mesh arm,
@@ -35,8 +43,12 @@ namespace World.Game
             f.Root = root.transform;
             f.Body = Part("Body", f.Root, Vector3.zero, layer, null, null, out _);
             f.TorsoFilter = PartMesh(f.Body, "Torso", torso, mat, layer);
-            f.LegL = Part("LegL", f.Body, new Vector3(-hipX, hipY, 0), layer, leg, mat, out f.LegLFilter);
-            f.LegR = Part("LegR", f.Body, new Vector3(hipX, hipY, 0), layer, leg, mat, out f.LegRFilter);
+            // P3: knees. The leg mesh is split at half the hip height into a thigh and a shin (on a knee pivot).
+            Split(leg, hipY * 0.5f, out var thigh, out var shin);
+            f.LegL = Part("LegL", f.Body, new Vector3(-hipX, hipY, 0), layer, thigh, mat, out f.LegLFilter);
+            f.LegR = Part("LegR", f.Body, new Vector3(hipX, hipY, 0), layer, thigh, mat, out f.LegRFilter);
+            f.KneeL = Part("KneeL", f.LegL, new Vector3(0, -hipY * 0.5f, 0), layer, shin, mat, out f.ShinLFilter);
+            f.KneeR = Part("KneeR", f.LegR, new Vector3(0, -hipY * 0.5f, 0), layer, shin, mat, out f.ShinRFilter);
             f.ArmL = Part("ArmL", f.Body, new Vector3(-shoulderX, shoulderY, 0), layer, arm, mat, out f.ArmLFilter);
             f.ArmR = Part("ArmR", f.Body, new Vector3(shoulderX, shoulderY, 0), layer, arm, mat, out f.ArmRFilter);
             return f;
@@ -59,10 +71,33 @@ namespace World.Game
             return mf;
         }
 
+        private static readonly Dictionary<Mesh, KeyValuePair<Mesh, Mesh>> _split = new Dictionary<Mesh, KeyValuePair<Mesh, Mesh>>();
+
+        /// <summary>
+        /// Splits a leg mesh (hanging down from y = 0) at y = -<paramref name="knee"/>: the thigh keeps every vertex above
+        /// the knee (those below are pulled up to it), the shin every vertex below (those above pulled down), moved up so
+        /// its pivot is the knee. Exact for the box legs used here; cached per source mesh.
+        /// </summary>
+        public static void Split(Mesh leg, float knee, out Mesh thigh, out Mesh shin)
+        {
+            if (_split.TryGetValue(leg, out var kv) && kv.Key != null && kv.Value != null) { thigh = kv.Key; shin = kv.Value; return; }
+            var v = leg.vertices; var tv = new Vector3[v.Length]; var sv = new Vector3[v.Length];
+            for (int i = 0; i < v.Length; i++)
+            {
+                tv[i] = new Vector3(v[i].x, Mathf.Max(v[i].y, -knee), v[i].z);
+                sv[i] = new Vector3(v[i].x, Mathf.Min(v[i].y, -knee) + knee, v[i].z);
+            }
+            thigh = Object.Instantiate(leg); thigh.name = leg.name + " thigh"; thigh.vertices = tv; thigh.RecalculateBounds();
+            shin = Object.Instantiate(leg); shin.name = leg.name + " shin"; shin.vertices = sv; shin.RecalculateBounds();
+            _split[leg] = new KeyValuePair<Mesh, Mesh>(thigh, shin);
+        }
+
         /// <summary>Swaps the meshes (pooled figures reused for another people or load).</summary>
         public void SetMeshes(Mesh torso, Mesh leg, Mesh arm)
         {
-            TorsoFilter.sharedMesh = torso; LegLFilter.sharedMesh = leg; LegRFilter.sharedMesh = leg;
+            Split(leg, LegLength * 0.5f, out var thigh, out var shin);
+            TorsoFilter.sharedMesh = torso; LegLFilter.sharedMesh = thigh; LegRFilter.sharedMesh = thigh;
+            ShinLFilter.sharedMesh = shin; ShinRFilter.sharedMesh = shin;
             ArmLFilter.sharedMesh = arm; ArmRFilter.sharedMesh = arm;
         }
 
@@ -76,6 +111,7 @@ namespace World.Game
             float d = distance / Mathf.Max(0.001f, Scale);
             float sp = d / dt;
             if (d > 4f) { sp = 0f; d = 0f; } // a jump (pooled reuse, snap) is not a step
+            if (sp > MaxGaitSpeed) { sp = MaxGaitSpeed; d = MaxGaitSpeed * dt; }
             Speed = Mathf.Lerp(Speed, sp, 1f - Mathf.Exp(-10f * dt));
             Moving = Mathf.MoveTowards(Moving, Mathf.Clamp01(Speed / 0.5f), dt * 5f);
             float gs = Mathf.Max(Speed, 0.8f);
@@ -99,6 +135,11 @@ namespace World.Game
             ArmL.localRotation = Quaternion.Euler(armL, 0, -armZ);
             ArmR.localRotation = Quaternion.Euler(armR, 0, armZ);
             LegSwing = Mathf.Abs(g.LegL - g.LegR);
+            // The knee bends while its leg swings forward (the foot clears the ground); a worker crouches a little.
+            float c = Mathf.Cos(Phase), knee = Mathf.Lerp(36f, 72f, Gait.RunBlend(gs)) * Moving, crouch = hold == Hold.Work ? 14f : 3f;
+            float kl = Mathf.Max(0f, c) * knee + crouch, kr = Mathf.Max(0f, -c) * knee + crouch;
+            KneeL.localRotation = Quaternion.Euler(kl, 0, 0); KneeR.localRotation = Quaternion.Euler(kr, 0, 0);
+            KneeBend = Mathf.Max(kl, kr);
         }
     }
 }

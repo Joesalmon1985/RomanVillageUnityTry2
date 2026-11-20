@@ -230,7 +230,33 @@ namespace World.Game
                     _queue.Add("CastRelease"); _queue.Add("CastRecover");
                     return true;
                 default:
+                    // P3: the newer keys (strike, block, gesture, nod and the lodge's work keys) try their clips in order;
+                    // a body without any of them plays nothing (false), as before.
+                    var names = FallbackClips(key);
+                    if (names == null) return false;
+                    foreach (var n in names) if (_rc.Clip(n) != null) return Begin(key, n);
                     return false;
+            }
+        }
+
+        /// <summary>
+        /// P3: the clips (of the PRD's set, in order of preference) for the one-shot keys added after the rigged bodies:
+        /// strike = the cast's release (a forward blow), block = Block, gesture = Talk_Emphasis, nod = Nod, grind / tend =
+        /// Nod (a small working bob of the head and shoulders), fetch = Idle_Look. Null for keys handled above or unknown.
+        /// Not checked with the local art in this pass (see Docs/progress/POLISH_P3.md).
+        /// </summary>
+        public static string[] FallbackClips(string key)
+        {
+            switch (key)
+            {
+                case ActorKeys.Strike: return new[] { "CastRelease", "Talk_Emphasis", "Nod" };
+                case ActorKeys.Block: return new[] { "Block", "Surprise" };
+                case ActorKeys.Gesture: return new[] { "Talk_Emphasis", "Greet" };
+                case ActorKeys.Nod: return new[] { "Nod" };
+                case ActorKeys.Grind: return new[] { "Nod", "Talk_Emphasis" };
+                case ActorKeys.Tend: return new[] { "PointGround", "Nod" };
+                case ActorKeys.Fetch: return new[] { "Idle_Look", "Nod" };
+                default: return null;
             }
         }
 
