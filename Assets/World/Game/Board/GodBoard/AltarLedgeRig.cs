@@ -496,7 +496,7 @@ namespace World.Game
                 if (!mat.gameObject.activeSelf) mat.gameObject.SetActive(true);
                 seen.Add("mat");
                 var mr = _hud.MatRect;
-                float z = DepthOf(far) - 0.3f;
+                float z = DepthOf(OnSlab(mr.center.x, mr.yMax)) - 0.3f;
                 Place(mat, mr, 1f, false, z);
                 float hpx = (At(mr.center.x, mr.yMin, z) - At(mr.center.x, mr.yMax, z)).magnitude;
                 float wpx = (At(mr.xMax, mr.center.y, z) - At(mr.xMin, mr.center.y, z)).magnitude;
@@ -727,7 +727,7 @@ namespace World.Game
         {
             var mr = _hud.MatRect;
             var far = OnSlab(Screen.width * 0.5f, _hud.LedgeBand.y);
-            float z = DepthOf(far) - 0.45f;
+            float z = DepthOf(OnSlab(r.center.x, r.yMax)) - 0.45f;
             Place(it, r, 0.9f, false, z);
             it.transform.position = At(r.center.x, r.yMax, z);
             it.Model.rotation = Cam.transform.rotation;
