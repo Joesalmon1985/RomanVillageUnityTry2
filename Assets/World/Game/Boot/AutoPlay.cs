@@ -540,7 +540,7 @@ namespace World.Game
                 last = now; frames++;
             }
             LastFps = frames / Mathf.Max(0.001f, last - t0);
-            Debug.Log("[AutoPlay] fps " + label + ": avg " + LastFps.ToString("0") + ", worst frame " + (worst * 1000f).ToString("0.0") + " ms (" + Screen.width + "x" + Screen.height + ", vSync " + QualitySettings.vSyncCount + ")");
+            Debug.Log("[AutoPlay] fps " + label + ": avg " + LastFps.ToString("0") + " (" + (1000f / Mathf.Max(0.001f, LastFps)).ToString("0.00") + " ms), worst frame " + (worst * 1000f).ToString("0.0") + " ms (" + Screen.width + "x" + Screen.height + ", vSync " + QualitySettings.vSyncCount + ")");
         }
 
         internal IEnumerator DoCall(Action a)

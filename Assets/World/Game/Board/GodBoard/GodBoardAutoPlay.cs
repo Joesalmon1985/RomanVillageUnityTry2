@@ -29,6 +29,8 @@ namespace World.Game
             AutoPlayScripts.Register("plague_epidemic", () => Launch("plague_epidemic", GodBoardStart.Id, PlagueEpidemic));
             AutoPlayScripts.Register("war_burn", () => Launch("war_burn", GodBoardStart.Id, WarBurn));
             AutoPlayScripts.Register("board_to_historic", () => Launch("board_to_historic", GodBoardStart.EveId, ToHistoric));
+            AutoPlayScripts.Register(WorldTour.ScriptName, () => Launch(WorldTour.ScriptName, GodBoardStart.Id, WorldUiTour));
+            AutoPlayScripts.Register("phone_frametime", () => Launch("phone_frametime", GodBoardStart.Id, PhoneFrameTime));
         }
 
         private static WorldBootstrap B => WorldBootstrap.Instance;
@@ -115,6 +117,36 @@ namespace World.Game
                 .Tick(2)
                 .PlaceSetup()
                 .StepUntil(() => T.Phase == TablePhase.Main && T.Current == 0 && !T.Paused, 40000, "the player's first main turn never came");
+        }
+
+        // ------------------------------------------------------------------------------ WU-8
+
+        /// <summary>The world-first tour: all six hub destinations in a row (see <see cref="WorldTour"/>).</summary>
+        private static AutoPlayScript WorldUiTour(string name)
+        {
+            var s = new AutoPlayScript(name);
+            s.Wait(1f)
+             .Step(a => RunTour(a))
+             .Log("[AutoPlay] " + name + " OK")
+             .Quit(0);
+            return s;
+        }
+
+        private static IEnumerator RunTour(AutoPlay a)
+        {
+            var tour = new WorldTour(m => a.Fail(m));
+            yield return tour.Run();
+        }
+
+        /// <summary>A phone-sized run on the god board start: 60 s of frames at the altar, average and worst frame time logged.</summary>
+        private static AutoPlayScript PhoneFrameTime(string name)
+        {
+            var s = new AutoPlayScript(name);
+            s.Wait(5f)
+             .MeasureFps("phone godboard 60s", 60f)
+             .Log("[AutoPlay] " + name + " OK")
+             .Quit(0);
+            return s;
         }
 
         // ------------------------------------------------------------------------------ 1

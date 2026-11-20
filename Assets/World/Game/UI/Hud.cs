@@ -68,6 +68,9 @@ namespace World.Game
             if (_boot != null) { _boot.Clock.Pause(PauseReasons.Menu); _boot.Avatar.AddLock(AvatarLock); }
         }
 
+        /// <summary>The Esc menu's Clear view button (WU-8): flips the one <see cref="GodBoardSettings.ClearView"/> that the board HUD, the plague buttons and the duel panel all read.</summary>
+        public static bool ToggleClearView() { GodBoardSettings.ClearView = !GodBoardSettings.ClearView; return GodBoardSettings.ClearView; }
+
         public void CloseMenu()
         {
             if (!_menu) return;
@@ -253,7 +256,7 @@ namespace World.Game
             if (GodBoardDirector.Instance != null)
             {
                 bool cv = GodBoardSettings.ClearView;
-                if (GUI.Button(new Rect(r.x + pad + UiStyle.Px(300), y, UiStyle.Px(330), th), "Clear view: " + (cv ? "on" : "off"), UiStyle.Button)) GodBoardSettings.ClearView = !cv;
+                if (GUI.Button(new Rect(r.x + pad + UiStyle.Px(300), y, UiStyle.Px(330), th), "Clear view: " + (cv ? "on" : "off"), UiStyle.Button)) ToggleClearView();
             }
             y += UiStyle.Px(60);
 

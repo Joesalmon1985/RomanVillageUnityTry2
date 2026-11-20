@@ -277,6 +277,28 @@ namespace World.Game.EditTests
             }
         }
     
+        /// <summary>WU-8: no code outside an editor guard draws a zone id, a wireframe name or a zone rectangle on screen
+        /// (a label or an outline would show in a build): GUI, Handles and Gizmos calls must not name them.</summary>
+        [Test]
+        public void NoWireframeLabelOrOutlineIsDrawnOutsideTheEditor()
+        {
+            string root = Path.Combine(Application.dataPath, "World", "Game");
+            foreach (var f in Directory.GetFiles(root, "*.cs", SearchOption.AllDirectories))
+            {
+                int depth = 0; var lines = File.ReadAllLines(f);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    var t = lines[i].Trim();
+                    if (t.StartsWith("#if UNITY_EDITOR")) depth++;
+                    else if (t.StartsWith("#endif") && depth > 0) depth--;
+                    if (depth > 0 || t.StartsWith("//")) continue;
+                    bool draws = t.Contains("GUI.Label") || t.Contains("GUI.Box") || t.Contains("Handles.") || t.Contains("Gizmos.") || t.Contains("OnDrawGizmos") || t.Contains("DrawLabel");
+                    bool zone = t.Contains("ZoneId") || t.Contains("WireframeOf") || t.Contains("WorldZones.Rects") || t.Contains("\"HUB-") || t.Contains("ZoneOutline");
+                    if (draws && zone) Assert.Fail(f + ":" + (i + 1) + " draws a zone id or outline outside UNITY_EDITOR: " + t);
+                }
+            }
+        }
+
         /// <summary>Build-define test: compile the player scripts (no build) and check World.Game.dll for the player has
         /// no zone outline type, while the editor assembly has it.</summary>
         [Test, Category("Slow")]
