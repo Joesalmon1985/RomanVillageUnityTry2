@@ -240,6 +240,51 @@ namespace World.Game.Tests
             PlayerRecoveryMs = 2500, MiraFirstCastMinMs = 60000, MiraFirstCastMaxMs = 60000, MiraThinkMinMs = 60000, MiraThinkMaxMs = 60000,
         };
 
+#if UNITY_EDITOR
+        /// <summary>P2b: the referee's ledger card is docked along the top edge and never covers the two wizards (the stage rect).</summary>
+        [UnityTest, Timeout(120000)]
+        public IEnumerator P2b_RefereeCard_DoesNotOverlapTheStage_At844x390_AndBothWizardsAreInFrame()
+        {
+            yield return Load();
+            GodBoardSettings.Override = false;
+            UnityEditor.PlayModeWindow.GetRenderingResolution(out uint w0, out uint h0);
+            UnityEditor.PlayModeWindow.SetCustomRenderingResolution(844, 390, "P2b duel 844x390");
+            try
+            {
+                for (int i = 0; i < 10 && Screen.height != 390; i++) yield return null;
+                ScreenSafeArea.Override = ScreenSafeArea.SimulatedNotch(Screen.width, Screen.height);
+                yield return StartDuel();
+                var e = WardDuelEncounter.Current;
+                yield return null; yield return null;
+                Assert.IsTrue(LedgerCard.DockTop, "the duel docks its card at the top");
+                Assert.AreEqual(WorldActionState.Inspect, e.Props.Machine.State, "the referee's setup card is up");
+                yield return new WaitForSecondsRealtime(LedgerCardView.UnfoldSeconds + 0.2f);
+                var cam = Camera.main;
+                var L = LedgerCard.CurrentLayout(cam);
+                var st = e.Stage;
+                float W = Screen.width, H = Screen.height;
+                float x0 = float.MaxValue, x1 = float.MinValue, y0 = float.MaxValue, y1 = float.MinValue;
+                foreach (var pos in new[] { st.PlayerPos, st.MiraPos })
+                    foreach (float dy in new[] { 0f, 1.8f })
+                    {
+                        var sp = cam.WorldToScreenPoint(pos + Vector3.up * dy);
+                        Assert.Greater(sp.z, 0f, "in front of the camera");
+                        float gy = H - sp.y;
+                        x0 = Mathf.Min(x0, sp.x); x1 = Mathf.Max(x1, sp.x); y0 = Mathf.Min(y0, gy); y1 = Mathf.Max(y1, gy);
+                    }
+                var stage = Rect.MinMaxRect(x0, y0, x1, y1);
+                if (Screen.height == 390)
+                {
+                    Assert.IsTrue(stage.xMin >= 0 && stage.xMax <= W, "both wizards across the width: " + stage);
+                    Assert.IsTrue(stage.yMax <= H, "feet in frame: " + stage);
+                }
+                Assert.IsFalse(L.Card.Overlaps(stage), "the card " + L.Card + " must not cover the stage " + stage);
+                Assert.LessOrEqual(L.Card.yMax, stage.yMin + 1f, "the card is above the wizards");
+            }
+            finally { UnityEditor.PlayModeWindow.SetCustomRenderingResolution(w0, h0, "restore"); ScreenSafeArea.Override = null; }
+        }
+#endif
+
         [UnityTest, Timeout(120000)]
         public IEnumerator Stones_BuildTakeBackAndCast_RecoveryBlocksASecondCast_BeadsAndTallyMatchTheSession()
         {
