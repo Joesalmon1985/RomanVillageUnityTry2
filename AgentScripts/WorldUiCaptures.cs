@@ -6,6 +6,7 @@ using UnityEngine;
 using World.Game;
 using World.Sim;
 using World.Sim.Table;
+using World.Sim.Encounters.Ward;
 
 /// <summary>
 /// WU-0 capture driver for the world-first UI (Docs/WORLD_UI_PLAN.md, P-6): the three ratios with a simulated notch
@@ -22,6 +23,7 @@ using World.Sim.Table;
 public static class WorldUiCaptures
 {
     public const string Folder = "Evidence/worldui";
+    static WardRival _solver; static int _solved;
 
     public static string Run()
     {
@@ -75,6 +77,16 @@ public static class WorldUiCaptures
                     return "altar " + r + " " + WorldActions.State;
                 }
             case "cancel": WorldActions.Cancel(); return "cancelled";
+            case "shotafter":
+                {
+                    double at = EditorApplication.timeSinceStartup + double.Parse(a[1], ci);
+                    string file = Path.Combine(Folder, a[2] + ".png");
+                    Directory.CreateDirectory(Folder);
+                    EditorApplication.CallbackFunction f = null;
+                    f = () => { if (EditorApplication.timeSinceStartup < at) return; EditorApplication.update -= f; ScreenCapture.CaptureScreenshot(file); };
+                    EditorApplication.update += f;
+                    return "shotafter " + a[1] + "s -> " + file;
+                }
             // ---- WU-2: the altar ledge scenarios
             case "open1":
                 {
@@ -278,6 +290,64 @@ public static class WorldUiCaptures
             case "cry":
                 return "cry stones " + (FootprintStones.Instance != null && FootprintStones.Instance.Visible) + " interior " + Interiors.Current + " state " + WorldActions.State + " map " + MapScreen.IsOpen
                     + " ledger " + (LedgerCard.IsOpen ? string.Join(" / ", LedgerCard.Content.AllText()) : "closed") + " party " + (ExpeditionDirector.Instance != null ? ExpeditionDirector.Instance.Phase.ToString() : "-");
+            // ---- WU-7: the duel (duelstart practice|friendly [fast]; duel tap TARGET [i] | add NAME | back i | lock | cast | solve | clear on|off | info)
+            case "duelstart":
+                {
+                    bool fast = a.Length > 2 && a[2] == "fast";
+                    WardDuelEncounter.TuningOverride = new WardTuning
+                    {
+                        PlayerRecoveryMs = 0, MiraFirstCastMinMs = fast ? 200 : 600000, MiraFirstCastMaxMs = fast ? 300 : 600000,
+                        MiraThinkMinMs = fast ? 250 : 600000, MiraThinkMaxMs = fast ? 350 : 600000,
+                    };
+                    _solver = null; _solved = 0;
+                    if (a.Length > 1 && a[1] == "friendly") return "duelstart " + CampaignDuel.StartRequest(CampaignDuel.Friendly(WardOpponents.FriendlyOrrin, "Orrin", "orrin"));
+                    return "duelstart " + EncounterDirectory.TryStart(EncounterDirectory.WardMira, Npc.Find(NpcIds.Mira));
+                }
+            case "duel":
+                {
+                    var e = WardDuelEncounter.Current;
+                    if (e == null) return "no duel";
+                    WorldActions.Machine.Cancel();
+                    switch (a[1])
+                    {
+                        case "tap":
+                            {
+                                var t = (DuelTarget)Enum.Parse(typeof(DuelTarget), a[2]); int i = a.Length > 3 ? int.Parse(a[3]) : 0;
+                                var p = e.Props.ScreenPointOf(t, i);
+                                if (!p.HasValue) return "duel tap " + t + " not offered";
+                                return "duel tap " + t + " -> " + e.TapAt(p.Value) + " state " + e.Props.Machine.State;
+                            }
+                        case "add": return "duel add " + e.AddEssence((Essence)Enum.Parse(typeof(Essence), a[2]));
+                        case "back": return "duel back " + e.RemoveAt(int.Parse(a[2]));
+                        case "lock": return "duel lock " + e.LockWard();
+                        case "cast": { var r = e.Cast(); return "duel cast " + (r != null && r.Ok); }
+                        case "solve":
+                            {
+                                if (_solver == null) { _solver = new WardRival(new WardTuning { Loci = e.Tuning.Loci }, e.Pool, new Rng(5)); _solved = 0; }
+                                int n = a.Length > 2 ? int.Parse(a[2]) : 1, done = 0;
+                                while (done < n && e.Phase == WardDuelEncounter.Screen.Active && e.Session.PlayerCastsLeft > 0 && e.Session.MsUntilPlayerMayCast == 0)
+                                {
+                                    var h = e.Session.PlayerHistory;
+                                    while (_solved < h.Count) { var x = h[_solved++]; _solver.Observe(x.Weave, x.Fractures, x.Echoes); }
+                                    foreach (var w in _solver.NextCast()) e.AddEssence((Essence)w);
+                                    e.Cast(); done++;
+                                }
+                                return "duel solve cast " + done + " history " + e.Session.PlayerHistory.Count + " phase " + e.Phase;
+                            }
+                        case "close": e.Props.Machine.Cancel(); return "duel close";
+                        case "dbg":
+                            {
+                                var sb2 = new StringBuilder();
+                                foreach (var r in e.Props.GetComponentsInChildren<Renderer>(true))
+                                    if (r.name.StartsWith("Bead 0") || r.name.StartsWith("Peg 0.0")) sb2.Append(r.name + " act " + r.gameObject.activeInHierarchy + " en " + r.enabled + " mat " + (r.sharedMaterial != null ? r.sharedMaterial.name + " " + r.sharedMaterial.color : "null") + " shader " + (r.sharedMaterial != null ? r.sharedMaterial.shader.name : "") + " pos " + r.transform.position + " bounds " + r.bounds.size + " verts " + r.GetComponent<MeshFilter>().sharedMesh.vertexCount + "; ");
+                                return sb2.ToString();
+                            }
+                        case "clear": GodBoardSettings.Override = a[2] == "on"; return "clear view " + GodBoardSettings.ClearView;
+                        case "ledger": return LedgerCard.IsOpen ? string.Join(" / ", LedgerCard.Content.AllText()) + " rect " + LedgerCard.LastRect : "ledger closed";
+                    }
+                    return "duel " + e.Phase + " building " + e.Building.Count + " history " + e.Session.PlayerHistory.Count + "/" + e.Session.RivalHistory.Count + " left " + e.Session.PlayerCastsLeft + "/" + e.Session.RivalCastsLeft
+                        + " state " + e.Props.Machine.State + " rig " + e.Props.RigVisible + " screen " + Screen.width + "x" + Screen.height + " safe " + ScreenSafeArea.Current();
+                }
             case "info":
                 return "screen " + Screen.width + "x" + Screen.height + " safe " + ScreenSafeArea.Current() + " state " + WorldActions.State
                     + " ledger " + (LedgerCard.IsOpen ? LedgerCard.LastRect.ToString() : "closed") + " zones " + ZoneOutlineOverlay.ZonesDrawn + " objects " + ZoneOutlineOverlay.ObjectsDrawn;

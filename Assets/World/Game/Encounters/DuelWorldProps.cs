@@ -252,7 +252,7 @@ namespace World.Game
             {
                 var b = new GameObject("Bead " + i);
                 b.transform.SetParent(p.Rail, false);
-                b.transform.localPosition = new Vector3((i - (beads - 1) / 2f) * 0.17f, -0.12f, -0.02f);
+                b.transform.localPosition = new Vector3((i - (beads - 1) / 2f) * 0.17f, 2.2f, -0.05f);
                 b.AddComponent<MeshFilter>().sharedMesh = beadMesh;
                 p.Beads[i] = b.AddComponent<MeshRenderer>();
                 p.Beads[i].sharedMaterial = _beadDark;
@@ -831,13 +831,7 @@ namespace World.Game
                 case WardDuelEncounter.Screen.Stakes: yield return "The duel has not begun."; yield break;
                 case WardDuelEncounter.Screen.Setup:
                     yield return _e.IsCampaignMode ? "Choose Mira's secret Ward: three essences, repeats allowed." : "Choose your secret Ward: three essences, repeats allowed.";
-                    yield return "Tap a stone to add its essence to the hand, an orb to take it back, and the hand to lock the Ward.";
-                    if (_e.HelpVisible)
-                    {
-                        yield return "Fracture: the right essence in the right place.";
-                        yield return "Echo: the right essence in the wrong place.";
-                        yield return "Fade: that essence is not in the Ward.";
-                    }
+                    yield return "Tap a stone to fill the hand, an orb to take it back, the hand to lock the Ward.";
                     yield break;
                 case WardDuelEncounter.Screen.Active:
                     yield return Plural(s.PlayerCastsLeft, "cast", "casts") + " left for " + _e.CasterName + ", " + Plural(s.RivalCastsLeft, "cast", "casts") + " for " + _e.OpponentName + ".";
@@ -851,11 +845,10 @@ namespace World.Game
                     }
                     yield break;
                 default:
-                    yield return _e.ResultHead();
-                    yield return _e.ResultLine();
-                    var foot = _e.ResultNote();
+                    yield return _e.ResultHead() + " " + _e.ResultLine();
+                    var foot = _e.IsCampaignMode ? _e.ResultNote() : null;
                     if (foot != null) yield return foot;
-                    yield return _e.IsLethal ? "Tap the gate to go back." : "Tap " + _e.CasterName + " for a rematch; tap the gate to go back to the ring.";
+                    yield return _e.IsLethal ? "Tap the gate to go on." : "Tap " + (_e.IsCampaignMode ? "Mira" : "your wizard") + " to duel again, or the gate to leave.";
                     yield break;
             }
         }
