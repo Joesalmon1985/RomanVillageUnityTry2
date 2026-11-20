@@ -131,6 +131,7 @@ namespace World.Game
             Ash = ExpeditionAsh.Create(this, boot, _root);
             Journal = ExpeditionJournal.Create(this, boot, _root);
             MapLayer = new ExpeditionMapLayer(this, boot);
+            BuildWorldUi(); // WU-6: pouch, journal book, companion cards
             MapScreen.AddLayer(MapLayer);
 
             boot.Clock.Ticked += OnTicked;

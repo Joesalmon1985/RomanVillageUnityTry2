@@ -325,6 +325,12 @@ namespace World.Game
             return Move.None;
         }
 
+        /// <summary>WU-6 (tests, footprint stones): the strip 1-4 a key state stands for (W / S / A / D, arrows, keypad), 0 for none.</summary>
+        public static int StripOfKeys(Func<KeyCode, bool> f)
+        {
+            switch (KeyMove(f)) { case Move.Left: return 1; case Move.Forward: return 2; case Move.Back: return 3; case Move.Right: return 4; default: return 0; }
+        }
+
         /// <summary>True while keyboard movement is taken by something else (map, menu, God View, a text field).</summary>
         private static bool InputCaptured =>
             Hud.MenuOpen || MapScreen.IsOpen || (ViewSwitcher.Instance != null && ViewSwitcher.Instance.CurrentView == ViewMode.God);

@@ -201,6 +201,83 @@ public static class WorldUiCaptures
                     var spot = d.OwnTemple.AltarSpot.position;
                     return "walker " + w.Position + " yaw " + w.Yaw + " auto " + w.IsAutoWalking + " cam " + cam.transform.position + " fwd " + cam.transform.forward + " altar " + spot + " screen " + cam.WorldToScreenPoint(spot);
                 }
+            // ---- WU-6: the crystal dungeon ----
+            case "devhist": return "devhist " + DevStart.Begin(World.Sim.Eras.ScenarioStarts.DevHistoric) + " " + DevStart.LastError;
+            case "campaign":
+                {
+                    var def = ExpeditionDev.LoadPack(ExpeditionDev.AuthoredPack);
+                    if (a.Length > 1 && a[1] == "root")
+                    {
+                        var root = def.Leads.Find(x => x.Id == "earth_root");
+                        root.Requires.Clear(); root.Priority = 1000;
+                        foreach (var loc in def.Locations) foreach (var mk in loc.Markers) if (mk.Id == "stair") mk.OpenWhen = "";
+                        foreach (var cn in def.Connections) if (cn.OpenWhen == "earth.stair_open") cn.OpenWhen = "";
+                    }
+                    var r = ExpeditionDev.StartCampaign(def);
+                    return "campaign " + r.Ok + " " + r.Message;
+                }
+            case "speed": Time.timeScale = float.Parse(a[1], ci); return "speed " + Time.timeScale;
+            case "facts": Interiors.FactsOverride = a[1] == "on" ? (Func<string, bool>)(f => true) : null; return "facts " + a[1];
+            case "stones": FootprintStones.Mode = (FootprintStones.StoneMode)Enum.Parse(typeof(FootprintStones.StoneMode), a[1], true); return "stones " + FootprintStones.Mode;
+            case "inside":
+                {
+                    // a[1] marker; a[2] heading (optional: the longest open run)
+                    var c = InteriorScripts.CellOf(a[1]);
+                    int best = 0, bestRun = -1;
+                    string id = null; InteriorSpace.TryLocal(c, out id, out _, out _);
+                    var m = Interiors.Get(id);
+                    for (int h = 0; h < 6; h++) { int run = 0; var n = c; while (m.Floor.Contains(n + WalkLattice.Dir(h)) && run < 20) { n = n + WalkLattice.Dir(h); run++; } if (run > bestRun) { bestRun = run; best = h; } }
+                    int heading = a.Length > 2 ? int.Parse(a[2]) : best;
+                    PlayerWalker.Instance.StopAuto(); PlayerWalker.Instance.Teleport(c, heading);
+                    return "inside " + a[1] + " heading " + heading + " run " + bestRun;
+                }
+            case "before":
+                {
+                    // a[1] marker; a[2] steps: stand that many cells from it, facing it
+                    var c = InteriorScripts.CellOf(a[1]); int steps = int.Parse(a[2]);
+                    InteriorSpace.TryLocal(c, out var id, out _, out _);
+                    var m = Interiors.Get(id);
+                    for (int h = 0; h < 6; h++)
+                    {
+                        bool ok = true; var n = c;
+                        for (int k = 0; k < steps; k++) { n = n + WalkLattice.Dir(h); if (!m.Floor.Contains(n)) { ok = false; break; } }
+                        if (!ok) continue;
+                        PlayerWalker.Instance.StopAuto(); PlayerWalker.Instance.Teleport(n, h + 3);
+                        return "before " + a[1] + " heading " + ((h + 3) % 6);
+                    }
+                    return "before: no open line";
+                }
+            case "tapact": { var t = InteriorScripts.Thing(a[1]).GetComponent<MiraActThing>(); WorldActions.Cancel(); return "tapact " + PointerInput.TapObject(t) + " " + WorldActions.State; }
+            case "tapmate":
+                {
+                    var mate = ExpeditionDirector.Instance.MateOf(a[1]); WorldActions.Cancel();
+                    return "tapmate " + PointerInput.TapObject(mate.Npc.GetComponent<CompanionCard>()) + " " + WorldActions.State;
+                }
+            case "facemate":
+                {
+                    var mate = ExpeditionDirector.Instance.MateOf(a[1]);
+                    float m = a.Length > 2 ? float.Parse(a[2], ci) : 4f;
+                    var w = PlayerWalker.Instance; w.StopAuto();
+                    var at = mate.Npc.transform.position; var dir = w.Position - at; dir.y = 0; if (dir.sqrMagnitude < 1) dir = Vector3.back;
+                    var feet = at + dir.normalized * m; feet.y = PlayerWalker.GroundHeight(feet);
+                    w.Teleport(feet, BoardSpace.YawOf(at - feet), 6f);
+                    return "facemate " + mate.Def.Name + " at " + at;
+                }
+            case "facemira":
+                {
+                    var d = ExpeditionDirector.Instance; float m = a.Length > 1 ? float.Parse(a[1], ci) : 2.5f;
+                    var w = PlayerWalker.Instance; w.StopAuto();
+                    var at = d.Mira.transform.position; var dir = w.Position - at; dir.y = 0; if (dir.sqrMagnitude < 1) dir = Vector3.back;
+                    var feet = at + dir.normalized * m; feet.y = PlayerWalker.GroundHeight(feet);
+                    w.Teleport(feet, BoardSpace.YawOf(at - feet), 0f);
+                    return "facemira at " + at;
+                }
+            case "tappouch": WorldActions.Cancel(); return "tappouch " + PointerInput.TapObject(ExpeditionDirector.Instance.Pouch);
+            case "tapbook": WorldActions.Cancel(); return "tapbook " + PointerInput.TapObject(ExpeditionDirector.Instance.Book);
+            case "closemap": if (MapScreen.IsOpen) MapScreen.Close(); return "closemap";
+            case "cry":
+                return "cry stones " + (FootprintStones.Instance != null && FootprintStones.Instance.Visible) + " interior " + Interiors.Current + " state " + WorldActions.State + " map " + MapScreen.IsOpen
+                    + " ledger " + (LedgerCard.IsOpen ? string.Join(" / ", LedgerCard.Content.AllText()) : "closed") + " party " + (ExpeditionDirector.Instance != null ? ExpeditionDirector.Instance.Phase.ToString() : "-");
             case "info":
                 return "screen " + Screen.width + "x" + Screen.height + " safe " + ScreenSafeArea.Current() + " state " + WorldActions.State
                     + " ledger " + (LedgerCard.IsOpen ? LedgerCard.LastRect.ToString() : "closed") + " zones " + ZoneOutlineOverlay.ZonesDrawn + " objects " + ZoneOutlineOverlay.ObjectsDrawn;

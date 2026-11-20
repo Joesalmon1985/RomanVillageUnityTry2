@@ -53,6 +53,8 @@ namespace World.Game.Tests
             SaveSystem.TestPauseOnLoad = null;
             if (MapScreen.IsOpen) { MapScreen.ClearTarget(); MapScreen.Close(); }
             Hud.Visible = false;
+            Interiors.FactsOverride = null;
+            WorldActions.Cancel();
             if (File.Exists(_path)) File.Delete(_path);
         }
 
@@ -610,6 +612,142 @@ namespace World.Game.Tests
             yield return Until(() => C.Knows("t.ring_known"), 10f, "the right answer");
             Assert.AreEqual(2, Count<AdviseMira>());
             Assert.AreNotEqual(PartyMode.AskingChoice, C.Party.Mode);
+        }
+
+        // ---------------- WU-6: the expedition as things in the world ----------------
+
+        private IEnumerator Settle()
+        {
+            WorldActions.Cancel(); LedgerCard.Hide();
+            float end = Time.realtimeSinceStartup + 8f;
+            yield return new WaitForSecondsRealtime(0.5f);
+            while (WorldActions.CameraMoving && Time.realtimeSinceStartup < end) yield return null;
+            Assert.IsFalse(WorldActions.CameraMoving, "the camera is still");
+        }
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator Pedestal_OffersMirasAct_AndTheSecondTapSendsOneCommand()
+        {
+            // The Root Chamber lead is made the top one at once (a test edit of the definition); nothing else changes.
+            yield return StartCampaign(ExpeditionDev.AuthoredPack, d =>
+            {
+                var root = d.Leads.Find(x => x.Id == "earth_root");
+                root.Requires.Clear(); root.Priority = 1000;
+                // The way down is open from the start, so the party can reach the pedestal (nothing else changes).
+                foreach (var loc in d.Locations) foreach (var mk in loc.Markers) if (mk.Id == "stair") mk.OpenWhen = "";
+                foreach (var cn in d.Connections) if (cn.OpenWhen == "earth.stair_open") cn.OpenWhen = "";
+            });
+            yield return Until(() => CampaignApi.TopLead(S) != null && CampaignApi.TopLead(S).DefId == "earth_root", 20f, "the Root Chamber lead");
+            int leadId = CampaignApi.TopLead(S).Id;
+            var pedestal = InteriorScripts.Thing("glade/quarry_upper/pedestal").GetComponent<MiraActThing>();
+            Assert.IsNotNull(pedestal, "the pedestal carries Mira's act");
+            Assert.AreEqual(WorldZones.CryInteract, pedestal.GetComponent<WorldZone>().ZoneId);
+            yield return Settle();
+            int before = Count<AcceptLead>();
+            Assert.AreEqual(TapOutcome.Preview, PointerInput.TapObject(pedestal), "the first tap offers her act");
+            Assert.AreEqual(WorldActionState.Preview, WorldActions.State);
+            Assert.IsTrue(LedgerCard.IsOpen);
+            StringAssert.Contains("Mira", LedgerCard.Content.Question);
+            Assert.AreEqual(before, Count<AcceptLead>(), "a preview sends nothing");
+            yield return new WaitForSecondsRealtime(0.4f);
+            Assert.AreEqual(TapOutcome.Confirm, PointerInput.TapObject(pedestal), "the second tap commits it");
+            Assert.AreEqual(before + 1, Count<AcceptLead>(), "exactly one command");
+            Assert.AreEqual(leadId, Last<AcceptLead>().LeadId);
+            Assert.AreEqual("AcceptLead", Dir.LastCommand);
+            // A burst of taps right after sends nothing more (the tap guard).
+            PointerInput.TapObject(pedestal); PointerInput.TapObject(pedestal);
+            Assert.AreEqual(before + 1, Count<AcceptLead>());
+            // A thing where she has no errand only reads itself.
+            yield return Settle();
+            var marks = InteriorScripts.Thing("glade/quarry_upper/marks").GetComponent<MiraActThing>();
+            Assert.AreEqual(TapOutcome.Refused, PointerInput.TapObject(marks));
+            Assert.AreEqual(before + 1, Count<AcceptLead>());
+            Assert.IsTrue(LedgerCard.IsOpen);
+        }
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator CompanionCard_NamesTheLiving_AndTheFallenAreRemembered()
+        {
+            yield return StartCampaign();
+            var garrick = Dir.MateOf("garrick");
+            Assert.IsNotNull(garrick);
+            var card = garrick.Npc.GetComponent<CompanionCard>();
+            Assert.IsNotNull(card);
+            Assert.AreEqual(WorldZones.CryParty, garrick.Npc.GetComponent<WorldZone>().ZoneId);
+            yield return Settle();
+            PointerInput.TapObject(card);
+            Assert.IsTrue(LedgerCard.IsOpen);
+            Assert.AreEqual(garrick.Def.Name, LedgerCard.Content.Title);
+            var text = string.Join(" | ", LedgerCard.Content.AllText());
+            StringAssert.Contains("Alive", text);
+            StringAssert.Contains(garrick.Def.Role.TrimEnd('.'), text);
+            Assert.IsNull(LedgerCard.Content.Question, "on the surface there is only the card");
+            Assert.AreEqual(0, Count<AcceptLead>() + Count<SetCompany>());
+            // Another companion is named the same way.
+            var ivo = Dir.MateOf("ivo");
+            yield return Settle();
+            PointerInput.TapObject(ivo.Npc.GetComponent<CompanionCard>());
+            Assert.AreEqual(ivo.Def.Name, LedgerCard.Content.Title);
+            // Garrick falls (a developer command): the card remembers him.
+            Assert.IsTrue(_boot.Sim.Submit(new DevSetCompanion { Id = "garrick", Alive = false }).Ok);
+            yield return Until(() => !garrick.Alive, 10f, "Garrick fallen");
+            yield return Settle();
+            PointerInput.TapObject(card);
+            Assert.AreEqual(garrick.Def.Name, LedgerCard.Content.Title);
+            text = string.Join(" | ", LedgerCard.Content.AllText());
+            StringAssert.Contains("Fallen", text);
+            StringAssert.DoesNotContain("Alive", text);
+        }
+
+        [UnityTest, Timeout(600000)]
+        public IEnumerator LeadMeOut_FromACompanionCard_ReturnsToTheSurfaceAndTheHubView()
+        {
+            yield return StartCampaign();
+            Interiors.FactsOverride = f => true; // the story has not opened the ways yet: they are open for this walk
+            Assert.IsTrue(Dir.PlayerPresent);
+            W.Teleport(InteriorScripts.CellOf("glade/quarry_upper/safe"), 0);
+            yield return Frames(3);
+            Assert.AreEqual("quarry_upper", Interiors.Current);
+            var card = Dir.MateOf("ivo").Npc.GetComponent<CompanionCard>();
+            yield return Settle();
+            Assert.AreEqual(TapOutcome.Preview, PointerInput.TapObject(card));
+            StringAssert.Contains("lead you out", LedgerCard.Content.Question);
+            yield return new WaitForSecondsRealtime(0.4f);
+            Assert.AreEqual(TapOutcome.Confirm, PointerInput.TapObject(card));
+            float end = Time.realtimeSinceStartup + 120f;
+            while ((Interiors.Current != null || Interiors.IsCrossing || Interiors.IsLeadingOut) && Time.realtimeSinceStartup < end) yield return null;
+            Assert.IsNull(Interiors.Current, "on the surface");
+            MarkerRef.TryParse("glade/stair", out var stair);
+            Assert.AreEqual(Interiors.LinkAt(stair).Cell, W.Cell, "at the glade's stair");
+            Assert.AreEqual(ViewMode.FirstPerson, ViewSwitcher.Instance.CurrentView, "the walking view");
+            yield return Frames(3);
+            Assert.IsFalse(InteriorLighting.Instance.Underground, "the sky's light again");
+            Assert.AreEqual("", Dir.PlayerSpace);
+        }
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator Pouch_NamesTheCarriedCrystals_AndTheJournalBookOpensTheJournal()
+        {
+            yield return StartCampaign();
+            Assert.IsNotNull(Dir.Pouch); Assert.IsNotNull(Dir.Book);
+            Assert.AreEqual(WorldZones.CryPack, Dir.Pouch.GetComponent<WorldZone>().ZoneId);
+            Assert.AreEqual(WorldZones.CryCamp, Dir.Book.GetComponent<WorldZone>().ZoneId);
+            yield return Settle();
+            PointerInput.TapObject(Dir.Pouch);
+            Assert.AreEqual("Mira's pouch", LedgerCard.Content.Title);
+            StringAssert.Contains("Nothing", string.Join(" ", LedgerCard.Content.Lines));
+            WorldActions.Cancel();
+            Assert.IsTrue(_boot.Sim.Submit(new DevSetCustody { Crystal = Element.Earth, To = Custody.Carried }).Ok);
+            yield return Until(() => Dir.CarriedShown == 1, 10f, "the crystal in her hands");
+            yield return Settle();
+            PointerInput.TapObject(Dir.Pouch);
+            StringAssert.Contains("one crystal", string.Join(" ", LedgerCard.Content.Lines));
+            Assert.AreEqual(1, Dir.CarriedNames().Count);
+            WorldActions.Cancel(); LedgerCard.Hide();
+            Assert.IsFalse(MapScreen.IsOpen);
+            PointerInput.TapObject(Dir.Book);
+            Assert.IsTrue(MapScreen.IsOpen, "the journal book opens the journal");
+            Assert.IsTrue(Dir.Journal.Expanded);
         }
     }
 }

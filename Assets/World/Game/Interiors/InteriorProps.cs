@@ -52,6 +52,9 @@ namespace World.Game
                 default: Plinth(root); break;
             }
             LandLook.PickBox(root.gameObject, new Vector3(0, 1.0f, 0), new Vector3(2.2f, 2.0f, 2.2f));
+            WorldZone.Tag(root.gameObject, WorldZones.CryInteract); // WU-6
+            if (thing.Link == null && md.Kind != MarkerKind.Exit && md.Kind != MarkerKind.Stairs)
+                root.gameObject.AddComponent<MiraActThing>().Thing = thing; // WU-6: Mira's act offered on a tap
         }
 
         // ---------------- helpers ----------------
@@ -512,6 +515,13 @@ namespace World.Game
         // ---------------- reading markers ----------------
 
         /// <summary>What a tap on a marker shows: the lines of the story's reading events at that marker (guards applied), else a plain sentence.</summary>
+        /// <summary>WU-6: whether the crystal stand at a marker shows a crystal now (state, as the view shows it).</summary>
+        private static bool StandHolds(MarkerRef r)
+        {
+            foreach (var v in UnityEngine.Object.FindObjectsByType<CrystalStandView>(FindObjectsInactive.Include, FindObjectsSortMode.None)) if (v.Ref == r) return v.HasCrystal;
+            return false;
+        }
+
         internal static List<string> LinesFor(InteriorDirector d, MarkerRef r, MarkerDef md)
         {
             var list = new List<string>();
@@ -542,6 +552,8 @@ namespace World.Game
                 case MarkerKind.Witness: list.Add("A stone seat, worn smooth."); break;
                 case MarkerKind.Lever: list.Add("A wooden lever set in a block of stone."); break;
                 case MarkerKind.Door: list.Add(Interiors.Knows(md.OpenWhen) ? "It stands open." : "Barred fast."); break;
+                case MarkerKind.Pedestal: list.Add(StandHolds(r) ? "A crystal rests on the stone." : "The stone is bare."); break;
+                case MarkerKind.Altar: list.Add(StandHolds(r) ? "A crystal lies on the altar." : "The altar is bare."); break;
                 default: list.Add("Cut stone."); break;
             }
             return list;

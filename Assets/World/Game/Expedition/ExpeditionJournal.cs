@@ -59,7 +59,7 @@ namespace World.Game
                 Open();
             }
             if (MapScreen.IsOpen && Input.GetKeyDown(KeyCode.J)) Expanded = !Expanded;
-            else if (!MapScreen.IsOpen && Hud.Visible && Input.GetKeyDown(KeyCode.J) && !Hud.MenuOpen && (EncounterHost.Instance == null || !EncounterHost.Instance.IsRunning)) Open();
+            else if (!MapScreen.IsOpen && Input.GetKeyDown(KeyCode.J) && !Hud.MenuOpen && (EncounterHost.Instance == null || !EncounterHost.Instance.IsRunning)) Open();
             if (!MapScreen.IsOpen && Expanded && _openAt < 0f) Expanded = false;
         }
 

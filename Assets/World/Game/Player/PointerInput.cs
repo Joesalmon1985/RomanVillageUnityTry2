@@ -94,6 +94,8 @@ namespace World.Game
         public static Component TargetOf(Collider col)
         {
             if (col == null) return null;
+            var prim = col.GetComponentInParent<IWorldPrimary>() as Component; // WU-6: a prop or tag that wins over the body it sits on
+            if (prim != null) return prim;
             var f = col.GetComponentInParent<IFollowable>() as Component;
             if (f != null) return f;
             var i = col.GetComponentInParent<IInteractable>() as Component;

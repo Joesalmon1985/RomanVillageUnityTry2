@@ -97,7 +97,10 @@ namespace World.Game
                     if (!string.IsNullOrEmpty(content.Question)) extra += Mathf.Ceil(content.Question.Length / charsPerLine) * LL.FontSize * 1.35f + LL.Pad * 0.5f;
                     if (!string.IsNullOrEmpty(content.Refusal)) extra += Mathf.Ceil(content.Refusal.Length / charsPerLine) * LL.FontSize * 1.35f + LL.Pad * 0.5f;
                 }
-                float hh = LL.Pad * 2 + LL.TitleSize * 1.4f + lines * LL.FontSize * 1.35f + extra;
+                // WU-6: a long title wraps (bold, larger): count its lines so the question below it is not clipped.
+                float titleLines = content != null && !string.IsNullOrEmpty(content.Title)
+                    ? Mathf.Max(1f, Mathf.Ceil(content.Title.Length / Mathf.Max(6f, (width - 2 * LL.Pad) / (LL.TitleSize * 0.6f)))) : 1f;
+                float hh = LL.Pad * 2 + LL.TitleSize * (1.25f * titleLines + 0.15f) + lines * LL.FontSize * 1.35f + extra;
                 hh = Mathf.Max(hh, WorldHitTarget.MinSide(screenH));
                 return Mathf.Min(hh, safe.height - 2 * LL.Pad);
             }

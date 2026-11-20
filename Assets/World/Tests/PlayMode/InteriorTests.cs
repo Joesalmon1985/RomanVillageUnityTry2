@@ -44,6 +44,8 @@ namespace World.Game.Tests
             Interiors.FactsOverride = null;
             SaveSystem.PathOverride = null;
             SaveSystem.TestPauseOnLoad = null;
+            FootprintStones.Mode = FootprintStones.StoneMode.Auto; FootprintStones.EarlySeconds = 180f;
+            WorldActions.Cancel();
             if (MapScreen.IsOpen) MapScreen.Close();
             if (File.Exists(_path)) File.Delete(_path);
         }
@@ -257,6 +259,93 @@ namespace World.Game.Tests
             Assert.IsTrue(door.Open);
             Assert.IsNotNull(WalkGrid.FindPath(W.Cell, C("ash_cut/tally_vault/cut_exit")));
             Assert.AreEqual(4, Interiors.PathWorld("tally_vault", 4, 10, 7, 10).Count);
+        }
+
+        // ---------------- WU-6: the step band, footprint stones ----------------
+
+        private IEnumerator Strip(int n)
+        {
+            yield return Idle();
+            TouchStrips.SimulatePress(n);
+            yield return null; yield return null;
+            yield return Idle();
+        }
+
+        private static string BubbleText()
+        {
+            var sb = new System.Text.StringBuilder();
+            foreach (var h in SpeechBubbles.OpenHandles()) sb.Append(SpeechBubbles.TextOf(h)).Append(' ');
+            return sb.ToString();
+        }
+
+        [UnityTest, Timeout(180000)]
+        public IEnumerator Band_And_Keys_StepAndTurn_BumpOnAWall_AndAShutWaySays()
+        {
+            yield return LoadBuilt(InteriorScripts.AuthoredPack, f => f != "earth.ash_cut_open");
+            var m = Interiors.Get("quarry_upper");
+            var start = C("glade/quarry_upper/safe");
+            int open = -1, wall = -1;
+            for (int h = 0; h < 6; h++) { if (m.Floor.Contains(start + WalkLattice.Dir(h))) { if (open < 0) open = h; } else if (wall < 0) wall = h; }
+            Assert.GreaterOrEqual(open, 0); Assert.GreaterOrEqual(wall, 0);
+            W.Teleport(start, open);
+            yield return null;
+            // The four strips: 1 turn left, 2 forward, 3 back, 4 turn right (a sixth of a turn each on the hex lattice).
+            yield return Strip(4); Assert.AreEqual((open + 1) % 6, W.Heading, "strip 4 turns right by a sixth");
+            yield return Strip(1); Assert.AreEqual(open, W.Heading, "strip 1 turns left by a sixth");
+            yield return Strip(2); Assert.AreEqual(start + WalkLattice.Dir(open), W.Cell, "strip 2 steps forward");
+            yield return Strip(3); Assert.AreEqual(start, W.Cell, "strip 3 steps back");
+            // The keys stand for the same four strips.
+            Assert.AreEqual(2, PlayerWalker.StripOfKeys(k => k == KeyCode.W || k == KeyCode.UpArrow));
+            Assert.AreEqual(3, PlayerWalker.StripOfKeys(k => k == KeyCode.S));
+            Assert.AreEqual(1, PlayerWalker.StripOfKeys(k => k == KeyCode.A));
+            Assert.AreEqual(4, PlayerWalker.StripOfKeys(k => k == KeyCode.RightArrow));
+            Assert.AreEqual(0, PlayerWalker.StripOfKeys(k => false));
+            // A wall: a bump, no move.
+            W.Teleport(start, wall); yield return null;
+            int bumps = W.BumpCount;
+            yield return Strip(2);
+            Assert.AreEqual(bumps + 1, W.BumpCount, "a bump on the rock");
+            Assert.AreEqual(start, W.Cell);
+            // A shut way says so.
+            var cut = L("ash_cut/cut");
+            Assert.IsFalse(cut.IsOpen);
+            W.Teleport(cut.Cell + WalkLattice.Dir(cut.OutHeading), cut.OutHeading + 3);
+            yield return null;
+            yield return Strip(2);
+            StringAssert.Contains("the way is shut", BubbleText().ToLowerInvariant());
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator FootprintStones_ShowUnderground_AndEarly_HideByTheSetting_AndFitTheBand()
+        {
+            yield return LoadBuilt(InteriorScripts.AuthoredPack, f => false);
+            var fs = FootprintStones.Instance;
+            Assert.IsNotNull(fs, "the stones exist");
+            Assert.AreEqual(WorldZones.CryMove, fs.GetComponent<WorldZone>().ZoneId);
+            Assert.IsTrue(fs.ShouldShow(), "early on the surface");
+            FootprintStones.EarlySeconds = 0f;
+            Assert.IsFalse(fs.ShouldShow(), "hidden later on the surface");
+            W.Teleport(C("glade/quarry_upper/safe"), 0); yield return null;
+            Assert.IsNotNull(Interiors.Current);
+            Assert.IsTrue(fs.ShouldShow(), "always shown underground");
+            FootprintStones.Mode = FootprintStones.StoneMode.Never;
+            Assert.IsFalse(fs.ShouldShow(), "the setting hides them");
+            FootprintStones.Mode = FootprintStones.StoneMode.Always;
+            Assert.IsTrue(fs.ShouldShow());
+            // Four stones, one per quarter of the band, inside the phone's safe area, big enough to see.
+            foreach (var size in new[] { new Vector2(844, 390), new Vector2(1920, 1080), new Vector2(1024, 768) })
+            {
+                var safe = ScreenSafeArea.SimulatedNotch(size.x, size.y);
+                var r = FootprintStones.Layout(size.x, size.y, safe);
+                Assert.AreEqual(4, r.Length);
+                for (int i = 0; i < 4; i++)
+                {
+                    Assert.IsTrue(safe.Contains(r[i].min) && safe.Contains(r[i].max - Vector2.one), size + " stone " + i + " inside the safe area");
+                    Assert.GreaterOrEqual(r[i].yMin, size.y * (1f - TouchStrips.BandFraction) - 1f, "in the band");
+                    Assert.GreaterOrEqual(r[i].width, size.y * 0.1f, "readable size");
+                    if (i > 0) Assert.Greater(r[i].center.x, r[i - 1].center.x);
+                }
+            }
         }
 
         // ---------------- the map and the way out ----------------
