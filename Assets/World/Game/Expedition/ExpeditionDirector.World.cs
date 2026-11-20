@@ -259,7 +259,7 @@ namespace World.Game
             Signs.Prim(PrimitiveType.Sphere, go.transform, "Sack", Vector3.zero, new Vector3(0.22f, 0.26f, 0.20f), leather);
             Signs.Prim(PrimitiveType.Cylinder, go.transform, "Tie", new Vector3(0, 0.13f, 0), new Vector3(0.12f, 0.02f, 0.12f), MaterialFactory.Shared(new Color(0.78f, 0.66f, 0.40f)));
             Signs.Prim(PrimitiveType.Cube, go.transform, "Strap", new Vector3(-0.16f, 0.14f, 0), new Vector3(0.34f, 0.04f, 0.04f), leather, new Vector3(0, 0, 40f));
-            LandLook.PickBox(go, Vector3.zero, new Vector3(0.7f, 0.7f, 0.7f));
+            LandLook.PickBox(go, Vector3.zero, new Vector3(1.3f, 1.3f, 1.3f)); // P2a: a larger tap volume than the drawing
             var p = go.AddComponent<MiraPouch>();
             p._dir = dir;
             WorldZone.Tag(go, WorldZones.CryPack);
@@ -290,7 +290,7 @@ namespace World.Game
             Signs.Prim(PrimitiveType.Cube, go.transform, "Cover", Vector3.zero, new Vector3(0.20f, 0.27f, 0.06f), MaterialFactory.Shared(new Color(0.40f, 0.12f, 0.14f)));
             Signs.Prim(PrimitiveType.Cube, go.transform, "Pages", new Vector3(0.012f, 0, 0), new Vector3(0.17f, 0.24f, 0.07f), MaterialFactory.Shared(new Color(0.92f, 0.88f, 0.74f)));
             Signs.Prim(PrimitiveType.Cube, go.transform, "Band", new Vector3(-0.06f, 0, 0.04f), new Vector3(0.025f, 0.28f, 0.01f), MaterialFactory.Shared(new Color(0.85f, 0.70f, 0.30f)));
-            LandLook.PickBox(go, Vector3.zero, new Vector3(0.6f, 0.7f, 0.6f));
+            LandLook.PickBox(go, Vector3.zero, new Vector3(1.2f, 1.3f, 1.2f)); // P2a
             var b = go.AddComponent<MiraJournalBook>();
             b._dir = dir;
             WorldZone.Tag(go, WorldZones.CryCamp);

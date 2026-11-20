@@ -597,5 +597,67 @@ namespace World.Game.Tests
                 if (had) PlayerPrefs.SetFloat(RhythmPartyEncounter.CalibrationPref, old); else PlayerPrefs.DeleteKey(RhythmPartyEncounter.CalibrationPref);
             }
         }
+
+        [UnityTest, Timeout(90000)]
+        public IEnumerator StandingBell_CanBeTappedOutsideADance_TunesAndKeepsTheOffset_AndHidesDuringTheDance()
+        {
+            yield return Load();
+            WorldActions.Machine.MinConfirmSeconds = 0f; WorldActions.Machine.GuardSeconds = 0f; WorldActions.Cancel();
+            string key = RhythmPartyEncounter.CalibrationPref;
+            float saved = PlayerPrefs.GetFloat(key, 0f);
+            try
+            {
+                PlayerPrefs.SetFloat(key, 0f);
+                StandingBell bell = null;
+                foreach (var b in UnityEngine.Object.FindObjectsByType<StandingBell>(FindObjectsSortMode.None)) bell = b;
+                Assert.IsNotNull(bell, "a bell stands at the dance circle");
+                yield return null; yield return null;
+                Assert.IsTrue(bell.Available, "outside a dance it can be tapped");
+                Assert.IsNotNull(bell.GetComponent<Collider>(), "it has a tap volume");
+                Assert.IsNull(RhythmPartyEncounter.Current);
+                Assert.AreEqual(TapOutcome.Preview, PointerInput.TapObject(bell), "first tap previews");
+                Assert.IsTrue(LedgerCard.IsOpen);
+                StringAssert.Contains("timing", LedgerCard.Content.Question);
+                Assert.IsFalse(bell.IsTuning, "a preview starts nothing");
+                Assert.AreEqual(TapOutcome.Confirm, PointerInput.TapObject(bell), "second tap starts the clicks");
+                Assert.IsTrue(bell.IsTuning);
+                var times = bell.ClickTimes;
+                Assert.AreEqual(TapAlongCalibration.ClickCount, times.Length);
+                foreach (var t in times) Assert.IsTrue(bell.TuneTap(t + 0.04), "a tap near a click matches");
+                bell.FinishNow();
+                Assert.IsFalse(bell.IsTuning);
+                Assert.AreEqual(40f, PlayerPrefs.GetFloat(key, 0f), 1f, "the median offset is kept for every dance");
+                Assert.IsTrue(PointerInput.InputEnabled, "taps go back to the world");
+                // while a dance runs its own bell stands there: the standing one hides
+                WorldActions.Cancel(); LedgerCard.Hide();
+                yield return StartDance();
+                yield return null; yield return null;
+                Assert.IsFalse(bell.Available, "hidden during a dance");
+            }
+            finally { PlayerPrefs.SetFloat(key, saved); }
+        }
+
+        [UnityTest, Timeout(90000)]
+        public IEnumerator PausedLabel_IsNeverBehindSolsTallyCard()
+        {
+            yield return Load();
+            RhythmPartyEncounter.TuningOverride = new RhythmTuning();
+            yield return StartDance();
+            var r = RhythmPartyEncounter.Current;
+            while (r.SongTime < 1.0) yield return null;
+            Assert.IsTrue(r.Pause());
+            Assert.Greater(r.Props.StageLightIntensity, 0.3f, "the stage props are lit at night");
+            for (int i = 0; i < DanceStageProps.TorchCount; i++) Assert.Greater(r.Props.TorchLightIntensity(i), 0f, "torch " + i + " gives light");
+            yield return null;
+            var sp = Camera.main.WorldToScreenPoint(r.Props.SolPoint);
+            r.InjectTap(new Vector2(sp.x, sp.y));
+            for (int i = 0; i < 4; i++) yield return null;
+            Assert.IsTrue(LedgerCard.IsOpen, "Sol's tally is open");
+            float sw = Screen.width;
+            var label = EncounterUi.Fit(new Rect((sw - EncounterUi.Px(700)) / 2f, EncounterUi.Px(300), EncounterUi.Px(700), EncounterUi.Px(120)), 6);
+            var card = LedgerCard.CurrentLayout(Camera.main).Card;
+            var moved = RhythmPartyEncounter.PausedRectClearOfLedger(label);
+            Assert.IsFalse(moved.Overlaps(card), "the Paused label " + moved + " keeps clear of the tally card " + card);
+        }
     }
 }

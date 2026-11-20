@@ -55,6 +55,8 @@ namespace World.Game
             WorldZone.Tag(root.gameObject, WorldZones.CryInteract); // WU-6
             if (thing.Link == null && md.Kind != MarkerKind.Exit && md.Kind != MarkerKind.Stairs)
                 root.gameObject.AddComponent<MiraActThing>().Thing = thing; // WU-6: Mira's act offered on a tap
+            else if (thing.Link != null)
+                root.gameObject.AddComponent<InteriorWay>().Thing = thing; // P2a: stairs and exits use the ledger preview, not a speech bubble
         }
 
         // ---------------- helpers ----------------
@@ -600,6 +602,53 @@ namespace World.Game
             SpeechBubbles.Inspect(transform, (TapPoint ?? transform.position + Vector3.up * 1.6f) - transform.position, Title, lines, 7f,
                 replies.Count > 0 ? replies : null, i => { if (i >= 0 && i < actions.Count) actions[i](); });
         }
+    }
+
+    /// <summary>
+    /// P2a: a stair or an exit as a world action: the first tap previews on the ledger ("Go up the stair?", a way that is shut says so),
+    /// the second walks the player to the way (the walker's own steps; no sim command). Replaces the old speech-bubble choice.
+    /// </summary>
+    public sealed class InteriorWay : MonoBehaviour, IWorldAction, IWorldActionAnchor, IWorldPrimary
+    {
+        public InteriorThing Thing;
+        private InteriorLink Link => Thing != null ? Thing.Link : null;
+
+        public string Title => Thing != null ? Thing.Title : name;
+
+        public IEnumerable<string> Lines
+        {
+            get
+            {
+                var l = Link;
+                if (l == null) return new List<string>();
+                return new[] { l.IsOpen ? (l.Up ? "The way up." : "The way down.") : "Shut fast. It will not open from here." };
+            }
+        }
+
+        public string PreviewLine => Link == null ? null : Link.Up ? "Go up?" : "Go down?";
+        public Transform Anchor => transform;
+        public float KeyReach => 3f;
+
+        public WorldActionCheck Check()
+        {
+            var l = Link;
+            if (l == null) return WorldActionCheck.Disable(null);
+            return l.IsOpen ? WorldActionCheck.Allowed : WorldActionCheck.Refuse("Shut fast. It will not open from here.");
+        }
+
+        public void ShowPreview(bool on) { }
+
+        /// <summary>The walk to the way (a tap on the way itself; stepping onto the cell crosses it).</summary>
+        public bool Commit()
+        {
+            var l = Link; var w = PlayerWalker.Instance;
+            if (l == null || w == null || !l.IsOpen) return false;
+            if (w.Cell != l.Cell) w.WalkTo(l.Cell);
+            return true;
+        }
+
+        private void OnEnable() => WorldActions.Register(this);
+        private void OnDisable() => WorldActions.Unregister(this);
     }
 
     public sealed class StairView : MonoBehaviour, IInteriorView

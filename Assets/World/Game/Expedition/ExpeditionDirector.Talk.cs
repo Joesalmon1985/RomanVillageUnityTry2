@@ -890,9 +890,17 @@ namespace World.Game
                     acts.Add(() => EncounterDirectory.TryStart(EncounterDirectory.WardMira, Mira));
                 }
             }
+            AddPouch(replies, acts); // only when a reply slot is free: the bubble shows three
             string text = ExpeditionLines.Get(S, p.PlayerPresent ? "mira_what" : ExpeditionLines.MiraAway, "What is it?");
             OpenAsk(AskMenu, Mira, text, replies, i => { if (i < acts.Count) acts[i](); });
             SpeechBubbles.Expand(_ask);
+        }
+
+        /// <summary>P2a: tapping Mira offers her pouch too (her journal is "What do we know?"), so the small things on her belt need no careful aim.</summary>
+        private void AddPouch(List<string> replies, List<Action> acts)
+        {
+            if (replies.Count >= SpeechBubbles.MaxReplies) return;
+            replies.Add(Reply("Show me your pouch.")); acts.Add(() => { if (Pouch != null) { WorldActions.Cancel(); WorldActions.Inspect(Pouch); } });
         }
 
         /// <summary>"What do we know?": the count, then the journal page (crystal by crystal, where to look next).</summary>

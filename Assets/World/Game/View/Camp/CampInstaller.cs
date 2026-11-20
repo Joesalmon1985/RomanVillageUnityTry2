@@ -26,7 +26,7 @@ namespace World.Game
             Root = new GameObject("HomeCamp").transform;
             Root.SetParent(boot.transform, false);
             CampBuilder.Build(Root, layout);
-            DanceCircle.Build(Root, layout);
+            StandingBell.Create(DanceCircle.Build(Root, layout)); // P2a: the tuning bell stands at the circle
 
             WalkGrid.RemoveStaticBlockers(BlockerOwner);
             WalkGrid.AddStaticBlocker(layout.DanceCircleCentre, CampLayout.FireBlockRadius, BlockerOwner);

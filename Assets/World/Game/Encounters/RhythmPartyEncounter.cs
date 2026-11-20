@@ -993,12 +993,36 @@ namespace World.Game
             if (PauseState == PauseStage.Paused)
             {
                 var r = EncounterUi.Fit(new Rect((sw - px(700)) / 2f, px(300), px(700), px(120)), 6);
+                r = PausedRectClearOfLedger(r);
                 EncounterUi.Panel(r, new Color(0.06f, 0.05f, 0.04f, 0.9f));
                 EncounterUi.Label(new Rect(r.x, r.y + px(6), r.width, px(52)), "Paused", EncounterUi.Header, EncounterUi.Gold, TextAnchor.MiddleCenter);
                 EncounterUi.Label(new Rect(r.x, r.y + px(60), r.width, px(50)), "Strike any drum to go on after a count of four", EncounterUi.Body, EncounterUi.Text, TextAnchor.MiddleCenter);
             }
             else if (PauseState == PauseStage.Counting && ResumeCount > 0)
                 EncounterUi.Shadow(new Rect(0, px(150), sw, px(170)), ResumeCount.ToString(), EncounterUi.Huge, EncounterUi.Gold, TextAnchor.MiddleCenter);
+        }
+
+        /// <summary>P2a: the "Paused" label never sits behind the open ledger tablet (Sol's tally at small sizes): it moves above, below or beside it.</summary>
+        public static Rect PausedRectClearOfLedger(Rect r)
+        {
+            if (!LedgerCard.IsOpen) return r;
+            var card = LedgerCard.CurrentLayout(Camera.main).Card;
+            if (!r.Overlaps(card)) return r;
+            float sw = UnityEngine.Screen.width, sh = UnityEngine.Screen.height;
+            float top = EncounterUi.Px(150f);
+            var cands = new[]
+            {
+                new Rect(r.x, card.yMin - r.height - 4f, r.width, r.height),
+                new Rect(r.x, card.yMax + 4f, r.width, r.height),
+                new Rect(card.xMin - r.width - 4f, r.y, r.width, r.height),
+                new Rect(card.xMax + 4f, r.y, r.width, r.height),
+            };
+            foreach (var c in cands)
+                if (c.yMin >= top - 1f && c.yMax <= sh && c.xMin >= 0f && c.xMax <= sw && !c.Overlaps(card)) return c;
+            // no room at full size: a narrower label on the side with more room
+            float roomL = card.xMin, roomR = sw - card.xMax;
+            float w = Mathf.Max(EncounterUi.Px(220f), Mathf.Min(r.width, Mathf.Max(roomL, roomR) - 8f));
+            return new Rect(roomL >= roomR ? Mathf.Max(0f, card.xMin - w - 4f) : card.xMax + 4f, r.y, w, r.height);
         }
 
         /// <summary>A slim strip at the top: blocks with PASS/MISS, the mix stage, the beat and the judgement counts.</summary>

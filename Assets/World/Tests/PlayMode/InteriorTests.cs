@@ -239,6 +239,32 @@ namespace World.Game.Tests
             Assert.AreEqual(before, InteriorDirector.Instance.CrossingCount);
         }
 
+        [UnityTest, Timeout(180000)]
+        public IEnumerator Stair_PreviewsOnTheLedge_ThenConfirmWalksThere_NoSpeechBubble()
+        {
+            yield return LoadBuilt(InteriorScripts.AuthoredPack, f => f != "earth.ash_cut_open");
+            WorldActions.Machine.MinConfirmSeconds = 0f; WorldActions.Machine.GuardSeconds = 0f; WorldActions.Cancel();
+            InteriorWay way = null;
+            foreach (var w in UnityEngine.Object.FindObjectsByType<InteriorWay>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (w.Thing != null && w.Thing.Link != null && w.Thing.Link.IsOpen) { way = w; break; }
+            Assert.IsNotNull(way, "stairs carry the ledger action");
+            var link = way.Thing.Link;
+            W.Teleport(link.Cell + WalkLattice.Dir(link.OutHeading), link.OutHeading + 3);
+            yield return null;
+            yield return Idle(); yield return new WaitForSecondsRealtime(0.8f);   // the tap guard waits out the camera move of the teleport
+            int before = InteriorDirector.Instance.CrossingCount;
+            int bubbles = SpeechBubbles.OpenHandles().Count;
+            Assert.AreEqual(TapOutcome.Preview, PointerInput.TapObject(way), "first tap previews on the ledger");
+            Assert.IsTrue(LedgerCard.IsOpen);
+            StringAssert.Contains("Go", LedgerCard.Content.Question);
+            Assert.IsFalse(W.IsAutoWalking, "a preview moves nobody");
+            Assert.AreEqual(bubbles, SpeechBubbles.OpenHandles().Count, "the way opened no speech bubble");
+            Assert.AreEqual(TapOutcome.Confirm, PointerInput.TapObject(way), "second tap goes");
+            yield return Idle(30f);
+            Assert.Greater(InteriorDirector.Instance.CrossingCount, before, "the way was taken");
+            WorldActions.Cancel(); LedgerCard.Hide();
+        }
+
         [UnityTest, Timeout(120000)]
         public IEnumerator Doors_ObeyTheirFacts()
         {

@@ -236,7 +236,7 @@ namespace World.Game.Tests
             // bank 4:1: the trader unrolls the mat, a basket gives, the wanted good is set opposite
             Assert.AreEqual(WorldTapResult.Inspected, _hud.TapLedge("trader"));
             Assert.IsTrue(_hud.MatOpen);
-            yield return null; yield return null;
+            yield return WaitMat();
             Assert.IsTrue(_hud.LedgeRects.ContainsKey("mat-get:4") && _hud.Rig.Items.ContainsKey("mat-get:4"), "the mat is unrolled with the goods to get");
             _hud.TapLedge("basket:0");
             Assert.AreEqual(0, _hud.BankGive);
@@ -554,6 +554,165 @@ namespace World.Game.Tests
                 Assert.IsTrue(_hud.Rig.Shown);
             }
             finally { GodBoardSettings.ClearView = saved; }
+        }
+
+        private IEnumerator WaitMat()
+        {
+            float t0 = Time.realtimeSinceStartup;
+            while (_hud.MatRise < 0.999f || !_hud.LedgeRects.ContainsKey("mat-get:4")) { Assert.Less(Time.realtimeSinceStartup - t0, 5f, "the ledge never slid up for the mat"); yield return null; }
+            for (int i = 0; i < 4; i++) yield return null;
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator Mat_LiesOnTheLedge_TheLedgeSlidesUp_AndTheIslandIsNotCovered()
+        {
+            yield return ToMyTurn();
+            ScreenSafeArea.Override = null;
+            float bandBefore = _hud.LedgeBand.y;
+            _hud.TapLedge("trader");
+            yield return WaitMat();
+            var band = _hud.LedgeBand;
+            Assert.Less(band.y, bandBefore, "the ledge slid up");
+            Assert.GreaterOrEqual(_hud.MatRect.y, band.y - 0.5f, "the mat strip lies inside the ledge band");
+            foreach (var id in new[] { "mat-give", "mat-get:0", "mat-get:4", "mat-deal", "mat-people:1", "mat-people:all" })
+            {
+                Assert.IsTrue(_hud.LedgeRects.TryGetValue(id, out var r), id + " is laid out");
+                Assert.GreaterOrEqual(r.y, band.y - 0.5f, id + " is on the stone");
+                Assert.LessOrEqual(r.yMax, band.yMax + 0.5f, id + " is on the stone");
+                Assert.GreaterOrEqual(r.x, band.x - 0.5f); Assert.LessOrEqual(r.xMax, band.xMax + 0.5f, id + " stays in the ledge's width");
+            }
+            // the island is fitted above the band: the board camera ends where the ledge begins
+            Assert.AreEqual(Screen.height - band.y, _d.BoardCam.pixelRect.y, 3f, "the island camera is shorter by the mat strip, never covered by it");
+            // and it all folds back
+            _hud.TapLedge("trader");
+            float t0 = Time.realtimeSinceStartup;
+            while (_hud.MatRise > 0.001f) { Assert.Less(Time.realtimeSinceStartup - t0, 5f); yield return null; }
+            Assert.AreEqual(bandBefore, _hud.LedgeBand.y, 0.5f, "the ledge slid back down");
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator MatOffersToPeoples_PreviewThenSendOneOfferTrade()
+        {
+            yield return ToMyTurn();
+            var hand = T.Peoples[0].Hand;
+            Fill(hand, 0); hand[0] = 6; hand[4] = 0;
+            yield return null; yield return null;
+            _hud.TapLedge("trader");
+            yield return WaitMat();
+            // nothing chosen: the emblem refuses and says what to do
+            _hud.TapLedge("mat-people:1");
+            Assert.AreEqual(WorldActionState.Refused, WorldActions.State);
+            WorldActions.Cancel();
+            _hud.TapLedge("basket:0"); _hud.TapLedge("mat-get:4");
+            int offers = T.Offers.Count;
+            Assert.AreEqual(WorldTapResult.Previewed, _hud.TapLedge("mat-people:1"), "first tap previews");
+            Assert.IsTrue(LedgerCard.IsOpen);
+            StringAssert.Contains("1 log", string.Join(" ", LedgerCard.Content.AllText()));
+            Step(2);
+            Assert.AreEqual(offers, T.Offers.Count, "the preview sent nothing");
+            Assert.AreEqual(WorldTapResult.Confirmed, _hud.TapLedge("mat-people:1"), "second tap sends");
+            Step(2);
+            // the sim may turn the offer down (the peoples will not trade with the leader): then nothing was added and it says so
+            if (T.Offers.Count == offers) StringAssert.Contains("trade", _hud.TradeMessage);
+            else
+            {
+                var o = T.Offers[T.Offers.Count - 1];
+                Assert.AreEqual(0, o.From); Assert.AreEqual(1, o.To);
+                Assert.AreEqual(1, o.Give[0]); Assert.AreEqual(1, o.Get[4]);
+            }
+            // to every people: the same two taps send one OfferTrade for all (To = -1)
+            WorldActions.Cancel(); LedgerCard.Hide();
+            foreach (var oo in T.Offers) if (oo.Status == OfferStatus.Open) oo.Status = OfferStatus.Expired;
+            offers = T.Offers.Count;
+            Assert.AreEqual(WorldTapResult.Previewed, _hud.TapLedge("mat-people:all"));
+            Step(2);
+            Assert.AreEqual(offers, T.Offers.Count, "the preview sent nothing");
+            Assert.AreEqual(WorldTapResult.Confirmed, _hud.TapLedge("mat-people:all"));
+            Step(2);
+            Assert.AreEqual(offers + 1, T.Offers.Count, "exactly one offer: " + _hud.TradeMessage);
+            var oa = T.Offers[T.Offers.Count - 1];
+            Assert.AreEqual(0, oa.From); Assert.AreEqual(-1, oa.To);
+            Assert.AreEqual(1, oa.Give[0]); Assert.AreEqual(1, oa.Get[4]);
+            Assert.AreEqual(0, _hud.OfferGive.Sum() + _hud.OfferGet.Sum(), "the old window was not used");
+            Assert.IsFalse(_hud.TradeOpen && _hud.TradeTab == 1, "no old trade window");
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator Jetty_Tap_ShowsItsRateAsGoodsPictures_AndSendsNothing()
+        {
+            yield return ToMyTurn();
+            Assert.Greater(S.Board.Ports.Count, 0);
+            int offersBefore = T.Offers.Count; var handBefore = (int[])T.Peoples[0].Hand.Clone();
+            int found = -1;
+            for (int i = 0; i < S.Board.Ports.Count && found < 0; i++)
+            {
+                var sp = _d.ScreenOfPort(i);
+                if (sp.x < 4 || sp.y < 4 || sp.x > Screen.width - 4 || sp.y > Screen.height - 4) continue;
+                if (sp.y < Screen.height - _hud.LedgeBand.y) continue;   // behind the ledge
+                if (_d.PortAt(sp) == i) found = i;
+            }
+            Assert.GreaterOrEqual(found, 0, "a jetty can be tapped on the board");
+            var res = _d.TapAt(_d.ScreenOfPort(found));
+            if (res != null && res.StartsWith("preview")) res = _d.TapAt(_d.ScreenOfPort(found));
+            Assert.AreEqual("jetty " + found, res);
+            Assert.IsTrue(LedgerCard.IsOpen);
+            _d.PortInfo(found, out int good, out int rate, out bool held);
+            Assert.AreEqual(rate, LedgerCard.Content.PicCount, "the rate is a picture row of goods");
+            Assert.AreEqual(good, LedgerCard.Content.PicGood);
+            StringAssert.Contains("jetty", LedgerCard.Content.Title.ToLowerInvariant());
+            Assert.IsNull(LedgerText.Violation(LedgerCard.Content));
+            Assert.AreEqual(WorldActionState.Inspect, WorldActions.State, "it only tells");
+            Step(2);
+            Assert.AreEqual(offersBefore, T.Offers.Count); CollectionAssert.AreEqual(handBefore, T.Peoples[0].Hand, "no command was sent");
+            WorldActions.Cancel();
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator LedgerTablet_OfLedgeObjects_OpensAboveTheLedge_NeverOverIt()
+        {
+            yield return ToMyTurn();
+            foreach (var id in new[] { "basket:2", "bench:1", "hourglass", "stake:1", "chronicler", "lamb" })
+            {
+                _hud.TapLedge(id);
+                var cam = _d.BoardCam;
+                var layout = LedgerCard.CurrentLayout(cam);
+                Assert.IsTrue(LedgerCard.IsOpen, id);
+                Assert.LessOrEqual(layout.Card.yMax, _hud.LedgeBand.y + 0.5f, id + ": the tablet does not unfold over the ledge");
+                WorldActions.Cancel();
+                LedgerCard.Hide();
+            }
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator FootprintStones_AreHidden_WhileTheCameraRisesToTheBoard()
+        {
+            var savedMode = FootprintStones.Mode;
+            FootprintStones.Mode = FootprintStones.StoneMode.Always;
+            try
+            {
+                yield return Start();
+                var fs = FootprintStones.Instance;
+                Assert.IsNotNull(fs, "the stones exist");
+                yield return null; yield return null;
+                Assert.IsTrue(fs.ShouldShow(), "on foot at the altar the stones show");
+                GodBoardDirector.RiseSeconds = 3f;
+                Assert.IsTrue(_d.TrySacrifice(true));
+                Step(2);
+                float t0 = Time.realtimeSinceStartup;
+                while (_d.View != BoardView.Rising) { Assert.Less(Time.realtimeSinceStartup - t0, 5f); yield return null; }
+                yield return null; yield return null;
+                Assert.IsFalse(fs.ShouldShow(), "hidden while the camera rises");
+                Assert.IsFalse(fs.Visible);
+                yield return WaitView(BoardView.Board);
+                yield return null;
+                Assert.IsFalse(fs.ShouldShow(), "hidden on the board");
+                _d.Leave();
+                t0 = Time.realtimeSinceStartup;
+                while (_d.View != BoardView.Altar) { Assert.Less(Time.realtimeSinceStartup - t0, 15f); yield return null; }
+                yield return null;
+                Assert.IsTrue(fs.ShouldShow(), "back at the altar the stones return");
+            }
+            finally { FootprintStones.Mode = savedMode; }
         }
     }
 }

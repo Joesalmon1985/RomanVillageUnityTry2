@@ -268,10 +268,70 @@ namespace World.Game
             HudLineShown = line;
         }
 
+        // ---------------- the book view (P2a) ----------------
+
+        private Vector2 _scrollL, _scrollR;
+        private GUIStyle _bookText, _bookTitle;
+        /// <summary>The journal as an open book: two pages over the map, readable at 844 x 390 (text at least 15 px).</summary>
+        public Rect BookRect { get; private set; }
+        /// <summary>The body text size of the book view in pixels for this screen.</summary>
+        public static int BookFont(float screenH) => Mathf.Clamp(Mathf.RoundToInt(screenH * 0.042f), 15, 30);
+
+        private static string Plain(string richText) => System.Text.RegularExpressions.Regex.Replace(richText ?? "", "</?color[^>]*>", "");
+
+        private void DrawBook()
+        {
+            var safe = ScreenSafeArea.Current();
+            float pad = Mathf.Round(Screen.height * 0.02f);
+            var r = new Rect(safe.x + pad, safe.y + pad, safe.width - 2f * pad, safe.height - 2f * pad);
+            BookRect = r; PanelRect = r;
+            int fs = BookFont(Screen.height);
+            if (_bookText == null || _bookText.fontSize != fs)
+            {
+                _bookText = new GUIStyle(GUI.skin.label) { fontSize = fs, wordWrap = true, richText = true };
+                _bookText.normal.textColor = new Color(0.20f, 0.13f, 0.06f);
+                _bookTitle = new GUIStyle(_bookText) { fontSize = Mathf.RoundToInt(fs * 1.3f), fontStyle = FontStyle.Bold };
+            }
+            GUI.depth = -16;
+            var cover = new Color(0.30f, 0.12f, 0.12f);
+            GUI.DrawTexture(new Rect(r.x - 6f, r.y - 6f, r.width + 12f, r.height + 12f), UiStyle.SolidTexture(cover));
+            GUI.DrawTexture(r, UiStyle.SolidTexture(new Color(0.88f, 0.82f, 0.67f)));
+            float mid = r.center.x;
+            GUI.DrawTexture(new Rect(mid - 2f, r.y, 4f, r.height), UiStyle.SolidTexture(new Color(0.55f, 0.42f, 0.25f)));
+            float ip = fs * 0.8f;
+            float closeW = Mathf.Max(WorldHitTarget.MinSide(Screen.height), fs * 4.2f), closeH = Mathf.Max(WorldHitTarget.MinSide(Screen.height) * 0.8f, fs * 2f);
+            var close = new Rect(r.xMax - closeW - 4f, r.y + 4f, closeW, closeH);
+            GUI.DrawTexture(close, UiStyle.SolidTexture(cover));
+            var cs = new GUIStyle(_bookText) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold }; cs.normal.textColor = new Color(0.95f, 0.88f, 0.7f);
+            GUI.Label(close, "Close", cs);
+            var e = Event.current;
+            if (e.type == EventType.MouseDown && close.Contains(e.mousePosition)) { Expanded = false; e.Use(); return; }
+            var left = new Rect(r.x + ip, r.y + ip, r.width / 2f - 2f * ip, r.height - 2f * ip);
+            var right = new Rect(mid + ip, r.y + ip + closeH * 0.8f, r.width / 2f - 2f * ip, r.height - 2f * ip - closeH * 0.8f);
+            GUI.Label(new Rect(left.x, left.y, left.width, fs * 1.8f), "Mira's journal", _bookTitle);
+            GUI.Label(new Rect(right.x, r.y + ip, right.width - closeW, fs * 1.8f), "What was written", _bookTitle);
+            DrawPage(new Rect(left.x, left.y + fs * 1.9f, left.width, left.height - fs * 1.9f), Plain(CompactText(S, 0)), ref _scrollL);
+            DrawPage(new Rect(right.x, right.y + fs * 1.3f, right.width, right.height - fs * 1.3f), Plain(FullEntries(S)), ref _scrollR);
+        }
+
+        private void DrawPage(Rect page, string text, ref Vector2 scroll)
+        {
+            float w = page.width - 14f;
+            float h = _bookText.CalcHeight(new GUIContent(text), w);
+            var e = Event.current;
+            if (e.type == EventType.MouseDrag && page.Contains(e.mousePosition)) { scroll.y -= e.delta.y; e.Use(); }   // a finger drags the page
+            scroll.y = Mathf.Clamp(scroll.y, 0f, Mathf.Max(0f, h - page.height));
+            scroll = GUI.BeginScrollView(page, scroll, new Rect(0, 0, w, Mathf.Max(h, page.height)), false, false, GUIStyle.none, GUIStyle.none);
+            GUI.Label(new Rect(0, 0, w, h), text, _bookText);
+            GUI.EndScrollView();
+        }
+
         private void DrawOnMap()
         {
             var view = MapScreenView.Instance;
             if (view == null || view.MapRect.width <= 0) return;
+            BookRect = Rect.zero;
+            if (Expanded) { DrawBook(); return; }
             GUI.depth = -16; // over the map's own side text
             var map = view.MapRect;
             float x = map.xMax + UiStyle.Px(30), w = Screen.width - map.xMax - UiStyle.Px(60);

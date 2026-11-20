@@ -7,7 +7,7 @@ using World.Sim.Table;
 namespace World.Game
 {
     /// <summary>One object on the altar ledge as a world action: its screen rect (for the ledger to unfold from), its words, and, when it does something, its two-step preview and command.</summary>
-    public sealed class LedgeObject : IWorldAction, IScreenAnchored
+    public sealed class LedgeObject : IWorldAction, IScreenAnchored, ILedgerPicture
     {
         public readonly string Id, Zone;
         public Rect GuiRect;
@@ -27,16 +27,20 @@ namespace World.Game
         public void ShowPreview(bool on) { PreviewFn?.Invoke(on); }
         public bool Commit() => CommitFn != null && CommitFn();
         public bool TryGetScreenRect(out Rect gui) { gui = GuiRect; return GuiRect.width > 0f; }
+        public int PicGood { get { var c = Content != null ? Content() : null; return c != null ? c.PicGood : -2; } }
+        public int PicCount { get { var c = Content != null ? Content() : null; return c != null ? c.PicCount : 0; } }
     }
 
     /// <summary>An inspect-only view of a ledge object: a tap opens its ledger tablet and sends nothing (an <see cref="IWorldAction"/> would preview).</summary>
-    public sealed class LedgeNote : IInspectable, IScreenAnchored
+    public sealed class LedgeNote : IInspectable, IScreenAnchored, ILedgerPicture
     {
         public readonly LedgeObject Src;
         public LedgeNote(LedgeObject src) { Src = src; }
         public string Title => Src.Title;
         public IEnumerable<string> Lines => Src.Lines;
         public bool TryGetScreenRect(out Rect gui) => Src.TryGetScreenRect(out gui);
+        public int PicGood => Src.PicGood;
+        public int PicCount => Src.PicCount;
     }
 
     /// <summary>Sits on the proxy object of a ledge object so zone tools (the F1 outline) and tests can read its screen rect.</summary>
@@ -107,13 +111,27 @@ namespace World.Game
             float k = Mathf.Clamp(wd / 620f, 0.65f, 1f);
             _lu = _u * k;
             float row = 44f * _lu, gap = 4f * _lu;
-            float bandH = 2f * row + 3f * gap + 4f * _lu;
+            float baseH = 2f * row + 3f * gap + 4f * _lu;
+            // P2a: the barter mat lies along the ledge as its own strip at the top of the stone; the ledge slides up by that strip
+            // while trading (the board camera refits above the band, so the island is never covered).
+            float matH = row + 2f * gap + 4f * _lu;
+            bool wantMat = MatOpen && !GameOverShown;
+            float nowT = Time.unscaledTime;
+            if (_matRiseAt != nowT)
+            {
+                float dt = _matRiseAt < 0f ? 1f : Mathf.Min(0.1f, nowT - _matRiseAt);
+                _matRise = Mathf.MoveTowards(_matRise, wantMat ? 1f : 0f, dt / 0.3f);
+                _matRiseAt = nowT;
+            }
+            float rise = _matRise * _matRise * (3f - 2f * _matRise);
+            float bandH = baseH + matH * rise;
             _band = new Rect(safe.x, safe.yMax - bandH, safe.width, bandH);
             _ledgeRects.Clear();
             Obj("baskets", WorldZones.HexStore); Obj("bench", WorldZones.HexBuild); Obj("stakes", WorldZones.HexAwards); Obj("stakes-turn", WorldZones.HexTurn);
             Obj("trader", WorldZones.HexTrade); Obj("hourglass", WorldZones.HexEnd); Obj("chronicler", WorldZones.HexFeed); Obj("prince", WorldZones.HexDev);
             Obj("totem", WorldZones.HexPlague); Obj("lamb", WorldZones.HexLeave); Obj("sack", WorldZones.HexRaider);
-            float y1 = _band.y + 4f * _lu + gap, y2 = y1 + row + gap;
+            float top = _band.y + matH * rise;   // the stone below the mat strip
+            float y1 = top + 4f * _lu + gap, y2 = y1 + row + gap;
             float x = _band.x + 6f * _lu;
             for (int g = 0; g < Wares.RawCount; g++) { _ledgeRects["basket:" + g] = new Rect(x, y1, row, row); x += row; }
             x += 8f * _lu;
@@ -121,7 +139,7 @@ namespace World.Game
             x += 8f * _lu;
             var vm = _d.Model;
             for (int p = 0; p < vm.PeopleCount && p < 4; p++) { _ledgeRects["stake:" + p] = new Rect(x, y1, row, row); x += row; }
-            _ledgeRects["hourglass"] = new Rect(_band.xMax - 6f * _lu - 64f * _lu, _band.y + 4f * _lu + gap, 64f * _lu, 2f * row + gap);
+            _ledgeRects["hourglass"] = new Rect(_band.xMax - 6f * _lu - 64f * _lu, y1, 64f * _lu, 2f * row + gap);
             // second row: trader, sack, envoys on the left; chronicler, prince, totem, lamb on the right
             float x2 = _band.x + 6f * _lu;
             _ledgeRects["trader"] = new Rect(x2, y2, row, row); x2 += row + gap;
@@ -142,22 +160,35 @@ namespace World.Game
             float xr = _ledgeRects["hourglass"].x - 8f * _lu - 4f * (row + gap) + gap;
             string[] right = { "chronicler", "prince", "totem", "lamb" };
             for (int i = 0; i < 4; i++) _ledgeRects[right[i]] = new Rect(xr + i * (row + gap), y2, row, row);
-            float mw = Mathf.Min(430f * _lu, safe.width - 12f * _lu), mh = 132f * _lu;
-            _mat = new Rect(safe.center.x - mw / 2f, _band.y - mh - 6f * _lu, mw, mh);
-            if (MatOpen && !GameOverShown)
+            // the mat: the strip at the top of the band
+            _mat = new Rect(safe.x + 2f * _lu, _band.y + 2f * _lu, safe.width - 4f * _lu, matH - 2f * _lu);
+            if (wantMat && _matRise > 0.999f)
             {
-                // the unrolled barter mat: what you give (moved from the basket) on the top row, the five goods to get below,
-                // the deal stone and the peoples' peg board at the right end
-                float pad = 8f * _lu, cell = row + gap;
-                float my1 = _mat.y + pad, my2 = _mat.yMax - pad - row;
-                float mx = _mat.x + pad + 4f * _lu;
-                _ledgeRects["mat-give"] = new Rect(mx, my1, 5f * cell - gap, row);
-                for (int g = 0; g < Wares.RawCount; g++) _ledgeRects["mat-get:" + g] = new Rect(mx + g * cell, my2, row, row);
-                float rx = _mat.xMax - pad - 4f * _lu - row;
-                _ledgeRects["mat-deal"] = new Rect(rx, my2, row, row);
-                _ledgeRects["mat-peoples"] = new Rect(rx, my1, row, row);
+                // left to right on the cloth: the goods to give (moved from the basket), the five goods to get, the deal stone,
+                // then the peoples' emblems (an offer to one people, or to all)
+                float cell = row + gap;
+                float my = _mat.y + (_mat.height - row) * 0.5f;
+                int others = 0;
+                for (int p = 0; p < vm.PeopleCount; p++) if (p != vm.Human) others++;
+                float total = (2f + Wares.RawCount + 1f + (others + 1)) * cell + 12f * _lu;
+                float mx = Mathf.Max(_mat.x + 4f * _lu, _mat.center.x - total * 0.5f);
+                _ledgeRects["mat-give"] = new Rect(mx, my, 2f * cell - gap, row);
+                mx += 2f * cell + 4f * _lu;
+                for (int g = 0; g < Wares.RawCount; g++) { _ledgeRects["mat-get:" + g] = new Rect(mx, my, row, row); mx += cell; }
+                mx += 4f * _lu;
+                _ledgeRects["mat-deal"] = new Rect(mx, my, row, row); mx += cell + 4f * _lu;
+                for (int p = 0; p < vm.PeopleCount; p++)
+                {
+                    if (p == vm.Human) continue;
+                    _ledgeRects["mat-people:" + p] = new Rect(mx, my, row, row); mx += cell;
+                }
+                _ledgeRects["mat-people:all"] = new Rect(mx, my, row, row);
             }
         }
+
+        private float _matRise, _matRiseAt = -1f;
+        /// <summary>0 to 1: how far the ledge has slid up for the mat strip (1 = the mat lies on it).</summary>
+        public float MatRise => _matRise;
 
         // ---------------------------------------------------------------- the taps (what the objects do)
 
@@ -307,9 +338,6 @@ namespace World.Game
                 case "sack-clear":
                     Array.Clear(DiscardPick, 0, DiscardPick.Length);
                     return WorldTapResult.Ignored;
-                case "mat-peoples":
-                    SetTab(1); WorldActions.Cancel();
-                    return WorldTapResult.Inspected;
                 case "mat-give":
                 {
                     var o = Obj("mat-give", WorldZones.HexTrade);
@@ -336,6 +364,27 @@ namespace World.Game
                     o.CommitFn = () => DoBankTrade().Ok;
                     return WorldActions.Tap(o);
                 }
+            }
+            if (id.StartsWith("mat-people:"))
+            {
+                string who = id.Substring(11);
+                int to = who == "all" ? -1 : int.Parse(who);
+                var o = Obj(id, WorldZones.HexTrade);
+                o.GuiRect = rect;
+                o.Content = () => MatOfferContent(_d.FreshModel(), to);
+                o.Question = to < 0 ? "Offer this to every people?" : "Make this offer to " + _d.PeopleShort(to) + "?";
+                o.CheckFn = () =>
+                {
+                    var m = _d.Model;
+                    if (!m.CanAct) return WorldActionCheck.Refuse("Wait for your turn.");
+                    if (BankGive < 0 || BankGet < 0 || BankGive == BankGet) return WorldActionCheck.Refuse("Tap a basket to give, then a good on the mat to get.");
+                    if (m.Hand[BankGive] < 1) return WorldActionCheck.Refuse("Your basket of that good is empty.");
+                    if (m.OwnOffer != null) return WorldActionCheck.Refuse("Your offer is still waiting for an answer.");
+                    return WorldActionCheck.Allowed;
+                };
+                o.PreviewFn = null;
+                o.CommitFn = () => DoMatOffer(to).Ok;
+                return WorldActions.Tap(o);
             }
             if (id.StartsWith("mat-get:"))
             {
@@ -372,6 +421,45 @@ namespace World.Game
                 return WorldTapResult.Confirmed;
             }
             return WorldTapResult.Ignored;
+        }
+
+        /// <summary>A tap on a jetty (P2a): its rate as a picture row on a trader-style tablet. Sends nothing.</summary>
+        public WorldTapResult TapJetty(int portIndex, Vector2 screenBottomLeft)
+        {
+            if (_d == null || _d.View != BoardView.Board || GameOverShown || !_d.PortInfo(portIndex, out int good, out int rate, out bool held)) return WorldTapResult.Ignored;
+            var o = Obj("jetty:" + portIndex, WorldZones.HexTrade);
+            float side = WorldHitTarget.MinSide(Screen.height);
+            o.GuiRect = new Rect(screenBottomLeft.x - side * 0.5f, Screen.height - screenBottomLeft.y - side * 0.5f, side, side);
+            o.Content = () => { _d.PortInfo(portIndex, out int g, out int r, out bool h); return GodBoardLedger.Jetty(_d.FreshModel(), g, r, h); };
+            o.CheckFn = null; o.CommitFn = null; o.PreviewFn = null; o.Question = null;
+            return WorldActions.Inspect(NoteOf(o));
+        }
+
+        /// <summary>An offer to the peoples from the mat: one of the chosen good for one of the wanted good (words only).</summary>
+        private LedgerContent MatOfferContent(GodBoardViewModel vm, int to)
+        {
+            var c = new LedgerContent { Title = to < 0 ? "Offer to the peoples" : "Offer to " + _d.PeopleShort(to) };
+            if (BankGive >= 0 && BankGet >= 0 && BankGive != BankGet)
+            {
+                var give = new int[Wares.RawCount]; give[BankGive] = 1;
+                var get = new int[Wares.RawCount]; get[BankGet] = 1;
+                c.Lines.Add("You give " + GodBoardLedger.Goods(give) + " and ask " + GodBoardLedger.Goods(get) + ".");
+            }
+            else c.Lines.Add("Tap a basket to give, then a good on the mat to get.");
+            c.Lines.Add(to < 0 ? "Any people may answer; the offer lapses when its patience runs out." : "They may accept or refuse; the offer lapses when its patience runs out.");
+            if (vm.OwnOffer != null) c.Lines.Add("Your offer is still waiting for an answer.");
+            return c;
+        }
+
+        /// <summary>Sends the mat's offer through the same command the old window used: one of the give good for one of the get good.</summary>
+        public CommandResult DoMatOffer(int to)
+        {
+            if (BankGive < 0 || BankGet < 0 || BankGive == BankGet) { TradeMessage = "Choose the good to give and the good to get."; return CommandResult.Reject("bad_trade", TradeMessage); }
+            var give = new int[Wares.RawCount]; give[BankGive] = 1;
+            var get = new int[Wares.RawCount]; get[BankGet] = 1;
+            var r = _d.Send(new OfferTrade { To = to, Give = give, Get = get });
+            TradeMessage = r.Ok ? "Offer made. We wait for an answer." : Sentence(r);
+            return r;
         }
 
         private string MatDealLine(GodBoardViewModel vm)
@@ -460,6 +548,7 @@ namespace World.Game
             bool show = WorldFirstBoard;
             if (_rig == null) { if (!show) return; _rig = AltarLedgeRig.Create(this, _d); }
             if (show) LayoutLedge();
+            LedgerCard.FloorTop = show ? _band.y : float.NaN;
             _rig.Sync(show);
         }
     }

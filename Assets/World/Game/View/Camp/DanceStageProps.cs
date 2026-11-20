@@ -45,6 +45,11 @@ namespace World.Game
         private readonly Transform[] _flame = new Transform[TorchCount];
         private readonly TorchState[] _torchState = new TorchState[TorchCount];
         private readonly Vector3[] _torchPoint = new Vector3[TorchCount];
+        private readonly Light[] _torchLight = new Light[TorchCount];
+        private Light _stageLight;
+        /// <summary>The torch light's current intensity (tests).</summary>
+        public float TorchLightIntensity(int i) => i >= 0 && i < TorchCount && _torchLight[i] != null ? _torchLight[i].intensity : 0f;
+        public float StageLightIntensity => _stageLight != null ? _stageLight.intensity : 0f;
         private Transform _bell;
         private float _bellSwingV;
 
@@ -68,7 +73,8 @@ namespace World.Game
             g.transform.SetParent(parent, false);
             g.transform.localPosition = localPos;
             g.transform.localScale = scale;
-            g.GetComponent<Renderer>().sharedMaterial = MaterialFactory.CreateUnlit(Color.Lerp(c, Color.white, 0.12f) * 1.15f, name);
+            // P2a: lit, so the fire, the drum lights and the torches model the props at night (they were flat unlit shapes).
+            g.GetComponent<Renderer>().sharedMaterial = MaterialFactory.Shared(Color.Lerp(c, Color.white, 0.18f));
             return g;
         }
 
@@ -114,8 +120,11 @@ namespace World.Game
                 var fl = Prim(PrimitiveType.Sphere, "Flame", t, Color.white, new Vector3(0, 2.2f, 0), new Vector3(0.3f, 0.5f, 0.3f));
                 _flameMat[i] = MaterialFactory.CreateUnlit(new Color(1f, 0.6f, 0.2f), "Torch flame " + (i + 1));
                 fl.GetComponent<Renderer>().sharedMaterial = _flameMat[i];
-                fl.SetActive(false);
                 _flame[i] = fl.transform;
+                var lg = new GameObject("Torch light"); lg.transform.SetParent(t, false); lg.transform.localPosition = new Vector3(0f, 2.5f, 0f);
+                var tl = lg.AddComponent<Light>(); tl.type = LightType.Point; tl.range = 6.5f; tl.intensity = 0.2f; tl.color = new Color(1f, 0.6f, 0.25f); tl.shadows = LightShadows.None;
+                _torchLight[i] = tl;
+                SetTorch(i, TorchState.Unlit);
                 _torch[i] = t;
                 _torchPoint[i] = t.position + Vector3.up * 1.7f;
             }
@@ -147,6 +156,9 @@ namespace World.Game
                 pf.Stick = Prim(PrimitiveType.Cylinder, "Stick", pf.ArmR, new Color(0.75f, 0.62f, 0.40f), new Vector3(0, -0.6f, 0.12f), new Vector3(0.04f, 0.26f, 0.04f)).transform;
                 _perf[p] = pf;
             }
+            // A warm stage light above the performers, so each person and drum reads against the dark (the fire alone lights one side).
+            var sl = new GameObject("Stage light"); sl.transform.SetParent(transform, false); sl.transform.position = Vector3.Lerp(lay.DanceCircleCentre, lay.DancerSpot, 0.7f) + Vector3.up * 3.4f; // on the dancer's side, so the performers' fronts (and the drums) are lit, not only their backs
+            _stageLight = sl.AddComponent<Light>(); _stageLight.type = LightType.Point; _stageLight.range = 14f; _stageLight.intensity = 1.5f; _stageLight.color = new Color(1f, 0.78f, 0.5f); _stageLight.shadows = LightShadows.None;
             ApplyPoses(1f);
         }
 
@@ -170,7 +182,13 @@ namespace World.Game
         {
             if (i < 0 || i >= TorchCount) return;
             _torchState[i] = s;
-            if (_flame[i] != null) _flame[i].gameObject.SetActive(s != TorchState.Unlit);
+            // An unlit torch still shows a faint ember so the four torches read as torches at night.
+            if (_flame[i] != null)
+            {
+                _flame[i].gameObject.SetActive(true);
+                if (s == TorchState.Unlit) { _flameMat[i].color = new Color(0.45f, 0.16f, 0.1f); _flame[i].localScale = new Vector3(0.14f, 0.16f, 0.14f); }
+            }
+            if (_torchLight[i] != null) { _torchLight[i].intensity = s == TorchState.Unlit ? 0.2f : s == TorchState.Missed ? 0.5f : s == TorchState.Kept ? 2.2f : 1.7f; _torchLight[i].color = s == TorchState.Kept ? new Color(1f, 0.85f, 0.45f) : s == TorchState.Missed ? new Color(0.8f, 0.3f, 0.2f) : new Color(1f, 0.6f, 0.25f); }
         }
 
         public TorchState TorchStateOf(int i) => i >= 0 && i < TorchCount ? _torchState[i] : TorchState.Unlit;
@@ -198,7 +216,8 @@ namespace World.Game
             if (_bell != null) _bell.localRotation = Quaternion.Euler(0, 0, BellSwing * Mathf.Rad2Deg * 0.15f);
             for (int i = 0; i < TorchCount; i++)
             {
-                if (_flame[i] == null || !_flame[i].gameObject.activeSelf) continue;
+                if (_flame[i] == null || !_flame[i].gameObject.activeSelf || _torchState[i] == TorchState.Unlit) continue;
+                if (_torchLight[i] != null) _torchLight[i].intensity *= 1f;
                 float f = 1f + 0.12f * Mathf.Sin(Time.unscaledTime * 11f + i * 1.7f);
                 switch (_torchState[i])
                 {
