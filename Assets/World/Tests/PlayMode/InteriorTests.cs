@@ -253,11 +253,12 @@ namespace World.Game.Tests
             yield return null;
             yield return Idle(); yield return new WaitForSecondsRealtime(0.8f);   // the tap guard waits out the camera move of the teleport
             int before = InteriorDirector.Instance.CrossingCount;
+            int bubbles = SpeechBubbles.OpenHandles().Count;
             Assert.AreEqual(TapOutcome.Preview, PointerInput.TapObject(way), "first tap previews on the ledger");
             Assert.IsTrue(LedgerCard.IsOpen);
             StringAssert.Contains("Go", LedgerCard.Content.Question);
             Assert.IsFalse(W.IsAutoWalking, "a preview moves nobody");
-            Assert.AreEqual(0, SpeechBubbles.OpenHandles().Count, "no speech bubble");
+            Assert.AreEqual(bubbles, SpeechBubbles.OpenHandles().Count, "the way opened no speech bubble");
             Assert.AreEqual(TapOutcome.Confirm, PointerInput.TapObject(way), "second tap goes");
             yield return Idle(30f);
             Assert.Greater(InteriorDirector.Instance.CrossingCount, before, "the way was taken");

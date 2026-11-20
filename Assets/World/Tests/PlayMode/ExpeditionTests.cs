@@ -330,7 +330,7 @@ namespace World.Game.Tests
             PointerInput.TapObject(Dir.Mira);
             yield return Frames(2);
             Assert.AreEqual(ExpeditionDirector.AskMenu, Dir.AskKind);
-            CollectionAssert.AreEqual(new[] { T("reply_with"), T("reply_know"), "Show me your pouch.", "Show me your journal." }, SpeechBubbles.RepliesOf(Dir.AskHandle));
+            CollectionAssert.AreEqual(new[] { T("reply_with"), T("reply_know"), "Show me your pouch." }, SpeechBubbles.RepliesOf(Dir.AskHandle));
             yield return Tap("reply_with");
             Assert.IsTrue(Last<SetCompany>().Present, "\"I'm with you\" sends SetCompany(true)");
             yield return Until(() => C.Party.PlayerPresent, 3f, "the sim to count the player present");

@@ -878,12 +878,10 @@ namespace World.Game
             {
                 replies.Add(Reply(ExpeditionLines.ReplyWith)); acts.Add(() => JoinCompany(true));
                 replies.Add(Reply(ExpeditionLines.ReplyKnow)); acts.Add(WhatWeKnow);
-                AddPouchAndJournal(replies, acts);
             }
             else
             {
                 replies.Add(Reply(ExpeditionLines.ReplyKnow)); acts.Add(WhatWeKnow);
-                AddPouchAndJournal(replies, acts);
                 replies.Add(Reply(ExpeditionLines.ReplyLeave)); acts.Add(() => LeaveCompany(true));
                 if (under) { replies.Add(Reply(ExpeditionLines.ReplyLeadOut)); acts.Add(LeadOut); }
                 else if ((p.Mode == PartyMode.Idle || p.Mode == PartyMode.WaitingForPlayer) && EncounterDirectory.IsRegistered(EncounterDirectory.WardMira))
@@ -892,16 +890,17 @@ namespace World.Game
                     acts.Add(() => EncounterDirectory.TryStart(EncounterDirectory.WardMira, Mira));
                 }
             }
+            AddPouch(replies, acts); // only when a reply slot is free: the bubble shows three
             string text = ExpeditionLines.Get(S, p.PlayerPresent ? "mira_what" : ExpeditionLines.MiraAway, "What is it?");
             OpenAsk(AskMenu, Mira, text, replies, i => { if (i < acts.Count) acts[i](); });
             SpeechBubbles.Expand(_ask);
         }
 
-        /// <summary>P2a: tapping Mira offers her pouch and her journal too, so the small things on her belt need no careful aim.</summary>
-        private void AddPouchAndJournal(List<string> replies, List<Action> acts)
+        /// <summary>P2a: tapping Mira offers her pouch too (her journal is "What do we know?"), so the small things on her belt need no careful aim.</summary>
+        private void AddPouch(List<string> replies, List<Action> acts)
         {
+            if (replies.Count >= SpeechBubbles.MaxReplies) return;
             replies.Add(Reply("Show me your pouch.")); acts.Add(() => { if (Pouch != null) { WorldActions.Cancel(); WorldActions.Inspect(Pouch); } });
-            replies.Add(Reply("Show me your journal.")); acts.Add(() => { if (Journal != null) Journal.Open(); });
         }
 
         /// <summary>"What do we know?": the count, then the journal page (crystal by crystal, where to look next).</summary>
