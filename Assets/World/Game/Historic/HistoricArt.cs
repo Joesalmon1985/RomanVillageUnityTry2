@@ -340,6 +340,22 @@ namespace World.Game
             if (load.a > 0.01f) { load.a = 1f; mb.Box(new Vector3(0, 1.55f, -0.38f), new Vector3(0.55f, 0.5f, 0.45f), load); }
         }
 
+        /// <summary>P1: the walker as a jointed figure. Torso, head, hat and the load (held in front, alpha 0 = none); feet at y = 0, hips at 0.8.</summary>
+        public static void WalkerTorso(MeshBuilder mb, Color pc, Color load)
+        {
+            mb.Box(new Vector3(0, 1.15f, 0), new Vector3(0.62f, 0.78f, 0.36f), pc);
+            mb.Box(new Vector3(0, 0.82f, 0), new Vector3(0.56f, 0.14f, 0.34f), pc * 0.7f);
+            mb.Box(new Vector3(0, 1.72f, 0), new Vector3(0.36f, 0.36f, 0.36f), Skin);
+            mb.Box(new Vector3(0, 1.95f, 0), new Vector3(0.42f, 0.12f, 0.42f), pc * 0.7f);
+            if (load.a > 0.01f) { load.a = 1f; mb.Box(new Vector3(0, 1.2f, 0.42f), new Vector3(0.5f, 0.38f, 0.36f), load); }
+        }
+
+        /// <summary>One leg hanging from its hip pivot (0.8 long).</summary>
+        public static void WalkerLeg(MeshBuilder mb) { mb.Box(new Vector3(0, -0.4f, 0), new Vector3(0.2f, 0.8f, 0.24f), Dark * 1.6f); mb.Box(new Vector3(0, -0.76f, 0.05f), new Vector3(0.22f, 0.08f, 0.32f), Dark); }
+
+        /// <summary>One arm hanging from its shoulder pivot (sleeve in the people's colour, hand).</summary>
+        public static void WalkerArm(MeshBuilder mb, Color pc) { mb.Box(new Vector3(0, -0.28f, 0), new Vector3(0.15f, 0.56f, 0.17f), pc * 0.85f); mb.Box(new Vector3(0, -0.6f, 0), new Vector3(0.14f, 0.12f, 0.14f), Skin); }
+
         public static Color WareColour(Ware w)
         {
             switch (w)
