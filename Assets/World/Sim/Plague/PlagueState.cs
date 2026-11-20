@@ -39,6 +39,11 @@ namespace World.Sim.Plague
         /// <summary>Infection rounds drawn so far. An epidemic does nothing until it reaches PlagueRules.GraceRounds (PL-6).</summary>
         public int Rounds;
         public int Epidemics;
+        /// <summary>
+        /// Tuning field (PL-5, balance F1): the infection draw happens in every N-th round (1 = every round). A new god board game
+        /// gets <see cref="PlagueRules.DefaultInfectEvery"/> (3); a save from before version 9 lacks it and keeps 1 (the old behaviour).
+        /// </summary>
+        public int InfectEvery = 1;
         public int Banished;
         public Rng Rng;
     }

@@ -221,9 +221,9 @@ namespace World.Sim.Tests
                 sim.Step();
                 var evs = sim.DrainEvents();
                 log.AddRange(evs);
-                // PL-5: one infection draw after every finished round (while the island stands).
+                // PL-5: one infection draw after every InfectEvery-th finished round (3 by default since balance F1; while the island stands).
                 if (s.Table.Round >= 1 && !s.Plague.IslandFell && s.Table.Phase != TablePhase.Ended)
-                    Assert.AreEqual(s.Table.Round - 1, s.Plague.Rounds, "tick " + s.Tick);
+                    Assert.AreEqual((s.Table.Round - 1) / s.Plague.InfectEvery, s.Plague.Rounds, "tick " + s.Tick);
                 // TU-2, PL-9: a blocked hex gives nothing; a produced hex had no demons.
                 foreach (var p in evs.OfType<Produced>())
                 {
@@ -232,7 +232,7 @@ namespace World.Sim.Tests
                 }
             }
             int sevens = log.OfType<TableEpidemic>().Count();
-            int lateSevens = log.OfType<TableEpidemic>().Count(e => e.Round > PlagueRules.GraceRounds + 1);
+            int lateSevens = log.OfType<TableEpidemic>().Count(e => e.Round > PlagueRules.GraceRounds * s.Plague.InfectEvery + 1);
             Assert.Greater(sevens, 0);
             Assert.Greater(log.OfType<Infected>().Count(), 0);
             if (lateSevens > 0 && !s.Plague.IslandFell) Assert.Greater(log.OfType<PlagueEpidemic>().Count(), 0, "a 7 after the grace rounds is an epidemic");
@@ -302,6 +302,7 @@ namespace World.Sim.Tests
         {
             var a = GodBoard(humanSeat: -1);
             var s = a.State;
+            s.Plague.InfectEvery = 1; // balance F1 draws every 3rd round, so the table is won before the plague bites; this test wants it deep
             // Play into the plague: past the grace rounds with demons on the island, in the middle of a turn.
             StepUntil(a, () => s.Plague.Rounds >= PlagueRules.GraceRounds + 1 && PlagueApi.TotalDemons(s) > 0
                                && s.Table.Phase == TablePhase.Main && s.Table.TurnTicks > 5, MaxTicks);

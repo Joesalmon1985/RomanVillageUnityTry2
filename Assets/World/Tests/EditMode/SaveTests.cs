@@ -30,7 +30,7 @@ namespace World.Sim.Tests
             var extras = new Dictionary<string, string> { { "walk.i", "3" }, { "hud", "0" } };
             string json = SaveCodec.ToJson(s, pose, extras);
             var model = SaveCodec.FromJson(json);
-            Assert.AreEqual(8, SaveCodec.CurrentVersion);
+            Assert.AreEqual(9, SaveCodec.CurrentVersion);
             Assert.AreEqual(4, SaveCodec.OldestVersion);
             Assert.AreEqual(SaveCodec.CurrentVersion, model.Version);
             Assert.AreEqual(s.Tick, model.Tick);

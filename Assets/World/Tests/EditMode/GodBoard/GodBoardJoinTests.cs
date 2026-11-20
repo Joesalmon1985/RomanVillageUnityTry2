@@ -121,7 +121,8 @@ namespace World.Sim.Tests
                 Assert.AreEqual(1, WarApi.PresentAt(s, st.Corner, p), "WA-4: one garrison soldier");
             }
             Assert.IsFalse(s.War.AtWar.Any(x => x), "everyone tied at the start: peace (default tie rule)");
-            Assert.AreEqual(TieRule.OnlyWhenNotEveryoneTied, s.War.TiedLeadersFight);
+            Assert.AreEqual(TieRule.NeverWhenTied, s.War.TiedLeadersFight, "balance F1: tied leaders never fight");
+            Assert.AreEqual(3, s.Plague.InfectEvery, "balance F1: the infection draws every 3rd round");
             Assert.IsTrue(sim.Systems.Any(x => x is WarSystem), "the war system is registered");
             Assert.IsNull(WorldSimFactory.CreateNew(Seed).State.War, "a legacy game has no war");
         }
@@ -454,9 +455,13 @@ namespace World.Sim.Tests
             Assert.IsTrue(WarApi.AtWar(lit, 0, 1) && WarApi.AtWar(lit, 2, 3), "literal WA-11: all tied, all at war");
 
             var def = WarOnly(4);
-            Assert.AreEqual(TieRule.OnlyWhenNotEveryoneTied, def.War.TiedLeadersFight, "default until the owner rules");
+            Assert.AreEqual(TieRule.NeverWhenTied, def.War.TiedLeadersFight, "balance F1 default");
             WarRules.SetPoints(def, new[] { 2, 2, 2, 2 }, null);
             Assert.IsFalse(def.War.AtWar.Any(x => x));
+            var mid = WarOnly(4);
+            mid.War.TiedLeadersFight = TieRule.OnlyWhenNotEveryoneTied;
+            WarRules.SetPoints(mid, new[] { 2, 2, 2, 2 }, null);
+            Assert.IsFalse(mid.War.AtWar.Any(x => x));
         }
 
         [Test]
@@ -521,6 +526,30 @@ namespace World.Sim.Tests
             AssertWarMatchesTable(b.State);
             Assert.IsTrue(b.Systems.Any(x => x is WarSystem));
             Steps(b, 500); // and it plays on
+        }
+
+        [Test]
+        public void Save_BalanceF1_InfectEveryRoundTrips_AndAVersion8SaveKeepsTheOldBalance()
+        {
+            var a = GodBoard();
+            Assert.AreEqual(3, a.State.Plague.InfectEvery, "new game: every 3rd round");
+            Assert.AreEqual(TieRule.NeverWhenTied, a.State.War.TiedLeadersFight);
+            a.State.Plague.InfectEvery = 2;
+            var b = SaveCodec.Load(SaveCodec.ToJson(a.State), out var model);
+            Assert.AreEqual(SaveCodec.CurrentVersion, model.LoadedVersion);
+            Assert.AreEqual(2, b.State.Plague.InfectEvery, "the saved field round-trips");
+            Assert.AreEqual(TieRule.NeverWhenTied, b.State.War.TiedLeadersFight);
+
+            // A version 8 file has no InfectEvery and the tie rule it was written with: it keeps drawing every round.
+            a.State.War.TiedLeadersFight = TieRule.OnlyWhenNotEveryoneTied;
+            string json = SaveCodec.ToJson(a.State).Replace("\"Version\":" + SaveCodec.CurrentVersion, "\"Version\":8");
+            json = System.Text.RegularExpressions.Regex.Replace(json, "\"InfectEvery\":[0-9]+,?", "");
+            StringAssert.DoesNotContain("InfectEvery", json);
+            var c = SaveCodec.Load(json, out var m8);
+            Assert.AreEqual(8, m8.LoadedVersion);
+            Assert.AreEqual(1, c.State.Plague.InfectEvery, "old behaviour: infection every round");
+            Assert.AreEqual(TieRule.OnlyWhenNotEveryoneTied, c.State.War.TiedLeadersFight, "the saved tie rule is kept");
+            Steps(c, 300);
         }
 
         [Test]

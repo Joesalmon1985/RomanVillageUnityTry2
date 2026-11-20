@@ -169,6 +169,7 @@ namespace World.Sim.Tests
         {
             yield return ("No war (war stopped from the start; plague only, as in G0-2)", s => s.War.Stopped = true);
             yield return ("WA-11 literal tie rule (everyone tied = at war)", s => { s.War.TiedLeadersFight = TieRule.Literal; Recompute(s); });
+            yield return ("Before balance F1 (infection every round, tied leaders fight unless everyone is tied)", s => { s.Plague.InfectEvery = 1; s.War.TiedLeadersFight = TieRule.OnlyWhenNotEveryoneTied; Recompute(s); });
             yield return ("Player-paced rounds (AiTurnTicks 150: about 600 ticks a round)", s => s.Table.Tuning.AiTurnTicks = 150);
         }
 

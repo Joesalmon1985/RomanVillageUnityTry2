@@ -8,7 +8,7 @@ namespace World.Sim.Save
     /// <see cref="SaveCodec.CurrentVersion"/>, applied in order to the deserialised state. Fields a newer build added and
     /// an older save lacks keep their initialisers (Newtonsoft builds every object with its constructor); a step fills
     /// whole new module states and anything whose default would be wrong. Later slices append their step (5 to 6 by H2-0,
-    /// 6 to 7 by M1-0, 7 to 8 by F1-0) and bump CurrentVersion; a step must be deterministic and must not run the sim.
+    /// 6 to 7 by M1-0, 7 to 8 by F1-0, 8 to 9 by balance F1) and bump CurrentVersion; a step must be deterministic and must not run the sim.
     /// </summary>
     public static class SaveMigrations
     {
@@ -19,6 +19,7 @@ namespace World.Sim.Save
             { 5, V5ToV6 },
             { 6, V6ToV7 },
             { 7, V7ToV8 },
+            { 8, V8ToV9 },
         };
 
         /// <summary>Migrates a model read by FromJson in place: LoadedVersion = the file's version, Version = CurrentVersion.</summary>
@@ -90,6 +91,16 @@ namespace World.Sim.Save
             if (s.Historic != null) return;
             if (s.Table.Phase == Table.TablePhase.Ended && !s.Table.IslandFell && s.Table.Winner >= 0)
                 Historic.HistoricModule.Switch(s, s.Table.Winner, null);
+        }
+
+        /// <summary>
+        /// v8 to v9 (balance F1): an older god board game keeps its old balance. Its plague draws every round (InfectEvery 1; the
+        /// field is absent in the file and the initialiser already says 1, set here so it is explicit) and its war keeps the tie
+        /// rule it was saved with.
+        /// </summary>
+        private static void V8ToV9(WorldState s)
+        {
+            if (s.Plague != null) s.Plague.InfectEvery = 1;
         }
     }
 }
