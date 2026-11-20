@@ -274,11 +274,21 @@ namespace World.Game
                 Prim(PrimitiveType.Capsule, m, new Vector3(0.12f, 0.5f, -0.07f), new Vector3(0.14f, 0.2f, 0.1f), new Color(0.66f, 0.47f, 0.33f), new Vector3(0f, 0f, -60f));
                 var seal = Glow(m, new Vector3(0f, 0.5f, 0.02f), new Vector3(0.95f, 0.95f, 0.01f), new Color(0, 0, 0, 0)); seal.name = "Ring";
             }
-            else if (id == "mat-peoples")
+            else if (id.StartsWith("mat-people:"))
             {
-                Prim(PrimitiveType.Cube, m, new Vector3(0f, 0.5f, 0f), new Vector3(0.8f, 0.5f, 0.06f), Wood);
-                for (int p = 0; p < 4; p++)
-                    Prim(PrimitiveType.Cylinder, m, new Vector3(-0.27f + p * 0.18f, 0.5f, -0.08f), new Vector3(0.12f, 0.06f, 0.12f), Color.white, new Vector3(-90f, 0f, 0f)).name = "Peg" + p;
+                // a people's emblem on the cloth: a little pole with a banner in their colour and a face; "all" is a ring of four pegs
+                Prim(PrimitiveType.Cylinder, m, new Vector3(0f, 0.5f, 0.02f), new Vector3(0.8f, 0.01f, 0.8f), new Color(0.40f, 0.29f, 0.18f), new Vector3(-90f, 0f, 0f)).name = "Plate";
+                if (id.EndsWith(":all"))
+                {
+                    for (int p = 0; p < 4; p++)
+                        Prim(PrimitiveType.Cylinder, m, new Vector3(Mathf.Cos(p * 1.57f + 0.4f) * 0.22f, 0.5f + Mathf.Sin(p * 1.57f + 0.4f) * 0.22f, -0.04f), new Vector3(0.2f, 0.05f, 0.2f), Color.white, new Vector3(-90f, 0f, 0f)).name = "Peg" + p;
+                }
+                else
+                {
+                    Prim(PrimitiveType.Cube, m, new Vector3(0f, 0.42f, -0.04f), new Vector3(0.42f, 0.34f, 0.04f), Color.white).name = "Banner";
+                    Prim(PrimitiveType.Sphere, m, new Vector3(0f, 0.7f, -0.05f), new Vector3(0.22f, 0.22f, 0.22f), Skin);
+                }
+                var ring = Glow(m, new Vector3(0f, 0.5f, 0.05f), new Vector3(0.95f, 0.95f, 0.01f), new Color(0, 0, 0, 0)); ring.name = "Ring";
             }
             else if (id.StartsWith("envoy:"))
             {
@@ -672,7 +682,7 @@ namespace World.Game
                 case "mat-peoples":
                     RefreshMatPart(it, r, vm, now); return;
             }
-            if (id.StartsWith("mat-get:")) { RefreshMatPart(it, r, vm, now); return; }
+            if (id.StartsWith("mat-get:") || id.StartsWith("mat-people:")) { RefreshMatPart(it, r, vm, now); return; }
             if (id.StartsWith("envoy:"))
             {
                 Place(it, r, 1.15f);
@@ -721,8 +731,9 @@ namespace World.Game
             Place(it, r, 0.9f, false, z);
             it.transform.position = At(r.center.x, r.yMax, z);
             it.Model.rotation = Cam.transform.rotation;
-            float u = _matOpenedAt < 0f ? 0f : Mathf.Clamp01((now - _matOpenedAt - 0.2f) / 0.25f);
+            float u = Mathf.Clamp01((now - it.Born) / 0.2f);
             it.Model.gameObject.SetActive(u > 0f);
+            it.Hit.enabled = u > 0.5f;
             string id = it.Id;
             if (id == "mat-give")
             {
@@ -752,9 +763,14 @@ namespace World.Game
                 bool can = vm.CanAct && _hud.BankGive >= 0 && _hud.BankGet >= 0 && _hud.BankGive != _hud.BankGet && vm.Hand[_hud.BankGive] >= vm.BankRate[_hud.BankGive];
                 SetGlow(it.Model.Find("Ring").gameObject, can ? new Color(0.6f, 1f, 0.5f, 0.35f + 0.25f * Mathf.Sin(now * 5f)) : new Color(0, 0, 0, 0));
             }
-            else if (id == "mat-peoples")
+            else if (id.StartsWith("mat-people:"))
             {
-                for (int p = 0; p < 4; p++) { var peg = it.Model.Find("Peg" + p); if (peg != null) Paint(peg.gameObject, p < vm.PeopleCount ? _hud.PeopleColour(p) : Color.gray); }
+                bool all = id.EndsWith(":all");
+                int who = all ? -1 : int.Parse(id.Substring(11));
+                if (all) { for (int p = 0; p < 4; p++) { var peg = it.Model.Find("Peg" + p); if (peg != null) Paint(peg.gameObject, p < vm.PeopleCount ? _hud.PeopleColour(p) : Color.gray); } }
+                else { var b = it.Model.Find("Banner"); if (b != null) Paint(b.gameObject, _hud.PeopleColour(who)); }
+                bool open = WorldActions.State == WorldActionState.Preview && WorldActions.Machine.Current is LedgeObject lo && lo.Id == id;
+                SetGlow(it.Model.Find("Ring").gameObject, open ? new Color(1f, 0.8f, 0.3f, 0.7f) : new Color(0, 0, 0, 0));
             }
         }
 

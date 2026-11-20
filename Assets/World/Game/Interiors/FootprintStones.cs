@@ -52,6 +52,8 @@ namespace World.Game
             if (Hud.MenuOpen || MapScreen.IsOpen) return false;
             if (ViewSwitcher.Instance != null && ViewSwitcher.Instance.CurrentView == ViewMode.God) return false;
             if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return false;
+            // P2a (WU-8 open problem 3): not while the camera rises to the god board, while it is up, nor while it falls back
+            if (GodBoardDirector.Instance != null && GodBoardDirector.Instance.View != BoardView.Altar) return false;
             switch (Mode)
             {
                 case StoneMode.Never: return false;

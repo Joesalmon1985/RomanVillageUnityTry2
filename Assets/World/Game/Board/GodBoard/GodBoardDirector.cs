@@ -444,6 +444,13 @@ namespace World.Game
             if (View != BoardView.Board || GameOver) return null;
             if (!NearestSpot(screen, out var kind, out int spot))
             {
+                int jetty = PortAt(screen);
+                var hud = GetComponent<GodBoardHud>();
+                if (jetty >= 0 && hud != null)
+                {
+                    hud.TapJetty(jetty, screen);
+                    return "jetty " + jetty;
+                }
                 if (WorldActions.Open) WorldActions.TapElsewhere();
                 return null;
             }
@@ -455,6 +462,67 @@ namespace World.Game
                 case WorldTapResult.Confirmed: return name + " " + spot;
                 default: return null;
             }
+        }
+
+        // ---------------------------------------------------------------- jetties (P2a)
+
+        private const float JettyLength = 124f;
+
+        private bool PortGeometry(int i, out Vector3 start, out Vector3 end)
+        {
+            start = end = default;
+            var ports = S.Board.Ports;
+            if (ports == null || i < 0 || i >= ports.Count) return false;
+            var c = BoardSpace.Hex(S.Board.Topology, ports[i].Hex);
+            var dir = c; dir.y = 0; dir = dir.sqrMagnitude < 1f ? Vector3.forward : dir.normalized;
+            start = c + dir * (BoardSpace.HexSize * 0.97f);
+            end = start + dir * JettyLength;
+            return true;
+        }
+
+        /// <summary>The screen point (pixels, bottom-left origin) on a jetty near its far end, for taps and tests.</summary>
+        public Vector2 ScreenOfPort(int i)
+        {
+            if (!PortGeometry(i, out var a, out var b)) return new Vector2(-1000f, -1000f);
+            var p = BoardCam.WorldToScreenPoint(Vector3.Lerp(a, b, 0.85f) + Vector3.up * 3f);
+            return new Vector2(p.x, p.y);
+        }
+
+        /// <summary>The jetty (index into the board's ports) under a screen point, or -1: the planks, boat and token count, enlarged to the tap size.</summary>
+        public int PortAt(Vector2 screen)
+        {
+            if (View != BoardView.Board || GameOver || BoardCam == null) return -1;
+            float reach = Mathf.Max(WorldHitTarget.MinSide(Screen.height) * 0.5f, 20f);
+            int best = -1; float bestD = reach;
+            for (int i = 0; i < S.Board.Ports.Count; i++)
+            {
+                if (!PortGeometry(i, out var a, out var b)) continue;
+                var pa = BoardCam.WorldToScreenPoint(a + Vector3.up * 3f); var pb = BoardCam.WorldToScreenPoint(b + Vector3.up * 3f);
+                if (pa.z <= 0f || pb.z <= 0f) continue;
+                float d = DistToSegment(screen, pa, pb);
+                if (d < bestD) { bestD = d; best = i; }
+            }
+            return best;
+        }
+
+        private static float DistToSegment(Vector2 p, Vector2 a, Vector2 b)
+        {
+            var ab = b - a; float l2 = ab.sqrMagnitude;
+            float t = l2 < 1e-4f ? 0f : Mathf.Clamp01(Vector2.Dot(p - a, ab) / l2);
+            return Vector2.Distance(p, a + ab * t);
+        }
+
+        /// <summary>A jetty's trade as the human sees it: the good (0..4, -1 = any), the rate, and whether the human holds a camp there. Reads state only.</summary>
+        public bool PortInfo(int i, out int good, out int rate, out bool held)
+        {
+            good = -1; rate = 0; held = false;
+            var ports = S.Board.Ports;
+            if (T == null || ports == null || i < 0 || i >= ports.Count) return false;
+            var bp = ports[i];
+            good = bp.Good.HasValue ? (int)bp.Good.Value : -1;
+            rate = good >= 0 ? T.Tuning.GoodPortRate : T.Tuning.GenericPortRate;
+            foreach (var tp in T.Ports) if (tp.Hex == bp.Hex && TableRules.UsesPort(T, Human, tp)) held = true;
+            return true;
         }
 
         /// <summary>The older one-tap press (AutoPlay and tests): the nearest legal spot gets its command at once, no preview.</summary>

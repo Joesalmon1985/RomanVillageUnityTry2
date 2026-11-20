@@ -110,6 +110,18 @@ namespace World.Game
             return c;
         }
 
+        /// <summary>A jetty on the rim (P2a): its rate as a picture row, whether you hold it (HEX-TRADE).</summary>
+        public static LedgerContent Jetty(GodBoardViewModel vm, int good, int rate, bool held)
+        {
+            var c = C(good >= 0 ? "A jetty for " + Plural[good] : "A jetty for any good");
+            c.Lines.Add(good >= 0
+                ? "Here the trader takes " + rate + " " + Plural[good] + " for 1 of any other good."
+                : "Here the trader takes " + rate + " of any one good for 1 of any other good.");
+            c.Lines.Add(held ? "You hold a camp at this jetty: its rate is yours." : "You hold no camp here yet. Build beside the jetty to use its rate.");
+            c.PicGood = good; c.PicCount = rate;
+            return c;
+        }
+
         /// <summary>An envoy's bundle: what it gives, what it asks, its patience (HEX-TRADE).</summary>
         public static LedgerContent Envoy(GodBoardViewModel vm, TradeOffer o)
         {

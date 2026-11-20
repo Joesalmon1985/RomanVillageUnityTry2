@@ -14,6 +14,8 @@ namespace World.Game
         public string Question;
         /// <summary>Why the action is refused or closed, or null.</summary>
         public string Refusal;
+        /// <summary>P2a: a picture row of goods under the lines: PicCount chips of one good (PicGood 0..4, -1 = any one kind), then an arrow and one chip of any other good. PicCount 0 = no row.</summary>
+        public int PicGood = -2, PicCount;
 
         /// <summary>Every line in reading order (title, lines, question, refusal): the same text the Clear view layer reads.</summary>
         public IEnumerable<string> AllText()
@@ -27,6 +29,7 @@ namespace World.Game
         public static LedgerContent From(IInspectable thing, string question, string refusal)
         {
             var c = new LedgerContent { Question = question, Refusal = refusal };
+            if (thing is ILedgerPicture pic) { c.PicGood = pic.PicGood; c.PicCount = pic.PicCount; }
             if (thing != null)
             {
                 c.Title = thing.Title;
@@ -36,6 +39,9 @@ namespace World.Game
             return c;
         }
     }
+
+    /// <summary>A thing whose tablet shows a picture row of goods under its lines (P2a: a jetty's rate).</summary>
+    public interface ILedgerPicture { int PicGood { get; } int PicCount { get; } }
 
     /// <summary>AB-1 guard for ledger text: words that would speak of dice, pips or odds.</summary>
     public static class LedgerText
@@ -81,7 +87,12 @@ namespace World.Game
             Compute(screenW, screenH, safe, anchor, content, false);
 
         /// <summary>As above; with <paramref name="dockTop"/> the card is a wide strip along the top edge of the safe area (the council: the picture's middle and foot hold the places, notes and tablet; the top is sky).</summary>
-        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Rect? anchor, LedgerContent content, bool dockTop)
+        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Rect? anchor, LedgerContent content, bool dockTop) =>
+            Compute(screenW, screenH, safe, anchor, content, dockTop, float.NaN);
+
+        /// <summary>As above; <paramref name="floorTop"/> is the top edge (GUI y) of a ledge along the bottom: an object standing on it gets its card
+        /// above that edge, never over the ledge (P2a), centred on the object.</summary>
+        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Rect? anchor, LedgerContent content, bool dockTop, float floorTop)
         {
             var L = new LedgerLayout();
             L.FontSize = Mathf.Clamp(Mathf.RoundToInt(screenH * 0.042f), MinFont, MaxFont);
@@ -100,6 +111,7 @@ namespace World.Game
                     foreach (var l in content.Lines) lines += Mathf.Max(1f, Mathf.Ceil(l.Length / charsPerLine));
                     if (!string.IsNullOrEmpty(content.Question)) extra += Mathf.Ceil(content.Question.Length / charsPerLine) * LL.FontSize * 1.35f + LL.Pad * 0.5f;
                     if (!string.IsNullOrEmpty(content.Refusal)) extra += Mathf.Ceil(content.Refusal.Length / charsPerLine) * LL.FontSize * 1.35f + LL.Pad * 0.5f;
+                    if (content.PicCount > 0) extra += LL.FontSize * 1.9f;
                 }
                 // WU-6: a long title wraps (bold, larger): count its lines so the question below it is not clipped.
                 float titleLines = content != null && !string.IsNullOrEmpty(content.Title)
@@ -118,6 +130,17 @@ namespace World.Game
             }
             // Beside the object, on the side with more room (narrower if needed), else above or below; centred when no anchor.
             float x, y;
+            if (anchor.HasValue && !float.IsNaN(floorTop) && anchor.Value.yMin >= floorTop - 1f)
+            {
+                var a = anchor.Value;
+                float g2 = L.Pad * 0.8f;
+                float space = floorTop - g2 - safe.yMin - L.Pad;
+                if (h > space) { w = Mathf.Min(safe.width - 2 * L.Pad, w * 1.9f); h = Height(w); }   // wider, fewer lines, so it fits above the ledge
+                x = Mathf.Clamp(a.center.x - w * 0.5f, safe.xMin + L.Pad, safe.xMax - L.Pad - w);
+                y = Mathf.Max(safe.yMin + L.Pad, floorTop - g2 - h);
+                L.Card = new Rect(x, y, w, h);
+                return L;
+            }
             if (anchor.HasValue)
             {
                 var a = anchor.Value;
@@ -154,6 +177,8 @@ namespace World.Game
     {
         /// <summary>The council sets this while its camera is up: the card docks along the top edge (see <see cref="LedgerLayout.Compute(float, float, Rect, Rect?, LedgerContent, bool)"/>).</summary>
         public static bool DockTop;
+        /// <summary>The top edge (GUI y) of the altar ledge while it is up, else NaN: cards of ledge objects open above it.</summary>
+        public static float FloorTop = float.NaN;
         public static LedgerContent Content { get; private set; }
         public static LedgerMode Mode { get; private set; }
         public static Transform Anchor { get; private set; }
@@ -169,7 +194,7 @@ namespace World.Game
         public static event Action Changed;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() { Content = null; Anchor = null; ScreenAnchor = null; Changed = null; LastRect = default; DockTop = false; }
+        private static void ResetStatics() { Content = null; Anchor = null; ScreenAnchor = null; Changed = null; LastRect = default; DockTop = false; FloorTop = float.NaN; }
 
         public static void Show(LedgerContent content, Transform anchor, LedgerMode mode, Component bounds = null, IScreenAnchored screen = null)
         {
@@ -212,7 +237,7 @@ namespace World.Game
                 var s = cam.WorldToScreenPoint(Anchor.position);
                 if (s.z > 0) a = new Rect(s.x, Screen.height - s.y, 0, 0);
             }
-            return LedgerLayout.Compute(Screen.width, Screen.height, ScreenSafeArea.Current(), a, Content, DockTop);
+            return LedgerLayout.Compute(Screen.width, Screen.height, ScreenSafeArea.Current(), a, Content, DockTop, FloorTop);
         }
     }
 
@@ -297,7 +322,29 @@ namespace World.Game
             if (!string.IsNullOrEmpty(c.Title)) { float h = _title.CalcHeight(new GUIContent(c.Title), w); GUI.Label(new Rect(x, y, w, h), c.Title, _title); y += h + L.Pad * 0.3f; }
             foreach (var l in c.Lines) { float h = _body.CalcHeight(new GUIContent(l), w); GUI.Label(new Rect(x, y, w, h), l, _body); y += h; }
             if (!string.IsNullOrEmpty(c.Question)) { y += L.Pad * 0.4f; float h = _ask.CalcHeight(new GUIContent(c.Question), w); GUI.Label(new Rect(x, y, w, h), c.Question, _ask); y += h; }
-            if (!string.IsNullOrEmpty(c.Refusal)) { y += L.Pad * 0.4f; float h = _no.CalcHeight(new GUIContent(c.Refusal), w); GUI.Label(new Rect(x, y, w, h), c.Refusal, _no); }
+            if (!string.IsNullOrEmpty(c.Refusal)) { y += L.Pad * 0.4f; float h = _no.CalcHeight(new GUIContent(c.Refusal), w); GUI.Label(new Rect(x, y, w, h), c.Refusal, _no); y += h; }
+            if (c.PicCount > 0) DrawGoodsRow(c, x, y + L.Pad * 0.3f, L.FontSize * 1.5f);
+        }
+
+        private static readonly Color[] Chip = { new Color(0.45f, 0.28f, 0.14f), new Color(0.72f, 0.34f, 0.20f), new Color(0.92f, 0.78f, 0.25f), new Color(0.97f, 0.96f, 0.92f), new Color(0.55f, 0.55f, 0.58f) };
+
+        /// <summary>The picture of a rate: chips of the good given, an arrow, one chip of any other good (a four-colour chip).</summary>
+        private void DrawGoodsRow(LedgerContent c, float x, float y, float s)
+        {
+            for (int i = 0; i < c.PicCount; i++) { DrawChip(new Rect(x, y, s, s), c.PicGood); x += s * 1.15f; }
+            x += s * 0.3f;
+            GUI.DrawTexture(new Rect(x, y + s * 0.42f, s * 0.9f, s * 0.16f), _rim);
+            GUI.DrawTexture(new Rect(x + s * 0.7f, y + s * 0.26f, s * 0.2f, s * 0.48f), _rim);
+            x += s * 1.3f;
+            DrawChip(new Rect(x, y, s, s), -1);
+        }
+
+        private void DrawChip(Rect r, int good)
+        {
+            GUI.DrawTexture(new Rect(r.x - 2f, r.y - 2f, r.width + 4f, r.height + 4f), _rim);
+            if (good >= 0 && good < Chip.Length) { GUI.DrawTexture(r, UiStyle.SolidTexture(Chip[good])); return; }
+            float h = r.width * 0.5f;
+            for (int k = 0; k < 4; k++) GUI.DrawTexture(new Rect(r.x + (k % 2) * h, r.y + (k / 2) * h, h, h), UiStyle.SolidTexture(Chip[k == 3 ? 4 : k]));
         }
 
         private void DrawLine(Vector2 a, Vector2 b, float width)
