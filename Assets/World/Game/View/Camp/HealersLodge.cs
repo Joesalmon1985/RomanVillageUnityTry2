@@ -7,8 +7,8 @@ namespace World.Game
 {
     /// <summary>
     /// HUB-HEALER (WORLD_UI_PLAN 2.1): a thatched healer's lodge with herb racks, a cot under an awning, a mortar and water
-    /// bowls, a healer, an assistant sorting herbs and a runner who comes in on every outbreak. Shell and people only: the
-    /// map table inside is WU-3's. While the plague runs the healer says how many spirits of it are loose; after the plague ends
+    /// bowls, a healer, an assistant sorting herbs and a runner who comes in on every outbreak. The plague's props (map table, warning post,
+    /// rate stick, vessels, satchel, charm peg, draw sign) are <see cref="LodgeTable"/> (WU-3), inspection only. While the plague runs the healer says how many spirits of it are loose; after the plague ends
     /// (Historic) she is an ordinary healer and says the sickness is gone. Reads the sim only. Owner: WU-1.
     /// </summary>
     public sealed class HealersLodge : MonoBehaviour
@@ -24,6 +24,8 @@ namespace World.Game
         public Vector3 RunnerRest { get; private set; }
         public int RunnerTrips { get; private set; }
         public string LastHealerLine { get; private set; }
+        /// <summary>The plague props in front of the lodge (WU-3).</summary>
+        public LodgeTable Plague { get; private set; }
 
         public const string WalkSolidOwner = "hub.lodge";
 
@@ -43,6 +45,7 @@ namespace World.Game
             l.Frame = new HubFrame(place.Position, place.Yaw);
             l.BuildShell(go.transform);
             l.BuildPeople();
+            l.Plague = LodgeTable.Build(l, boot);
             WalkGrid.RemoveStaticBlockers(WalkSolidOwner);
             WalkGrid.AddSolid(place.Position, BodyRadius * 0.95f, WalkSolidOwner);
             LandViews.AddClearing(place.Position.x, place.Position.z, place.Radius + 3f);
@@ -129,7 +132,30 @@ namespace World.Game
             if (s.Plague == null) return "All is quiet. I dry herbs and watch the island for sickness.";
             if (s.Plague.IslandFell) return "The island has fallen to the sickness. I tend those I can.";
             int n = PlagueApi.TotalDemons(s);
-            return "The sickness is abroad: " + n + " of its spirits are loose on the island. Banish them at the shrines. My map table is not ready yet.";
+            return "The sickness is abroad: " + n + " of its spirits are loose on the island. Read my table, the post and the vessels. Banish them at the shrines.";
+        }
+
+        /// <summary>The exact numbers, said when she is asked (the post's ledger opens as well).</summary>
+        public string OutbreakSays()
+        {
+            var p = State?.Plague;
+            if (p == null) return "All is quiet.";
+            if (p.IslandFell) return "Eight outbreaks. The island has fallen.";
+            return p.Outbreaks + " of " + PlagueRules.OutbreaksToFall + " outbreaks so far. At eight the island falls. Each round " + PlagueApi.Rate(State) + " shrine" + (PlagueApi.Rate(State) > 1 ? "s are" : " is") + " struck.";
+        }
+
+        public string CharmSays()
+        {
+            var s = State; if (s?.Plague == null) return "The charm is cold.";
+            long left = PlagueApi.BanishCooldownLeft(s);
+            return left > 0 ? "Your charm still smoulders: ready in " + ((left + WorldSim.TicksPerSecond - 1) / WorldSim.TicksPerSecond) + " seconds." : "Your charm glows. It is ready.";
+        }
+
+        /// <summary>Everything the healer and the runner can say about the plague (tests: no word of what is left to come).</summary>
+        public IEnumerable<string> AllSayings()
+        {
+            yield return HealerSays(); yield return OutbreakSays(); yield return CharmSays();
+            yield return "An epidemic! The sickness is spreading fast."; yield return "Sickness has broken out on the island!";
         }
 
         private void BuildDialogue(Npc n)
@@ -137,6 +163,11 @@ namespace World.Game
             n.Lines.Clear(); n.Options.Clear();
             LastHealerLine = HealerSays();
             n.Lines.Add(LastHealerLine);
+            if (PlagueRuns && Plague != null)
+            {
+                n.Options.Add(DialogueOption.Do("How bad is it?", () => { SpeechBubbles.Say(Healer, OutbreakSays(), 6f); if (Plague.Post != null) WorldActions.Inspect(Plague.Post); }));
+                n.Options.Add(DialogueOption.Do("Is my charm ready?", () => { SpeechBubbles.Say(Healer, CharmSays(), 5f); if (Plague.Charm != null) WorldActions.Inspect(Plague.Charm); }));
+            }
             n.Options.Add(DialogueOption.Leave("Thank you"));
         }
 

@@ -107,13 +107,16 @@ namespace World.Game
             _dark = new Texture2D(1, 1) { hideFlags = HideFlags.HideAndDontSave }; _dark.SetPixel(0, 0, Color.white); _dark.Apply();
             if (Dir != null && Dir.BoardCam != null) _boardBg = Dir.BoardCam.backgroundColor;
             Hud = gameObject.AddComponent<PlagueHud>();
+            gameObject.AddComponent<BanishCharm>();
             _boot.Clock.Ticked += OnTicked;
+            WorldActions.Machine.Changed += OnActionChanged;
             SyncNodes(true);
         }
 
         private void OnDestroy()
         {
             if (_boot != null && _boot.Clock != null) _boot.Clock.Ticked -= OnTicked;
+            WorldActions.Machine.Changed -= OnActionChanged;
             if (Instance == this) Instance = null;
             if (_dark != null) Destroy(_dark);
             if (Dir != null && Dir.BoardCam != null && _boardBg.a > 0f) Dir.BoardCam.backgroundColor = _boardBg;
@@ -140,7 +143,7 @@ namespace World.Game
 
         // ---------------------------------------------------------------- the overlay layer above the island
 
-        private int[] HexRegions(BoardTopology topo, out bool[] soft)
+        internal static int[] HexRegions(BoardTopology topo, out bool[] soft)
         {
             var reg = new int[topo.HexCount]; soft = new bool[topo.HexCount];
             for (int h = 0; h < reg.Length; h++) reg[h] = -1;
@@ -290,6 +293,13 @@ namespace World.Game
         public void SetOverlay(bool on) { Overlay = on; }
         public void ToggleOverlay() { Overlay = !Overlay; }
 
+        /// <summary>The overlay is on (the board's totem reads this for its glow).</summary>
+        public static bool OverlayOn => Instance != null && Instance.Overlay;
+
+        /// <summary>The one public toggle for the overlay (WU-3): the board's demon-ward totem calls this; V does the same.
+        /// False when there is no plague in this game.</summary>
+        public static bool ToggleOverlayFromTotem() { if (Instance == null) return false; Instance.ToggleOverlay(); return Instance.Overlay; }
+
         private void Update()
         {
             if (!InputBlocked())
@@ -354,6 +364,13 @@ namespace World.Game
                         break;
                 }
             }
+        }
+
+        /// <summary>A refused shrine tap is said aloud as well as written on the ledger (WU-3).</summary>
+        private void OnActionChanged(WorldActionMachine m)
+        {
+            if (m.State == WorldActionState.Refused && m.Current is NodeView nv && !string.IsNullOrEmpty(m.Reason))
+                SpeechBubbles.SayAt(nv.transform.position + Vector3.up * 3f, m.Reason, 3.5f);
         }
 
         private void PurgeAt(int node, int kind)
@@ -554,7 +571,7 @@ namespace World.Game
     }
 
     /// <summary>The shrine of one node: a cairn on the ground, its demons and its beacon (PRD_GODBOARD PL-12). Tapping it casts the banish when near.</summary>
-    public sealed class NodeView : MonoBehaviour, IInteractable, IInspectable
+    public sealed class NodeView : MonoBehaviour, IWorldAction, IWorldActionAnchor
     {
         public int Id { get; private set; }
         public int Element { get; private set; }
@@ -583,7 +600,41 @@ namespace World.Game
             }
         }
 
-        public void Interact() { _owner.TryBanishAt(Id, false); }
+        // WU-3: the banish is a world action: tap the shrine to see it, tap again to cast (once).
+        public string PreviewLine
+        {
+            get
+            {
+                int k = DominantKind();
+                return k >= 0 ? "Banish a " + PlagueViews.ElementName[k].ToLower() + " demon from here?" : "Banish a demon from here?";
+            }
+        }
+
+        public Transform Anchor => transform;
+        public float KeyReach => 10f;
+
+        public WorldActionCheck Check()
+        {
+            var s = _owner.S;
+            if (s.Plague == null || s.Plague.Ended) return WorldActionCheck.Disable("The sickness is gone from the island.");
+            if (s.Plague.IslandFell) return WorldActionCheck.Disable("The island has fallen to the sickness.");
+            if (Total == 0) return WorldActionCheck.Refuse("No demons stand at this shrine.");
+            var w = PlayerWalker.Instance;
+            if (w != null && BoardSpace.Flat(transform.position - w.Position) > PlagueViews.BanishRange) return WorldActionCheck.Refuse("Walk closer to cast.");
+            long left = _owner.CooldownTicksLeft;
+            if (left > 0) return WorldActionCheck.Refuse("The charm is still smouldering: ready in " + ((left + WorldSim.TicksPerSecond - 1) / WorldSim.TicksPerSecond) + " seconds.");
+            return WorldActionCheck.Allowed;
+        }
+
+        public bool Previewing { get; private set; }
+        public void ShowPreview(bool on) { Previewing = on; if (_glowRing != null) _glowRing.SetActive(on); }
+
+        public bool Commit() { var r = _owner.TryBanishAt(Id, false); return r.Ok; }
+
+        private GameObject _glowRing;
+        private bool _registered;
+
+        private void OnDisable() { WorldActions.Unregister(this); _registered = false; }
 
         public static NodeView Create(Transform parent, PlagueViews owner, int id, Vector3 at)
         {
@@ -607,6 +658,9 @@ namespace World.Game
                 mb.Quad(new Vector3(1.2f, 4.5f, 0), new Vector3(2.4f, 4.5f, 0), new Vector3(2.4f, 3.9f, 0), new Vector3(1.2f, 3.6f, 0), el * 0.8f);
             }), null, true);
             LandLook.PickBox(go, Vector3.up * 1.6f, new Vector3(7f, 3.4f, 7f));
+            v._glowRing = LandLook.Part(go.transform, "Charm glow", LandLook.Cached("plague/charm-ring", mb => LandShapes.Ring(mb, new Vector3(0, 0.35f, 0), 4.6f, 0.9f, 28, Color.white)), LandLook.Additive, false);
+            v._glowRing.layer = 2; v._glowRing.SetActive(false);
+            WorldZone.Tag(go, WorldZones.PlgCity);
             return v;
         }
 
@@ -638,6 +692,8 @@ namespace World.Game
                 Rebuild();
                 if (marker != null) RebuildRing(marker);
             }
+            if (!_registered && Total > 0) { WorldActions.Register(this); _registered = true; }
+            else if (_registered && Total == 0) { WorldActions.Unregister(this); _registered = false; }
             Animate(beaconOn);
         }
 
@@ -694,14 +750,23 @@ namespace World.Game
         {
             float now = Time.unscaledTime;
             float pop = Mathf.Clamp01((_popUntil - now) / 0.7f);
+            if (_glowRing != null && _glowRing.activeSelf)
+            {
+                // The charm's glow at the shrine: gold and pulsing when it is ready, a dull ember while it cools.
+                bool ready = _owner.CooldownTicksLeft <= 0;
+                PlagueFx.Tint(_glowRing, ready ? new Color(1f, 0.82f, 0.35f) * (0.7f + 0.3f * Mathf.Sin(now * 6f)) : new Color(0.45f, 0.10f, 0.05f));
+                float sc = 1f + 0.08f * Mathf.Sin(now * 6f);
+                _glowRing.transform.localScale = new Vector3(sc, 1f, sc);
+            }
+            float flinch = Previewing ? 1f : 0f;
             for (int i = 0; i < _figures.Count; i++)
             {
                 var f = _figures[i].transform;
-                float s = 1.45f * (1f + 0.6f * pop * Mathf.Sin(pop * Mathf.PI));
+                float s = 1.45f * (1f + 0.6f * pop * Mathf.Sin(pop * Mathf.PI)) * (1f - 0.18f * flinch);
                 f.localScale = Vector3.one * s;
                 var b = f.GetChild(0);
                 b.localPosition = new Vector3(0, Mathf.Abs(Mathf.Sin(now * 3f + i * 2f)) * 0.22f, 0);
-                b.localRotation = Quaternion.Euler(10f, Mathf.Sin(now * 1.7f + i) * 25f, 0);
+                b.localRotation = Quaternion.Euler(10f + 22f * flinch, Mathf.Sin(now * (1.7f + 3f * flinch) + i) * 25f, 0);
             }
             if (_spire != null && _spire.activeSelf)
             {
