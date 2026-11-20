@@ -63,7 +63,7 @@ namespace World.Game
             g.transform.SetParent(parent, false);
             g.transform.localPosition = localPos;
             g.transform.localScale = scale;
-            g.GetComponent<Renderer>().sharedMaterial = MaterialFactory.Create(c, name);
+            g.GetComponent<Renderer>().sharedMaterial = MaterialFactory.CreateUnlit(Color.Lerp(c, Color.white, 0.12f) * 1.15f, name);
             return g;
         }
 
@@ -95,7 +95,7 @@ namespace World.Game
             Prim(PrimitiveType.Sphere, "Clapper", _bell, new Color(0.35f, 0.25f, 0.15f), new Vector3(0, -0.55f, 0), new Vector3(0.12f, 0.12f, 0.12f));
 
             // Four block torches along the far edge of the stage.
-            float[] ang = { -42f, -24f, -6f, 12f };
+            float[] ang = { -38f, -26f, -14f, -2f };
             for (int i = 0; i < TorchCount; i++)
             {
                 var t = new GameObject("Block torch " + (i + 1)).transform;
@@ -244,12 +244,20 @@ namespace World.Game
             for (int p = 1; p <= 4; p++)
             {
                 var top = cam.WorldToScreenPoint(circle.DrumTop(p));
-                var foot = cam.WorldToScreenPoint(circle.Layout.DrumPosition(p));
                 if (top.z <= 0) continue;
-                var edge = cam.WorldToScreenPoint(circle.DrumTop(p) + cam.transform.right * (DanceCircle.SkinRadius * DanceCircle.DrumScale(p)));
-                float r = Mathf.Max(Vector2.Distance(top, edge) * 1.6f, MinHitRadius);
-                float d = DistanceToSegment(screen, top, foot);
-                if (d <= r && d < bestD) { bestD = d; best = p; }
+                var foot = cam.WorldToScreenPoint(circle.Layout.DrumPosition(p));
+                float rw = DanceCircle.SkinRadius * DanceCircle.DrumScale(p);
+                var right = cam.WorldToScreenPoint(circle.DrumTop(p) + cam.transform.right * rw);
+                var flat = cam.transform.forward; flat.y = 0; flat.Normalize();
+                var far = cam.WorldToScreenPoint(circle.DrumTop(p) + flat * rw);
+                float rx = Mathf.Max(Mathf.Abs(right.x - top.x) * 1.25f, MinHitRadius);
+                float ry = Mathf.Max(Mathf.Abs(far.y - top.y) * 1.25f, MinHitRadius * 0.8f);
+                float nx = (screen.x - top.x) / rx, ny = (screen.y - top.y) / ry;
+                float e = nx * nx + ny * ny; // 1 on the skin's enlarged edge
+                // The body under the skin, down to the ground, as wide as the skin.
+                float body = DistanceToSegment(screen, top, foot) / (rx * 0.9f);
+                float score = Mathf.Min(e, body * body);
+                if (score <= 1f && score < bestD) { bestD = score; best = p; }
             }
             return best;
         }
