@@ -11,8 +11,12 @@ using World.Sim;
 /// <summary>
 /// P1 polish (people) capture driver. Reads commands from Temp/p1_cmd.txt (separated by ';') and runs them in play mode:
 ///   godboard | historic | day | size W H | spawn | crowd | cam TARGET DIST HEIGHT SIDE | nocam | collectors N |
-///   shot NAME | seq NAME N SECONDS | info
-/// TARGET: npc:ID | ring | builder | keeper | collector | carrier | crowd. The capture camera follows the target every
+///   shot NAME | seq NAME N SECONDS | info | ringview DIST HEIGHT | soldier | soldierdie | ask
+/// TARGET: npc:ID | ring | builder | keeper | collector | carrier | crowd | soldier.
+/// P3: "ringview" frames the duel ring from a spectator's spot just outside the fence on the side square to the
+/// sparring line, above the fence, looking at the two sparrers' midpoint (P1's orbit camera ended up behind the wall).
+/// "soldier" stands a lone soldier view 5 m in front of the player; "soldierdie" kills it (the death sequence).
+/// "ask" makes the healer show the map table (as when the player asks how bad it is). The capture camera follows the target every
 /// frame (Camera.onPreCull) and draws over the player's camera. "seq" saves N frames SECONDS apart (real time).
 /// Captures go to Evidence/polish/ (local, never committed).
 /// Run: unity command script run --file AgentScripts/PeopleCaptures.cs --entry PeopleCaptures.Run
@@ -102,20 +106,35 @@ public static class PeopleCaptures
                     _dist = a.Length > 2 ? float.Parse(a[2], ci) : 4f; _height = a.Length > 3 ? float.Parse(a[3], ci) : 1.6f; _side = a.Length > 4 ? float.Parse(a[4], ci) : 0f;
                     _lookH = a.Length > 5 ? float.Parse(a[5], ci) : 1.0f;
                     _target = Resolve(t);
-                    KillCams(); _cam = null; // each script run is a new assembly: cameras of earlier runs are found by name
-                    if (_target == null || _target() == null) return "cam: no target " + t;
-                    if (_cam == null)
-                    {
-                        _cam = new GameObject("P1 capture camera").AddComponent<Camera>();
-                        var main = PlayerWalker.Instance != null ? PlayerWalker.Instance.Camera : Camera.main;
-                        if (main != null) { _cam.CopyFrom(main); }
-                        _cam.depth = 100; _cam.fieldOfView = 50f; _cam.nearClipPlane = 0.1f; _cam.farClipPlane = 4000f;
-                    }
-                    if (!_hooked) { Camera.onPreCull += Follow; _hooked = true; }
-                    Follow(_cam);
+                    _ring = false;
+                    if (_target == null || _target() == null) { KillCams(); _cam = null; return "cam: no target " + t; }
+                    MakeCam();
                     return "cam " + t + " at " + _target().position;
                 }
-            case "nocam": KillCams(); _cam = null; _target = null; return "nocam";
+            case "nocam": KillCams(); _cam = null; _target = null; _ring = false; return "nocam";
+            case "ringview":
+                {
+                    _dist = a.Length > 1 ? float.Parse(a[1], ci) : DuelRing.FenceRadius + 1.5f; _height = a.Length > 2 ? float.Parse(a[2], ci) : 2.6f;
+                    _ring = true; _target = () => DuelRing.Instance != null ? DuelRing.Instance.transform : null;
+                    MakeCam(); return "ringview";
+                }
+            case "soldier":
+                {
+                    var w = PlayerWalker.Instance; var fwd = BoardSpace.DirOf(w.Yaw);
+                    foreach (var o in UnityEngine.Object.FindObjectsByType<SoldierView>(FindObjectsSortMode.None)) if (o.name.StartsWith("P3 ")) UnityEngine.Object.DestroyImmediate(o.gameObject);
+                    var v = SoldierView.Create(null, new World.Sim.War.Soldier { Id = 4, People = 0 }, LandLook.People(0), World.Sim.War.SoldierLook.Warrior);
+                    v.name = "P3 soldier";
+                    var at = w.Position + fwd * 5f; at.y = PlayerWalker.GroundHeight(at);
+                    v.SnapTo(at); v.Target = at; v.FaceYaw = w.Yaw + 180f; v.transform.rotation = Quaternion.Euler(0, w.Yaw + 120f, 0);
+                    _soldier = v;
+                    return "soldier at " + at;
+                }
+            case "soldierdie": { var v = FindSoldier(); if (v == null) return "no soldier"; v.Die(); return "soldierdie"; }
+            case "ask":
+                {
+                    var l = HealersLodge.Instance; if (l == null || l.Plague == null) return "no lodge";
+                    l.ShowTo(l.Plague.TableCentre); return "ask";
+                }
             case "collectors":
                 {
                     // Visual only: sends N collecting villagers from the corner nearest the player to a producing hex (reflection on the private spawn).
@@ -171,6 +190,26 @@ public static class PeopleCaptures
     }
 
     static Transform _crowd;
+    static bool _ring;
+    static SoldierView _soldier;
+
+    static SoldierView FindSoldier()
+    {
+        if (_soldier != null) return _soldier;
+        foreach (var o in UnityEngine.Object.FindObjectsByType<SoldierView>(FindObjectsSortMode.None)) if (o.name.StartsWith("P3 ")) return o;
+        return null;
+    }
+
+    static void MakeCam()
+    {
+        KillCams(); _cam = null; // each script run is a new assembly: cameras of earlier runs are found by name
+        _cam = new GameObject("P1 capture camera").AddComponent<Camera>();
+        var main = PlayerWalker.Instance != null ? PlayerWalker.Instance.Camera : Camera.main;
+        if (main != null) { _cam.CopyFrom(main); }
+        _cam.depth = 100; _cam.fieldOfView = 50f; _cam.nearClipPlane = 0.1f; _cam.farClipPlane = 4000f;
+        if (!_hooked) { Camera.onPreCull += Follow; _hooked = true; }
+        Follow(_cam);
+    }
 
     static void KillCams()
     {
@@ -186,6 +225,7 @@ public static class PeopleCaptures
             case "builder": return () => TempleForecourt.Instance != null ? TempleForecourt.Instance.Builders[0].transform : null;
             case "keeper": return () => TempleForecourt.Instance != null ? TempleForecourt.Instance.Keeper.transform : null;
             case "crowd": return () => _crowd;
+            case "soldier": return () => { var v = FindSoldier(); return v != null ? v.transform : null; };
             case "collector":
                 return () =>
                 {
@@ -208,6 +248,21 @@ public static class PeopleCaptures
     {
         if (c != _cam || _cam == null || _target == null) return;
         var t = _target(); if (t == null) return;
+        if (_ring && DuelRing.Instance != null && DuelRing.Instance.Sparrers != null && DuelRing.Instance.Sparrers.Length >= 2)
+        {
+            // Spectator's view: square to the line between the sparrers, just outside the fence, above it.
+            var r = DuelRing.Instance; var p0 = r.Sparrers[0].transform.position; var p1 = r.Sparrers[1].transform.position;
+            var mid = (p0 + p1) * 0.5f; var line = p1 - p0; line.y = 0; if (line.sqrMagnitude < 1e-3f) line = Vector3.right;
+            var perp = Vector3.Cross(Vector3.up, line.normalized);
+            var centre = r.transform.position;
+            // the side nearer the player's spawn side (towards the camera that the player would stand on)
+            var pp = PlayerWalker.Instance != null ? PlayerWalker.Instance.Position : centre + perp;
+            if (Vector3.Dot(pp - centre, perp) < 0f) perp = -perp;
+            var at = centre + perp * _dist; at.y = mid.y + _height;
+            _cam.transform.position = at;
+            _cam.transform.LookAt(mid + Vector3.up * 0.9f);
+            return;
+        }
         float s = Mathf.Max(0.01f, t.lossyScale.y);
         var fwd = t.forward; fwd.y = 0; if (fwd.sqrMagnitude < 1e-4f) fwd = Vector3.forward; fwd.Normalize();
         var right = Vector3.Cross(Vector3.up, fwd);

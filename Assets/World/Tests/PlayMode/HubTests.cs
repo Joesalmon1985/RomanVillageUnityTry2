@@ -194,6 +194,38 @@ namespace World.Game.Tests
         }
 
         [UnityTest, Timeout(180000)]
+        public IEnumerator Healer_AndAssistant_Work_AndTheHealerTurnsToTheMapTable()
+        {
+            yield return Start(GodBoardStart.Id);
+            var lodge = HealersLodge.Instance;
+            // Keep the player away from the lodge so the healer is not greeting.
+            var far = lodge.Frame.W(0, 40f); far.y = PlayerWalker.GroundHeight(far);
+            PlayerWalker.Instance.Teleport(far, 0f, 0f);
+            bool ground = false, tend = false, fetched = false, carried = false;
+            float t0 = Time.realtimeSinceStartup;
+            while (Time.realtimeSinceStartup - t0 < 45f && !(ground && tend && fetched && carried))
+            {
+                yield return null;
+                ground |= lodge.HealerWork == HealersLodge.Work.Grinding;
+                tend |= lodge.HealerWork == HealersLodge.Work.Tending;
+                fetched |= lodge.AssistantWork == HealersLodge.Work.Fetching;
+                carried |= lodge.Bundle != null && lodge.Bundle.activeSelf && lodge.Assistant.IsWalking;
+            }
+            Assert.IsTrue(ground, "the healer grinds herbs at the mortar");
+            Assert.IsTrue(tend, "and tends the cot");
+            Assert.IsTrue(fetched, "the assistant fetches from the herb racks");
+            Assert.IsTrue(carried, "and carries a bundle to the table");
+            // Asked how bad it is, the healer turns to the map table.
+            var table = lodge.Plague.TableCentre;
+            lodge.ShowTo(table);
+            Assert.AreEqual(HealersLodge.Work.Showing, lodge.HealerWork);
+            for (int i = 0; i < 90; i++) yield return null;
+            var h = lodge.Healer.transform;
+            Assert.Less(Mathf.Abs(Bearing(h.position, h.eulerAngles.y, table)), 15f, "the healer faces the map table");
+            yield return Until(() => lodge.HealerWork != HealersLodge.Work.Showing, 10f, "and goes back to work");
+        }
+
+        [UnityTest, Timeout(180000)]
         public IEnumerator Historic_ShowsTheTempleRuin_AndTheLodgeWithoutThePlague()
         {
             yield return Start(GodBoardStart.HistoricId);

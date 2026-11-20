@@ -241,7 +241,7 @@ namespace World.Game
 
         /// <summary>
         /// P3: the clips (of the PRD's set, in order of preference) for the one-shot keys added after the rigged bodies:
-        /// strike = the cast's release (a forward blow), block = Block, gesture = Talk_Emphasis, nod = Nod, grind / tend =
+        /// strike = the cast's release (a forward blow), block = Block, clapHigh = Victory, gesture = Talk_Emphasis, nod = Nod, grind / tend =
         /// Nod (a small working bob of the head and shoulders), fetch = Idle_Look. Null for keys handled above or unknown.
         /// Not checked with the local art in this pass (see Docs/progress/POLISH_P3.md).
         /// </summary>
@@ -253,6 +253,7 @@ namespace World.Game
                 case ActorKeys.Block: return new[] { "Block", "Surprise" };
                 case ActorKeys.Gesture: return new[] { "Talk_Emphasis", "Greet" };
                 case ActorKeys.Nod: return new[] { "Nod" };
+                case ActorKeys.ClapHigh: return new[] { "Victory", "Talk_Emphasis" };
                 case ActorKeys.Grind: return new[] { "Nod", "Talk_Emphasis" };
                 case ActorKeys.Tend: return new[] { "PointGround", "Nod" };
                 case ActorKeys.Fetch: return new[] { "Idle_Look", "Nod" };
