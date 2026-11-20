@@ -236,9 +236,14 @@ namespace World.Game.Tests
             // bank 4:1: the trader unrolls the mat, a basket gives, the wanted good is set opposite
             Assert.AreEqual(WorldTapResult.Inspected, _hud.TapLedge("trader"));
             Assert.IsTrue(_hud.MatOpen);
+            yield return null; yield return null;
+            Assert.IsTrue(_hud.LedgeRects.ContainsKey("mat-get:4") && _hud.Rig.Items.ContainsKey("mat-get:4"), "the mat is unrolled with the goods to get");
             _hud.TapLedge("basket:0");
             Assert.AreEqual(0, _hud.BankGive);
-            _hud.SelectBankGet(4);
+            yield return null;
+            Assert.AreEqual(Mathf.Clamp(12 - TableRules.TradeRate(S, 0, Ware.Wood), 0, AltarLedgeRig.BasketCap), _hud.Rig.VisibleGoods(0), "the goods to give moved from the basket onto the mat");
+            _hud.TapLedge("mat-get:4");
+            Assert.AreEqual(4, _hud.BankGet, "a good on the mat is the good to get");
             int rate = TableRules.TradeRate(S, 0, Ware.Wood);
             Assert.AreEqual(rate, _hud.BankRate(0));
             var r1 = _hud.DoBankTrade();
@@ -409,8 +414,10 @@ namespace World.Game.Tests
             GodBoardSettings.Override = false;
             yield return null; yield return null;
             var world = new List<string>(_hud.Texts);
-            Assert.IsTrue(world.Contains("[bench:0]"), "world first: the ledge is drawn: " + string.Join("|", world));
+            Assert.IsNotNull(_hud.Rig, "world first: the 3D ledge is up");
+            Assert.IsTrue(_hud.Rig.Shown && _hud.Rig.Items.ContainsKey("bench:0"), "world first: the builder's bench stands on the ledge");
             Assert.IsFalse(world.Contains("[Road]"));
+            Assert.IsFalse(world.Any(x => x.StartsWith("[bench") || x.StartsWith("[basket")), "no IMGUI ledge in the world-first view");
             var vm = _hud.Model;
             var tablet = string.Join("\n", GodBoardLedger.Baskets(vm).AllText());
             StringAssert.Contains("Logs: 3", tablet); StringAssert.Contains("Clay bricks: 2", tablet); StringAssert.Contains("Sheaves: 4", tablet);
@@ -419,10 +426,134 @@ namespace World.Game.Tests
             var clear = new List<string>(_hud.Texts);
             Assert.IsTrue(clear.Contains("[Road]") && clear.Contains("[Camp]"), "Clear view: the costs card is back: " + string.Join("|", clear));
             Assert.IsFalse(clear.Contains("[bench:0]"));
+            Assert.IsFalse(_hud.Rig.Shown, "Clear view hides the 3D ledge");
+            Assert.IsFalse(_hud.Rig.Cam.enabled);
             for (int g = 0; g < 5; g++) Assert.IsTrue(clear.Contains(hand[g].ToString()), "the hand fan shows " + hand[g]);
             for (int p = 0; p < 4; p++) Assert.IsTrue(clear.Contains(_hud.Model.Points[p].ToString()), "the points badge shows " + _hud.Model.Points[p]);
             Assert.AreSame(_d.Model, _hud.Model, "both layers read one view model");
             Assert.AreEqual(vm.Hand.Sum(), _hud.Model.HandSize);
+        }
+
+        // ------------------------------------------------------------ WU-2b: the ledge is real 3D objects
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator WorldFirst_DrawsNoImguiLedge_OnlyThe3DLedge()
+        {
+            yield return ToMyTurn();
+            GodBoardSettings.Override = false;
+            yield return null; yield return null;
+            Assert.AreEqual(0, _hud.LedgeGuiDraws, "the old IMGUI ledge is never drawn");
+            Assert.IsFalse(_hud.Texts.Any(x => x.StartsWith("[basket") || x.StartsWith("[stake") || x.StartsWith("[hourglass") || x.StartsWith("[trader")), "no ledge buttons in the HUD layer: " + string.Join("|", _hud.Texts));
+            var rig = _hud.Rig;
+            Assert.IsNotNull(rig); Assert.IsTrue(rig.Shown); Assert.IsTrue(rig.Cam.enabled, "the ledge camera renders");
+            Assert.AreEqual(1 << AltarLedgeRig.Layer, rig.Cam.cullingMask, "the ledge camera sees only the ledge");
+            Assert.AreEqual(0, _d.BoardCam.cullingMask & (1 << AltarLedgeRig.Layer), "the board camera never sees the ledge");
+            Assert.Greater(rig.Cam.depth, _d.BoardCam.depth, "the ledge is layered in front of the island");
+            foreach (var id in _hud.LedgeRects.Keys)
+            {
+                Assert.IsTrue(rig.Items.ContainsKey(id), id + " is an object on the ledge");
+                var it = rig.Items[id];
+                Assert.Greater(it.GetComponentsInChildren<MeshRenderer>().Length, 1, id + " is modelled (more than one mesh)");
+                Assert.IsNotNull(it.Hit, id + " has a hit collider");
+                Assert.AreEqual(AltarLedgeRig.Layer, it.Hit.gameObject.layer);
+            }
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator LedgeColliders_AreAtLeastTheHitTarget_At844x390_AndRaycastsPickThem()
+        {
+            yield return ToMyTurn();
+#if UNITY_EDITOR
+            UnityEditor.PlayModeWindow.GetRenderingResolution(out uint ow, out uint oh);
+            UnityEditor.PlayModeWindow.SetCustomRenderingResolution(844, 390, "WU-2b test 844x390");
+            ScreenSafeArea.Override = ScreenSafeArea.SimulatedNotch(844, 390);
+            for (int i = 0; i < 10 && !(Screen.width == 844 && Screen.height == 390); i++) yield return null;
+            yield return null; yield return null;
+            try
+            {
+                if (Screen.width != 844 || Screen.height != 390) Assert.Inconclusive("the game view did not take 844x390 (" + Screen.width + "x" + Screen.height + ")");
+                CheckColliders();
+            }
+            finally
+            {
+                UnityEditor.PlayModeWindow.SetCustomRenderingResolution(ow, oh, "restore");
+            }
+#else
+            CheckColliders();
+#endif
+        }
+
+        private void CheckColliders()
+        {
+            float min = WorldHitTarget.MinSide(Screen.height);
+            var rig = _hud.Rig;
+            Assert.IsTrue(rig.Shown);
+            int checkedN = 0;
+            foreach (var kv in _hud.LedgeRects)
+            {
+                Assert.IsTrue(rig.HitRect(kv.Key, out var hr), kv.Key + " has a hit box on screen");
+                Assert.GreaterOrEqual(hr.width, min - 0.5f, kv.Key + " collider wide enough at " + Screen.width + "x" + Screen.height + ": " + hr);
+                Assert.GreaterOrEqual(hr.height, min - 0.5f, kv.Key + " collider tall enough: " + hr);
+                var c = kv.Value.center;
+                Assert.AreEqual(kv.Key, rig.Pick(new Vector2(c.x, Screen.height - c.y)), "a 3D raycast at the centre of " + kv.Key + " picks it");
+                checkedN++;
+            }
+            Assert.GreaterOrEqual(checkedN, 18);
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator Baskets_VisibleContents_FollowTheHand()
+        {
+            yield return ToMyTurn();
+            var hand = T.Peoples[0].Hand;
+            hand[0] = 0; hand[1] = 3; hand[2] = 9; hand[3] = 14; hand[4] = 1;
+            yield return null; yield return null;
+            var rig = _hud.Rig;
+            for (int g = 0; g < 5; g++) Assert.AreEqual(Mathf.Min(hand[g], AltarLedgeRig.BasketCap), rig.VisibleGoods(g), "basket " + g + " shows the hand");
+            Assert.AreEqual(0, rig.Items["basket:0"].Dyn.childCount, "an empty basket holds no goods");
+            hand[0] = 4; hand[1] = 0;
+            yield return null; yield return null;
+            Assert.AreEqual(4, rig.VisibleGoods(0), "the basket fills as the hand grows");
+            Assert.AreEqual(0, rig.VisibleGoods(1), "and empties as it shrinks");
+            int active = 0; foreach (Transform t in rig.Items["basket:0"].Dyn) if (t.gameObject.activeSelf) active++;
+            Assert.AreEqual(4, active, "four logs in the wood basket");
+            // the exact count is read on the tablet, never on the basket
+            Assert.AreEqual(WorldTapResult.Inspected, _hud.TapLedge("basket:0"));
+            StringAssert.Contains("Logs: 4", string.Join("|", LedgerCard.Content.AllText()));
+        }
+
+        [UnityTest, Timeout(240000)]
+        public IEnumerator ClearView_OneSetting_ShowsBoardHudAndPlagueButtonsTogether()
+        {
+            yield return ToMyTurn();
+            GodBoardSettings.Override = null;
+            bool saved = GodBoardSettings.ClearView;
+            try
+            {
+                GodBoardSettings.ClearView = false;
+                for (int i = 0; i < 4; i++) yield return null;
+                Assert.IsFalse(PlagueHud.ClearView, "the plague reads the same setting");
+                Assert.IsFalse(_hud.Texts.Contains("[Road]"));
+                Assert.IsFalse(_hud.Texts.Any(x => x.StartsWith("[Plague")), "world first: no Plague button");
+                Assert.IsNull(GodBoardHud.PlagueToggle);
+                Assert.IsTrue(GodBoardHud.TotemAvailable, "the totem still works the overlay");
+                bool was = GodBoardHud.TotemOn;
+                _hud.TapLedge("totem");
+                Assert.AreNotEqual(was, GodBoardHud.TotemOn, "the totem toggles the overlay");
+                _hud.TapLedge("totem"); WorldActions.Cancel();
+                // one toggle: both layers come back
+                PlagueHud.ClearView = true;
+                for (int i = 0; i < 4; i++) yield return null;
+                Assert.IsTrue(GodBoardSettings.ClearView, "one setting is the source of truth");
+                Assert.IsTrue(_hud.Texts.Contains("[Road]"), "the board HUD is back: " + string.Join("|", _hud.Texts));
+                Assert.IsTrue(_hud.Texts.Any(x => x.StartsWith("[Plague")), "the Plague button is back: " + string.Join("|", _hud.Texts));
+                Assert.IsFalse(_hud.Rig.Shown);
+                GodBoardSettings.ClearView = false;
+                for (int i = 0; i < 4; i++) yield return null;
+                Assert.IsFalse(_hud.Texts.Any(x => x.StartsWith("[Plague")));
+                Assert.IsTrue(_hud.Rig.Shown);
+            }
+            finally { GodBoardSettings.ClearView = saved; }
         }
     }
 }

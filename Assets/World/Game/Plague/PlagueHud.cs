@@ -17,14 +17,14 @@ namespace World.Game
         /// <summary>
         /// The Clear view setting (WORLD_UI_PLAN Q-2): the old HUD as a fallback. Off by default: the world carries the plague
         /// (the lodge, the shrines, the board's totem; V toggles the overlay) and nothing is drawn here. On: the "Plague" and
-        /// "Banish" buttons and the counter panel are back. Stored in PlayerPrefs "world.clearview".
+        /// "Banish" buttons and the counter panel are back. One setting for the whole game: this reads and writes
+        /// <see cref="GodBoardSettings.ClearView"/> (WU-2b), so the board HUD and the plague buttons come and go together.
         /// </summary>
         public static bool ClearView
         {
-            get { try { return PlayerPrefs.GetInt("world.clearview", 0) == 1; } catch { return s_clear; } }
-            set { s_clear = value; try { PlayerPrefs.SetInt("world.clearview", value ? 1 : 0); } catch { } }
+            get => GodBoardSettings.ClearView;
+            set => GodBoardSettings.ClearView = value;
         }
-        private static bool s_clear;
         private static System.Func<bool> s_isOn; private static System.Action s_toggle;
 
         private PlagueViews _v;

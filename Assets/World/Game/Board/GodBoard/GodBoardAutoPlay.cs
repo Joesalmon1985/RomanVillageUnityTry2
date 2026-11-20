@@ -163,7 +163,7 @@ namespace World.Game
              {
                  rate = Hud.BankRate(0); Hud.TapLedge("trader");
                  if (!Hud.MatOpen) throw new Exception("the barter mat did not open");
-                 Hud.TapLedge("basket:0"); Hud.SelectBankGet(4);
+                 Hud.TapLedge("basket:0"); Hud.TapLedge("mat-get:4");
                  if (Hud.BankGive != 0) throw new Exception("the basket did not set the good to give");
                  wood = T.Peoples[0].Hand[0]; stone = T.Peoples[0].Hand[4];
                  var r = Hud.DoBankTrade();
