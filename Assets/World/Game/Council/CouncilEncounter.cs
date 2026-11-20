@@ -100,11 +100,27 @@ namespace World.Game
             _lockUntil = Time.unscaledTime + 0.45f;
             _aiAt = Time.unscaledTime + 1.0f;
             if (ctx.World != null && ctx.World.GodCam != null) { }
+            LedgerCard.DockTop = true;
+            HideTotems();
         }
+
+        // The camp's tall totem stands between the tower and the places and fills the middle of the picture: hidden while the council camera is up.
+        readonly List<Renderer> _hiddenTotems = new List<Renderer>();
+        void HideTotems()
+        {
+            foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (r == null || !r.enabled || r.name != "Totem" || r.bounds.size.y < 3f) continue;
+                if ((r.bounds.center - _cam.transform.position).sqrMagnitude > 60f * 60f) continue;
+                r.enabled = false; _hiddenTotems.Add(r);
+            }
+        }
+        void ShowTotems() { foreach (var r in _hiddenTotems) if (r != null) r.enabled = true; _hiddenTotems.Clear(); }
 
         public void End()
         {
             WorldActions.Cancel(); LedgerCard.Hide(); Scene?.ClearPreview();
+            LedgerCard.DockTop = false; ShowTotems();
             if (_cam != null)
             {
                 _cam.transform.SetParent(_camParent, false);

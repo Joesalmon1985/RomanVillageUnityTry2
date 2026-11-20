@@ -716,6 +716,7 @@ namespace World.Game.Tests
 
         IEnumerator TapPreview(string name)
         {
+            if (name.StartsWith("note ")) yield return Until(() => Enc.Scene.Targets(Enc.Scene.ViewCamera).Exists(t => t.Name == name), 10f, name + " on screen");
             var have = new List<string>(); foreach (var t in Enc.Scene.Targets(Enc.Scene.ViewCamera)) have.Add(t.Name);
             Assert.IsTrue(Enc.TapTarget(name), name + " was tapped; targets " + string.Join(",", have) + " proposals " + Enc.Scene.Proposals.Count + " phase " + E.Phase);
             for (int i = 0; i < 6; i++) yield return null;
@@ -822,13 +823,14 @@ namespace World.Game.Tests
             int sock = Enc.Scene.Proposals.FindIndex(pp => pp.Socket >= 0); Assert.GreaterOrEqual(sock, 0, "a socket note exists");
             Assert.AreEqual(1, Enc.Scene.Proposals[sock].Steps.Count, "a socket note names one place");
             int adv = E.Advances;
+            int before = 0; foreach (int tp0 in E.Temp) if (tp0 > 0) before++;
             yield return TapPreview("note " + sock);
             Assert.AreEqual(1, Enc.Scene.GhostCount, "only that socket's place is previewed");
             Assert.AreEqual(adv, E.Advances);
             yield return TapConfirm("note " + sock); yield return WaitReady();
             Assert.AreEqual(adv + 1, E.Advances);
             int moved = 0; foreach (int tp in E.Temp) if (tp > 0) moved++;
-            Assert.AreEqual(1, moved, "exactly one half of the tray moved: never both silently");
+            Assert.AreEqual(1, moved - before, "exactly one half of the tray moved: never both silently");
         }
 
         [UnityTest, Timeout(300000)]

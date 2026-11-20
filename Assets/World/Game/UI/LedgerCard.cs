@@ -77,7 +77,11 @@ namespace World.Game
             Compute(screenW, screenH, safe, anchor.HasValue ? new Rect(anchor.Value, Vector2.zero) : (Rect?)null, content);
 
         /// <summary>As above with the object's screen bounds: the card goes beside them (never over them when there is room).</summary>
-        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Rect? anchor, LedgerContent content)
+        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Rect? anchor, LedgerContent content) =>
+            Compute(screenW, screenH, safe, anchor, content, false);
+
+        /// <summary>As above; with <paramref name="dockTop"/> the card is a wide strip along the top edge of the safe area (the council: the picture's middle and foot hold the places, notes and tablet; the top is sky).</summary>
+        public static LedgerLayout Compute(float screenW, float screenH, Rect safe, Rect? anchor, LedgerContent content, bool dockTop)
         {
             var L = new LedgerLayout();
             L.FontSize = Mathf.Clamp(Mathf.RoundToInt(screenH * 0.042f), MinFont, MaxFont);
@@ -102,6 +106,13 @@ namespace World.Game
                 return Mathf.Min(hh, safe.height - 2 * LL.Pad);
             }
             float h = Height(w);
+            if (dockTop)
+            {
+                w = Mathf.Max(w, Mathf.Min(safe.width - 2 * L.Pad, L.FontSize * 44f));
+                h = Height(w);
+                L.Card = new Rect(safe.center.x - w / 2, safe.yMin + L.Pad, w, h);
+                return L;
+            }
             // Beside the object, on the side with more room (narrower if needed), else above or below; centred when no anchor.
             float x, y;
             if (anchor.HasValue)
@@ -138,6 +149,8 @@ namespace World.Game
     /// </summary>
     public static class LedgerCard
     {
+        /// <summary>The council sets this while its camera is up: the card docks along the top edge (see <see cref="LedgerLayout.Compute(float, float, Rect, Rect?, LedgerContent, bool)"/>).</summary>
+        public static bool DockTop;
         public static LedgerContent Content { get; private set; }
         public static LedgerMode Mode { get; private set; }
         public static Transform Anchor { get; private set; }
@@ -153,7 +166,7 @@ namespace World.Game
         public static event Action Changed;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() { Content = null; Anchor = null; ScreenAnchor = null; Changed = null; LastRect = default; }
+        private static void ResetStatics() { Content = null; Anchor = null; ScreenAnchor = null; Changed = null; LastRect = default; DockTop = false; }
 
         public static void Show(LedgerContent content, Transform anchor, LedgerMode mode, Component bounds = null, IScreenAnchored screen = null)
         {
@@ -196,7 +209,7 @@ namespace World.Game
                 var s = cam.WorldToScreenPoint(Anchor.position);
                 if (s.z > 0) a = new Rect(s.x, Screen.height - s.y, 0, 0);
             }
-            return LedgerLayout.Compute(Screen.width, Screen.height, ScreenSafeArea.Current(), a, Content);
+            return LedgerLayout.Compute(Screen.width, Screen.height, ScreenSafeArea.Current(), a, Content, DockTop);
         }
     }
 

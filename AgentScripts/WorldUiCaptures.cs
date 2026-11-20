@@ -217,6 +217,20 @@ public static class WorldUiCaptures
                     foreach (var t in sc.Targets(sc.ViewCamera)) sb.Append(t.Name + "@" + t.Px.x.ToString("0") + "," + t.Px.y.ToString("0") + " ");
                     return sb.ToString();
                 }
+            case "cpole":
+                {
+                    var cam = ViewSwitcher.Instance != null ? ViewSwitcher.Instance.ActiveCamera : Camera.main;
+                    var ray = cam.ScreenPointToRay(new Vector3(float.Parse(a[1], ci) * Screen.width, float.Parse(a[2], ci) * Screen.height, 0));
+                    var sb = new StringBuilder("cam " + cam.transform.position + " hits: ");
+                    foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                    {
+                        if (!r.enabled || !r.gameObject.activeInHierarchy) continue;
+                        if (!r.bounds.IntersectRay(ray, out float d) || d > 40f) continue;
+                        var path = r.name; var t = r.transform.parent; for (int i = 0; i < 4 && t != null; i++, t = t.parent) path = t.name + "/" + path;
+                        sb.Append(path + " d" + d.ToString("0.0") + " size" + r.bounds.size.ToString("0.0") + " | ");
+                    }
+                    return sb.ToString();
+                }
             case "ccloser": CouncilScene.ForceCloser = a[1] == "on" ? true : a[1] == "off" ? false : (bool?)null; return "closer " + a[1];
             case "cleave": CouncilEncounter.Current.Return(); return "left";
             case "hour": DayNight.Instance.SetHour(float.Parse(a[1], ci)); return "hour";
