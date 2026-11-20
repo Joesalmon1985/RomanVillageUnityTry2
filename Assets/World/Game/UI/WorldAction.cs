@@ -220,7 +220,10 @@ namespace World.Game
         public static bool ScreenBounds(Component c, Camera cam, out Rect rect)
         {
             rect = default;
-            if (c == null || cam == null) return false;
+            if (c == null) return false;
+            var lp = c.GetComponent<LedgeProxy>(); // the altar ledge lives on the screen, not in the scene
+            if (lp != null) return lp.TryGetScreenRect(out rect);
+            if (cam == null) return false;
             bool any = false; var b = new Bounds();
             foreach (var r in c.GetComponentsInChildren<Renderer>()) { if (!any) { b = r.bounds; any = true; } else b.Encapsulate(r.bounds); }
             foreach (var col in c.GetComponentsInChildren<Collider>()) { if (!any) { b = col.bounds; any = true; } else b.Encapsulate(col.bounds); }

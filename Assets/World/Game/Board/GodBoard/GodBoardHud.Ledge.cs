@@ -29,6 +29,24 @@ namespace World.Game
         public bool TryGetScreenRect(out Rect gui) { gui = GuiRect; return GuiRect.width > 0f; }
     }
 
+    /// <summary>An inspect-only view of a ledge object: a tap opens its ledger tablet and sends nothing (an <see cref="IWorldAction"/> would preview).</summary>
+    public sealed class LedgeNote : IInspectable, IScreenAnchored
+    {
+        public readonly LedgeObject Src;
+        public LedgeNote(LedgeObject src) { Src = src; }
+        public string Title => Src.Title;
+        public IEnumerable<string> Lines => Src.Lines;
+        public bool TryGetScreenRect(out Rect gui) => Src.TryGetScreenRect(out gui);
+    }
+
+    /// <summary>Sits on the proxy object of a ledge object so zone tools (the F1 outline) and tests can read its screen rect.</summary>
+    public sealed class LedgeProxy : MonoBehaviour
+    {
+        public LedgeObject Object;
+        public Func<Rect> RectFn;
+        public bool TryGetScreenRect(out Rect gui) { gui = RectFn != null ? RectFn() : default; return gui.width > 0f; }
+    }
+
     /// <summary>
     /// The altar ledge (WU-2, WORLD_UI_PLAN 2.2): a carved stone band at the bottom of the frame, inside the safe area, holding the
     /// edge functions as objects: five offering baskets (the hand), the builder's bench (build modes, spare pieces), four banner
@@ -73,6 +91,9 @@ namespace World.Game
             o.Proxy = new GameObject("Ledge " + id);
             o.Proxy.transform.SetParent(_ledgeRoot, false);
             WorldZone.Tag(o.Proxy, zone);
+            var lp = o.Proxy.AddComponent<LedgeProxy>(); lp.Object = o;
+            string key = id;
+            lp.RectFn = () => o.GuiRect.width > 0f ? o.GuiRect : (key == "baskets" ? LedgeRect("basket:2") : key == "bench" ? LedgeRect("bench:1") : key == "stakes" || key == "stakes-turn" ? LedgeRect("stake:1") : LedgeRect(key));
             _ledge[id] = o;
             return o;
         }
@@ -89,6 +110,9 @@ namespace World.Game
             float bandH = 2f * row + 3f * gap + 4f * _lu;
             _band = new Rect(safe.x, safe.yMax - bandH, safe.width, bandH);
             _ledgeRects.Clear();
+            Obj("baskets", WorldZones.HexStore); Obj("bench", WorldZones.HexBuild); Obj("stakes", WorldZones.HexAwards); Obj("stakes-turn", WorldZones.HexTurn);
+            Obj("trader", WorldZones.HexTrade); Obj("hourglass", WorldZones.HexEnd); Obj("chronicler", WorldZones.HexFeed); Obj("prince", WorldZones.HexDev);
+            Obj("totem", WorldZones.HexPlague); Obj("lamb", WorldZones.HexLeave); Obj("sack", WorldZones.HexRaider);
             float y1 = _band.y + 4f * _lu + gap, y2 = y1 + row + gap;
             float x = _band.x + 6f * _lu;
             for (int g = 0; g < Wares.RawCount; g++) { _ledgeRects["basket:" + g] = new Rect(x, y1, row, row); x += row; }
@@ -124,11 +148,6 @@ namespace World.Game
 
         // ---------------------------------------------------------------- the taps (what the objects do)
 
-        private static string[] ZoneOf(string id)
-        {
-            return null;
-        }
-
         private void RefusedBuild(BuildKind k)
         {
             _refusedKind = k; _refusedUntil = Time.unscaledTime + 3f; _shakeUntil = Time.unscaledTime + 0.6f;
@@ -152,13 +171,21 @@ namespace World.Game
             return new LedgerContent { Title = what };
         }
 
-        private LedgeObject InspectObj(string id, string zone, string what, Rect rect)
+        private readonly Dictionary<string, LedgeNote> _notes = new Dictionary<string, LedgeNote>();
+
+        private LedgeNote NoteOf(LedgeObject o)
+        {
+            if (!_notes.TryGetValue(o.Id, out var n)) { n = new LedgeNote(o); _notes[o.Id] = n; }
+            return n;
+        }
+
+        private LedgeNote InspectObj(string id, string zone, string what, Rect rect)
         {
             var o = Obj(id, zone);
             o.GuiRect = rect;
             o.Content = () => LedgerOf(what);
             o.CheckFn = null; o.CommitFn = null; o.PreviewFn = null; o.Question = null;
-            return o;
+            return NoteOf(o);
         }
 
         /// <summary>A tap on a ledge object by id (the pointer calls this for a press on its rect; tests and AutoPlay too).</summary>
@@ -191,7 +218,7 @@ namespace World.Game
                 {
                     TradeOpen = false;
                     _d.SetBuildMode(kind);
-                    return WorldActions.Inspect(o);
+                    return WorldActions.Inspect(NoteOf(o));
                 }
                 RefusedBuild(kind);
                 string why = setup ? "Place your first camps and roads on the island." : GodBoardLedger.BuildRefusal(vm, kind);
@@ -211,7 +238,7 @@ namespace World.Game
                 case "chronicler": return WorldActions.Inspect(InspectObj("chronicler", WorldZones.HexFeed, "chronicler", rect));
                 case "prince":
                 {
-                    bool again = LedgerCard.IsOpen && WorldActions.Machine.Current is LedgeObject lo && lo.Id == "prince";
+                    bool again = LedgerCard.IsOpen && WorldActions.Machine.Current is LedgeNote lo && lo.Src.Id == "prince";
                     if (again) GodBoardDirector.AdviserOn = !GodBoardDirector.AdviserOn;
                     return WorldActions.Inspect(InspectObj("prince", WorldZones.HexDev, "prince", rect));
                 }
