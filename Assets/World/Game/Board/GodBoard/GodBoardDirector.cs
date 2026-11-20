@@ -61,6 +61,8 @@ namespace World.Game
         public int SacrificeCount { get; private set; }
         /// <summary>Unscaled time of the last epidemic (a resolved 7), for the banner; far in the past at first.</summary>
         public float EpidemicAt { get; private set; } = -100f;
+        /// <summary>Production pulses played so far (a Produced event with hexes); read by the AutoPlay smoke scripts.</summary>
+        public int ProductionPulses { get; private set; }
         /// <summary>The table has ended: an age turned or the island fell. No further table input.</summary>
         public bool GameOver => T != null && T.Phase == TablePhase.Ended;
 
@@ -481,7 +483,7 @@ namespace World.Game
             {
                 switch (e)
                 {
-                    case Produced pr: HexDressingView.Pulse(pr.Hexes); if (Collectors != null) Collectors.OnProduced(pr); break;
+                    case Produced pr: if (pr.Hexes != null && pr.Hexes.Length > 0) ProductionPulses++; HexDressingView.Pulse(pr.Hexes); if (Collectors != null) Collectors.OnProduced(pr); break;
                     case Built b: if (b.People == Human) BuildMode = BuildKind.None; Feed1(Name(b.People) + (b.People == Human ? " built a " : " built a ") + b.Kind + "."); break;
                     case Traded tr: Feed1(tr.With < 0 ? Name(tr.People) + " traded at the bank." : Name(tr.People) + " traded with " + Name(tr.With) + "."); break;
                     case TradeRefused rf:
