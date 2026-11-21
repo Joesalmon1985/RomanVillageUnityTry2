@@ -82,7 +82,8 @@ namespace World.Game
             var tablet = Step("tablet", "The recorder's tablet keeps the exact standing. Tap it to read where each candidate stands.",
                 () => Target("tablet"), () => t.SawInspect("recorder's tablet"));
             var again = Step("again", "You can press on once more for more ground, but a push that leaves nothing that fits is a bust. Tap the hand to try.",
-                () => Target("hand"), () => t.Count("push") >= 2 || t.Flag("banked") || t.Flag("bust") || t.Flag("bust-pending"));
+                () => Target("hand"), () => t.Count("push") > t.Count("p0") || t.Flag("banked") || t.Flag("bust") || t.Flag("bust-pending"));
+            again.OnEnter = () => t.Counters["p0"] = t.Count("push");
             var bank = Step("bank", "Or settle what you have: tap the recorder's seal once to preview, again to keep it for good. That ends your turn.",
                 () => Target("recorder") ?? Target("seal"), () => t.Flag("banked") || t.Flag("bust"));
             return new List<TutorialStep> { press, preview, commit, tablet, again, bank };

@@ -105,6 +105,8 @@ namespace World.Game
         public List<TutorialTip> Tips = new List<TutorialTip>();
         public int Index;
         public bool Running, Finished;
+        /// <summary>Started from "Show me how again": every step is shown, even one whose condition already holds (it is then read for a few seconds and goes on).</summary>
+        public bool Replay;
         /// <summary>Things that happened since the start (set by the game's hooks, read by the conditions).</summary>
         public readonly HashSet<string> Flags = new HashSet<string>();
         public readonly Dictionary<string, int> Counters = new Dictionary<string, int>();

@@ -106,7 +106,7 @@ namespace World.Game
                 Step("baskets", true, "These baskets are your hand: logs, bricks, sheaves, fleece and stones. Tap one to read exactly what you hold.", Baskets,
                     () => t.SawInspect("Offering baskets")),
                 Step("costs", true, "The builder's bench shows what a road, a camp and a city cost. Tap it to read the costs.", Bench,
-                    () => t.SawInspect("builder's bench")),
+                    () => t.SawInspect("bench")),
                 Step("wait-turn", true, "The other peoples place their camps now. When the sand runs in the hourglass, it is your turn.", () => TutorialTargets.Ledge("hourglass"),
                     () => D != null && D.Model.CanAct, 2f),
                 Step("act", true, "On your turn, build with what you hold, or tap the trader to swap four of one good for one you need.", () => TutorialTargets.Ledge("trader"),

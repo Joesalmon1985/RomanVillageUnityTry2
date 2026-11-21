@@ -20,6 +20,8 @@ namespace World.Game
         /// <summary>Tutorials run only while this is true. Tests switch it off (<c>TutorialTestSetup</c>) and turn it on in <c>TutorialTests</c>.</summary>
         public static bool Enabled = true;
         public const float OutroSeconds = 5f;
+        /// <summary>In a replay a step that is already true is read for this long before it goes on.</summary>
+        public const float ReplayReadSeconds = 4f;
         /// <summary>Tests: scales every reading time (a step's minimum, an automatic step, the outro) so a playthrough takes seconds.</summary>
         public static float TimeScale = 1f;
 
@@ -104,10 +106,20 @@ namespace World.Game
             TutorialStore.SetDone(id, false);
             if (Active == t) Stop(t);
             t.Reset();
+            t.Replay = true;
             _replayWanted = id;
         }
 
         private string _replayWanted;
+        private WorldBootstrap _bootSeen;
+
+        /// <summary>Forgets the progress of every tutorial that is not finished (a new world, tests). Done flags in <see cref="TutorialStore"/> are kept.</summary>
+        public void ResetProgress()
+        {
+            if (Active != null) Stop(Active);
+            foreach (var g in Games) { g.Finished = false; g.Replay = false; g.Running = false; g.Index = 0; g.Steps.Clear(); g.Tips.Clear(); g.Flags.Clear(); g.Counters.Clear(); g.Inspected.Clear(); g.Committed.Clear(); g.Previewed.Clear(); }
+            Ended.Clear();
+        }
 
         private void Stop(Tutorial t)
         {
@@ -119,7 +131,7 @@ namespace World.Game
         private void Finish(Tutorial t, bool skipped)
         {
             TutorialStore.SetDone(t.Id, true);
-            t.Finished = true;
+            t.Finished = true; t.Replay = false;
             Ended.Add(t.Id + (skipped ? ":skipped" : ":done"));
             Stop(t);
         }
@@ -188,6 +200,7 @@ namespace World.Game
             if (!Enabled) { if (Active != null) Stop(Active); return; }
             EnsureClock();
             if (WorldBootstrap.Instance == null) { ClearShown(); return; }
+            if (WorldBootstrap.Instance != _bootSeen) { _bootSeen = WorldBootstrap.Instance; ResetProgress(); } // a new world: the steps start over (what is remembered as done stays)
 
             // Away from its place a tutorial waits; another game's tutorial may start meanwhile (its progress is kept).
             if (Active != null && !Safe(Active.GameActive))
@@ -286,8 +299,10 @@ namespace World.Game
                 if (s.AutoSeconds > 0f) done = _shownAt >= 0f && now - _shownAt >= s.AutoSeconds * TimeScale && _tip == null;
                 else done = s.Done != null && Safe(s.Done);
                 if (!done) break;
-                if (_shownAt >= 0f && now - _shownAt < s.MinSeconds * TimeScale) break; // it was said: let it be read
-                t.Index++; _shownAt = -1f; _entered = null;
+                if (t.Replay && _shownAt < 0f) break; // a replay shows every step, even one that already holds
+                float need = (_doneAtShow ? ReplayReadSeconds : s.MinSeconds) * TimeScale;
+                if (_shownAt >= 0f && now - _shownAt < need) break; // it was said: let it be read
+                t.Index++; _shownAt = -1f; _entered = null; _doneAtShow = false;
             }
             var step = t.Current;
             if (step == null)
@@ -296,7 +311,11 @@ namespace World.Game
                 if (string.IsNullOrEmpty(t.Outro)) { Finish(t, false); return; }
                 _outro = true; _outroAt = now; return;
             }
-            if (_shownAt < 0f) _shownAt = now;
+            if (_shownAt < 0f)
+            {
+                _shownAt = now;
+                _doneAtShow = t.Replay && step.AutoSeconds <= 0f && step.Done != null && Safe(step.Done);
+            }
             if (!ReferenceEquals(_entered, step)) { _entered = step; try { step.OnEnter?.Invoke(); } catch (Exception) { } }
             if (_tip != null) Show(_tip.Id, _tip.TutorName, _tip.Speaker, _tip.TutorRect, _tip.Line, _tip.Target);
             else
@@ -308,6 +327,7 @@ namespace World.Game
         }
 
         private TutorialStep _entered;
+        private bool _doneAtShow;
 
         // ------------------------------------------------------------------ what is shown
 
