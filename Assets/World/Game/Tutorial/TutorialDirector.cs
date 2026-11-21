@@ -133,6 +133,7 @@ namespace World.Game
             TutorialStore.SetDone(t.Id, true);
             t.Finished = true; t.Replay = false;
             Ended.Add(t.Id + (skipped ? ":skipped" : ":done"));
+            Debug.Log("[Tutorial] " + t.Id + (skipped ? " skipped" : " done"));
             Stop(t);
         }
 
@@ -247,6 +248,7 @@ namespace World.Game
             if (t.Steps.Count == 0 || t.Index == 0) t.Reset();
             t.Running = true;
             Active = t;
+            Debug.Log("[Tutorial] " + t.Id + " begins" + (t.Replay ? " (replay)" : ""));
             _shownAt = -1f; _outro = false; _outroAt = -1f; _tip = null;
             t.OnBegin?.Invoke(t);
         }
@@ -303,6 +305,7 @@ namespace World.Game
                 float need = (_doneAtShow ? ReplayReadSeconds : s.MinSeconds) * TimeScale;
                 if (_shownAt >= 0f && now - _shownAt < need) break; // it was said: let it be read
                 t.Index++; _shownAt = -1f; _entered = null; _doneAtShow = false;
+                Debug.Log("[Tutorial] " + t.Id + " step " + (t.Current != null ? t.Current.Id : "outro"));
             }
             var step = t.Current;
             if (step == null)

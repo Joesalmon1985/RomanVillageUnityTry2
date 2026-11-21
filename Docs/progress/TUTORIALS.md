@@ -37,7 +37,16 @@ A small shared system in `Assets/World/Game/Tutorial/`. Each game has a list of 
 
 `Assets/World/Tests/PlayMode/TutorialTests.cs` (PlayMode, fixture `World.Game.Tests.TutorialTests`) and `TutorialTestSetup` (a `SetUpFixture`: tutorials are **off** and memory-only in every other fixture of the assembly; `TutorialTests` turns them on and scales the reading times down so a playthrough takes seconds). One test per game plays the tutorial through with the same taps and commands the game's own fixtures use, checks that each step comes up in order with a line, a named tutor and a target that lies on the screen, that Skip ends it and is remembered, that "Show me how again" starts it over, and that finishing is remembered.
 
-RESULTS_PLACEHOLDER
+### Results (21 Nov 2026, editor 6000.3.28f1, final code)
+
+- `TutorialTests` **8 / 8** PlayMode: one per game (board, plague, council, rhythm, dungeon, duel) plus the Esc menu page (every game listed, "Show me how again" starts the board tutorial) and the council's bust tip. The pictures were taken from the same tests (capture mode), 8 / 8 as well.
+- Regression, all with the tutorials off by `TutorialTestSetup`: `GodBoardTests` 10 / 10, `GodBoardLedgeTests` 21 / 21, `PlagueViewTests` 10 / 10, `CouncilTests` **41 / 41** (the long one, once), `DanceTests` 17 / 17, `ExpeditionTests` 14 / 14, `InteriorTests` 16 / 16, `WardDuelTests` 6 / 6, `HubTests` 19 / 19, `WorldTourTests` 2 / 2, `WorldUiTests` 6 / 6. EditMode `World.Game.EditTests` 25 / 25 (includes the player-build compile test).
+- Rebuilt player (`BuildWindows.Run`, 102 MB, 0 errors), run with `-batchmode` (no window, so no window-size registry key was written): `board_first_round` OK and `world_ui_tour` OK, exit 0, with the tutorials **on** in both (the log shows `[Tutorial] board begins`, its steps, then council, rhythm, duel and dungeon beginning during the tour; logs `Builds/logs/tut_*.log`, not committed). `ProjectSettings/ProjectSettings.asset` line-ending change from the build reverted.
+- Console: 0 errors from game code.
+
+### Captures (local only, never committed)
+
+`Evidence/tutorials/<game>_<step>_844x390.png`, one per step of every game (51 files), taken at 844 x 390 with the simulated notch safe area, by `TutorialTests` in capture mode. Looked at: the ring is on the target (or an edge glow when it is out of view) and the bubble sits clear of it in the ones checked: `board_sacrifice`, `board_settle-preview`, `board_road-preview`, `board_baskets`, `board_end-turn`, `board_leave`, `board_outro`, `plague_lanterns`, `plague_banish-confirm`, `plague_vessels`, `plague_charm`, `council_preview`, `council_tablet`, `council_bust`, `rhythm_hit`, `rhythm_pause`, `rhythm_torch`, `duel_stones`, `duel_take-back`, `duel_cast`, `duel_gate`, `dungeon_step`, `dungeon_marker`, `menu_tutorials`.
 
 ## How to see it
 
@@ -47,4 +56,11 @@ RESULTS_PLACEHOLDER
 
 ## Open problems
 
-OPEN_PLACEHOLDER
+1. **The tutor is a name on the bubble, not always a figure you can see.** On the god board the prince stands on the ledge but the bubble sits at the top of the screen (so it never hides the island's spots or the ledge); in the dungeon Mira is often out of view. The name and the speaking order carry it; there is no pointer from the bubble to the tutor when the tutor is off screen.
+2. **Off-screen targets** are shown by an edge glow and one line of words, not by an arrow (the brief forbids arrows). In the dark yard of the lodge this is a soft gold strip at the screen edge; it is easy to miss on a bright screen.
+3. **The board's first turn is real time.** The AI turns and the hourglass keep running while the tutorial talks (no rule or pause was added); a slow reader can lose their first turn to the hourglass. The steps then move on by themselves (a turn that ended counts as "built or traded" and "ended the turn").
+4. **The plague's banish step can wait a long time** (infection is slow: every third round): it speaks only in the healer's yard, and is silent elsewhere, until a demon stands on a shrine. The healer's tutorial may therefore not finish in one visit; it resumes where it stopped.
+5. **Replay shows every step**, including the ones whose condition already holds, each for four seconds; so a replay of the board does not make you place a second camp, it tells you about the step and moves on.
+6. **The ledger tablet and the tutor's bubble can overlap** when a tablet from an earlier step is still open and the screen is small (the bubble draws on top and avoids the tablet where there is room). Tapping elsewhere closes the tablet.
+7. **Not tested by hand:** a real finger on a phone (taps were driven through the same entry points as the other fixtures), audio, and the PlayerPrefs store in a built player (the tests and the batchmode runs use the memory store).
+8. The tutorial reads time with `Time.unscaledTime`; `TutorialDirector.TimeScale` exists only so tests can run fast.
