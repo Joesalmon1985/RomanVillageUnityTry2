@@ -13,33 +13,32 @@ namespace World.Game
     public enum VistaState { Off, Vista, Descending, Rising }
 
     /// <summary>
-    /// The opening vista (owner feedback, 21 Nov 2026): the game opens on a composed, elevated night view of the hub in which all six
-    /// destinations are visible at once (temple, council tower, dance circle, healer's lodge, Mira's expedition camp and cave, duel ring).
-    /// The screen is divided into invisible regions, one per place, assigned from each place's projected bounds every frame
-    /// (<see cref="RegionAt"/>): a tap inside one place's projected box picks it, overlapping boxes go to the nearest centre, and every
-    /// other point goes to the nearest box, so the whole screen is covered at any aspect ratio. Tap a region once: that place lights up
-    /// and the shared <see cref="LedgerCard"/> names the activity (a <see cref="VistaPlace"/> on the WU-0 two-tap machine). Tap it
-    /// again (or the card, or E): the camera glides down to the player standing at the place and the place's existing entry runs
-    /// (<see cref="VistaPlace.Enter"/>) with no further tap: the vista's preview already was the preview, so the second tap is the
-    /// confirm. Back to the vista: Esc (or a phone's back key) in the walking view, or a tap on the sky. W or the up arrow in the
-    /// vista steps down into the walking view where the player stands. Drag in the vista swings the view a little round the camp.
+    /// The opening vista (owner feedback, 21 Nov 2026; layout approved by the owner the same day, Docs/design/OPENING_TARGET.md): the
+    /// game opens on a composed, elevated night view of the hub in which all six destinations stand in their own blocks of the screen:
+    /// far away along the top the temple (left), the council longhouse (centre) and Sol's drums (right); near along the bottom the duel
+    /// ring (left), the healer's lodge (centre) and Mira's camp by the cave (right); the start fire in the near foreground band. The
+    /// pose comes from <see cref="CampLayout.Vista"/> (the hub's places were placed for it); every screen shows the whole 16:9 frame
+    /// centred in its safe area (<see cref="VistaFrame"/>), and the blocks divide the safe area itself, so a tap picks the place whose
+    /// block it falls in (<see cref="RegionAt"/>) at any aspect ratio. Tap a block once: that place lights up and the shared
+    /// <see cref="LedgerCard"/> names the activity (a <see cref="VistaPlace"/> on the WU-0 two-tap machine). Tap it again (or the card,
+    /// or E): the camera glides down to the player standing at the place and the place's existing entry runs
+    /// (<see cref="VistaPlace.Enter"/>). Back to the vista: Esc (or a phone's back key) in the walking view, or a tap on the sky. W or the
+    /// up arrow in the vista steps down into the walking view where the player stands; A / D light the places in reading order.
     /// Reads state only; the entries are the same calls the hub's people and props make. Owner: opening vista.
     /// </summary>
     [DefaultExecutionOrder(10000)]
     public sealed class OpeningVista : MonoBehaviour
     {
         public const string Lock = "Vista";
-        public const float DescendSeconds = 1.4f, RiseSeconds = 1.0f, FieldOfView = 34f;
-        /// <summary>Downward pitch of the vista camera (chosen with the bearing, see <see cref="ChooseYaw"/>).</summary>
-        public float Pitch { get; private set; } = 40f;
-        /// <summary>Widest swing (degrees) of a drag round the camp.</summary>
-        public const float MaxOrbit = 35f;
+        public const float DescendSeconds = 1.4f, RiseSeconds = 1.0f, FieldOfView = VistaFrame.Fov;
+        /// <summary>Downward pitch of the vista camera (from <see cref="CampLayout.Vista"/>).</summary>
+        public float Pitch => _pose.Pitch;
 
         /// <summary>Set by tests and AutoPlay. Not reset per session (the PlayMode test assembly turns it off).</summary>
         public static VistaMode Mode = VistaMode.On;
         public static OpeningVista Instance { get; private set; }
 
-        /// <summary>Tests: fit and divide a screen of this size (pixels) instead of the real one; null = the real screen.</summary>
+        /// <summary>Tests: divide a screen of this size (pixels) instead of the real one; null = the real screen. The safe area is then the whole of it unless <see cref="ScreenSafeArea.Override"/> says otherwise.</summary>
         public static Vector2Int? ScreenOverride;
         private static int SW => ScreenOverride.HasValue ? ScreenOverride.Value.x : Screen.width;
         private static int SH => ScreenOverride.HasValue ? ScreenOverride.Value.y : Screen.height;
@@ -48,7 +47,7 @@ namespace World.Game
         public static bool Active => Instance != null && Instance.State != VistaState.Off;
         /// <summary>True while the player looks out over the camp (taps pick regions).</summary>
         public static bool Up => Instance != null && Instance.State == VistaState.Vista;
-        /// <summary>True while the vista owns the screen or is about to open (the one frame before <see cref="Start"/> opens it): the tutorials wait for the player's pick.</summary>
+        /// <summary>True while the vista owns the screen or is about to open (before <see cref="Start"/> opens it): the tutorials wait for the player's pick.</summary>
         public static bool Opening => Active || (Instance != null && !Instance._started && WillOpen);
         private bool _started;
 
@@ -74,15 +73,16 @@ namespace World.Game
         /// <summary>Raised when a travel has landed and the place's entry ran.</summary>
         public event Action<VistaPlace> Arrived;
 
+        /// <summary>The ground point at the middle of the view.</summary>
         public Vector3 Focus { get; private set; }
-        public Vector3 CameraPosition { get; private set; }
-        public Quaternion CameraRotation { get; private set; }
+        public Vector3 CameraPosition => _pose.Position;
+        public Quaternion CameraRotation => _pose.Rotation;
+        public VistaPose Pose => _pose;
 
         private readonly List<VistaPlace> _places = new List<VistaPlace>();
         private WorldBootstrap _boot;
-        private float _baseYaw, _orbit, _distance;
-        private int _fitW, _fitH; private float _fitOrbit = float.NaN;
-        private float _t; private Vector3 _fromPos, _toPos; private Quaternion _fromRot, _toRot; private float _fromFov, _toFov;
+        private VistaPose _pose;
+        private float _t; private Vector3 _fromPos; private Quaternion _fromRot; private float _fromFov;
         private VistaPlace _going;
         private bool _fogWas; private bool _fogSaved;
 
@@ -97,18 +97,36 @@ namespace World.Game
             v._boot = boot;
             Instance = v;
             VistaPlaces.Build(v, go.transform, layout, v._places);
-            v.ChooseYaw();
-            VistaPlaces.BuildScenery(go.transform, layout, v._places, v._baseYaw);
-            VistaTerrain.BuildBackdrop(go.transform, v._places, v.Focus, v._baseYaw);
+            v._pose = layout.Vista.Valid ? layout.Vista : Fallback(v._places);
+            var f = VistaFrame.Ground(v._pose, 0.5f, 0.5f);
+            v.Focus = f.HasValue ? f.Value : v._pose.Position;
+            VistaPlaces.BuildScenery(go.transform, layout, v._places, v._pose);
+            VistaTerrain.BuildBackdrop(go.transform, v._places, v.Focus, v._pose.Yaw);
+            if (!layout.Vista.Valid) Debug.LogWarning("[Vista] no pose puts the circle and the cave camp in their blocks on this board; looking from the south instead");
+            // the very first frame is the vista: the camera takes the pose now, before anything renders (Start then locks the walker)
+            if (WillOpen && v._places.Count > 0) v.Apply(v._pose.Position, v._pose.Rotation, 1f);
             return v;
+        }
+
+        /// <summary>A board where no composed pose fits: look at the places' middle from the south, high enough to hold them.</summary>
+        private static VistaPose Fallback(List<VistaPlace> places)
+        {
+            var c = Vector3.zero; foreach (var p in places) c += p.Centre; c /= Mathf.Max(1, places.Count); c.y = 0;
+            var rot = Quaternion.Euler(40f, 0f, 0f);
+            return new VistaPose { Position = c - rot * Vector3.forward * 150f, Yaw = 0f, Pitch = 40f, Valid = false };
         }
 
         private void OnDestroy() { if (Instance == this) Instance = null; }
 
         private IEnumerator Start()
         {
-            yield return null; // every installer has run and the walker stands on its spawn
-            if (WillOpen && _places.Count > 0) Open(true);
+            // every installer has run (in the boot's Awake): open at once, so the first frame and the first tap are the vista's
+            if (WillOpen && _places.Count > 0 && PlayerWalker.Instance != null) Open(true);
+            else
+            {
+                yield return null;
+                if (WillOpen && _places.Count > 0) Open(true);
+            }
             _started = true;
         }
 
@@ -116,211 +134,65 @@ namespace World.Game
 
         private Camera Cam => _boot != null && _boot.Avatar != null ? _boot.Avatar.Camera : Camera.main;
 
-        /// <summary>
-        /// Picks where to look from: every 15 degrees of bearing at three pitches, fitted so all places are in frame. A pose is
-        /// rejected when the island's hills would hide a place or the camera would sit in a hillside; of the rest, the score favours
-        /// places spread apart on screen and of similar size (near and far not too different), and a short distance.
-        /// </summary>
-        /// <summary>One bearing for every screen (chosen for 16:9), so the phone, the tablet and the desktop see the same camp; the fit adapts per screen.</summary>
-        private void ChooseYaw() => ChooseYaw(16f / 9f, null);
-
-        /// <summary>
-        /// Chooses bearing and pitch for a screen shape. Score: the smallest place's
-        /// height on screen (every place must read, the far ones too) and the spread between places' centres (clean regions);
-        /// poses where hills hide a place are skipped. <paramref name="log"/> (tuning) gets one line per pose.
-        /// </summary>
-        public string ChooseYaw(float aspect, System.Text.StringBuilder log)
-        {
-            Focus = Centroid();
-            aspect = Mathf.Clamp(aspect, 1.2f, 2.4f);
-            float bestScore = float.MinValue;
-            _baseYaw = 0f; float bestPitch = 40f;
-            foreach (float pitch in new[] { 34f, 40f }) // oblique: a look out over the camp, not a map
-            {
-                Pitch = pitch;
-                for (int i = 0; i < 24; i++)
-                {
-                    float yaw = i * 15f;
-                    float d = FitDistance(yaw, aspect, Focus);
-                    var pos = Pos(Focus, yaw, d);
-                    if (!Clear(pos)) { log?.Append(yaw + "/" + pitch + " hidden; "); continue; }
-                    var rot = Rot(yaw);
-                    float minSize = float.MaxValue;
-                    foreach (var p in _places)
-                    {
-                        float y0 = 1, y1 = 0, x0 = 1, x1 = 0;
-                        foreach (var sp in p.Samples()) { var v = Project(pos, rot, aspect, sp); y0 = Mathf.Min(y0, v.y); y1 = Mathf.Max(y1, v.y); x0 = Mathf.Min(x0, v.x); x1 = Mathf.Max(x1, v.x); }
-                        minSize = Mathf.Min(minSize, Mathf.Sqrt((y1 - y0) * (x1 - x0) * aspect));
-                    }
-                    float spread = Spread(yaw, aspect, d, Focus);
-                    float score = minSize * 6f + spread * 2f;
-                    log?.Append(yaw + "/" + pitch + " d" + d.ToString("0") + " min" + minSize.ToString("0.000") + " spr" + spread.ToString("0.00") + " s" + score.ToString("0.000") + "; ");
-                    if (score > bestScore) { bestScore = score; _baseYaw = yaw; bestPitch = pitch; }
-                }
-            }
-            Pitch = bestPitch;
-            _fitW = 0;
-            return _baseYaw + "/" + bestPitch;
-        }
-
-        /// <summary>True when the camera stands well above the ground under it and every place can be seen over the hills.</summary>
-        private bool Clear(Vector3 cam)
-        {
-            if (cam.y < PlayerWalker.GroundHeight(cam) + 14f) return false;
-            foreach (var p in _places)
-            {
-                var target = p.Centre + Vector3.up * Mathf.Min(2f, p.Height);
-                for (int k = 1; k < 12; k++)
-                {
-                    var q = Vector3.Lerp(cam, target, k / 12f);
-                    if (PlayerWalker.GroundHeight(q) > q.y - 1f) return false;
-                }
-            }
-            return true;
-        }
-
-        private Vector3 Centroid()
-        {
-            var c = Vector3.zero;
-            foreach (var p in _places) c += p.Centre;
-            c /= Mathf.Max(1, _places.Count);
-            c.y = 0f;
-            return c;
-        }
-
-        private Quaternion Rot(float yaw) => Quaternion.Euler(Pitch, yaw, 0f);
-        private Vector3 Pos(Vector3 focus, float yaw, float dist) => focus - Rot(yaw) * Vector3.forward * dist;
-
-        /// <summary>The smallest distance at which every place's bounds project inside the frame's margins.</summary>
-        private float FitDistance(float yaw, float aspect, Vector3 focus)
-        {
-            float lo = 20f, hi = 400f;
-            for (int it = 0; it < 22; it++)
-            {
-                float mid = (lo + hi) * 0.5f;
-                if (AllInside(yaw, aspect, mid, focus)) hi = mid; else lo = mid;
-            }
-            return hi;
-        }
-
-        private bool AllInside(float yaw, float aspect, float dist, Vector3 focus)
-        {
-            var pos = Pos(focus, yaw, dist); var rot = Rot(yaw);
-            foreach (var p in _places)
-                foreach (var w in p.Samples())
-                {
-                    var v = Project(pos, rot, aspect, w);
-                    if (v.z <= 0.5f) return false;
-                    // GUI-ish margins: a little room at the sides, more at the top for the cards and at the bottom for the notch band.
-                    if (v.x < 0.06f || v.x > 0.94f || v.y < 0.11f || v.y > 0.86f) return false;
-                }
-            return true;
-        }
-
-        private float Spread(float yaw, float aspect, float dist, Vector3 focus)
-        {
-            var pos = Pos(focus, yaw, dist); var rot = Rot(yaw);
-            float min = float.MaxValue;
-            for (int i = 0; i < _places.Count; i++)
-                for (int j = i + 1; j < _places.Count; j++)
-                {
-                    var a = Project(pos, rot, aspect, _places[i].Centre); var b = Project(pos, rot, aspect, _places[j].Centre);
-                    min = Mathf.Min(min, new Vector2((a.x - b.x) * aspect, a.y - b.y).magnitude);
-                }
-            return min;
-        }
-
-        /// <summary>Viewport point (0..1, origin bottom-left; z = depth) of a world point for a pinhole camera at this pose.</summary>
-        private static Vector3 Project(Vector3 camPos, Quaternion camRot, float aspect, Vector3 world)
-        {
-            var local = Quaternion.Inverse(camRot) * (world - camPos);
-            if (local.z <= 0.01f) return new Vector3(0.5f, 0.5f, local.z);
-            float t = Mathf.Tan(FieldOfView * 0.5f * Mathf.Deg2Rad);
-            return new Vector3(0.5f + local.x / (local.z * t * aspect) * 0.5f, 0.5f + local.y / (local.z * t) * 0.5f, local.z);
-        }
-
-        /// <summary>Fits the pose to the screen now (aspect and drag swing), then centres the places' box on the screen.</summary>
-        private void Refit()
-        {
-            int w = Mathf.Max(1, SW), h = Mathf.Max(1, SH);
-            if (w == _fitW && h == _fitH && Mathf.Approximately(_fitOrbit, _orbit)) return;
-            _fitW = w; _fitH = h; _fitOrbit = _orbit;
-            float aspect = (float)w / h, yaw = _baseYaw + _orbit;
-            var centroid = Centroid();
-            var focus = centroid;
-            for (int pass = 0; pass < 6; pass++)
-            {
-                _distance = FitDistance(yaw, aspect, focus);
-                // centre the projected box of every place
-                var pos = Pos(focus, yaw, _distance); var rot = Rot(yaw);
-                float x0 = 1, x1 = 0, y0 = 1, y1 = 0;
-                foreach (var p in _places) foreach (var s in p.Samples()) { var v = Project(pos, rot, aspect, s); x0 = Mathf.Min(x0, v.x); x1 = Mathf.Max(x1, v.x); y0 = Mathf.Min(y0, v.y); y1 = Mathf.Max(y1, v.y); }
-                float dx = (x0 + x1) * 0.5f - 0.5f, dy = (y0 + y1) * 0.5f - 0.45f;
-                var right = rot * Vector3.right; right.y = 0; right.Normalize();
-                var fwd = rot * Vector3.forward; fwd.y = 0; fwd.Normalize();
-                float span = _distance * Mathf.Tan(FieldOfView * 0.5f * Mathf.Deg2Rad) * 2f;
-                focus += (right * dx * span * aspect + fwd * dy * span / Mathf.Sin(Pitch * Mathf.Deg2Rad)) * 0.6f; // damped: places stand at different depths
-                var off = focus - centroid; if (off.magnitude > 30f) focus = centroid + off.normalized * 30f;
-            }
-            Focus = focus;
-            _distance = FitDistance(yaw, aspect, focus);
-            CameraPosition = Pos(focus, yaw, _distance);
-            CameraRotation = Rot(yaw);
-        }
-
-        /// <summary>The lookout's bearing (degrees) before any drag swing.</summary>
-        public float Bearing => _baseYaw;
-
-        /// <summary>Captures and tuning: look from this bearing and pitch.</summary>
-        public void ForcePose(float yaw, float pitch) { _baseYaw = yaw; Pitch = pitch; _orbit = 0f; _fitW = 0; }
+        /// <summary>The lookout's bearing (degrees).</summary>
+        public float Bearing => _pose.Yaw;
 
         // ------------------------------------------------------------------ regions
 
-        /// <summary>A place's screen box (pixels, origin bottom-left) as the vista camera sees it now.</summary>
+        /// <summary>The safe area the blocks divide (GUI coordinates, top-left origin).</summary>
+        public static Rect SafeGui()
+        {
+            if (ScreenSafeArea.Override.HasValue) return ScreenSafeArea.Override.Value;
+            if (ScreenOverride.HasValue) return new Rect(0, 0, SW, SH);
+            return ScreenSafeArea.Current();
+        }
+
+        /// <summary>Where the 16:9 reference frame lies on the screen now (pixels, bottom-left origin).</summary>
+        public static Rect RefRect() => VistaFrame.RefRect(Mathf.Max(1, SW), Mathf.Max(1, SH), SafeGui());
+
+        /// <summary>A place's block on the screen now (pixels, bottom-left origin).</summary>
+        public static Rect BlockRect(string zone)
+        {
+            var s = SafeGui(); var b = VistaFrame.Block(zone);
+            float x0 = s.xMin + b.xMin * s.width, x1 = s.xMin + b.xMax * s.width;
+            float yTop0 = s.yMin + b.yMin * s.height, yTop1 = s.yMin + b.yMax * s.height;
+            return Rect.MinMaxRect(x0, SH - yTop1, x1, SH - yTop0);
+        }
+
+        /// <summary>A place's screen box (pixels, origin bottom-left) as the vista camera sees it.</summary>
         public Rect ScreenRect(VistaPlace p)
         {
-            Refit();
-            float aspect = (float)Mathf.Max(1, SW) / Mathf.Max(1, SH);
+            var rr = RefRect();
             float x0 = float.MaxValue, x1 = float.MinValue, y0 = float.MaxValue, y1 = float.MinValue;
-            foreach (var s in p.Samples())
+            foreach (var w in p.Samples())
             {
-                var v = Project(CameraPosition, CameraRotation, aspect, s);
+                var v = VistaFrame.Screen(_pose, w, rr);
                 x0 = Mathf.Min(x0, v.x); x1 = Mathf.Max(x1, v.x); y0 = Mathf.Min(y0, v.y); y1 = Mathf.Max(y1, v.y);
             }
-            return Rect.MinMaxRect(x0 * SW, y0 * SH, x1 * SW, y1 * SH);
+            return Rect.MinMaxRect(x0, y0, x1, y1);
         }
 
         /// <summary>A place's centre on screen (pixels, origin bottom-left).</summary>
         public Vector2 ScreenCentre(VistaPlace p)
         {
-            Refit();
-            float aspect = (float)Mathf.Max(1, SW) / Mathf.Max(1, SH);
-            var v = Project(CameraPosition, CameraRotation, aspect, p.Centre + Vector3.up * p.Height * 0.35f);
-            return new Vector2(v.x * SW, v.y * SH);
+            var v = VistaFrame.Screen(_pose, p.Centre + Vector3.up * p.Height * 0.35f, RefRect());
+            return new Vector2(v.x, v.y);
         }
 
         /// <summary>
-        /// The place whose region holds a screen point (pixels, origin bottom-left). Inside exactly one place's box: that place; inside
-        /// several: the nearest centre among them; outside every box: the box nearest the point (so the whole screen is divided).
+        /// The place whose block holds a screen point (pixels, origin bottom-left): the safe area is divided into the owner's six
+        /// blocks (top row temple, council, rhythm; bottom row duel, healer, cave); points outside it count as its nearest edge.
         /// </summary>
         public VistaPlace RegionAt(Vector2 screen)
         {
-            VistaPlace inside = null; float insideD = float.MaxValue;
-            VistaPlace near = null; float nearD = float.MaxValue;
-            foreach (var p in _places)
-            {
-                var r = ScreenRect(p);
-                if (r.Contains(screen))
-                {
-                    float d = (ScreenCentre(p) - screen).sqrMagnitude;
-                    if (d < insideD) { insideD = d; inside = p; }
-                    continue;
-                }
-                float dx = Mathf.Max(r.xMin - screen.x, 0f, screen.x - r.xMax), dy = Mathf.Max(r.yMin - screen.y, 0f, screen.y - r.yMax);
-                float dd = dx * dx + dy * dy;
-                if (dd < nearD) { nearD = dd; near = p; }
-            }
-            return inside ?? near;
+            var s = SafeGui();
+            float u = (screen.x - s.xMin) / Mathf.Max(1f, s.width), vTop = ((SH - screen.y) - s.yMin) / Mathf.Max(1f, s.height);
+            var p = Find(VistaFrame.ZoneAt(u, vTop));
+            if (p != null) return p;
+            // a place missing on this board: the nearest place's centre
+            VistaPlace near = null; float best = float.MaxValue;
+            foreach (var q in _places) { float d = (ScreenCentre(q) - screen).sqrMagnitude; if (d < best) { best = d; near = q; } }
+            return near;
         }
 
         public VistaPlace Find(string zone) { foreach (var p in _places) if (p.Zone == zone) return p; return null; }
@@ -357,13 +229,11 @@ namespace World.Game
             }
         }
 
-        /// <summary>A drag in the vista swings the view round the camp (pixels since the last call).</summary>
-        public void Swing(float dxPixels)
-        {
-            if (State != VistaState.Vista) return;
-            float o = Mathf.Clamp(_orbit - dxPixels / Mathf.Max(1f, SW) * 90f, -MaxOrbit, MaxOrbit);
-            if (Clear(Pos(Focus, _baseYaw + o, _distance))) _orbit = o; // never swing into a hillside
-        }
+        /// <summary>
+        /// A drag in the vista (pixels since the last call). The view stays put: the screen's blocks are the places, so a swing would
+        /// move the places out of the blocks a tap picks. Kept so the pointer's drag path has somewhere to go.
+        /// </summary>
+        public void Swing(float dxPixels) { }
 
         private void Update()
         {
@@ -374,11 +244,12 @@ namespace World.Game
             if (dir != 0) CycleKey(dir);
         }
 
-        /// <summary>A / D (arrows) in the vista preview the places left to right; E or Enter confirms (the shared machine's key).</summary>
+        /// <summary>A / D (arrows) in the vista preview the places in reading order (top row left to right, then the bottom row); E or Enter confirms (the shared machine's key).</summary>
         private void CycleKey(int dir)
         {
-            var order = new List<VistaPlace>(_places);
-            order.Sort((a, b) => ScreenCentre(a).x.CompareTo(ScreenCentre(b).x));
+            var order = new List<VistaPlace>();
+            foreach (var z in VistaFrame.Zones) { var p = Find(z); if (p != null) order.Add(p); }
+            if (order.Count == 0) return;
             int i = WorldActions.Machine.Current is VistaPlace cur ? order.IndexOf(cur) : (dir > 0 ? -1 : order.Count);
             i = (i + dir + order.Count) % order.Count;
             WorldActions.Cancel();
@@ -396,11 +267,9 @@ namespace World.Game
             w.StopAuto();
             w.AddLock(Lock);
             GroundWalk.ClearMarker();
-            _orbit = 0f; _fitW = 0;
-            Refit();
             var cam = Cam;
-            Debug.Log("[Vista] open over the camp: bearing " + _baseYaw + ", pitch " + Pitch + ", " + _places.Count + " places, screen " + SW + "x" + SH + (snap ? " (start)" : ""));
-            if (snap || cam == null) { State = VistaState.Vista; Apply(CameraPosition, CameraRotation, FieldOfView); return; }
+            Debug.Log("[Vista] open over the camp: " + _pose + ", " + _places.Count + " places, screen " + SW + "x" + SH + (snap ? " (start)" : ""));
+            if (snap || cam == null) { State = VistaState.Vista; Apply(CameraPosition, CameraRotation, 1f); return; }
             _fromPos = cam.transform.position; _fromRot = cam.transform.rotation; _fromFov = cam.fieldOfView;
             _t = 0f; State = VistaState.Rising; Returns++;
         }
@@ -447,6 +316,7 @@ namespace World.Game
             w.StopAuto();
             w.Teleport(cell, heading);
             Travels++;
+            p.Pulse(DescendSeconds + 0.4f); // the place stays lit while the camera glides to it
             BeginDescent(p);
             return true;
         }
@@ -455,8 +325,8 @@ namespace World.Game
         {
             var cam = Cam;
             _going = to;
-            _fromPos = CameraPosition; _fromRot = CameraRotation; _fromFov = FieldOfView;
-            if (cam != null) { _fromPos = cam.transform.position; _fromRot = cam.transform.rotation; _fromFov = cam.fieldOfView; }
+            _fromPos = CameraPosition; _fromRot = CameraRotation;
+            if (cam != null) { _fromPos = cam.transform.position; _fromRot = cam.transform.rotation; }
             _t = 0f; State = VistaState.Descending;
         }
 
@@ -467,6 +337,7 @@ namespace World.Game
             if (cam != null)
             {
                 cam.transform.localPosition = Vector3.zero; cam.transform.localRotation = Quaternion.identity;
+                cam.ResetProjectionMatrix();
                 cam.fieldOfView = PlayerWalker.FieldOfView;
             }
             RestoreFog();
@@ -512,15 +383,13 @@ namespace World.Game
             switch (State)
             {
                 case VistaState.Vista:
-                    Refit();
-                    Apply(CameraPosition, CameraRotation, FieldOfView);
+                    Apply(CameraPosition, CameraRotation, 1f);
                     break;
                 case VistaState.Rising:
                 {
-                    Refit();
                     _t += Time.unscaledDeltaTime / RiseSeconds;
                     float e = Smooth(_t);
-                    Apply(Arc(_fromPos, CameraPosition, e), Quaternion.Slerp(_fromRot, CameraRotation, e), Mathf.Lerp(_fromFov, FieldOfView, e));
+                    Apply(Arc(_fromPos, CameraPosition, e), Quaternion.Slerp(_fromRot, CameraRotation, e), e, _fromFov);
                     WorldActions.NoteCameraMove(0.2f);
                     if (_t >= 1f) State = VistaState.Vista;
                     break;
@@ -532,7 +401,7 @@ namespace World.Game
                     var eyeRot = w != null ? w.Head.rotation : _fromRot;
                     _t += Time.unscaledDeltaTime / DescendSeconds;
                     float e = Smooth(_t);
-                    Apply(Arc(_fromPos, eyePos, e), Quaternion.Slerp(_fromRot, eyeRot, e), Mathf.Lerp(_fromFov, PlayerWalker.FieldOfView, e));
+                    Apply(Arc(_fromPos, eyePos, e), Quaternion.Slerp(_fromRot, eyeRot, e), 1f - e, PlayerWalker.FieldOfView);
                     WorldActions.NoteCameraMove(0.2f);
                     if (_t >= 1f) Finish(_going);
                     break;
@@ -543,12 +412,23 @@ namespace World.Game
         private static float Smooth(float t) { t = Mathf.Clamp01(t); return t * t * (3f - 2f * t); }
         private static Vector3 Arc(Vector3 a, Vector3 b, float e) => Vector3.Lerp(a, b, e) + Vector3.up * Mathf.Sin(e * Mathf.PI) * Vector3.Distance(a, b) * 0.08f;
 
-        private void Apply(Vector3 pos, Quaternion rot, float fov)
+        /// <summary>
+        /// Puts the camera at a pose. <paramref name="vista"/> blends the projection: 1 = the vista's (the 16:9 reference frame centred
+        /// in the safe area, <see cref="VistaFrame.Projection"/>), 0 = a plain one of field of view <paramref name="plainFov"/>.
+        /// </summary>
+        private void Apply(Vector3 pos, Quaternion rot, float vista, float plainFov = 70f)
         {
             var cam = Cam;
             if (cam == null) return;
             cam.transform.SetPositionAndRotation(pos, rot);
-            cam.fieldOfView = fov;
+            int w = Mathf.Max(1, cam.pixelWidth), h = Mathf.Max(1, cam.pixelHeight);
+            var safe = ScreenSafeArea.Override ?? ScreenSafeArea.Current();
+            var a = VistaFrame.Plain(w, h, plainFov, cam.nearClipPlane, cam.farClipPlane);
+            var b = VistaFrame.Projection(w, h, VistaFrame.RefRect(w, h, safe), cam.nearClipPlane, cam.farClipPlane);
+            var m = new Matrix4x4();
+            for (int i = 0; i < 16; i++) m[i] = Mathf.Lerp(a[i], b[i], Mathf.Clamp01(vista));
+            cam.projectionMatrix = m;
+            cam.fieldOfView = Mathf.Lerp(plainFov, FieldOfView, vista);
             if (!_fogSaved) { _fogWas = RenderSettings.fog; _fogSaved = true; }
             RenderSettings.fog = false; // the far side of the camp must read at night
         }
@@ -577,7 +457,8 @@ namespace World.Game
             int taps = Taps;
             while (State == VistaState.Rising) yield return null;
             if (State != VistaState.Vista) { Welcoming = false; yield break; }
-            var focus = Focus + Vector3.up * 6f;
+            var g0 = VistaFrame.Ground(_pose, 0.5f, 0.6f); // below the row split, so the greeting does not hide the far row
+            var focus = (g0.HasValue ? g0.Value : Focus) + Vector3.up * 4f;
             int h = prince != null ? SpeechBubbles.SayAt(focus, greeting, 5.5f) : 0;
             float until = Time.unscaledTime + 4.5f;
             while (Time.unscaledTime < until) { if (Taps != taps || State != VistaState.Vista) { SpeechBubbles.Close(h); Welcoming = false; yield break; } yield return null; }

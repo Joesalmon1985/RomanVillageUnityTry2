@@ -9,10 +9,11 @@ using World.Sim;
 namespace World.Game.Tests
 {
     /// <summary>
-    /// Opening vista (owner feedback, 21 Nov 2026): a start with no arguments is the god board hub opening on the elevated vista; all six
-    /// places are on screen at the phone, tablet and desktop ratios; the screen is divided into one region per place; a first tap on a
-    /// region previews that place and a second tap takes the player there and starts its entry; no step pads in the hub; a drag turns
-    /// the view while the prince leads.
+    /// Opening vista (owner feedback, 21 Nov 2026; target layout approved the same day, Docs/design/OPENING_TARGET.md): a start with no
+    /// arguments is the god board hub opening on the elevated vista; the screen's safe area is divided into the owner's six blocks at the
+    /// phone, tablet and desktop ratios, each block's centre picks its place and each place stands inside its own block; a first tap on a
+    /// block previews that place and a second tap takes the player there and starts its entry; taps work from the first frame, through
+    /// the welcome; no step pads in the hub; a drag turns the view while the prince leads.
     /// </summary>
     public class OpeningVistaTests
     {
@@ -37,6 +38,7 @@ namespace World.Game.Tests
             WorldBootstrap.DefaultStart = DevStart.LegacyId; // the rest of the suite (TestDefaults)
             OpeningVista.Mode = VistaMode.Off;
             OpeningVista.ScreenOverride = null;
+            ScreenSafeArea.Override = null;
             GodBoardDirector.RiseSeconds = 2.4f;
             CouncilDirector.Disabled = false;
         }
@@ -79,28 +81,40 @@ namespace World.Game.Tests
             Assert.IsTrue(p == null || p.CurrentPhase == PrinceDirector.Phase.Waiting, "no build pitch (" + (p != null ? p.CurrentPhase.ToString() : "") + ")");
         }
 
+        /// <summary>Simulates a screen: its size, and a notch safe area on the phone shape (null = the whole screen is safe).</summary>
+        private static void SimulateScreen(Vector2Int size, bool notch)
+        {
+            OpeningVista.ScreenOverride = size;
+            ScreenSafeArea.Override = notch ? ScreenSafeArea.SimulatedNotch(size.x, size.y) : (Rect?)null;
+        }
+
         [UnityTest, Timeout(120000)]
-        public IEnumerator AllSixPlaces_AreOnScreen_AndEachRegionIsItsOwn_AtThreeRatios()
+        public IEnumerator EachBlock_PicksItsPlace_AndEachPlaceStandsInItsBlock_AtThreeRatios()
         {
             yield return Launch();
             var v = OpeningVista.Instance;
-            foreach (var size in Sizes)
+            Assert.IsTrue(HubInstaller.Layout.Vista.Valid, "a composed pose fits this board (" + HubInstaller.Layout.Vista + ")");
+            var screens = new[] { (new Vector2Int(1920, 1080), false), (new Vector2Int(844, 390), true), (new Vector2Int(1024, 768), false) };
+            foreach (var (size, notch) in screens)
             {
-                OpeningVista.ScreenOverride = size;
-                var safe = ScreenSafeArea.SimulatedNotch(size.x, size.y); // GUI coordinates (top-left origin)
-                foreach (var p in v.Places)
+                SimulateScreen(size, notch);
+                var safe = OpeningVista.SafeGui();
+                foreach (var z in Zones)
                 {
+                    var p = v.Find(z);
+                    Assert.IsNotNull(p, z);
+                    // the block's centre picks the place, and so do points near its corners
+                    var block = OpeningVista.BlockRect(z);
+                    Assert.AreSame(p, v.RegionAt(block.center), z + ": its block's centre picks it at " + size);
+                    foreach (var k in new[] { new Vector2(0.1f, 0.1f), new Vector2(0.9f, 0.1f), new Vector2(0.1f, 0.9f), new Vector2(0.9f, 0.9f) })
+                        Assert.AreSame(p, v.RegionAt(new Vector2(block.xMin + k.x * block.width, block.yMin + k.y * block.height)), z + ": inside its block at " + size);
+                    // the place's centre stands inside its own block, inside the safe area
                     var c = v.ScreenCentre(p);
-                    var gui = new Vector2(c.x, size.y - c.y);
-                    Assert.IsTrue(safe.Contains(gui), p.Zone + " centre " + c + " is inside the safe area at " + size);
-                    var r = v.ScreenRect(p);
-                    Assert.GreaterOrEqual(r.xMin, 0f, p.Zone + " left edge on screen at " + size);
-                    Assert.LessOrEqual(r.xMax, size.x, p.Zone + " right edge on screen at " + size);
-                    Assert.GreaterOrEqual(r.yMin, 0f, p.Zone + " bottom on screen at " + size);
-                    Assert.LessOrEqual(r.yMax, size.y, p.Zone + " top on screen at " + size);
-                    Assert.AreSame(p, v.RegionAt(c), p.Zone + "'s own centre is its region at " + size);
+                    Assert.IsTrue(block.Contains(c), z + " centre " + c + " is inside its block " + block + " at " + size);
+                    Assert.IsTrue(safe.Contains(new Vector2(c.x, size.y - c.y)), z + " centre inside the safe area at " + size);
+                    Assert.AreSame(p, v.RegionAt(c), z + ": its own centre picks it at " + size);
                 }
-                // the whole screen is divided: every point belongs to a place, and every place has a fair share
+                // the blocks divide the whole screen: every point picks a place, and each place gets its block's share
                 var counts = v.Places.ToDictionary(p => p, p => 0);
                 for (int y = 0; y < 20; y++)
                     for (int x = 0; x < 40; x++)
@@ -109,9 +123,37 @@ namespace World.Game.Tests
                         Assert.IsNotNull(at, "every point of the screen is a region");
                         counts[at]++;
                     }
-                foreach (var kv in counts) Assert.Greater(kv.Value, 800 / 60, kv.Key.Zone + " has a region of its own at " + size + " (" + kv.Value + " of 800 samples)");
+                foreach (var kv in counts) Assert.Greater(kv.Value, 800 / 10, kv.Key.Zone + " has a block of its own at " + size + " (" + kv.Value + " of 800 samples)");
             }
-            OpeningVista.ScreenOverride = null;
+            // the far row is far, the near row near: the council's longhouse is the biggest of the far row
+            SimulateScreen(new Vector2Int(1920, 1080), false);
+            float Height(string z) => v.ScreenRect(v.Find(z)).height;
+            Assert.Greater(Height(WorldZones.HubCouncil), Height(WorldZones.HubTemple), "the council stands bigger than the temple");
+            Assert.Greater(Height(WorldZones.HubCouncil), Height(WorldZones.HubRhythm), "the council stands bigger than the drums");
+            Assert.IsTrue(CouncilDirector.Instance.Site.HasHall, "the council has its longhouse");
+            OpeningVista.ScreenOverride = null; ScreenSafeArea.Override = null;
+        }
+
+        [UnityTest, Timeout(120000)]
+        public IEnumerator FirstFrame_IsTheVista_AndATapDuringTheWelcomePreviews()
+        {
+            yield return SceneManager.LoadSceneAsync("World", LoadSceneMode.Single);
+            float t0 = Time.realtimeSinceStartup;
+            while (OpeningVista.Instance == null) { Assert.Less(Time.realtimeSinceStartup - t0, 30f, "no vista"); yield return null; }
+            var v = OpeningVista.Instance;
+            var cam = WorldBootstrap.Instance.Avatar.Camera;
+            Assert.Less(Vector3.Distance(cam.transform.position, v.CameraPosition), 0.01f, "the camera takes the vista's pose as soon as the hub is built");
+            yield return new WaitForEndOfFrame(); // the first frame that renders
+            Assert.IsTrue(OpeningVista.Up, "the vista is up by the end of the first frame");
+            Assert.Less(Vector3.Distance(cam.transform.position, v.CameraPosition), 0.01f, "the first rendered frame is the vista");
+            // the welcome is speaking; a tap now previews at once and ends the welcome
+            yield return Until(() => v.Welcoming, 10f, "the welcome starts");
+            yield return null;
+            var z = WorldZones.HubHealer;
+            Assert.AreEqual(TapOutcome.Preview, PointerInput.TapAt(OpeningVista.BlockRect(z).center), "a tap during the welcome previews");
+            Assert.AreSame(v.Find(z), WorldActions.Machine.Current, "the previewed place");
+            yield return Until(() => !v.Welcoming, 3f, "the tap ends the welcome");
+            WorldActions.Cancel();
         }
 
         [UnityTest, Timeout(300000)]
@@ -126,7 +168,7 @@ namespace World.Game.Tests
                 yield return Until(() => OpeningVista.Up, 20f, "the vista is up before " + zone);
                 yield return new WaitForSecondsRealtime(0.7f); // the tap guard after the last command
                 var p = v.Find(zone);
-                var at = v.ScreenCentre(p);
+                var at = OpeningVista.BlockRect(zone).center; // anywhere in the place's block
                 Assert.AreEqual(TapOutcome.Preview, PointerInput.TapAt(at), zone + ": the first tap previews");
                 Assert.AreSame(p, WorldActions.Machine.Current, zone + ": the preview is that place");
                 Assert.IsTrue(p.Lit, zone + ": the place lights up");

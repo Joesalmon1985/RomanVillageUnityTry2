@@ -140,8 +140,11 @@ namespace World.Game
             if (dir != null && CouncilSteward.Instance != null)
             {
                 var steward = CouncilSteward.Instance;
-                into.Add(Make(root, WorldZones.HubCouncil, Vector3.Lerp(dir.Site.Position, dir.StewardSpot, 0.35f), 7.5f, CouncilScene.TowerH * Mathf.Max(1f, dir.Site.Scale) + 1.5f, 2.4f,
-                    "The lookout tower", "Join the council at the tower?", new[] { "The village settles its disputes at the tower. Help it choose." },
+                var site = dir.Site;
+                // the longhouse and the tower together (the hub's council block), else the tower and its steward
+                var centre = site.HasHall ? Vector3.Lerp(site.Position, site.Hall, 0.55f) : Vector3.Lerp(site.Position, dir.StewardSpot, 0.35f);
+                into.Add(Make(root, WorldZones.HubCouncil, centre, site.HasHall ? 10.5f : 7.5f, CouncilScene.TowerH * Mathf.Max(1f, site.Scale) + 1.5f, 2.4f,
+                    site.HasHall ? "The council longhouse" : "The lookout tower", "Join the council?", new[] { site.HasHall ? "The village argues out its disputes at the longhouse. Help it choose." : "The village settles its disputes at the tower. Help it choose." },
                     () => Toward(dir.StewardSpot, 2.5f), () => dir.StewardSpot,
                     () => Use(steward.Entry)));
             }
@@ -159,7 +162,8 @@ namespace World.Game
             {
                 into.Add(Make(root, WorldZones.HubHealer, lodge.Position, Mathf.Max(6f, lodge.Radius * 0.8f), 5.5f, 3.2f,
                     "The healer's lodge", "Visit the healer's lodge?", new[] { "The healer keeps watch over the sickness spreading across the island." },
-                    () => Toward(lodge.Position, lodge.Radius + 1.5f), () => lodge.Position,
+                    () => HealersLodge.Instance != null ? HealersLodge.Instance.Frame.W(-0.6f, HealersLodge.BodyRadius + 5.5f) : Toward(lodge.Position, lodge.Radius + 1.5f), // in front of the lodge, by the healer
+                    () => HealersLodge.Instance != null && HealersLodge.Instance.Healer != null ? HealersLodge.Instance.Healer.transform.position : lodge.Position,
                     () => { if (HealersLodge.Instance != null) HealersLodge.Instance.Tap(); }));
             }
             {
@@ -184,21 +188,43 @@ namespace World.Game
         /// After the lookout's bearing is chosen: the hill and cave mouth beyond Mira's camp, and the cave place grown to hold both;
         /// the council's lookout tower and its waiting crowd (the council builds its own tower only when it sits).
         /// </summary>
-        public static void BuildScenery(Transform root, CampLayout layout, IReadOnlyList<VistaPlace> places, float yaw)
+        public static void BuildScenery(Transform root, CampLayout layout, IReadOnlyList<VistaPlace> places, VistaPose pose)
         {
             VistaPlace cavePlace = null;
             foreach (var p in places) if (p.Zone == WorldZones.HubCave) cavePlace = p;
             if (cavePlace != null)
             {
-                var hill = VistaTerrain.BuildCaveHill(root, layout.MiraSpot, BoardSpace.DirOf(yaw), places);
+                // the hill beyond Mira's camp and to the right of it as the vista sees it, so camp, hill and mouth fill the cave block
+                var fwd = BoardSpace.DirOf(pose.Yaw); var right = new Vector3(fwd.z, 0, -fwd.x);
+                var block = VistaFrame.Block(WorldZones.HubCave);
+                System.Func<Vector3, bool> inBlock = c =>
+                {
+                    if (!pose.Valid) return true;
+                    var r = VistaFrame.Ref(pose, c + Vector3.up * 3f); var top = VistaFrame.Ref(pose, c + Vector3.up * 9.6f);
+                    return r.z > 0 && r.x > block.xMin + 0.04f && r.x < block.xMax - 0.02f && top.y > block.yMin - 0.02f && r.y < block.yMax - 0.08f;
+                };
+                var hill = VistaTerrain.BuildCaveHill(root, layout.MiraSpot, (fwd * 0.55f + right * 0.85f).normalized, places, inBlock);
                 cavePlace.Reshape(Vector3.Lerp(layout.MiraSpot, hill.Mouth, 0.5f), 9f, 6.5f);
+                VistaDressing.BuildCaveScout(root, hill.Mouth, hill.Out);
                 // land on the lookout's side of Mira, looking past her camp to the cave mouth
                 var mira = layout.MiraSpot;
-                cavePlace.Stand = () => mira - hill.Out * 6.5f;
+                // on the near side of Mira's camp, looking past her to the mouth, as far from the other places as that side allows
+                var standAt = mira - hill.Out * 6.5f; float bestClear = -1f;
+                for (int k = -4; k <= 4; k++)
+                {
+                    var c = mira + Quaternion.Euler(0, k * 15f, 0) * (-hill.Out) * 6.5f;
+                    float clear = float.MaxValue;
+                    foreach (var o in places) if (o.Zone != WorldZones.HubCave) clear = Mathf.Min(clear, BoardSpace.Flat(o.Centre - c) - o.Radius);
+                    if (clear > bestClear + 0.5f) { bestClear = clear; standAt = c; }
+                }
+                cavePlace.Stand = () => standAt;
                 cavePlace.Face = () => hill.Mouth;
             }
             var dir = CouncilDirector.Instance;
-            if (dir != null) VistaTerrain.BuildHubTower(root, dir);
+            if (dir != null) { VistaTerrain.BuildHubTower(root, dir); VistaDressing.BuildCouncilHall(root, dir.Site); }
+            VistaDressing.BuildTempleTrade(root, TempleForecourt.Instance);
+            VistaDressing.BuildLodgePatient(root, HealersLodge.Instance);
+            if (layout.StartFire.HasValue) VistaDressing.BuildStartFire(root, layout.StartFire.Value, pose.Valid ? VistaFrame.Ground(pose, 0.5f, 0.5f) ?? layout.Hearth : layout.Hearth);
         }
 
         /// <summary>Runs a place's two-tap entry at once if it can be done now, else opens its honest refusal on the ledger card.</summary>

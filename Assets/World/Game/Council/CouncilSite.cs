@@ -23,6 +23,11 @@ namespace World.Game
         public readonly Vector3[] Loc = new Vector3[11];
         public readonly float[] Radius = new float[11];
         public int Failures;
+        /// <summary>The hub's council longhouse (behind the tower, away from the fire), when the hub has one (the opening vista's council block).</summary>
+        public Vector3 Hall;
+        public bool HasHall;
+        /// <summary>Half length and half width of the longhouse's footprint (metres).</summary>
+        public const float HallHalfLength = 9.5f, HallHalfWidth = 4.8f, HallBack = 12.5f;
 
         public Vector3 ToWorld(Vector3 local) => Position + Quaternion.Euler(0, Yaw, 0) * local;
         public static Vector3 Dir(float yaw) => Quaternion.Euler(0, yaw, 0) * Vector3.forward;
@@ -105,6 +110,27 @@ namespace World.Game
             var layout = new CampLayout(board);
             var hearth = layout.Hearth; hearth.y = 0;
             CouncilSite best = null; float bestScore = float.MaxValue;
+            // The hub (opening vista target): the tower and its longhouse on ground seen inside the council's block, the fan towards the fire.
+            if (layout.Hub && layout.CouncilAnchors.Count > 0)
+            {
+                int n = 0;
+                foreach (var a in layout.CouncilAnchors)
+                {
+                    if (n++ >= 40) break;
+                    var toFire = hearth - a; toFire.y = 0;
+                    if (toFire.magnitude < 12f) continue;
+                    float yaw = Quaternion.LookRotation(toFire.normalized).eulerAngles.y;
+                    var site = Try(board, layout, hearth, yaw, out float score, a);
+                    score += n * 0.8f; // nearer the block's target first
+                    if (score < bestScore) { bestScore = score; best = site; }
+                }
+                if (best != null)
+                {
+                    best.Why = "hub: tower " + (best.Position - hearth).magnitude.ToString("0") + " m from the fire in the vista's council block, fan yaw " + best.Yaw.ToString("0") + ", " + best.Failures + " places on relaxed ground" + (best.HasHall ? ", longhouse" : ", no room for the longhouse");
+                    return best;
+                }
+                best = null; bestScore = float.MaxValue;
+            }
             for (int k = 0; k < 12; k++)
             {
                 float yaw = k * 30f;
@@ -115,18 +141,30 @@ namespace World.Game
             return best;
         }
 
-        static CouncilSite Try(Board board, CampLayout layout, Vector3 hearth, float yaw, out float score)
+        static CouncilSite Try(Board board, CampLayout layout, Vector3 hearth, float yaw, out float score, Vector3? fixedTower = null)
         {
             var site = new CouncilSite { Yaw = yaw, Hearth = hearth };
             var dir = Dir(yaw);
             score = 0f;
-            // the tower: about 18 m behind the fire, on clear ground
+            // the tower: about 18 m behind the fire, on clear ground (the hub: at the given spot, with room for the longhouse behind it)
             Vector3 tower = hearth - dir * 18f; bool towerOk = false;
-            for (float d = 18f; d <= 26f && !towerOk; d += 2f)
+            if (fixedTower.HasValue)
             {
-                var c = hearth - dir * d;
-                if (Blocked(board, layout, c, 6f) == null && OkTerrain(board, c)) { tower = c; towerOk = true; }
+                tower = fixedTower.Value; tower.y = 0;
+                towerOk = Blocked(board, layout, tower, 6f) == null && OkTerrain(board, tower);
+                var hall = tower - dir * HallBack;
+                bool hallOk = OkTerrain(board, hall) && board.Topology.HexAt(hall.x, hall.z) >= 0;
+                for (int k = -1; k <= 1 && hallOk; k++)
+                    if (Blocked(board, layout, hall + Quaternion.Euler(0, yaw, 0) * new Vector3(k * 6f, 0, 0), HallHalfWidth + 1f) != null) hallOk = false;
+                site.Hall = hall; site.HasHall = hallOk;
+                if (!hallOk) score += 400f;
             }
+            else
+                for (float d = 18f; d <= 26f && !towerOk; d += 2f)
+                {
+                    var c = hearth - dir * d;
+                    if (Blocked(board, layout, c, 6f) == null && OkTerrain(board, c)) { tower = c; towerOk = true; }
+                }
             if (!towerOk) score += 60f;
             site.Position = tower;
             for (int t = 2; t <= 12; t++)

@@ -74,19 +74,13 @@ namespace World.Game.Tests
             Assert.IsNotNull(HealersLodge.Instance); Assert.IsNotNull(DuelRing.Instance); Assert.IsNotNull(ExpeditionCamp.Instance); Assert.IsNotNull(TempleForecourt.Instance);
             Assert.IsNotNull(GodBoardDirector.Instance.OwnTemple.GetComponentInChildren<TempleAltar>(), "the altar's own path stays");
 
-            // The first view (half of the 70 degree vertical view on a 2:1 phone is about 56 degrees each way): temple, tower, circle, Mira.
+            // The first walking view (half of the 70 degree vertical view on a 2:1 phone is about 56 degrees each way): the circle and Mira.
             var spawn = WalkLattice.ToWorld(layout.Spawn); float yaw = WalkLattice.Yaw(layout.SpawnHeading);
             Assert.AreEqual(layout.SpawnHeading, PlayerWalker.Instance.Heading, "the walker starts on the layout's heading");
-            Assert.Less(Mathf.Abs(Bearing(spawn, yaw, HubInstaller.Zone(WorldZones.HubTemple).transform.position)), 56f, "temple in the first view");
-            Assert.Less(Mathf.Abs(Bearing(spawn, yaw, CouncilDirector.Instance.Site.Position)), 56f, "tower in the first view");
             Assert.Less(Mathf.Abs(Bearing(spawn, yaw, layout.DanceCircleCentre)), 56f, "circle in the first view");
             Assert.Less(Mathf.Abs(Bearing(spawn, yaw, layout.MiraSpot)), 56f, "Mira in the first view");
-            // The ring and the lodge are one turn away (60 to 150 degrees off the spawn heading).
-            foreach (var z in new[] { WorldZones.HubHealer, WorldZones.HubDuel })
-            {
-                float b = Mathf.Abs(Bearing(spawn, yaw, HubInstaller.Zone(z).transform.position));
-                Assert.That(b, Is.InRange(56f, 150f), z + " is one turn away");
-            }
+            // The opening vista's target (owner, 21 Nov 2026) places the rest: each place stands in its own block of the vista's frame.
+            AssertPlacesInTheirBlocks(layout, "seed 7");
             // The lodge keeps away from the council's herbs place.
             Assert.Greater(BoardSpace.Flat(HubInstaller.Zone(WorldZones.HubHealer).transform.position - CouncilDirector.Instance.Site.Loc[4]), 20f);
             // The legacy look is unchanged: no hub on a board that was not dealt.
@@ -656,8 +650,29 @@ namespace World.Game.Tests
             if (EncounterHost.Instance.IsRunning) { EncounterHost.Instance.Abort(); yield return Until(() => !EncounterHost.Instance.IsRunning, 10f, "spire dance ends"); yield return null; AssertBack(atSpire, "spire dance"); }
         }
 
+        /// <summary>The hub's places as the vista's composed pose sees them: each one's centre inside its own block of the 16:9 frame.</summary>
+        private static void AssertPlacesInTheirBlocks(CampLayout layout, string what)
+        {
+            Assert.IsTrue(layout.Vista.Valid, what + ": a composed vista pose fits the board");
+            var at = new System.Collections.Generic.List<(string, Vector3)>
+            {
+                (WorldZones.HubTemple, HubInstaller.Zone(WorldZones.HubTemple).transform.position + Vector3.up * 3f),
+                (WorldZones.HubCouncil, CouncilDirector.Instance.Site.Position + Vector3.up * 3f),
+                (WorldZones.HubRhythm, layout.DanceCircleCentre + Vector3.up * 1f),
+                (WorldZones.HubHealer, HubInstaller.Zone(WorldZones.HubHealer).transform.position + Vector3.up * 2f),
+                (WorldZones.HubCave, layout.MiraSpot + Vector3.up * 1f),
+                (WorldZones.HubDuel, HubInstaller.Zone(WorldZones.HubDuel).transform.position + Vector3.up * 1f),
+            };
+            foreach (var (zone, p) in at)
+            {
+                var r = VistaFrame.Ref(layout.Vista, p);
+                Assert.Greater(r.z, 0f, what + ": " + zone + " in front of the vista");
+                Assert.IsTrue(VistaFrame.Block(zone).Contains(new Vector2(r.x, r.y)), what + ": " + zone + " at " + r + " inside its block " + VistaFrame.Block(zone));
+            }
+        }
+
         [UnityTest, Timeout(600000)]
-        public IEnumerator Framing_OnFourSeeds_TempleTowerCircleAndMiraAreInViewOrOneTurnAway()
+        public IEnumerator Framing_OnFourSeeds_CircleAndMiraInView_AndEveryPlaceInItsVistaBlock()
         {
             foreach (ulong seed in new ulong[] { 7UL, 3000UL, 3001UL, 42UL })
             {
@@ -665,28 +680,10 @@ namespace World.Game.Tests
                 var layout = new CampLayout(S.Board);
                 Assert.IsTrue(layout.Hub, "seed " + seed);
                 var spawn = WalkLattice.ToWorld(layout.Spawn); float yaw = WalkLattice.Yaw(layout.SpawnHeading);
-                var targets = new[]
-                {
-                    ("temple", HubInstaller.Zone(WorldZones.HubTemple).transform.position),
-                    ("tower", CouncilDirector.Instance.Site.Position),
-                    ("circle", layout.DanceCircleCentre),
-                    ("mira", layout.MiraSpot),
-                };
-                foreach (var (name, pos) in targets)
-                {
-                    float b = Mathf.Abs(Bearing(spawn, yaw, pos));
-                    Assert.Less(b, 56f + 60f, "seed " + seed + ": " + name + " is in the first view or one turn away (" + b.ToString("0") + " degrees off)");
-                }
-                // Mira and the circle are in the first view (the spawn-heading rule), the temple within one turn.
+                // Mira and the circle are in the first walking view (the spawn-heading rule); every place stands in its vista block.
                 Assert.Less(Mathf.Abs(Bearing(spawn, yaw, layout.DanceCircleCentre)), 56f, "seed " + seed + ": circle in the first view");
                 Assert.Less(Mathf.Abs(Bearing(spawn, yaw, layout.MiraSpot)), 56f, "seed " + seed + ": Mira in the first view");
-                // One turn left and right still holds the lodge and the ring in view of one of them.
-                foreach (var z in new[] { WorldZones.HubHealer, WorldZones.HubDuel })
-                {
-                    float best = 180f;
-                    foreach (int k in new[] { -1, 0, 1 }) best = Mathf.Min(best, Mathf.Abs(Bearing(spawn, yaw + 60f * k, HubInstaller.Zone(z).transform.position)));
-                    Assert.Less(best, 56f, "seed " + seed + ": " + z + " is in view after at most one turn");
-                }
+                AssertPlacesInTheirBlocks(layout, "seed " + seed);
             }
         }
     }
