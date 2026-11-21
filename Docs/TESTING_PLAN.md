@@ -2,17 +2,19 @@
 
 A hands-on checklist to try each minigame and its world-first UI. About 60–90 minutes for everything; each section stands alone. For each one: how to get there, what you should see, what to try, and what to tell us.
 
-Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.md` (what each place is meant to show), `Docs/progress/STATUS_2026-11-20.md` (what is built), `Docs/progress/DECISIONS_2026-11-20.md` (the choices made for you).
+Written 20 Nov 2026, updated 21 Nov 2026 (vista and tutorials merged) for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.md` (what each place is meant to show), `Docs/progress/STATUS_2026-11-20.md` (what is built), `Docs/progress/DECISIONS_2026-11-20.md` (the choices made for you).
 
 ---
 
 ## 0. Setup (5 minutes)
 
 **Run the game**
-- Easiest: the packaged build `..\wt-gb\Builds\Windows\WorldMVP.exe` (rebuilt at the end of this session).
-- **Since 21 Nov 2026 a plain launch (double-click, no arguments) and Esc → New game start the god board hub** and open on the vista over the camp. `-start dev.godboard -seed 7` still gives the same hub on the fixed seed. The old prehistoric economy (the prince's woodcutter's hut) is only the developer start `-start dev.legacy`.
-- For a phone-shaped window, start it from a command prompt in that folder:
-  `.\WorldMVP.exe -seed 7 -screen-fullscreen 0 -screen-width 844 -screen-height 390` (in PowerShell the `.\` is needed; in the old Command Prompt it can be left off)
+- Easiest: the packaged build `..\wt-gb\Builds\Windows\WorldMVP.exe` (rebuilt on 21 Nov 2026 after the merge).
+- **Double-click it (no arguments): you start in the god board hub, looking out over the camp from above at night (the vista).** Esc → New game does the same. `.\WorldMVP.exe -start dev.godboard -seed 7` gives the same hub on the fixed island.
+- **The old prehistoric economy (the prince's woodcutter's hut, no vista) is only a developer start:** `.\WorldMVP.exe -start dev.legacy` (also F1 → Starts → legacy).
+- For a phone-shaped window, start it from PowerShell in that folder:
+  `.\WorldMVP.exe -seed 7 -screen-fullscreen 0 -screen-width 844 -screen-height 390` (the `.\` is needed in PowerShell)
+- Unity remembers the last window size and mode, so after a windowed run the next double-click opens the same window. Delete the registry key `HKCU\Software\Joe Salmon\WorldMVP` to get full screen back (the agents did not touch the registry).
 - Or in Unity: open the folder, open `Assets/Scenes/World.unity`, press Play.
 
 **Your music at the spires (optional)**
@@ -24,6 +26,7 @@ Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.
 - Tap (click) a person or thing once: it **previews** (a ring, a short card: "Sacrifice a lamb?").
 - Tap it again: it **does it**. Tap anywhere else: cancel.
 - The game opens on **the vista**: the whole camp from above at night. Tap a part of the screen once: the place drawn there lights up and a card names its game. Tap it again: you go there and its game starts. Esc (or a tap on the sky) brings you back to the vista.
+- **Tutors:** each game has a first-time tutorial. A person in that place speaks in a speech bubble (their name, `n / N`, one line, a **Skip** button) and a gold ring pulses on what to tap. See section 1b.
 - Tap plain ground: you walk there (a footprint ring marks the spot). Drag sideways: you look round (also while someone leads you or talks to you). There are no step buttons on screen any more.
 - Keys still work: arrows/WASD to step and turn, E to use the nearest thing (twice to confirm), Esc for the menu.
 
@@ -51,6 +54,41 @@ Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.
 5. On the keyboard: A / D in the vista light the places left to right, E or Enter goes, W steps down into the walking view.
 
 **Tell us:** Is each place obvious from the vista? Do the screen parts feel right (does a tap pick the place you meant)? Is the glide down too slow or fast?
+
+**Known:** small, far places at phone size (at 844 x 390 the far ones are about 45 px tall; the regions are large, the art is small). The hub's walkable ground is still level; the hill and knolls are scenery you cannot climb. The camera angle was tuned on seed 7 only. Second tap goes there and starts the game at once (no third confirm): tell us if you want one.
+
+---
+
+## 1b. The tutorials: who teaches what (15 minutes, play them as you meet each game)
+
+**How they work.** Nothing starts while you are still looking out over the camp: the prince's welcome has the screen. When you tap a place twice and arrive, that game's tutorial begins by itself with its own tutor. A bubble hangs over the tutor's head (or sits at the top of the screen when the tutor is not in view) and a gold ring pulses on the thing to tap. The tutorials only talk and highlight: they never block the game. Doing a step early just moves them on. **Skip** in the bubble ends that game's tutorial for good. Finished and skipped tutorials are remembered on this machine (Windows registry, per game), so each one speaks once.
+
+**Again:** Esc → the **Tutorials** tab → "Show me how again" for any game. It starts when you are at that place and shows every step, including ones you have already done (each for a few seconds). (Esc belongs to the god board while it is open: leave by the lamb stone first.)
+
+| Place on the vista | Tutor | What the first turn teaches |
+|---|---|---|
+| Temple (hex board) | the temple keeper at the altar, then the prince on the ledge | sacrifice at the altar, place the setup camp and road (ghost, then confirm), read the baskets and the build costs, build or trade, tip the hourglass to end the turn, leave by the lamb stone. Tips when they happen: an envoy's offer, a 7 and the discard sack, the epidemic |
+| Healer's lodge (plague) | the healer | ask "How bad is it?", read the lanterns and the rate stick, a vessel, then walk to a shrine with demons, tap once (preview), again (banish), watch the charm cool. If no demon stands yet she says so and waits |
+| Lookout tower (council) | the recorder | press on, preview a proposal note (two places light), commit it, read the tablet, push again, bank with the seal. Tip on a bust. Only when a dispute is called (F1 → Council if the steward says none is) |
+| Dance circle (rhythm) | Sol | hit the drums, read the torches, pause on the log seat and resume, read Sol's tally, tune with the bell |
+| Mira's camp by the cave (crystal dungeon) | Mira | nothing on the surface. After "Set out for the crystals" and the way down: step with the forward stone, turn, tap a marker she can act on (twice), tap a companion, open the journal, "Lead me out" |
+| Practice ring (duel) | the referee | fill the hand with stones, take an orb back, lock the secret Ward with the palm (twice), build and cast a weave, read the beads and the tally stick, leave by the gate. Practice and friendly duels only |
+
+**Try**
+1. Start with no arguments. While the prince talks and lights the places, no gold ring and no second bubble should appear.
+2. Tap a place twice. After the camera lands, that place's tutor speaks. Does the first bubble tell you what to do?
+3. Press Skip in one: it ends and does not come back. Esc → Tutorials → "Show me how again": it begins again.
+4. Go back to the vista in the middle of a tutorial (Esc or a tap on the sky): it goes quiet, and carries on where it stopped when you return to that place.
+
+**Tell us:** Was the tutor's line clear? Did the ring point at the right thing? Did any bubble cover something you needed? Were you ever told something you had already done?
+
+**Known rough edges:**
+- **The board's first turn is timed.** The AI turns and the hourglass keep running while the keeper talks; a slow reader can lose the first turn. The tutorial then moves on by itself.
+- **A target out of view only gets a soft gold glow at the screen edge** and one line ("Out of view: turn towards the glow"), no arrow. Easy to miss on a bright screen.
+- **The tutor is a name on the bubble, not always a figure you can see** (the prince on the board's ledge, Mira underground).
+- The plague's banish step can wait a long time (infection is slow); it speaks only in the healer's yard, so the healer's tutorial may take two visits.
+- A ledger tablet from an earlier step and the bubble can overlap at phone size; tap elsewhere to close the tablet.
+- Not tried by hand: a real finger on a phone, audio, the remembered-tutorials store in the player (tests use a memory store).
 
 ---
 
@@ -144,7 +182,7 @@ Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.
 
 ## 6. The crystal dungeon with Mira (15 minutes)
 
-**Get there:** tap Mira at her expedition camp → "Set out for the crystals". Follow her to the Stonemark Glade and down the stair. (Faster: F1 → Campaign.)
+**Get there:** tap Mira's camp on the vista twice (or walk to her) → "Set out for the crystals". Follow her to the Stonemark Glade and down the stair. (Faster: F1 → Campaign.)
 
 **You should see:** underground, four footprint stones at the bottom for step forward, step back, turn left, turn right; Mira and her six companions; the pouch and journal on Mira's belt. No minimap.
 
@@ -163,7 +201,7 @@ Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.
 
 ## 7. The Ward duel at the ring (10 minutes)
 
-**Get there:** walk to the fenced duel ring; tap the referee or the ring (twice) → practice duel; Mira walks over.
+**Get there:** tap the practice ring on the vista twice (or walk to the fenced ring); tap the referee or the ring (twice) → practice duel; Mira walks over.
 
 **You should see:** essence stones at your feet to build a weave, orbs in your hand as you shape it, bead rails for casts left, tally sticks for the history (without ever revealing where the hidden Ward is), the referee, and a gate to leave.
 
@@ -203,6 +241,8 @@ Run the exe at 844 × 390 (section 0), then at 1024 × 768 and 1920 × 1080. In 
 ---
 
 ## 10. Optional: the automatic smoke runs
+
+(A packaged `-autoplay` run without `-start` keeps the legacy game its scripts were written for; the vista is off in those runs unless `-vista` is given.)
 
 From a command prompt in `Builds\Windows`, e.g. `.\WorldMVP.exe -autoplay world_ui_tour -novsync -screen-fullscreen 0 -screen-width 844 -screen-height 390`. Each prints `[AutoPlay] … OK` in its log and closes. The full list is in `Docs/PLAY_GUIDE.md` ("God board smoke runs").
 
