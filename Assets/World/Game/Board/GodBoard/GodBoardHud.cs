@@ -54,6 +54,7 @@ namespace World.Game
         {
             if (ExtraOver != null) foreach (Func<Vector2, bool> f in ExtraOver.GetInvocationList()) if (f(screenPos)) return true;
             var g = new Vector2(screenPos.x, Screen.height - screenPos.y);
+            if (TutorialDirector.Contains(g)) return true; // the tutor's bubble
             foreach (var r in _rects) if (r.Contains(g)) return true;
             return false;
         }

@@ -45,7 +45,7 @@ namespace World.Game
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStatics() { Objective = DefaultObjective; NoticeText = null; _noticeUntil = 0; Visible = false; }
 
-        public enum Page { Controls, HowToPlay }
+        public enum Page { Controls, HowToPlay, Tutorials }
         public Page MenuPage = Page.Controls;
 
         private bool _menu;
@@ -249,14 +249,15 @@ namespace World.Game
 
             GUI.Label(new Rect(r.x + pad, y, UiStyle.Px(300), UiStyle.Px(50)), "Paused", UiStyle.Title);
             // Page tabs.
-            float tw = UiStyle.Px(230), th = UiStyle.Px(46), tx = r.xMax - pad - 2 * tw - UiStyle.Px(12);
+            float tw = UiStyle.Px(180), tg = UiStyle.Px(10), th = UiStyle.Px(46), tx = r.xMax - pad - 3 * tw - 2 * tg;
             if (Tab(new Rect(tx, y, tw, th), "Controls", MenuPage == Page.Controls)) MenuPage = Page.Controls;
-            if (Tab(new Rect(tx + tw + UiStyle.Px(12), y, tw, th), "How to play", MenuPage == Page.HowToPlay)) MenuPage = Page.HowToPlay;
+            if (Tab(new Rect(tx + tw + tg, y, tw, th), "How to play", MenuPage == Page.HowToPlay)) MenuPage = Page.HowToPlay;
+            if (Tab(new Rect(tx + 2 * (tw + tg), y, tw, th), "Tutorials", MenuPage == Page.Tutorials)) MenuPage = Page.Tutorials;
             // WU-2: the god board's Clear view setting (the plain on-screen controls instead of the altar ledge), saved per player.
             if (GodBoardDirector.Instance != null)
             {
                 bool cv = GodBoardSettings.ClearView;
-                if (GUI.Button(new Rect(r.x + pad + UiStyle.Px(300), y, UiStyle.Px(330), th), "Clear view: " + (cv ? "on" : "off"), UiStyle.Button)) ToggleClearView();
+                if (GUI.Button(new Rect(r.x + pad + UiStyle.Px(300), y, UiStyle.Px(320), th), "Clear view: " + (cv ? "on" : "off"), UiStyle.Button)) ToggleClearView();
             }
             y += UiStyle.Px(60);
 
@@ -264,6 +265,7 @@ namespace World.Game
             float bodyH = r.yMax - y - pad - bh - UiStyle.Px(44);
             var body = new Rect(r.x + pad, y, w - 2 * pad, bodyH);
             if (MenuPage == Page.Controls) DrawColumns(body, GuideText.ControlsLeft, GuideText.ControlsRight);
+            else if (MenuPage == Page.Tutorials) TutorialMenu.Draw(body, CloseMenu);
             else DrawColumns(body, GuideText.HowToPlayLeft(_boot.Sim.State), GuideText.HowToPlayRight(_boot.Sim.State));
 
             // Message line (last save / load result).

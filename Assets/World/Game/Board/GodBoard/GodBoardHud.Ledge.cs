@@ -538,6 +538,7 @@ namespace World.Game
             if (!pressed) return;
             var g = new Vector2(pos.x, Screen.height - pos.y);
             if (LedgerCard.IsOpen && LedgerCard.LastRect.Contains(g)) return;   // the tablet takes its own taps
+            if (TutorialDirector.Contains(g)) return;                            // so does the tutor's bubble
             for (int i = 0; i < _rects.Count; i++) if ((i < _ledgeRectAt || i >= _ledgeRectAt + _ledgeRectN) && _rects[i].Contains(g)) return;   // a modal or card drawn over the ledge
             string id = _rig.Pick(pos);
             if (id != null) TapLedge(id);

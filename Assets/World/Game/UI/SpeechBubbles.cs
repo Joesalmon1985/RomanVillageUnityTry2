@@ -200,6 +200,7 @@ namespace World.Game
         /// </summary>
         public static bool HandleTap(Vector2 guiPoint)
         {
+            if (TutorialDirector.Contains(guiPoint)) { TutorialDirector.Instance.TapAt(guiPoint); return true; } // the tutor's bubble (Skip) takes its own taps
             int f = Time.frameCount;
             for (int i = All.Count - 1; i >= 0; i--)
             {
@@ -236,6 +237,7 @@ namespace World.Game
         /// <summary>True if a GUI point is over a drawn bubble or reply.</summary>
         public static bool Contains(Vector2 guiPoint)
         {
+            if (TutorialDirector.Contains(guiPoint)) return true;
             int f = Time.frameCount;
             foreach (var b in All)
             {
