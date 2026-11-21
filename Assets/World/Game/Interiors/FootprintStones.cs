@@ -54,6 +54,8 @@ namespace World.Game
             if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return false;
             // P2a (WU-8 open problem 3): not while the camera rises to the god board, while it is up, nor while it falls back
             if (GodBoardDirector.Instance != null && GodBoardDirector.Instance.View != BoardView.Altar) return false;
+            // Opening vista (owner, 21 Nov 2026): no step pads on the surface, in any mode; they are the dungeon's footprint stones only.
+            if (Interiors.Current == null) return false;
             switch (Mode)
             {
                 case StoneMode.Never: return false;

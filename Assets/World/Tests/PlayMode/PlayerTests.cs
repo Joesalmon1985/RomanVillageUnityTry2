@@ -232,14 +232,13 @@ namespace World.Game.Tests
             FreeEdge(out int a, out _, out int h);
             W.Teleport(CornerCell(a), h);
             yield return null;
+            // Opening vista (owner, 21 Nov 2026): no step pads on the surface; the strips are moves only underground
+            // (InteriorTests.Band_And_Keys_StepAndTurn...). On the surface a strip press does nothing; keys and taps move.
+            Assert.IsFalse(TouchStrips.StripsMove, "on the surface the strips are not moves");
             TouchStrips.SimulatePress(4); yield return null; yield return Idle();
-            Assert.AreEqual((h + 1) % 6, W.Heading, "strip 4 turns right");
-            TouchStrips.SimulatePress(1); yield return null; yield return Idle();
-            Assert.AreEqual(h, W.Heading, "strip 1 turns left");
+            Assert.AreEqual(h, W.Heading, "strip 4 does not turn on the surface");
             TouchStrips.SimulatePress(2); yield return null; yield return Idle();
-            AssertAt(W, CornerCell(a) + WalkLattice.Dir(h), "strip 2 forward");
-            TouchStrips.SimulatePress(3); yield return null; yield return Idle();
-            AssertAt(W, CornerCell(a), "strip 3 back");
+            AssertAt(W, CornerCell(a), "strip 2 does not step on the surface");
         }
 
         // ---------------- auto-walk and follow ----------------

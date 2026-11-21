@@ -78,6 +78,38 @@ namespace World.Game
 
         private float _yaw, _pitch = FixedPitch;
 
+        // ---------------- free look (opening vista, owner 21 Nov 2026) ----------------
+
+        /// <summary>
+        /// Degrees the head is turned from the body by a drag while the walker cannot turn itself: locked, or led by someone
+        /// (<see cref="Following"/>). The view always answers a drag. Once the walker is free again and the finger is up, the look
+        /// folds into the body: the walker turns to the nearest sixth from where it is looking.
+        /// </summary>
+        public float LookOffset => _look;
+        public bool LookHeld => _lookHeld;
+        private float _look; private bool _lookHeld;
+
+        /// <summary>Turns the head by a drag (positive = right).</summary>
+        public void Look(float degrees) { _look = Mathf.Clamp(_look + degrees, -175f, 175f); _lookHeld = true; ApplyHead(); }
+        /// <summary>The finger is up: the look folds into the body when the walker is free.</summary>
+        public void ReleaseLook() => _lookHeld = false;
+
+        private void ApplyHead() { if (Head != null) Head.localRotation = Quaternion.Euler(_pitch, _look, 0); }
+
+        private void LateUpdate()
+        {
+            if (_look == 0f) return;
+            if (!_lookHeld && !IsLocked && Following == null && !IsGliding)
+            {
+                int turns = Mathf.RoundToInt(_look / 60f);
+                _yaw += _look; _look = 0f;
+                if (!IsOffLattice) { BeginTurn(Heading + turns, TurnSeconds * (turns != 0 ? 1f : 0.6f)); return; }
+                ApplyPose(transform.position, false);
+                return;
+            }
+            ApplyHead();
+        }
+
         private enum ActionKind { None, Step, Turn, Bump }
         private enum Move { None, Forward, Back, Left, Right }
         private struct Action_
@@ -217,6 +249,7 @@ namespace World.Game
             Cell = cell; Heading = Mod6(heading);
             _action = default; _buffered = Move.None;
             IsOffLattice = false;
+            _look = 0f; _lookHeld = false;
             _yaw = WalkLattice.Yaw(Heading); _pitch = FixedPitch;
             ApplyPose(CellPosition(cell));
         }
@@ -229,6 +262,7 @@ namespace World.Game
         {
             _action = default; _buffered = Move.None;
             IsOffLattice = true;
+            _look = 0f; _lookHeld = false;
             _yaw = yaw; _pitch = pitch;
             ApplyPose(position);
         }
@@ -339,7 +373,7 @@ namespace World.Game
         {
             if (InputCaptured) return;
             var m = KeyMove(Input.GetKeyDown);
-            if (m == Move.None) m = StripMove(TouchStrips.Pressed);
+            if (m == Move.None && TouchStrips.StripsMove) m = StripMove(TouchStrips.Pressed);
             if (m == Move.None) return;
             if (IsAutoWalking) StopAuto();
             Request(m);
@@ -349,7 +383,7 @@ namespace World.Game
         {
             if (InputCaptured) return;
             var m = KeyMove(Input.GetKey);
-            if (m == Move.None) m = StripMove(TouchStrips.Held);
+            if (m == Move.None && TouchStrips.StripsMove) m = StripMove(TouchStrips.Held);
             if (m != Move.None) Begin(m);
         }
 
@@ -496,7 +530,7 @@ namespace World.Game
         {
             if (sampleGround && !IsOffLattice) feet.y = GroundHeight(feet);
             transform.SetPositionAndRotation(feet, Quaternion.Euler(0, _yaw, 0));
-            if (Head != null) Head.localRotation = Quaternion.Euler(_pitch, 0, 0);
+            if (Head != null) Head.localRotation = Quaternion.Euler(_pitch, _look, 0);
         }
 
         private static Vector3 Flat(Vector3 v) { v.y = 0; return v; }

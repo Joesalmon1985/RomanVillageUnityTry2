@@ -748,7 +748,7 @@ namespace World.Game
             }
             if (_cam != w.Camera) { _cam = w.Camera; _root.transform.SetParent(_cam.transform, false); _root.transform.localPosition = new Vector3(0.2f, -0.2f, 0.55f); _root.transform.localRotation = Quaternion.Euler(-25f, 20f, 15f); _root.transform.localScale = Vector3.one * 0.4f; }
             bool show = PlagueApi.Active(s) && s.Historic == null && !_v.Elevated && (_v.Dir == null || !_v.Dir.IsOpen)
-                        && !(EncounterHost.Instance != null && EncounterHost.Instance.IsRunning);
+                        && !(EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) && !OpeningVista.Active; // not in the hand while looking out over the camp
             if (_root.activeSelf != show) _root.SetActive(show);
             long left = PlagueApi.BanishCooldownLeft(s);
             Ready01 = left <= 0 ? 1f : 1f - Mathf.Clamp01(left / (float)PlagueRules.BanishCooldownTicks);

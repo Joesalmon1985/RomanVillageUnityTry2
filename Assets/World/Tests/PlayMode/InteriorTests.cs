@@ -337,7 +337,7 @@ namespace World.Game.Tests
             Assert.IsFalse(cut.IsOpen);
             W.Teleport(cut.Cell + WalkLattice.Dir(cut.OutHeading), cut.OutHeading + 3);
             yield return null;
-            yield return Strip(2);
+            yield return Idle(); W.Forward(); yield return null; yield return null; yield return Idle(); // the forward move (a strip underground, W anywhere)
             StringAssert.Contains("the way is shut", BubbleText().ToLowerInvariant());
         }
 
@@ -348,7 +348,7 @@ namespace World.Game.Tests
             var fs = FootprintStones.Instance;
             Assert.IsNotNull(fs, "the stones exist");
             Assert.AreEqual(WorldZones.CryMove, fs.GetComponent<WorldZone>().ZoneId);
-            Assert.IsTrue(fs.ShouldShow(), "early on the surface");
+            Assert.IsFalse(fs.ShouldShow(), "never on the surface (opening vista: no step pads in the hub)");
             FootprintStones.EarlySeconds = 0f;
             Assert.IsFalse(fs.ShouldShow(), "hidden later on the surface");
             W.Teleport(C("glade/quarry_upper/safe"), 0); yield return null;

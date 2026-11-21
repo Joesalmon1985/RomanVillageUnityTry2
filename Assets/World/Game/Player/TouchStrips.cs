@@ -13,6 +13,12 @@ namespace World.Game
     /// </summary>
     public static class TouchStrips
     {
+        /// <summary>
+        /// True where the strips are the four moves on foot: underground only (the footprint stones). On the surface the owner removed
+        /// the step pads (21 Nov 2026): moving is tap-to-walk, drag-to-turn and the keys. The dance's drums use the strips regardless.
+        /// </summary>
+        public static bool StripsMove => Interiors.Current != null;
+
         /// <summary>Height of the band as a fraction of the screen height.</summary>
         public const float BandFraction = 0.3f;
 
