@@ -47,7 +47,9 @@ namespace World.Game.Tests
         public void SetUpTutorials()
         {
             TutorialStore.UseMemory = true; TutorialStore.ClearMemory();
-            TutorialDirector.Enabled = true; TutorialDirector.TimeScale = 0.02f;
+            TutorialDirector.Enabled = true;
+            CaptureDir = File.Exists(CaptureFile) ? File.ReadAllText(CaptureFile).Trim() : null;
+            TutorialDirector.TimeScale = CaptureDir != null ? 0.6f : 0.02f; // a picture takes about half a second: the last words must still be up
             GodBoardDirector.RiseSeconds = 0.05f;
             PointerInput.InputEnabled = true;
             GodBoardSettings.Override = null;
@@ -56,7 +58,6 @@ namespace World.Game.Tests
             PrinceInstaller.Disabled = true;
             if (TutorialDirector.Instance != null) TutorialDirector.Instance.ResetProgress();
 #if UNITY_EDITOR
-            CaptureDir = File.Exists(CaptureFile) ? File.ReadAllText(CaptureFile).Trim() : null;
             if (CaptureDir != null)
             {
                 Directory.CreateDirectory(CaptureDir);

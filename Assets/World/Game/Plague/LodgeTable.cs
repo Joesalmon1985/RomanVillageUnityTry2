@@ -702,6 +702,8 @@ namespace World.Game
 
         /// <summary>The charm is drawn in front of the camera now.</summary>
         public bool Held => _root != null && _root.activeSelf;
+        /// <summary>Where the held charm is in the world (it rides on the camera), or null when it is not drawn (the plague tutorial rings it).</summary>
+        public Vector3? HeldPoint => _root != null && _root.activeSelf ? _root.transform.position : (Vector3?)null;
         /// <summary>0 (just cast) to 1 (ready).</summary>
         public float Ready01 { get; private set; } = 1f;
 

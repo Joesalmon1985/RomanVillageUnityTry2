@@ -102,7 +102,7 @@ namespace World.Game
                 () => { var n = NearestDemonShrine(); return n != null && P != null ? TutorialTargets.OfPoint(P.NodePosition(n.Id) + Vector3.up * 1.2f, Screen.height * 0.16f) : null; },
                 () => BanishedNow(t)));
             var charm = Step("charm", "See the charm in your hand dim while it cools. It glows again when it is ready.",
-                () => BanishCharm.Instance != null && BanishCharm.Instance.Held ? TutorialTargets.Of(BanishCharm.Instance) : null, null);
+                () => { var c = BanishCharm.Instance; var p = c != null ? c.HeldPoint : null; return p.HasValue ? TutorialTargets.OfPoint(p.Value, Screen.height * 0.2f) : null; }, null);
             charm.AutoSeconds = 7f;
             steps.Add(charm);
             return steps;

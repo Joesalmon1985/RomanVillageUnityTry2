@@ -84,8 +84,11 @@ namespace World.Game
             var again = Step("again", "You can press on once more for more ground, but a push that leaves nothing that fits is a bust. Tap the hand to try.",
                 () => Target("hand"), () => t.Count("push") > t.Count("p0") || t.Flag("banked") || t.Flag("bust") || t.Flag("bust-pending"));
             again.OnEnter = () => t.Counters["p0"] = t.Count("push");
-            var bank = Step("bank", "Or settle what you have: tap the recorder's seal once to preview, again to keep it for good. That ends your turn.",
-                () => Target("recorder") ?? Target("seal"), () => t.Flag("banked") || t.Flag("bust"));
+            var bank = Step("bank", null,
+                () => (E != null && E.Phase == ElectionPhase.Choosing) ? Target("note 0") : (Target("recorder") ?? Target("seal")), () => t.Flag("banked") || t.Flag("bust"));
+            bank.LineFn = () => E != null && E.Phase == ElectionPhase.Choosing
+                ? "Choose a note again. Then you can settle what you have: tap the recorder's seal once to preview, again to keep it for good."
+                : "Settle what you have: tap the recorder's seal once to preview, again to keep it for good. That ends your turn.";
             return new List<TutorialStep> { press, preview, commit, tablet, again, bank };
         }
 

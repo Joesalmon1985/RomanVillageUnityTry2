@@ -364,7 +364,7 @@ namespace World.Game
             if (!Safe(Active.GameActive)) return;
             if (Event.current.type != EventType.Repaint && Event.current.type != EventType.Layout) return;
             EnsureStyles();
-            GUI.depth = -9;
+            GUI.depth = -50; // above the ledger tablet and the game's own bubbles: the tutor can always be read and skipped
             var safe = ScreenSafeArea.Current();
             float h = Screen.height;
 
@@ -448,6 +448,8 @@ namespace World.Game
             cands.Add(new Rect(safe.x + m, safe.y + m, size.x, size.y));                           // top left
             cands.Add(new Rect(safe.xMax - size.x - m, safe.y + m, size.x, size.y));              // top right
             cands.Add(new Rect(safe.center.x - size.x / 2, safe.y + m, size.x, size.y));          // top centre
+            cands.Add(new Rect(safe.x + m, safe.center.y - size.y / 2, size.x, size.y));          // middle left
+            cands.Add(new Rect(safe.xMax - size.x - m, safe.center.y - size.y / 2, size.x, size.y)); // middle right
             cands.Add(new Rect(safe.x + m, safe.yMax - size.y - m, size.x, size.y));              // bottom left
             cands.Add(new Rect(safe.xMax - size.x - m, safe.yMax - size.y - m, size.x, size.y));  // bottom right
             Rect best = cands[0]; float bestCost = float.MaxValue;
