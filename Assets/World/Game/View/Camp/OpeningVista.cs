@@ -117,12 +117,20 @@ namespace World.Game
         /// rejected when the island's hills would hide a place or the camera would sit in a hillside; of the rest, the score favours
         /// places spread apart on screen and of similar size (near and far not too different), and a short distance.
         /// </summary>
-        private void ChooseYaw()
+        private void ChooseYaw() => ChooseYaw((float)Mathf.Max(1, SW) / Mathf.Max(1, SH), null);
+
+        /// <summary>
+        /// Chooses bearing and pitch for a screen shape (the real screen when the vista is built). Score: the smallest place's
+        /// height on screen (every place must read, the far ones too) and the spread between places' centres (clean regions);
+        /// poses where hills hide a place are skipped. <paramref name="log"/> (tuning) gets one line per pose.
+        /// </summary>
+        public string ChooseYaw(float aspect, System.Text.StringBuilder log)
         {
             Focus = Centroid();
-            float aspect = 16f / 9f, bestScore = float.MinValue;
+            aspect = Mathf.Clamp(aspect, 1.2f, 2.4f);
+            float bestScore = float.MinValue;
             _baseYaw = 0f; float bestPitch = 40f;
-            foreach (float pitch in new[] { 36f, 44f, 52f })
+            foreach (float pitch in new[] { 34f, 40f, 46f, 52f })
             {
                 Pitch = pitch;
                 for (int i = 0; i < 24; i++)
@@ -130,14 +138,24 @@ namespace World.Game
                     float yaw = i * 15f;
                     float d = FitDistance(yaw, aspect, Focus);
                     var pos = Pos(Focus, yaw, d);
-                    if (!Clear(pos)) continue;
-                    float near = float.MaxValue, far = 0f;
-                    foreach (var p in _places) { float dd = Vector3.Distance(pos, p.Centre); near = Mathf.Min(near, dd); far = Mathf.Max(far, dd); }
-                    float score = Spread(yaw, aspect, d, Focus) * 4f - (far / Mathf.Max(1f, near)) * 0.35f - d / 400f;
+                    if (!Clear(pos)) { log?.Append(yaw + "/" + pitch + " hidden; "); continue; }
+                    var rot = Rot(yaw);
+                    float minSize = float.MaxValue;
+                    foreach (var p in _places)
+                    {
+                        float y0 = 1, y1 = 0, x0 = 1, x1 = 0;
+                        foreach (var sp in p.Samples()) { var v = Project(pos, rot, aspect, sp); y0 = Mathf.Min(y0, v.y); y1 = Mathf.Max(y1, v.y); x0 = Mathf.Min(x0, v.x); x1 = Mathf.Max(x1, v.x); }
+                        minSize = Mathf.Min(minSize, Mathf.Sqrt((y1 - y0) * (x1 - x0) * aspect));
+                    }
+                    float spread = Spread(yaw, aspect, d, Focus);
+                    float score = minSize * 6f + spread * 2f;
+                    log?.Append(yaw + "/" + pitch + " d" + d.ToString("0") + " min" + minSize.ToString("0.000") + " spr" + spread.ToString("0.00") + " s" + score.ToString("0.000") + "; ");
                     if (score > bestScore) { bestScore = score; _baseYaw = yaw; bestPitch = pitch; }
                 }
             }
             Pitch = bestPitch;
+            _fitW = 0;
+            return _baseYaw + "/" + bestPitch;
         }
 
         /// <summary>True when the camera stands well above the ground under it and every place can be seen over the hills.</summary>

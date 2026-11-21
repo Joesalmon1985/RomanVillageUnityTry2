@@ -140,7 +140,7 @@ namespace World.Game
             if (dir != null && CouncilSteward.Instance != null)
             {
                 var steward = CouncilSteward.Instance;
-                into.Add(Make(root, WorldZones.HubCouncil, dir.Site.Position, 6f, CouncilScene.TowerH * Mathf.Max(1f, dir.Site.Scale) + 1.5f, 2.4f,
+                into.Add(Make(root, WorldZones.HubCouncil, Vector3.Lerp(dir.Site.Position, dir.StewardSpot, 0.35f), 7.5f, CouncilScene.TowerH * Mathf.Max(1f, dir.Site.Scale) + 1.5f, 2.4f,
                     "The lookout tower", "Join the council at the tower?", new[] { "The village settles its disputes at the tower. Help it choose." },
                     () => Toward(dir.StewardSpot, 2.5f), () => dir.StewardSpot,
                     () => Use(steward.Entry)));

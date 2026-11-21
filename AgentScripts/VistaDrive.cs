@@ -111,6 +111,7 @@ public static class VistaDrive
                     return sb.ToString();
                 }
             case "pose": v.ForcePose(float.Parse(a[1], ci), float.Parse(a[2], ci)); return "pose " + a[1] + " " + a[2];
+            case "choose": { var sb = new StringBuilder(); string r = v.ChooseYaw(float.Parse(a[1], ci), sb); return "choose " + r + " :: " + sb; }
             case "leave": v.Leave(); return "left";
             case "abort": if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) EncounterHost.Instance.Abort(); foreach (int h in SpeechBubbles.OpenHandles()) SpeechBubbles.Close(h); if (DialoguePanel.IsOpen) DialoguePanel.Close(); WorldActions.Cancel(); return "aborted";
             case "boardleave": GodBoardDirector.Instance.Leave(); return "board leave";
