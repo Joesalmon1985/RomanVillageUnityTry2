@@ -298,15 +298,100 @@ namespace World.Game
             return WalkLattice.HeadingOf(mid);
         }
 
+        /// <summary>
+        /// The opening vista's pose (owner's approved target, 21 Nov 2026): composed so the dance circle sits in the rhythm block and
+        /// Mira's camp in the cave block; the temple, the lodge and the ring are then placed on ground seen inside their own blocks, and
+        /// the council's tower and longhouse go to <see cref="CouncilAnchors"/>. Not valid on a board where no pose manages it (the
+        /// places then stand where the older first-view rule puts them).
+        /// </summary>
+        public VistaPose Vista { get; private set; }
+        /// <summary>Ground seen inside the council's block, best first (the council's tower picks the first clear one).</summary>
+        public IReadOnlyList<Vector3> CouncilAnchors => _councilAnchors;
+        private readonly List<Vector3> _councilAnchors = new List<Vector3>();
+        /// <summary>The start fire in the vista's near foreground band (a small campfire), if there is clear hub ground there.</summary>
+        public Vector3? StartFire { get; private set; }
+
         private void BuildHub(Board board)
         {
             SpawnHeading = ChooseViewHeading();
             var spawn = WalkLattice.ToWorld(Spawn);
             float view = WalkLattice.Yaw(SpawnHeading);
-            // Temple left of ahead (the forecourt faces the hearth), the lodge one turn left and behind, the ring one turn right and behind.
-            Hub1("HUB-TEMPLE", "temple", board, spawn, view, new[] { -14f, -28f, 0f, -40f, 14f }, 28f, 46f, 9f);
-            Hub1("HUB-HEALER", "lodge", board, spawn, view, new[] { -100f, -85f, -125f }, 22f, 42f, 7f);
-            Hub1("HUB-DUEL", "ring", board, spawn, view, new[] { 105f, 90f, 125f }, 22f, 44f, 7f);
+            var t = board.Topology;
+            // The best composed pose on which the temple, the lodge and the ring each find clear ground in their own block and the
+            // council's tower and longhouse have room in theirs (the dance circle and Mira cannot move; plots, paths and the camp can't be built over).
+            var poses = VistaFrame.Compose(DanceCircleCentre, MiraSpot, Hearth, HubRadius, p => t.HexAt(p.x, p.z) >= 0);
+            VistaPose chosen = poses.Count > 0 ? poses[0] : default;
+            foreach (var pose in poses)
+            {
+                Vista = pose; _places.Clear();
+                if (InBlock("HUB-TEMPLE", "temple", board, 9f, 9f * 0.35f) && InBlock("HUB-HEALER", "lodge", board, 7f, 5.5f * 0.35f)
+                    && InBlock("HUB-DUEL", "ring", board, 7f, 3f * 0.35f) && CouncilRoom(board, pose)) { chosen = pose; break; }
+            }
+            Vista = chosen; _places.Clear();
+            // Each place on clear ground seen in its own block; the older first-view rule where none is clear (or no pose fits).
+            if (!InBlock("HUB-TEMPLE", "temple", board, 9f, 9f * 0.35f))
+                Hub1("HUB-TEMPLE", "temple", board, spawn, view, new[] { -14f, -28f, 0f, -40f, 14f }, 28f, 46f, 9f);
+            if (!InBlock("HUB-HEALER", "lodge", board, 7f, 5.5f * 0.35f))
+                Hub1("HUB-HEALER", "lodge", board, spawn, view, new[] { -100f, -85f, -125f }, 22f, 42f, 7f);
+            if (!InBlock("HUB-DUEL", "ring", board, 7f, 3f * 0.35f))
+                Hub1("HUB-DUEL", "ring", board, spawn, view, new[] { 105f, 90f, 125f }, 22f, 44f, 7f);
+            if (!Vista.Valid) return;
+            foreach (var p in VistaFrame.Candidates(Vista, "HUB-COUNCIL", 4f))
+                if (BoardSpace.Flat(p - Hearth) < HubRadius - 10f && t.HexAt(p.x, p.z) >= 0) _councilAnchors.Add(p);
+            // the start fire: clear hub ground in the near foreground band, off the spawn, the prince's line and every place
+            for (int i = 0; i < 17 * 5 && !StartFire.HasValue; i++)
+            {
+                int iu = i % 17, iv = i / 17;
+                var g = VistaFrame.Ground(Vista, VistaFrame.FireTarget.x + ((iu + 1) / 2) * 0.025f * (iu % 2 == 0 ? 1 : -1), VistaFrame.FireTarget.y - iv * 0.025f);
+                if (!g.HasValue) continue;
+                var p = g.Value; p.y = 0;
+                if (BoardSpace.Flat(p - Hearth) > HubRadius - 4f || t.HexAt(p.x, p.z) < 0) continue;
+                if (BoardSpace.Flat(p - spawn) < 5f || BoardSpace.Flat(p - WalkLattice.ToWorld(PrinceStart)) < 5f || BoardSpace.Flat(p - MiraSpot) < 8f) continue;
+                if (BoardSpace.DistanceToSegment(p, spawn, WalkLattice.ToWorld(PrinceStart)) < 4f) continue;
+                bool clear = true;
+                foreach (var d in _dressing) if (BoardSpace.Flat(d.Position - p) < d.Radius + 3f) clear = false;
+                foreach (var o in _places) if (BoardSpace.Flat(o.Position - p) < o.Radius + 3f) clear = false;
+                if (clear) StartFire = p;
+            }
+        }
+
+        /// <summary>True when some ground in the council's block has room for the tower and the longhouse behind it.</summary>
+        private bool CouncilRoom(Board board, VistaPose pose)
+        {
+            int n = 0;
+            foreach (var a in VistaFrame.Candidates(pose, "HUB-COUNCIL", 4f))
+            {
+                if (n++ >= 60) break;
+                if (BoardSpace.Flat(a - Hearth) > HubRadius - 10f) continue;
+                var toFire = Hearth - a; toFire.y = 0;
+                if (toFire.magnitude < 12f) continue;
+                var hall = a - toFire.normalized * CouncilSite.HallBack;
+                var across = new Vector3(toFire.normalized.z, 0, -toFire.normalized.x);
+                if (CouncilSite.Blocked(board, this, a, 6f) != null) continue;
+                if (CouncilSite.Blocked(board, this, hall, CouncilSite.HallHalfWidth + 1f) != null || CouncilSite.Blocked(board, this, hall + across * 6f, CouncilSite.HallHalfWidth + 1f) != null
+                    || CouncilSite.Blocked(board, this, hall - across * 6f, CouncilSite.HallHalfWidth + 1f) != null) continue;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Stands a place on the first clear ground whose view lies in its block (strictest test first). False if none.</summary>
+        private bool InBlock(string zone, string kind, Board board, float radius, float anchorHeight)
+        {
+            if (!Vista.Valid) return false;
+            var cands = VistaFrame.Candidates(Vista, zone, anchorHeight);
+            for (int pass = 0; pass < 3; pass++)
+            {
+                float rad = pass == 1 ? radius * 0.55f : radius;
+                foreach (var p in cands)
+                {
+                    if (BoardSpace.Flat(p - Hearth) > HubRadius - radius - 2f) continue;
+                    if (!HubFree(board, p, radius, pass, rad)) continue;
+                    _places.Add(new HubPlace(zone, kind, p, BoardSpace.YawOf(Vista.Position - p), radius));
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>Finds clear ground nearest the wanted bearing (from the spawn) and distance, strictest test first, and records the place.</summary>

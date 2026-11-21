@@ -84,7 +84,7 @@ namespace World.Game.Tests
             // a preview (one tap) is not a pick either
             yield return new WaitForSecondsRealtime(0.7f);
             var p = v.Find(WorldZones.HubTemple);
-            Assert.AreEqual(TapOutcome.Preview, PointerInput.TapAt(v.ScreenCentre(p)), "the first tap previews");
+            Assert.AreEqual(TapOutcome.Preview, PointerInput.TapAt(OpeningVista.BlockRect(WorldZones.HubTemple).center), "the first tap previews");
             for (int i = 0; i < 20; i++) { AssertTutorialsQuiet("preview"); yield return null; }
             Assert.IsTrue(OpeningVista.Up, "still looking out after one tap");
         }
@@ -97,8 +97,11 @@ namespace World.Game.Tests
             yield return new WaitForSecondsRealtime(0.7f);
             AssertTutorialsQuiet(zone + " before the tap");
             var p = v.Find(zone);
-            var at = v.ScreenCentre(p);
-            Assert.AreEqual(TapOutcome.Preview, PointerInput.TapAt(at), zone + ": first tap");
+            var at = OpeningVista.BlockRect(zone).center; // anywhere in the place's block
+            var camBefore = WorldBootstrap.Instance.Avatar.Camera.transform.position;
+            var o1 = PointerInput.TapAt(at);
+            Assert.AreEqual(TapOutcome.Preview, o1, zone + ": first tap (camera moving " + WorldActions.CameraMoving + ", state " + WorldActions.State + ", vista " + v.State + ", region " + (v.RegionAt(at) != null ? v.RegionAt(at).Zone : "none")
+                + ", cam " + camBefore + " vs pose " + v.CameraPosition + ", walker " + PlayerWalker.Instance.Position + " gliding " + PlayerWalker.Instance.IsGliding + ")");
             yield return new WaitForSecondsRealtime(0.4f);
             AssertTutorialsQuiet(zone + " previewed");
             Assert.AreEqual(TapOutcome.Confirm, PointerInput.TapAt(at), zone + ": second tap");
@@ -179,7 +182,7 @@ namespace World.Game.Tests
             yield return Launch();
             yield return Pick(WorldZones.HubCave);
             yield return null; yield return null;
-            Assert.IsNull(Dir.Active, "no dungeon tutorial on the surface: it starts when the way down is taken");
+            Assert.IsNull(Dir.Active, "no dungeon tutorial on the surface: it starts when the way down is taken (active " + (Dir.Active != null ? Dir.Active.Id : "") + ")");
             Assert.Greater(SpeechBubbles.OpenHandles().Count(), 0, "Mira speaks to the player at the cave mouth");
         }
     }

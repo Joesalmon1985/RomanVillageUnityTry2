@@ -32,14 +32,15 @@ namespace World.Game
         /// The hill and its cave mouth just beyond Mira's camp as seen from the lookout (<paramref name="away"/>: the vista camera's
         /// level forward), its mouth turned towards the lookout; turned aside where that spot is off the island or too near another place.
         /// </summary>
-        public static CaveHill BuildCaveHill(Transform root, Vector3 mira, Vector3 away, IReadOnlyList<VistaPlace> others)
+        public static CaveHill BuildCaveHill(Transform root, Vector3 mira, Vector3 away, IReadOnlyList<VistaPlace> others, System.Func<Vector3, bool> accept = null)
         {
             mira.y = 0;
             var outDir = away; outDir.y = 0;
             outDir = outDir.sqrMagnitude > 1e-3f ? outDir.normalized : Vector3.forward;
             var board = WorldBootstrap.Instance != null ? WorldBootstrap.Instance.Sim.State.Board : null;
             Vector3 centre = mira + outDir * 16f;
-            foreach (float turn in new[] { 0f, 30f, -30f, 60f, -60f, 90f, -90f })
+            for (int strict = 1; strict >= 0; strict--)
+            foreach (float turn in new[] { 0f, 15f, -15f, 30f, -30f, 45f, -45f, 60f, -60f, 90f, -90f })
             {
                 var d = Quaternion.Euler(0, turn, 0) * outDir;
                 var c = mira + d * 16f;
@@ -47,7 +48,8 @@ namespace World.Game
                 bool crowded = false;
                 foreach (var other in others) if (other.Zone != WorldZones.HubCave && BoardSpace.Flat(other.Centre - c) < other.Radius + 14f) crowded = true;
                 if (crowded) continue;
-                centre = c; outDir = d; break;
+                if (strict == 1 && accept != null && !accept(c)) continue;
+                centre = c; outDir = d; strict = -1; break;
             }
             var right = new Vector3(outDir.z, 0, -outDir.x);
             var mb = new MeshBuilder();
@@ -71,10 +73,16 @@ namespace World.Game
             // the cave mouth: two rock jambs, a lintel boulder and the dark opening, set into the slope facing the camp
             var mouth = centre - outDir * 11.2f; mouth.y = 0f;
             var face = Quaternion.LookRotation(-outDir).eulerAngles.y;
-            mb.Box(mouth + right * 2.5f + Vector3.up * 1.9f - outDir * 0.3f, new Vector3(1.6f, 3.8f, 2.4f), RockDark, face + 8f);
-            mb.Box(mouth - right * 2.5f + Vector3.up * 1.7f - outDir * 0.3f, new Vector3(1.6f, 3.4f, 2.4f), RockDark, face - 6f);
-            mb.Box(mouth + Vector3.up * 4.0f - outDir * 0.5f, new Vector3(6.8f, 1.3f, 2.8f), Rock, face + 3f);
-            mb.Box(mouth + Vector3.up * 2.0f + outDir * 0.9f, new Vector3(3.6f, 4.2f, 2.6f), RockDark, face); // filler behind the opening
+            // a low rocky knoll at the foot of the hill with the opening cut into its face: boulder jambs and a boulder lintel
+            var knoll = mouth + outDir * 5f;
+            mb.Cylinder(knoll, 6.5f, 4.4f, 2.6f, 9, Color.Lerp(Rock, Turf, 0.25f));
+            mb.Cylinder(knoll + Vector3.up * 2.6f, 4.4f, 1.6f, 2.6f, 8, Rock);
+            mb.Rock(mouth + right * 2.6f - outDir * 1.2f, 2.0f, RockDark, rnd.Next);
+            mb.Rock(mouth - right * 2.6f - outDir * 1.0f, 1.8f, RockDark, rnd.Next);
+            mb.Rock(mouth + right * 3.9f - outDir * 0.2f, 1.4f, Rock, rnd.Next);
+            mb.Rock(mouth - right * 3.8f - outDir * 0.1f, 1.5f, Rock, rnd.Next);
+            mb.Rock(mouth + Vector3.up * 2.9f - outDir * 0.9f, 2.1f, Rock, rnd.Next);
+            for (int i = 0; i < 6; i++) { var cp = mouth + right * (i - 2.5f) * 0.6f - outDir * 1.9f + Vector3.up * 0.05f; mb.Cone(cp, 0.18f, 0.5f + 0.25f * (i % 3), 5, new Color(0.55f, 0.85f, 1f)); } // crystals glinting in the opening
             for (int i = 0; i < 5; i++) mb.Rock(mouth + right * (i - 2) * 1.8f - outDir * 1.6f, 0.7f + 0.15f * i, RockDark, rnd.Next);
             var hill = mb.ToObject("Vista hill and cave", root, MaterialFactory.CreateVertexColored(Color.white, "Vista hill"));
             hill.layer = 2;
