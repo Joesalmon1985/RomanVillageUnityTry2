@@ -48,6 +48,9 @@ namespace World.Game
         public static bool Active => Instance != null && Instance.State != VistaState.Off;
         /// <summary>True while the player looks out over the camp (taps pick regions).</summary>
         public static bool Up => Instance != null && Instance.State == VistaState.Vista;
+        /// <summary>True while the vista owns the screen or is about to open (the one frame before <see cref="Start"/> opens it): the tutorials wait for the player's pick.</summary>
+        public static bool Opening => Active || (Instance != null && !Instance._started && WillOpen);
+        private bool _started;
 
         /// <summary>Whether a god board hub opens on the vista this run: Mode is On and no packaged AutoPlay script runs without <c>-vista</c>.</summary>
         public static bool WillOpen
@@ -106,6 +109,7 @@ namespace World.Game
         {
             yield return null; // every installer has run and the walker stands on its spawn
             if (WillOpen && _places.Count > 0) Open(true);
+            _started = true;
         }
 
         // ------------------------------------------------------------------ pose

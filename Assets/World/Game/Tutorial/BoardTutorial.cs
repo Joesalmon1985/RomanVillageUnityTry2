@@ -23,6 +23,7 @@ namespace World.Game
         {
             var d = D; var w = PlayerWalker.Instance;
             if (d == null || d.OwnTemple == null || w == null) return false;
+            if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) return false; // the council, the dance or the duel next door has the player's attention (the vista lands within reach of the altar)
             return BoardSpace.Flat(d.OwnTemple.transform.position - w.Position) <= NearAltarMetres;
         }
 

@@ -203,6 +203,10 @@ namespace World.Game
             if (WorldBootstrap.Instance == null) { ClearShown(); return; }
             if (WorldBootstrap.Instance != _bootSeen) { _bootSeen = WorldBootstrap.Instance; ResetProgress(); } // a new world: the steps start over (what is remembered as done stays)
 
+            // Looking out over the camp (or gliding to a place): no tutorial speaks, rings or starts; the prince's welcome has the screen.
+            // A running one is parked where it is and resumes when the player has picked a place and arrived.
+            if (OpeningVista.Opening) { if (Active != null) Suspend(Active); ClearShown(); return; }
+
             // Away from its place a tutorial waits; another game's tutorial may start meanwhile (its progress is kept).
             if (Active != null && !Safe(Active.GameActive))
             {
