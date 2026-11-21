@@ -281,7 +281,10 @@ namespace World.Game
             if (i < 0) { a.Fail("no reply " + label); yield break; }
             SpeechBubbles.Expand(h);
             Rect r = Rect.zero;
-            while (Time.realtimeSinceStartup < end && (r = SpeechBubbles.ReplyRectOf(h, i)).width <= 0) yield return null;
+            // With -nographics (no GUI layout) the rect never comes: do not burn the 5 s of real time, which at -timescale 2 is
+            // 10 game seconds in which a carrier walks away from a reply that was meant to be taken at once.
+            bool noGui = SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null;
+            while (!noGui && Time.realtimeSinceStartup < end && (r = SpeechBubbles.ReplyRectOf(h, i)).width <= 0) yield return null;
             if (r.width > 0) PointerInput.TapAt(new Vector2(r.center.x, Screen.height - r.center.y));
             if (SpeechBubbles.IsOpen(h)) SpeechBubbles.Choose(h, i);
             yield return null;
