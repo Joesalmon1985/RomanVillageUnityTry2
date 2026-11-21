@@ -6,6 +6,8 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using World.Sim;
+using World.Sim.Encounters.Council;
+using World.Sim.Plague;
 using World.Sim.Table;
 
 namespace World.Game.Tests
@@ -258,6 +260,182 @@ namespace World.Game.Tests
             // ... until "Show me how again" is chosen.
             Dir.Replay("board");
             yield return AtStep("board", "sacrifice");
+        }
+
+        // ------------------------------------------------------------------ the plague
+
+        private static void Face(Vector3 at)
+        {
+            var w = PlayerWalker.Instance;
+            w.Teleport(w.Position, BoardSpace.YawOf(at - w.Position), 8f);
+        }
+
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Plague_HealerTeachesTheLanternsAndTheBanish_SkipAndReplayWork()
+        {
+            yield return StartGodBoard();
+            var lodge = HealersLodge.Instance; var lt = LodgeTable.Instance; var pv = PlagueViews.Instance;
+            var S = Boot.Sim.State;
+            Assert.IsTrue(lodge.PlagueRuns, "the plague runs in this game");
+            var w = PlayerWalker.Instance;
+            var healer = lodge.Healer.transform.position;
+
+            // Far from the lodge nothing starts; at her door she tells the first step.
+            w.Teleport(healer + new Vector3(120f, 0, 0), 0f, 8f);
+            yield return Frames(12);
+            Assert.IsNull(Dir.Active, "no tutorial far from the lodge");
+            w.Teleport(healer + new Vector3(0, 0, -6f), 0f, 8f);
+            Face(healer);
+            yield return AtStep("plague", "ask");
+            yield return Frames(3);
+            AssertSaid("plague");
+            Assert.AreEqual("The healer", Dir.ShownTutor);
+            yield return SkipThenReplay("plague", "ask");
+
+            // "How bad is it?" through her own dialogue option.
+            lodge.Healer.DialogueBuilder(lodge.Healer);
+            var how = lodge.Healer.Options.Find(o => o.Label == "How bad is it?");
+            Assert.IsNotNull(how, "the healer offers it");
+            how.OnChoose();
+            yield return AtStep("plague", "lanterns");
+            Face(lt.Post.transform.position); yield return Frames(3);
+            AssertSaid("plague");
+            WorldActions.Cancel(); yield return null;
+
+            // The post, the stick, a vessel: each is read by tapping it (the ledger tablet opens).
+            yield return new WaitForSecondsRealtime(0.5f);
+            WorldActions.Inspect(lt.Post);
+            yield return AtStep("plague", "stick");
+            Face(lt.Stick.transform.position); yield return Frames(3);
+            AssertSaid("plague");
+            yield return new WaitForSecondsRealtime(0.5f); // the camera is still after the turn (the tap guard)
+            WorldActions.Inspect(lt.Stick);
+            yield return AtStep("plague", "vessels");
+            Face(lt.Vessels[1].transform.position); yield return Frames(3);
+            AssertSaid("plague", false);
+            yield return new WaitForSecondsRealtime(0.5f);
+            WorldActions.Inspect(lt.Vessels[1]);
+
+            // No demon stands anywhere yet: the banish step says so and waits.
+            yield return AtStep("plague", "banish-preview");
+            StringAssert.Contains("No demon", Dir.ShownLine);
+            var ev = new EventBuffer();
+            for (int i = 0; i < 3; i++) PlagueRules.InfectRound(S, ev);
+            yield return Frames(3);
+            StringAssert.Contains("Demons stand", Dir.ShownLine, "the line changes once a demon stands on a shrine");
+
+            // Walk to the shrine with demons: tap once (preview), again (banish).
+            int node = 0; for (int n = 1; n <= PlagueGraphData.NodeCount; n++) if (PlagueApi.DemonsAt(S, n) > 0) { node = n; break; }
+            Assert.Greater(node, 0);
+            var nv = pv.NodeOf(node); var at = pv.NodePosition(node);
+            w.Teleport(at + new Vector3(8f, 0, 0), 270f, 8f);
+            yield return Frames(4);
+            AssertSaid("plague");
+            yield return new WaitForSecondsRealtime(0.6f);
+            Assert.AreEqual(WorldTapResult.Previewed, WorldActions.Tap(nv));
+            yield return AtStep("plague", "banish-confirm");
+            AssertSaid("plague");
+            yield return new WaitForSecondsRealtime(0.4f);
+            Assert.AreEqual(WorldTapResult.Confirmed, WorldActions.Tap(nv));
+            for (int i = 0; i < 2; i++) Boot.Clock.StepOnce();
+            yield return AtStep("plague", "charm");
+            Assert.Greater(pv.CooldownTicksLeft, 0, "the charm is cooling");
+
+            // The charm step reads for a few seconds, then the healer says her last words and it is done.
+            yield return AtStep("plague", "outro", 15f);
+            yield return Until(() => Dir.Active == null, 10f, "the tutorial ends");
+            AssertFinishedAndRemembered("plague");
+            yield return Frames(15);
+            Assert.IsNull(Dir.Active, "done is remembered");
+            Dir.Replay("plague");
+            w.Teleport(healer + new Vector3(0, 0, -6f), 0f, 8f);
+            yield return AtStep("plague", "ask");
+        }
+
+        // ------------------------------------------------------------------ the council
+
+        private CouncilEncounter Enc => CouncilEncounter.Current;
+
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Council_RecorderTeachesPressPreviewCommitTabletPushBank_SkipAndReplayWork()
+        {
+            yield return Load();
+            CouncilDirector.Disabled = true;
+            CouncilEncounter.AiDelay = 0.05f; CouncilEncounter.IntroSeconds = 0.4f;
+            Boot.Clock.Pause("TestHold");
+            int home = CouncilDirector.Instance.HomeSettlement;
+            CouncilFixture.StageExample(Boot.Sim.State, home, 0);
+            Assert.IsTrue(EncounterDirectory.TryStart(CouncilEncounter.Id, null, home), "the council opened");
+            yield return new WaitForSecondsRealtime(0.6f);
+            yield return Until(() => Enc != null && Enc.Scene.Settled && !Enc.InTransition, 20f, "the council is settled");
+            var e = Enc.E;
+            try
+            {
+                // The example is staged with a push already pending, so "press on" is already true and is passed over without a word.
+                yield return AtStep("council", "preview");
+                yield return Until(() => Dir.Active.Current.Target().HasValue, 10f, "a note is on screen");
+                AssertSaid("council");
+                Assert.AreEqual("The recorder", Dir.ShownTutor);
+
+                // Skip is remembered; replay starts from the first step and shows even the one that already holds.
+                yield return SkipThenReplay("council", "press");
+                yield return AtStep("council", "preview");
+                yield return Until(() => Dir.Active.Current.Target().HasValue, 10f, "a note is on screen");
+
+                int k = Enc.Scene.Proposals.FindIndex(p => p.Touches(5) && p.Touches(8)); if (k < 0) k = 0;
+                Assert.IsTrue(Enc.TapTarget("note " + k), "tapped a note");
+                yield return AtStep("council", "commit");
+                AssertSaid("council");
+                Assert.AreEqual(ElectionPhase.Choosing, e.Phase, "the preview sent nothing");
+                yield return new WaitForSecondsRealtime(0.35f);
+                Assert.IsTrue(Enc.TapTarget("note " + k), "tapped it again");
+                yield return AtStep("council", "tablet");
+                yield return Until(() => Dir.Active.Current.Target().HasValue, 10f, "the tablet is on screen");
+                AssertSaid("council");
+                Assert.IsTrue(e.HasAdvanced);
+
+                yield return new WaitForSecondsRealtime(0.5f); // the council swallows a tap right after a commit
+                Assert.IsTrue(Enc.TapTarget("tablet"));
+                yield return AtStep("council", "again");
+                AssertSaid("council");
+                WorldActions.Cancel(); yield return null;
+
+                // Push once more: the village offers new notes (or it is a bust, which the recorder explains).
+                CouncilEncounter.AiDelay = 600f;
+                yield return Until(() => Enc.Scene.Settled && !Enc.InTransition && e.Phase == ElectionPhase.Ready, 20f, "settled and ready to press");
+                int pushes = e.Pushes;
+                Assert.IsTrue(Enc.TapTargetNow("hand"), "pressed on");
+                yield return Until(() => e.Pushes > pushes, 5f, "the push was made");
+                if (e.Phase == ElectionPhase.Choosing)
+                {
+                    yield return AtStep("council", "bank");
+                    yield return Until(() => Enc.Scene.Settled && !Enc.InTransition && Enc.Scene.Targets(Enc.Scene.ViewCamera).Exists(t => t.Name == "note 0"), 20f, "a note is on screen");
+                    yield return new WaitForSecondsRealtime(0.5f); // the council swallows a tap right after a push
+                    int adv = e.Advances;
+                    Assert.IsTrue(Enc.TapTargetNow("note 0"), "chose a note");
+                    yield return Until(() => e.Advances > adv || e.Phase != ElectionPhase.Choosing, 10f, "the note was taken (last target " + Enc.LastTarget + ", taps " + Enc.TapsHandled + ", proposals " + Enc.Scene.Proposals.Count + ", phase " + e.Phase + ", refused " + Enc.Refused + " " + Enc.LastRefusal + ", transition " + Enc.InTransition + ", settled " + Enc.Scene.Settled + ")");
+                    yield return Until(() => Enc.Scene.Settled && !Enc.InTransition && e.Phase == ElectionPhase.Ready, 20f, "ready again (phase " + e.Phase + ", active " + e.Active + " seat " + e.PlayerSeat + ")");
+                    yield return Until(() => Dir.Active.Current.Target().HasValue, 10f, "the recorder's seal is on screen");
+                    AssertSaid("council");
+                    Assert.IsTrue(Enc.TapTarget("recorder"), "previewed the seal");
+                    yield return new WaitForSecondsRealtime(0.35f);
+                    Assert.IsTrue(Enc.TapTarget("recorder"), "confirmed the seal");
+                }
+                else
+                {
+                    // a bust: said in words, and the step after it is done
+                    yield return Until(() => Dir.TipShown, 10f, "the bust is explained (phase " + e.Phase + ", busts " + e.Busts + ", step " + (Dir.Active?.Current?.Id ?? "-") + ", ended " + string.Join(",", Dir.Ended) + ")");
+                    StringAssert.Contains("bust", Dir.ShownLine.ToLowerInvariant());
+                }
+                yield return AtStep("council", "outro", 15f);
+                yield return Until(() => Dir.Active == null, 10f, "the tutorial ends");
+                AssertFinishedAndRemembered("council");
+            }
+            finally
+            {
+                CouncilEncounter.AiDelay = 0.75f; CouncilEncounter.IntroSeconds = 2.4f;
+                if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) EncounterHost.Instance.Abort();
+            }
         }
     }
 }
