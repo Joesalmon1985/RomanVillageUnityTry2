@@ -7,8 +7,10 @@ using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using World.Sim;
 using World.Sim.Encounters.Council;
+using World.Sim.Encounters.Rhythm;
 using World.Sim.Plague;
 using World.Sim.Table;
+using SimRoute = World.Sim.Encounters.Rhythm.Route;
 
 namespace World.Game.Tests
 {
@@ -435,6 +437,79 @@ namespace World.Game.Tests
             {
                 CouncilEncounter.AiDelay = 0.75f; CouncilEncounter.IntroSeconds = 2.4f;
                 if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) EncounterHost.Instance.Abort();
+            }
+        }
+
+        // ------------------------------------------------------------------ the rhythm dance
+
+        private CampLayout Camp => new CampLayout(Boot.Sim.State.Board);
+        private static Vector2 Scr(Vector3 world) { var p = Camera.main.WorldToScreenPoint(world); return new Vector2(p.x, p.y); }
+
+        private IEnumerator StartDance()
+        {
+            var sol = Npc.Find(NpcIds.Host);
+            var front = Camp.DanceCircleCentre + Camp.Forward * 3.2f + Camp.Right * 1.2f;
+            yield return Accept(NpcIds.Host, front, BoardSpace.YawOf(sol.transform.position - front));
+            Assert.IsNotNull(RhythmPartyEncounter.Current, "the dance started");
+        }
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator Rhythm_SolTeachesDrumsTorchesPauseTallyAndBell_SkipAndReplayWork()
+        {
+            bool had = PlayerPrefs.HasKey(RhythmPartyEncounter.CalibrationPref);
+            float old = PlayerPrefs.GetFloat(RhythmPartyEncounter.CalibrationPref, 0f);
+            try
+            {
+                yield return Load();
+                RhythmPartyEncounter.TuningOverride = new RhythmTuning();
+                yield return StartDance();
+                var r = RhythmPartyEncounter.Current;
+
+                yield return AtStep("rhythm", "hit");
+                yield return Frames(3);
+                AssertSaid("rhythm");
+                Assert.AreEqual("Sol", Dir.ShownTutor);
+                yield return SkipThenReplay("rhythm", "hit");
+
+                // Strike the drums: the player's own judged hits end the first step (the autoplayer stands in for the fingers).
+                r.AutoPlayEnabled = true; r.AutoRoute = SimRoute.Bar;
+                yield return AtStep("rhythm", "torch", 30f);
+                yield return Frames(3);
+                AssertSaid("rhythm");
+
+                // A block's torch is kept (gold): the next step.
+                yield return AtStep("rhythm", "pause", 40f);
+                yield return Frames(3);
+                AssertSaid("rhythm");
+                Assert.AreEqual(RhythmPartyEncounter.TapKind.Seat, r.TapAt(Scr(r.Props.SeatPoint)), "tap on the log seat pauses");
+                Assert.IsTrue(r.IsPaused);
+                yield return Frames(3);
+                StringAssert.Contains("rests", Dir.ShownLine, "the line changes while the music rests");
+                yield return new WaitForSecondsRealtime(0.3f);
+                Assert.IsTrue(r.Resume(), "a drum strike resumes");
+                yield return Until(() => !r.IsPaused, 10f, "the four-count ended");
+                yield return AtStep("rhythm", "tally", 20f);
+                AssertSaid("rhythm");
+
+                // The phrase ends; tap Sol for the tally, then the bell for the tuning.
+                yield return Until(() => r.Phase == RhythmPartyEncounter.Screen.Result, 90f, "the phrase ended");
+                Assert.AreEqual(RhythmPartyEncounter.TapKind.Sol, r.TapAt(Scr(r.Props.SolPoint)));
+                yield return AtStep("rhythm", "bell", 10f);
+                AssertSaid("rhythm");
+                StringAssert.Contains("bell", Dir.ShownLine);
+                r.TapAt(new Vector2(2, 2)); // closes Sol's card
+                Assert.AreEqual(RhythmPartyEncounter.TapKind.Bell, r.TapAt(Scr(r.Props.BellPoint)));
+                Assert.IsTrue(r.TuneActive);
+                foreach (double c in r.TuneClickTimes) Assert.IsTrue(r.TuneTap(c + 0.02));
+                yield return AtStep("rhythm", "outro", 20f);
+                yield return Until(() => Dir.Active == null, 10f, "the tutorial ends");
+                AssertFinishedAndRemembered("rhythm");
+                Assert.IsTrue(r.Return());
+                yield return Until(() => !EncounterHost.Instance.IsRunning, 5f, "dance ended");
+            }
+            finally
+            {
+                if (had) PlayerPrefs.SetFloat(RhythmPartyEncounter.CalibrationPref, old); else PlayerPrefs.DeleteKey(RhythmPartyEncounter.CalibrationPref);
             }
         }
     }
