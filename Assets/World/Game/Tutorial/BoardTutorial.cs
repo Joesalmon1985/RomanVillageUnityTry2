@@ -9,8 +9,8 @@ namespace World.Game
     /// <summary>
     /// The hex board's first-turn tutorial (id <c>board</c>): sacrifice at the altar, place the setup camp and road (ghost, then
     /// confirm), read the baskets and the build costs, build or trade, end the turn with the hourglass, leave by the lamb stone.
-    /// A 7 (the discard sack) and an envoy's offer are tips said when they happen. The tutor is the prince: in the world at the
-    /// altar, on the ledge once the board is open. Conditions come from the sim's events and the table state; nothing here sends
+    /// A 7 (the discard sack) and an envoy's offer are tips said when they happen. The tutor is the temple keeper at the altar and the prince
+    /// on the ledge once the board is open. Conditions come from the sim's events and the table state; nothing here sends
     /// a command and the AI seats keep playing.
     /// </summary>
     public static class BoardTutorial
@@ -43,8 +43,8 @@ namespace World.Game
             t.BuildSteps = BuildSteps;
             t.BuildTips = BuildTips;
             t.Outro = "That is a whole turn. Build, trade, tip the hourglass, and watch the island pay. Tap the altar to come back any time.";
-            t.OutroTutorName = "The prince";
-            t.OutroSpeaker = TutorialTargets.Npc(NpcIds.Prince);
+            t.OutroTutorName = "The temple keeper";
+            t.OutroSpeaker = TutorialTargets.Npc("temple_keeper");
             return t;
         }
 
@@ -69,9 +69,9 @@ namespace World.Game
 
         private static TutorialStep Step(string id, bool ledgeTutor, string line, Func<Rect?> target, Func<bool> done, float min = 1.2f)
         {
-            var s = new TutorialStep { Id = id, TutorName = "The prince", Line = line, Target = target, Done = done, MinSeconds = min };
+            var s = new TutorialStep { Id = id, TutorName = ledgeTutor ? "The prince" : "The temple keeper", Line = line, Target = target, Done = done, MinSeconds = min };
             if (ledgeTutor) s.TutorRect = () => TutorialTargets.Ledge("prince");
-            else s.Speaker = TutorialTargets.Npc(NpcIds.Prince);
+            else s.Speaker = TutorialTargets.Npc("temple_keeper"); // at the altar the keeper speaks; on the board the prince on the ledge does
             return s;
         }
 

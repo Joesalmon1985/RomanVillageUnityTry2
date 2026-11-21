@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -10,6 +11,7 @@ using World.Sim.Campaign;
 using World.Sim.Eras;
 using World.Sim.Encounters.Council;
 using World.Sim.Encounters.Rhythm;
+using World.Sim.Encounters.Ward;
 using World.Sim.Plague;
 using World.Sim.Table;
 using Cell = World.Game.WalkLattice.Cell;
@@ -36,6 +38,11 @@ namespace World.Game.Tests
     {
         private const string TestPause = "TutorialTest";
 
+        /// <summary>Read from Temp/tutorial_capture.txt: a developer sets it to take a picture of every step at 844 x 390 with the phone's notch; local only, never committed. Null in normal runs.</summary>
+        public static string CaptureDir;
+        private const string CaptureFile = "Temp/tutorial_capture.txt"; // holds the folder; the file is not part of the project
+        private static uint _w0, _h0;
+
         [SetUp]
         public void SetUpTutorials()
         {
@@ -48,6 +55,15 @@ namespace World.Game.Tests
             WorldActions.Cancel();
             PrinceInstaller.Disabled = true;
             if (TutorialDirector.Instance != null) TutorialDirector.Instance.ResetProgress();
+#if UNITY_EDITOR
+            CaptureDir = File.Exists(CaptureFile) ? File.ReadAllText(CaptureFile).Trim() : null;
+            if (CaptureDir != null)
+            {
+                Directory.CreateDirectory(CaptureDir);
+                UnityEditor.PlayModeWindow.GetRenderingResolution(out _w0, out _h0);
+                UnityEditor.PlayModeWindow.SetCustomRenderingResolution(844, 390, "Tutorial captures 844x390");
+            }
+#endif
         }
 
         [TearDown]
@@ -62,6 +78,9 @@ namespace World.Game.Tests
             WorldActions.Cancel(); LedgerCard.Hide();
             PrinceInstaller.Disabled = false;
             CouncilDirector.Disabled = false;
+#if UNITY_EDITOR
+            if (CaptureDir != null) UnityEditor.PlayModeWindow.SetCustomRenderingResolution(_w0, _h0, "restore");
+#endif
         }
 
         private static TutorialDirector Dir => TutorialDirector.Instance;
@@ -77,7 +96,7 @@ namespace World.Game.Tests
                 var a = Dir.Active;
                 if (a != null && a.Id == game)
                 {
-                    if (step == "outro" ? Dir.ShownStepId == "outro" : a.Current != null && a.Current.Id == step) yield break;
+                    if (step == "outro" ? Dir.ShownStepId == "outro" : a.Current != null && a.Current.Id == step) { yield return Shot(game + "_" + step); yield break; }
                 }
                 if (Time.realtimeSinceStartup > end)
                     Assert.Fail(game + ": never reached step '" + step + "' (active " + (a != null ? a.Id : "none") + ", step " + (a?.Current?.Id ?? "-") + ", shown " + Dir.ShownStepId + ")");
@@ -85,8 +104,20 @@ namespace World.Game.Tests
             }
         }
 
+        private static IEnumerator Shot(string name)
+        {
+            if (CaptureDir == null) yield break;
+            ScreenSafeArea.Override = ScreenSafeArea.SimulatedNotch(Screen.width, Screen.height);
+            for (int i = 0; i < 5; i++) yield return null;
+            yield return new WaitForSecondsRealtime(0.6f); // the ledger tablet has unfolded
+            yield return new WaitForEndOfFrame();
+            var tex = ScreenCapture.CaptureScreenshotAsTexture();
+            File.WriteAllBytes(Path.Combine(CaptureDir, name + "_" + Screen.width + "x" + Screen.height + ".png"), tex.EncodeToPNG());
+            UnityEngine.Object.Destroy(tex);
+        }
+
         /// <summary>A step on screen has a line, a named tutor and, when it points at something, a ring rect that lies on the screen.</summary>
-        private static void AssertSaid(string game, bool expectRing = true)
+        private static void AssertSaid(string game, bool expectRing = true, bool mayBeOffscreen = false)
         {
             var s = Dir.Active.Current;
             Assert.IsNotNull(s, game + " has a step");
@@ -95,9 +126,10 @@ namespace World.Game.Tests
             Assert.IsNull(LedgerText.Violation(Dir.ShownLine ?? ""), game + "/" + s.Id + ": no dice, pips or odds in the line");
             if (!expectRing || s.Target == null) return;
             var r = s.Target();
-            Assert.IsTrue(r.HasValue, game + "/" + s.Id + ": the ring has a target");
+            Assert.IsTrue(r.HasValue, game + "/" + s.Id + ": the ring has a target (camera " + (TutorialTargets.SceneCamera() != null ? TutorialTargets.SceneCamera().name : "none") + ")");
             var rr = r.Value;
             Assert.IsFalse(float.IsNaN(rr.x) || float.IsNaN(rr.y), game + "/" + s.Id + ": the ring rect is a number");
+            if (mayBeOffscreen) return;
             Assert.IsTrue(rr.xMax > 0 && rr.yMax > 0 && rr.x < Screen.width && rr.y < Screen.height, game + "/" + s.Id + ": the ring is on the screen " + rr + " of " + Screen.width + "x" + Screen.height);
         }
 
@@ -166,7 +198,7 @@ namespace World.Game.Tests
             w.Teleport(d.OwnTemple.transform.position + new Vector3(10f, 0, 0), 270f, 8f);
             yield return AtStep("board", "sacrifice");
             AssertSaid("board");
-            Assert.AreEqual("The prince", Dir.ShownTutor);
+            Assert.AreEqual("The temple keeper", Dir.ShownTutor);
 
             // Skip, remembered; replay starts it over.
             yield return SkipThenReplay("board", "sacrifice");
@@ -585,7 +617,7 @@ namespace World.Game.Tests
                 // A marker Mira has an errand at: tap once (her offer), again (she acts).
                 var pedestal = InteriorScripts.Thing("glade/quarry_upper/pedestal").GetComponent<MiraActThing>();
                 yield return Until2(() => DungeonTutorial.NearestErrand() == pedestal, 20f, "the pedestal is Mira's errand");
-                Assert.IsTrue(Dir.Active.Current.Target().HasValue || true);
+                AssertSaid("dungeon", true, true); // it may be out of view: then an edge glow shows on its side
                 StringAssert.Contains("errand", Dir.ShownLine);
                 Assert.AreEqual(TapOutcome.Preview, PointerInput.TapObject(pedestal));
                 yield return AtStep("dungeon", "act-confirm", 10f);
@@ -624,6 +656,80 @@ namespace World.Game.Tests
         {
             float end = Time.realtimeSinceStartup + timeout;
             while (!cond()) { if (Time.realtimeSinceStartup > end) Assert.Fail(message); yield return null; }
+        }
+
+        // ------------------------------------------------------------------ the Ward duel
+
+        private IEnumerator StartDuel()
+        {
+            var mira = Npc.Find(NpcIds.Mira);
+            var d = WalkLattice.ToWorld(new CampLayout(Boot.Sim.State.Board).Spawn) - mira.transform.position; d.y = 0;
+            yield return Accept(NpcIds.Mira, mira.transform.position + d.normalized * 2.6f, BoardSpace.YawOf(-d));
+            Assert.IsNotNull(WardDuelEncounter.Current, "Ward duel is the running encounter");
+        }
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator Duel_RefereeTeachesStonesTakeBackPalmBeadsTallyAndGate_SkipAndReplayWork()
+        {
+            yield return Load();
+            GodBoardSettings.Override = false;
+            WardDuelEncounter.TuningOverride = new WardTuning { PlayerRecoveryMs = 2500, MiraFirstCastMinMs = 60000, MiraFirstCastMaxMs = 60000, MiraThinkMinMs = 60000, MiraThinkMaxMs = 60000 };
+            yield return StartDuel();
+            var e = WardDuelEncounter.Current;
+            yield return Frames(3);
+            Assert.IsTrue(e.WorldFirst && e.Props != null);
+
+            yield return AtStep("duel", "stones");
+            yield return Frames(3);
+            AssertSaid("duel");
+            Assert.AreEqual("The referee", Dir.ShownTutor);
+            yield return SkipThenReplay("duel", "stones");
+
+            // Stones: three orbs in the hand; then one is taken back (tap its socket).
+            yield return DuelWorldTaps.Build(e, Essence.Flame, Essence.Frost, Essence.Vine);
+            yield return AtStep("duel", "take-back");
+            yield return Frames(3);
+            AssertSaid("duel");
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Socket, 1);
+            yield return AtStep("duel", "lock");
+            yield return Frames(3);
+            AssertSaid("duel");
+
+            // The palm: preview, confirm; the Ward is locked and the duel is on.
+            yield return DuelWorldTaps.Build(e, Essence.Frost);
+            yield return DuelWorldTaps.PreviewConfirm(e, DuelTarget.Hand);
+            Assert.AreEqual(WardDuelEncounter.Screen.Active, e.Phase);
+            yield return AtStep("duel", "cast");
+            yield return Frames(3);
+            AssertSaid("duel");
+            yield return DuelWorldTaps.Build(e, Essence.Vine, Essence.Frost, Essence.Flame);
+            yield return DuelWorldTaps.PreviewConfirm(e, DuelTarget.Hand);
+            Assert.AreEqual(1, e.Session.PlayerHistory.Count, "one cast");
+
+            // Beads and tally: read by tapping them.
+            yield return AtStep("duel", "beads");
+            yield return Frames(3);
+            AssertSaid("duel");
+            yield return DuelWorldTaps.Tap(e, DuelTarget.BeadsCaster);
+            yield return AtStep("duel", "tally");
+            yield return Frames(3);
+            AssertSaid("duel");
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return DuelWorldTaps.Tap(e, DuelTarget.TallyCaster);
+            yield return AtStep("duel", "gate");
+            yield return Frames(3);
+            AssertSaid("duel");
+
+            // The gate: preview, confirm; back at the ring the referee says the last words.
+            TutorialDirector.TimeScale = 1f;
+            yield return new WaitForSecondsRealtime(0.3f);
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Gate);
+            yield return new WaitForSecondsRealtime(0.32f);
+            yield return DuelWorldTaps.Tap(e, DuelTarget.Gate);
+            yield return Until(() => !EncounterHost.Instance.IsRunning, 10f, "the duel ended");
+            yield return AtStep("duel", "outro", 15f);
+            yield return Until(() => Dir.Active == null, 15f, "the tutorial ends");
+            AssertFinishedAndRemembered("duel");
         }
     }
 }

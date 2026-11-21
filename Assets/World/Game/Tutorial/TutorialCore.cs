@@ -158,7 +158,8 @@ namespace World.Game
         {
             if (c == null || !c.gameObject.activeInHierarchy) return null;
             var cam = SceneCamera();
-            return WorldHitTarget.ScreenBounds(c, cam, out var r) ? r : (Rect?)null;
+            if (WorldHitTarget.ScreenBounds(c, cam, out var r)) return r;
+            return OfPoint(c.transform.position, cam, 0f); // behind the camera: the point still gives the direction for the edge glow
         }
 
         public static Rect? Of(Transform t) => t == null ? null : Of((Component)t);
@@ -171,23 +172,22 @@ namespace World.Game
         }
 
         /// <summary>Screen rect of a world point (a small box round it).</summary>
-        public static Rect? OfPoint(Vector3 world, float sidePx = 0f)
-        {
-            var cam = SceneCamera();
-            if (cam == null) return null;
-            var s = cam.WorldToScreenPoint(world);
-            if (s.z <= 0) return null;
-            float side = sidePx > 0 ? sidePx : Screen.height * 0.09f;
-            return new Rect(s.x - side / 2, Screen.height - s.y - side / 2, side, side);
-        }
+        public static Rect? OfPoint(Vector3 world, float sidePx = 0f) => OfPoint(world, SceneCamera(), sidePx);
 
         /// <summary>Screen rect of a world point seen by a given camera.</summary>
         public static Rect? OfPoint(Vector3 world, Camera cam, float sidePx = 0f)
         {
             if (cam == null) return null;
             var s = cam.WorldToScreenPoint(world);
-            if (s.z <= 0) return null;
             float side = sidePx > 0 ? sidePx : Screen.height * 0.09f;
+            if (s.z <= 0)
+            {
+                // Behind the camera the projection is mirrored: flip it and push it past the edge, so the direction is right.
+                float dx = -(s.x - Screen.width * 0.5f), dy = -(s.y - Screen.height * 0.5f);
+                if (Mathf.Abs(dx) < 1f && Mathf.Abs(dy) < 1f) dy = -1f;
+                float k = 4000f / Mathf.Max(1f, Mathf.Sqrt(dx * dx + dy * dy));
+                s = new Vector3(Screen.width * 0.5f + dx * k, Screen.height * 0.5f + dy * k, 1f);
+            }
             return new Rect(s.x - side / 2, Screen.height - s.y - side / 2, side, side);
         }
 

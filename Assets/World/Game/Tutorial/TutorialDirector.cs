@@ -271,7 +271,7 @@ namespace World.Game
             if (_tip != null)
             {
                 bool resolved = _tip.Resolved != null && Safe(_tip.Resolved);
-                if (resolved || now - _tipAt > _tip.Seconds * TimeScale) { _tip = null; _shownAt = -1f; }
+                if (resolved || now - _tipAt > _tip.Seconds) { _tip = null; _shownAt = -1f; }
             }
             if (_tip == null && !_outro)
                 foreach (var tip in t.Tips)
@@ -370,7 +370,7 @@ namespace World.Game
 
             // The ring on the target.
             Rect? target = SafeRect(_targetFn);
-            Rect avoid = default; bool haveAvoid = false;
+            Rect avoid = default; bool haveAvoid = false, offscreen = false;
             if (target.HasValue && target.Value.width > 0f && !float.IsNaN(target.Value.x))
             {
                 var r = target.Value;
@@ -384,13 +384,15 @@ namespace World.Game
                     RingRect = r; RingShown = true; avoid = r; haveAvoid = true;
                     DrawRing(r);
                 }
+                else { DrawEdgeGlow(r, safe); offscreen = true; } // the target is out of view: a soft pulse at the edge on its side (no arrow)
             }
 
             // The bubble: over the tutor's head if it is on screen, else at the top of the screen; never over the ring.
             string head = string.IsNullOrEmpty(_tutor) ? "" : _tutor;
+            string line = offscreen ? _line + "\n<i>Out of view: turn towards the glow at the edge.</i>" : _line;
             float bw = Mathf.Min(safe.width * 0.46f, Mathf.Max(h * 1.0f, 300f));
             float padx = h * 0.03f, pady = h * 0.02f;
-            float textH = _text.CalcHeight(new GUIContent(_line), bw - 2 * padx);
+            float textH = _text.CalcHeight(new GUIContent(line), bw - 2 * padx);
             float nameH = _name.CalcHeight(new GUIContent(head.Length > 0 ? head : " "), bw);
             float skipH = Mathf.Max(h * 0.085f, 30f), skipW = Mathf.Max(h * 0.2f, 70f);
             float bh = pady + nameH + textH + skipH + pady * 0.6f;
@@ -404,7 +406,7 @@ namespace World.Game
             GUI.Label(new Rect(rect.x + padx, rect.y + pady * 0.6f, bw - 2 * padx, nameH), head, _name);
             if (Active.Steps.Count > 0 && !_outro && _tip == null)
                 GUI.Label(new Rect(rect.xMax - padx - 90, rect.y + pady * 0.6f, 90, nameH), Mathf.Min(Active.Index + 1, Active.Steps.Count) + " / " + Active.Steps.Count, _step);
-            GUI.Label(new Rect(rect.x + padx, rect.y + pady * 0.6f + nameH, bw - 2 * padx, textH), _line, _text);
+            GUI.Label(new Rect(rect.x + padx, rect.y + pady * 0.6f + nameH, bw - 2 * padx, textH), line, _text);
             var sk = new Rect(rect.xMax - padx - skipW, rect.yMax - pady * 0.5f - skipH, skipW, skipH);
             SkipRect = sk;
             DrawBox(sk, new Color(0.99f, 0.86f, 0.55f, 0.97f), new Color(0.55f, 0.35f, 0.12f, 0.95f));
@@ -470,6 +472,33 @@ namespace World.Game
             var w = Texture2D.whiteTexture;
             GUI.DrawTexture(r, w, ScaleMode.StretchToFill, true, 0f, fill, Vector4.zero, new Vector4(10, 10, 10, 10));
             GUI.DrawTexture(r, w, ScaleMode.StretchToFill, true, 0f, edge, new Vector4(2, 2, 2, 2), new Vector4(10, 10, 10, 10));
+        }
+
+        /// <summary>The target is off the screen: a short soft gold pulse at the screen edge nearest its direction.</summary>
+        private void DrawEdgeGlow(Rect target, Rect safe)
+        {
+            var c = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+            var d = target.center - c;
+            if (d.sqrMagnitude < 1f) return;
+            float h = Screen.height;
+            float t = Time.unscaledTime;
+            float pulse = 0.5f + 0.5f * Mathf.Sin(t * 4f);
+            float thick = h * 0.035f, len = h * 0.3f;
+            // where the line from the centre to the target leaves the safe area
+            float kx = d.x != 0 ? (d.x > 0 ? (safe.xMax - c.x) / d.x : (safe.xMin - c.x) / d.x) : float.MaxValue;
+            float ky = d.y != 0 ? (d.y > 0 ? (safe.yMax - c.y) / d.y : (safe.yMin - c.y) / d.y) : float.MaxValue;
+            var p = c + d * Mathf.Min(kx, ky);
+            bool vertical = kx < ky; // leaves through a side edge
+            Rect r = vertical
+                ? new Rect(d.x > 0 ? p.x - thick : p.x, Mathf.Clamp(p.y - len / 2, safe.yMin, safe.yMax - len), thick, len)
+                : new Rect(Mathf.Clamp(p.x - len / 2, safe.xMin, safe.xMax - len), d.y > 0 ? p.y - thick : p.y, len, thick);
+            var w = Texture2D.whiteTexture;
+            for (int i = 0; i < 3; i++)
+            {
+                float grow = i * thick * 0.5f;
+                var rr = vertical ? new Rect(r.x - (d.x > 0 ? grow : 0), r.y - grow, r.width + grow, r.height + 2 * grow) : new Rect(r.x - grow, r.y - (d.y > 0 ? grow : 0), r.width + 2 * grow, r.height + grow);
+                GUI.DrawTexture(rr, w, ScaleMode.StretchToFill, true, 0f, new Color(1f, 0.82f, 0.30f, (0.55f - i * 0.17f) * (0.6f + 0.4f * pulse)), Vector4.zero, new Vector4(thick, thick, thick, thick));
+            }
         }
 
         private void DrawRing(Rect r)
