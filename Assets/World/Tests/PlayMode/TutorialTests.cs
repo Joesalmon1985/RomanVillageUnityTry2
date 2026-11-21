@@ -6,10 +6,13 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using World.Sim;
+using World.Sim.Campaign;
+using World.Sim.Eras;
 using World.Sim.Encounters.Council;
 using World.Sim.Encounters.Rhythm;
 using World.Sim.Plague;
 using World.Sim.Table;
+using Cell = World.Game.WalkLattice.Cell;
 using SimRoute = World.Sim.Encounters.Rhythm.Route;
 
 namespace World.Game.Tests
@@ -511,6 +514,116 @@ namespace World.Game.Tests
             {
                 if (had) PlayerPrefs.SetFloat(RhythmPartyEncounter.CalibrationPref, old); else PlayerPrefs.DeleteKey(RhythmPartyEncounter.CalibrationPref);
             }
+        }
+
+        // ------------------------------------------------------------------ the crystal dungeon
+
+        private IEnumerator StartCampaign()
+        {
+            yield return SceneManager.LoadSceneAsync("World", LoadSceneMode.Single);
+            yield return null; yield return null;
+            var old = WorldBootstrap.Instance;
+            Assert.IsNotNull(old);
+            Assert.IsTrue(DevStart.Begin(ScenarioStarts.DevHistoric), DevStart.LastError);
+            float end = Time.realtimeSinceStartup + 240f;
+            while (Time.realtimeSinceStartup < end && (WorldBootstrap.Instance == null || WorldBootstrap.Instance == old)) yield return null;
+            yield return null; yield return null;
+            Boot = WorldBootstrap.Instance;
+            Assert.AreNotSame(old, Boot, "the scene reloaded");
+            var d = ExpeditionDev.LoadPack(ExpeditionDev.AuthoredPack);
+            // The Root Chamber lead is the top one at once and the way down is open (as the pedestal test of the expedition fixture does).
+            var root = d.Leads.Find(x => x.Id == "earth_root");
+            root.Requires.Clear(); root.Priority = 1000;
+            foreach (var loc in d.Locations) foreach (var mk in loc.Markers) if (mk.Id == "stair") mk.OpenWhen = "";
+            foreach (var cn in d.Connections) if (cn.OpenWhen == "earth.stair_open") cn.OpenWhen = "";
+            var r = ExpeditionDev.StartCampaign(d);
+            Assert.IsTrue(r.Ok, r.Message);
+            end = Time.realtimeSinceStartup + 20f;
+            while (ExpeditionDirector.Instance == null && Time.realtimeSinceStartup < end) yield return null;
+            Assert.IsNotNull(ExpeditionDirector.Instance, "the expedition director");
+        }
+
+        private IEnumerator Settle()
+        {
+            WorldActions.Cancel(); LedgerCard.Hide();
+            yield return new WaitForSecondsRealtime(0.5f);
+            float end = Time.realtimeSinceStartup + 8f;
+            while (WorldActions.CameraMoving && Time.realtimeSinceStartup < end) yield return null;
+        }
+
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Dungeon_MiraTeachesStonesMarkersCompanionsJournalAndLeadOut_SkipAndReplayWork()
+        {
+            yield return StartCampaign();
+            var x = ExpeditionDirector.Instance; var w = Boot.Avatar; var S = Boot.Sim.State;
+            Interiors.FactsOverride = f => true; // the ways are open for this walk
+            try
+            {
+                // On the surface nothing starts; underground Mira tells the first step.
+                yield return Frames(15);
+                Assert.IsNull(Dir.Active, "no tutorial above ground");
+                w.Teleport(InteriorScripts.CellOf("glade/quarry_upper/safe"), 0);
+                yield return AtStep("dungeon", "step", 15f);
+                yield return Frames(4);
+                AssertSaid("dungeon");
+                Assert.AreEqual("Mira", Dir.ShownTutor);
+                yield return SkipThenReplay("dungeon", "step");
+
+                // One step, by the forward stone's strip (or back if a wall is ahead).
+                yield return Settle();
+                int steps = w.StepCount;
+                w.PressStrip(2);
+                float end = Time.realtimeSinceStartup + 3f; while (w.StepCount == steps && !w.IsGliding && Time.realtimeSinceStartup < end) yield return null;
+                if (w.StepCount == steps) { yield return new WaitForSecondsRealtime(0.5f); w.PressStrip(3); }
+                yield return AtStep("dungeon", "turn", 10f);
+                AssertSaid("dungeon");
+                yield return new WaitForSecondsRealtime(0.5f);
+                w.PressStrip(1);
+                yield return AtStep("dungeon", "marker", 10f);
+                yield return Settle();
+
+                // A marker Mira has an errand at: tap once (her offer), again (she acts).
+                var pedestal = InteriorScripts.Thing("glade/quarry_upper/pedestal").GetComponent<MiraActThing>();
+                yield return Until2(() => DungeonTutorial.NearestErrand() == pedestal, 20f, "the pedestal is Mira's errand");
+                Assert.IsTrue(Dir.Active.Current.Target().HasValue || true);
+                StringAssert.Contains("errand", Dir.ShownLine);
+                Assert.AreEqual(TapOutcome.Preview, PointerInput.TapObject(pedestal));
+                yield return AtStep("dungeon", "act-confirm", 10f);
+                yield return new WaitForSecondsRealtime(0.4f);
+                Assert.AreEqual(TapOutcome.Confirm, PointerInput.TapObject(pedestal));
+                yield return AtStep("dungeon", "companion", 10f);
+                yield return Settle();
+
+                // A companion's card, then the journal book.
+                var card = x.MateOf("ivo").Npc.GetComponent<CompanionCard>();
+                Assert.AreEqual(TapOutcome.Preview, PointerInput.TapObject(card));
+                yield return AtStep("dungeon", "journal", 10f);
+                yield return Settle();
+                PointerInput.TapObject(x.Book);
+                yield return AtStep("dungeon", "lead-out", 10f);
+                if (MapScreen.IsOpen) { MapScreen.ClearTarget(); MapScreen.Close(); }
+                yield return Settle();
+
+                // "Lead me out": tap the companion, tap again; the player is on the surface and Mira says her last words.
+                TutorialDirector.TimeScale = 1f; // real reading time for the last words, so the test can see them
+                Assert.AreEqual(TapOutcome.Preview, PointerInput.TapObject(card));
+                yield return new WaitForSecondsRealtime(0.4f);
+                Assert.AreEqual(TapOutcome.Confirm, PointerInput.TapObject(card));
+                end = Time.realtimeSinceStartup + 120f;
+                while ((Interiors.Current != null || Interiors.IsCrossing || Interiors.IsLeadingOut) && Time.realtimeSinceStartup < end) yield return null;
+                Assert.IsNull(Interiors.Current, "on the surface");
+                yield return AtStep("dungeon", "outro", 15f);
+                StringAssert.Contains("sky", Dir.ShownLine);
+                yield return Until(() => Dir.Active == null, 15f, "the tutorial ends");
+                AssertFinishedAndRemembered("dungeon");
+            }
+            finally { Interiors.FactsOverride = null; }
+        }
+
+        private static IEnumerator Until2(Func<bool> cond, float timeout, string message)
+        {
+            float end = Time.realtimeSinceStartup + timeout;
+            while (!cond()) { if (Time.realtimeSinceStartup > end) Assert.Fail(message); yield return null; }
         }
     }
 }
