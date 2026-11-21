@@ -51,7 +51,7 @@ namespace World.Game
         /// <summary>AB-1: in a GodBoard game no number token, pips or paid count is shown (the F1 tools may). Set by LandViews before it creates the hexes.</summary>
         public static bool HideNumbers;
         public bool PaidTextShown => _paidText != null && _paidText.gameObject.activeSelf;
-        public bool NumberShown => _token != null && _token.gameObject.activeSelf;
+        public bool NumberShown => _token != null && _token.gameObject.activeSelf && _disc != null && _disc.enabled; // the disc carries the number: none on any board now (the token stays as a marker)
 
         public static HexLandView Create(Transform parent, Board board, int hex)
         {
@@ -78,8 +78,9 @@ namespace World.Game
             PatchGround(mb, Terrain, HexId);
             LandLook.Part(transform, "PatchGround", mb.ToMesh("patch " + HexId), null, true);
 
-            // Number post and token. A dealt (god board) board shows no number (AB-1): the token is a plain marker.
-            bool dealt = BoardDealt;
+            // Number post and token. No board shows a roll number any more (owner, 21 Nov 2026: no lollipop posts, in every game, the legacy start too):
+            // the token is a plain marker (halo, stop mark, pick box) on every board. Dice are hidden in the game; the readouts in the F1 tools may still show them.
+            bool dealt = true;
             var post = LandLook.Cached("token/post", m =>
             {
                 LandShapes.Beam(m, Vector3.zero, Vector3.up * (TokenHeight - TokenRadius + 0.1f), 0.09f, 6, LandLook.DarkWood);

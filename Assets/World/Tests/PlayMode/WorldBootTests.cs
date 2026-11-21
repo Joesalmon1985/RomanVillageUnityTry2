@@ -66,6 +66,7 @@ namespace World.Game.Tests
             var hexes = Object.FindObjectsByType<HexView>(FindObjectsSortMode.None);
             Assert.AreEqual(61, hexes.Length, "61 hex views");
             foreach (var hv in hexes) Assert.AreEqual(b.HexNumber[hv.HexId], hv.Number, "hex view " + hv.HexId + " number");
+            foreach (var lv in Object.FindObjectsByType<HexLandView>(FindObjectsSortMode.None)) Assert.IsFalse(lv.NumberShown, "no roll number post or token on hex " + lv.HexId + " (legacy start too)");
 
             // Interim viewpoint at the camp spawn; Mira stands at the home camp.
             var camp = new CampLayout(b);

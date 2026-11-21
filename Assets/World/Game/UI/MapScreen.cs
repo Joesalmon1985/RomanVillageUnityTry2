@@ -272,19 +272,7 @@ namespace World.Game
                 if (r.State != RoadState.Built) col = new Color(col.r, col.g, col.b, 0.45f);
                 Line(a, c, Mathf.Max(2f, UiStyle.Px(r.State == RoadState.Built ? 5 : 3)), col);
             }
-            // Hex numbers.
-            for (int h = 0; h < t.HexCount; h++)
-            {
-                int n = s.Board.HexNumber[h];
-                if (n <= 0 || s.Ruleset == Ruleset.GodBoard) continue; // AB-1: no number tokens on the god board
-                var p = WorldToGui(BoardSpace.Hex(t, h));
-                float d = UiStyle.Px(28);
-                GUI.color = new Color(0.97f, 0.93f, 0.80f, 0.95f);
-                GUI.DrawTexture(new Rect(p.x - d / 2, p.y - d / 2, d, d), _disc);
-                GUI.color = Color.white;
-                _num.normal.textColor = n == 6 || n == 8 ? new Color(0.75f, 0.1f, 0.05f) : new Color(0.15f, 0.12f, 0.08f);
-                GUI.Label(new Rect(p.x - d / 2, p.y - d / 2, d, d), n.ToString(), _num);
-            }
+            // No roll numbers on the map in any game (owner, 21 Nov 2026).
             // Camps.
             foreach (var st in s.Economy.Settlements)
             {
