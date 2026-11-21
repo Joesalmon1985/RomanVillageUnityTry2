@@ -18,7 +18,7 @@ namespace World.Game
     }
 
     /// <summary>What a tap did (<see cref="PointerInput.LastTap"/>).</summary>
-    public enum TapOutcome { None, Bubble, Interact, Person, Cast, CastRefused, Inspect, Preview, Confirm, Refused, Cancelled, Ignored, Walk }
+    public enum TapOutcome { None, Bubble, Interact, Person, Cast, CastRefused, Inspect, Preview, Confirm, Refused, Cancelled, Ignored, Walk, Vista }
 
     /// <summary>
     /// The free mouse pointer (REFACTOR_SPEC 2.D "Pointer", appendix B); replaces the old Picker. Owner: package P.
@@ -122,6 +122,12 @@ namespace World.Game
                     return Done(Outcome(WorldActions.Tap(open)), default);
                 return Done(TapOutcome.Ignored, default);
             }
+            // Opening vista: while the camera is up over the camp every tap picks the region of a place (or waits for a glide).
+            if (OpeningVista.Active)
+            {
+                if (OpeningVista.Up && SpeechBubbles.OverReply(gui) && SpeechBubbles.HandleTap(gui)) return Done(TapOutcome.Bubble, default);
+                return Done(OpeningVista.Up ? OpeningVista.Instance.TapScreen(screenPoint) : TapOutcome.Ignored, default);
+            }
             var hit = Raycast(screenPoint);
             // WU-0: generous hit targets: a world action whose screen bounds, grown to 7 % of the screen height, hold the tap.
             if (hit.Target == null || hit.Target is HexView || (hit.Target is LodgeInspect && LodgeTable.LeanActive))
@@ -140,7 +146,9 @@ namespace World.Game
         public static bool EmptyScene(Vector2 screenPoint)
         {
             var gui = new Vector2(screenPoint.x, Screen.height - screenPoint.y);
-            if (LedgerCard.Contains(gui) || SpeechBubbles.Contains(gui)) return false;
+            if (LedgerCard.Contains(gui) || SpeechBubbles.OverReply(gui)) return false;
+            if (OpeningVista.Active) return true; // the vista: a drag swings the view round the camp
+            if (SpeechBubbles.Contains(gui)) return false;
             var hit = Raycast(screenPoint);
             if (hit.Target != null && !(hit.Target is HexView)) return false;
             if (CastableAt(hit)) return false;
@@ -202,6 +210,10 @@ namespace World.Game
             {
                 var r = SpellCaster.TryCastAt(hit.Ground);
                 outcome = r.Ok ? TapOutcome.Cast : TapOutcome.CastRefused;
+            }
+            else if (t == null && !hit.HasGround && OpeningVista.TryReturn())
+            {
+                outcome = TapOutcome.Vista; // opening vista: a tap on the sky looks out over the camp again
             }
             else if ((t == null || t is HexView) && hit.HasGround && GroundWalk.TryWalk(hit.Ground))
             {
@@ -307,6 +319,7 @@ namespace World.Game
             var hit = PointerInput.Raycast(mouse);
             bool overBubble = SpeechBubbles.Contains(gui) && !(PointerInput.CastableAt(hit) && !SpeechBubbles.OverReply(gui));
             if (overBubble) hit = new PointerHit { ProposalId = -1 };
+            if (OpeningVista.Active) hit = new PointerHit { ProposalId = -1 }; // no hover ring or label over the vista
             PointerInput.SetHovered(hit);
             UpdateHighlight(hit);
 
@@ -333,7 +346,9 @@ namespace World.Game
         {
             if (_pressId != -2) return; // one press at a time
             _pressId = id; _pressAt = pos;
-            _pressTaps = TouchStrips.StripAt(pos) == 0; // a press in the strip band is a move, never a world tap
+            // Underground the strip band is the footprint stones' moves, never a world tap; on the surface (opening vista, owner
+            // 21 Nov 2026) there are no step pads, so the whole screen taps and drags.
+            _pressTaps = !TouchStrips.StripsMove || TouchStrips.StripAt(pos) == 0;
             DragLook.Begin(pos, _pressTaps && PointerInput.EmptyScene(pos));
         }
 

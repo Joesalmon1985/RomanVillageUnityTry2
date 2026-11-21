@@ -37,6 +37,23 @@ namespace World.Game
         private static void ResetStatics() => NextSeed = null;
 
         /// <summary>
+        /// Opening vista (owner, 21 Nov 2026): what a new game is when no developer start or save is pending: the god board hub
+        /// (<see cref="GodBoardStart.Id"/>, as <c>-start dev.godboard</c>). The legacy prehistoric economy is the developer start
+        /// <see cref="DevStart.LegacyId"/> (<c>-start dev.legacy</c>). Not reset per play session: the PlayMode test assembly sets it to
+        /// the legacy start for the older tests; a packaged AutoPlay run without <c>-start</c> keeps the legacy game its scripts were written for.
+        /// </summary>
+        public static string DefaultStart = GodBoardStart.Id;
+
+        /// <summary>The sim of a new game (no save, no developer start): <see cref="DefaultStart"/>, or the legacy game for a packaged AutoPlay script.</summary>
+        public static WorldSim CreateNewGame(ulong seed)
+        {
+            bool legacy = DefaultStart == DevStart.LegacyId || (!Application.isEditor && AutoPlay.CommandLineScript() != null);
+            var sim = legacy ? WorldSimFactory.CreateNew(seed) : GodBoardStart.Create(seed);
+            Debug.Log("[World] new game: " + (legacy ? "legacy prehistoric economy" : "god board hub") + ", seed " + seed);
+            return sim;
+        }
+
+        /// <summary>
         /// Starts a new game with a fresh seed: reloads the scene, so every view, panel and NPC is rebuilt from the new
         /// state alone (nothing is carried over from the old game).
         /// </summary>
@@ -59,7 +76,7 @@ namespace World.Game
                 Seed = unchecked((long)loaded.State.Seed);
             }
             else if ((Sim = DevStart.TakePending(unchecked((ulong)Seed))) != null) Seed = unchecked((long)Sim.State.Seed); // F1 / -start developer starts
-            else Sim = WorldSimFactory.CreateNew(unchecked((ulong)Seed));
+            else Sim = CreateNewGame(unchecked((ulong)Seed)); // opening vista: the god board hub by default
 
             Clock = gameObject.AddComponent<GameClock>();
             Clock.Bind(Sim);

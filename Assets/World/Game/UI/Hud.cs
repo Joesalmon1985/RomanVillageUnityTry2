@@ -109,6 +109,7 @@ namespace World.Game
             if (_menu) CloseMenu();
             else if (MapScreen.IsOpen) MapScreen.Close();
             else if (DialoguePanel.IsOpen) DialoguePanel.Close();
+            else if (OpeningVista.TryReturn()) { } // opening vista: Esc (a phone's back key) in the walking view looks out over the camp; Esc there opens this menu
             else OpenMenu();
         }
 

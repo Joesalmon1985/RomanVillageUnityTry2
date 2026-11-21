@@ -47,6 +47,7 @@ namespace World.Game
                 DuelRing.Build(Root, ring, layout);
                 Mark(Root, WorldZones.HubDuel, ring.Position, ring.Radius);
             }
+            OpeningVista.Create(boot, Root, layout); // opening vista: the elevated view of every place, its regions and its uneven ground
         }
 
         /// <summary>A zone marker object at a destination, tagged with its <see cref="WorldZone"/> id.</summary>

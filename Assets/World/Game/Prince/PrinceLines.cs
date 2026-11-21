@@ -23,6 +23,14 @@ namespace World.Game
         public const string GodWait = "Over here! Do not stray.";
         public const string GodMira = "This is Mira. When you are ready, ask her to set out for the crystals.";
         public const string GodTemple = "And there is our temple. Sacrifice a lamb at the altar to open the god board.";
+        // Opening vista (21 Nov 2026): the welcome over the camp, then one line per place as it lights up.
+        public const string VistaGreeting = "Welcome home. I'm the prince. Everything we do is down there: tap a place to see it, tap again to go.";
+        public const string VistaTemple = "Our temple. Offer a lamb and play the gods' board.";
+        public const string VistaCouncil = "The lookout tower. The village argues out its disputes there.";
+        public const string VistaRhythm = "Sol's drums. Dance at the fire.";
+        public const string VistaHealer = "The healer's lodge. She tracks the sickness.";
+        public const string VistaCave = "Mira's camp by the cave. The crystals are below.";
+        public const string VistaDuel = "The practice ring. Duel Mira there.";
         public const string GodAdviseSite = "I would settle there.";
         public const string GodAdviseRoad = "A road there, I think.";
         public const string GodAdviseBuild = "I would build there.";

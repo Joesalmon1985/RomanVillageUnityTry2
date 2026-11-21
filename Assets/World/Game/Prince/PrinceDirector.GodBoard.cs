@@ -52,6 +52,8 @@ namespace World.Game
             {
                 case GuideStage.Waiting:
                     if (walker == null || Hushed) return;
+                    // Opening vista: no walk to Mira; a short welcome over the camp that points out each place in turn.
+                    if (OpeningVista.Instance != null && OpeningVista.WillOpen) { if (OpeningVista.Up) VistaWelcome(); return; }
                     Guide = GuideStage.Approach;
                     return;
                 case GuideStage.Approach:
@@ -158,6 +160,23 @@ namespace World.Game
             var temple = gb != null ? gb.OwnTemple : null;
             if (temple != null) Prince.PointAt(temple.transform.position + Vector3.up * 1.5f);
             Say(Prince, PrinceLines.GodTemple);
+        }
+
+        /// <summary>The opening vista's welcome (the prince's lines; the vista lights each place as it is named).</summary>
+        private void VistaWelcome()
+        {
+            Guide = GuideStage.Done;
+            var lines = new List<KeyValuePair<string, string>>
+            {
+                new KeyValuePair<string, string>(WorldZones.HubTemple, PrinceLines.VistaTemple),
+                new KeyValuePair<string, string>(WorldZones.HubCouncil, PrinceLines.VistaCouncil),
+                new KeyValuePair<string, string>(WorldZones.HubRhythm, PrinceLines.VistaRhythm),
+                new KeyValuePair<string, string>(WorldZones.HubHealer, PrinceLines.VistaHealer),
+                new KeyValuePair<string, string>(WorldZones.HubCave, PrinceLines.VistaCave),
+                new KeyValuePair<string, string>(WorldZones.HubDuel, PrinceLines.VistaDuel),
+            };
+            OpeningVista.Instance.PlayWelcome(Prince, PrinceLines.VistaGreeting, lines);
+            Record(Prince, PrinceLines.VistaGreeting, true);
         }
 
         private void EndGuide()

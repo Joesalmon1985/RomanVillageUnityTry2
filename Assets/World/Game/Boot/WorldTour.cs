@@ -78,6 +78,7 @@ namespace World.Game
             bool councilWas = CouncilDirector.Disabled;
             CouncilDirector.Disabled = true;
             PointerInput.InputEnabled = true;
+            if (OpeningVista.Instance != null) OpeningVista.Instance.Leave(); // the tour walks from the hub cell in the walking view
             WorldActions.Cancel();
             B.Clock.Pause(Pause);
             if (PrinceDirector.Instance != null) PrinceDirector.Instance.enabled = false;

@@ -17,12 +17,14 @@ namespace World.Game
     public static class DevStart
     {
         public const string ToolId = "starts";
+        /// <summary>The legacy prehistoric economy (the new game before 21 Nov 2026): the prince's builds, the woodcutter's hut. Old tests and AutoPlay.</summary>
+        public const string LegacyId = "dev.legacy";
         /// <summary>The developer start this scene was built from, or null (a new game or a load).</summary>
         public static string Current { get; private set; }
         /// <summary>Why the last start failed (sentence), or null.</summary>
         public static string LastError { get; private set; }
         /// <summary>The starts that can be built now.</summary>
-        public static IReadOnlyList<string> Ids { get { var l = new List<string>(ScenarioStarts.Ids); l.Add(GodBoardStart.Id); l.Add(GodBoardStart.HistoricId); l.Add(GodBoardStart.EveId); return l; } }
+        public static IReadOnlyList<string> Ids { get { var l = new List<string>(ScenarioStarts.Ids); l.Add(GodBoardStart.Id); l.Add(GodBoardStart.HistoricId); l.Add(GodBoardStart.EveId); l.Add(LegacyId); return l; } }
 
         private static WorldSim s_pending;
         private static string s_pendingId;
@@ -74,7 +76,8 @@ namespace World.Game
             try
             {
                 float t0 = Time.realtimeSinceStartup;
-                var sim = id == GodBoardStart.Id ? GodBoardStart.Create(seed)
+                var sim = id == LegacyId ? WorldSimFactory.CreateNew(seed)
+                    : id == GodBoardStart.Id ? GodBoardStart.Create(seed)
                     : id == GodBoardStart.HistoricId ? GodBoardStart.CreateHistoric(seed, false)
                     : id == GodBoardStart.EveId ? GodBoardStart.CreateHistoric(seed, true)
                     : ScenarioStarts.Create(id, seed);

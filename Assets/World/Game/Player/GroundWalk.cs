@@ -165,11 +165,19 @@ namespace World.Game
         public static int Turned { get; private set; }
 
         private static Vector2 _start;
+        private static float _lastX;
+
+        /// <summary>What the current drag does: turn the walker in sixths, turn only the head (free look while locked or led), or swing the vista.</summary>
+        public enum Kind { Steps, FreeLook, Vista }
+        public static Kind Mode { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() { Active = Dragging = false; Turned = 0; _pending = 0; }
+        private static void ResetStatics() { Active = Dragging = false; Turned = 0; _pending = 0; Mode = Kind.Steps; }
 
-        public static void Begin(Vector2 screenPoint, bool eligible) { Active = eligible; Dragging = false; Turned = 0; _pending = 0; _start = screenPoint; }
+        public static void Begin(Vector2 screenPoint, bool eligible) { Active = eligible; Dragging = false; Turned = 0; _pending = 0; _start = screenPoint; _lastX = screenPoint.x; Mode = Kind.Steps; }
+
+        /// <summary>Degrees of free look per pixel of drag (one sixth of a turn per <see cref="StepPixels"/>, as the steps).</summary>
+        public static float DegreesPerPixel => 60f / StepPixels;
 
         /// <summary>Feeds the pointer position while held; turns the walker by whole steps. True while this press is a drag.</summary>
         public static bool Move(Vector2 screenPoint)
@@ -177,9 +185,21 @@ namespace World.Game
             if (!Active) return false;
             float dx = screenPoint.x - _start.x;
             if (!Dragging && (screenPoint - _start).magnitude < Slop) return false;
-            if (!Dragging) { Dragging = true; var w0 = PlayerWalker.Instance; if (w0 != null && w0.IsAutoWalking) w0.StopAuto(); }
-            int steps = (int)(dx / StepPixels); // truncates towards zero
+            if (!Dragging)
+            {
+                Dragging = true;
+                var w0 = PlayerWalker.Instance;
+                // Opening vista: the drag swings the view round the camp. Free look: a locked or led walker keeps its course while the
+                // head turns (the owner could not look round while the prince led). Otherwise the walker turns in sixths as before.
+                if (OpeningVista.Active) Mode = Kind.Vista;
+                else if (w0 != null && (w0.IsLocked || w0.Following != null)) Mode = Kind.FreeLook;
+                else { Mode = Kind.Steps; if (w0 != null && w0.IsAutoWalking) w0.StopAuto(); }
+            }
+            float ddx = screenPoint.x - _lastX; _lastX = screenPoint.x;
             var w = PlayerWalker.Instance;
+            if (Mode == Kind.Vista) { if (OpeningVista.Instance != null) OpeningVista.Instance.Swing(ddx); return true; }
+            if (Mode == Kind.FreeLook) { if (w != null) w.Look(-ddx * DegreesPerPixel); return true; } // finger right = the view turns left
+            int steps = (int)(dx / StepPixels); // truncates towards zero
             if (w == null) return true;
             // dx > 0 (finger right) = the view turns left: negative turns.
             int want = -steps;
@@ -204,6 +224,7 @@ namespace World.Game
         public static bool End()
         {
             bool was = Dragging;
+            if (was && Mode == Kind.FreeLook && PlayerWalker.Instance != null) PlayerWalker.Instance.ReleaseLook();
             Active = false; Dragging = false;
             return was;
         }
