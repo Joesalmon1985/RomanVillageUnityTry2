@@ -192,6 +192,10 @@ namespace World.Game
             {
                 var hill = VistaTerrain.BuildCaveHill(root, layout.MiraSpot, BoardSpace.DirOf(yaw), places);
                 cavePlace.Reshape(Vector3.Lerp(layout.MiraSpot, hill.Mouth, 0.5f), 9f, 6.5f);
+                // land on the lookout's side of Mira, looking past her camp to the cave mouth
+                var mira = layout.MiraSpot;
+                cavePlace.Stand = () => mira - hill.Out * 6.5f;
+                cavePlace.Face = () => hill.Mouth;
             }
             var dir = CouncilDirector.Instance;
             if (dir != null) VistaTerrain.BuildHubTower(root, dir);

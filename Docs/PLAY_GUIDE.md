@@ -10,6 +10,8 @@ WorldMVP is now a small prehistoric island. Two peoples, yours and the Ash Clan,
 
 If there is no exe, open the project in Unity 6000.3.28f1, open `Assets/Scenes/World.unity` and press Play.
 
+**Since 21 Nov 2026 the game starts as the god board hub** (as `-start dev.godboard` did) and opens on the vista: the whole camp from above at night. Tap a part of the screen once to light the place drawn there and read what it is; tap it again to go there and start its game. Esc in the walking view, or a tap on the sky, looks out over the camp again. The old prehistoric economy described below (the prince's builds) is now the developer start `-start dev.legacy`; packaged AutoPlay scripts run without `-start` keep using it.
+
 Use headphones or speakers for the dance.
 
 ## Controls

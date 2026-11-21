@@ -10,9 +10,10 @@ Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.
 
 **Run the game**
 - Easiest: the packaged build `..\wt-gb\Builds\Windows\WorldMVP.exe` (rebuilt at the end of this session).
+- **Since 21 Nov 2026 a plain launch (double-click, no arguments) and Esc → New game start the god board hub** and open on the vista over the camp. `-start dev.godboard -seed 7` still gives the same hub on the fixed seed. The old prehistoric economy (the prince's woodcutter's hut) is only the developer start `-start dev.legacy`.
 - For a phone-shaped window, start it from a command prompt in that folder:
-  `.\WorldMVP.exe -start dev.godboard -seed 7 -screen-fullscreen 0 -screen-width 844 -screen-height 390` (in PowerShell the `.\` is needed; in the old Command Prompt it can be left off)
-- Or in Unity: open the `wt-gb` folder, open `Assets/Scenes/World.unity`, press Play, then F1 → Starts → `dev.godboard`.
+  `.\WorldMVP.exe -seed 7 -screen-fullscreen 0 -screen-width 844 -screen-height 390` (in PowerShell the `.\` is needed; in the old Command Prompt it can be left off)
+- Or in Unity: open the folder, open `Assets/Scenes/World.unity`, press Play.
 
 **Your music at the spires (optional)**
 - Put a file `config.json` next to the `Assets` folder (or next to the exe) containing:
@@ -22,7 +23,8 @@ Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.
 **The touch grammar everywhere**
 - Tap (click) a person or thing once: it **previews** (a ring, a short card: "Sacrifice a lamb?").
 - Tap it again: it **does it**. Tap anywhere else: cancel.
-- Tap plain ground: you walk there (a footprint ring marks the spot). Drag sideways: you turn.
+- The game opens on **the vista**: the whole camp from above at night. Tap a part of the screen once: the place drawn there lights up and a card names its game. Tap it again: you go there and its game starts. Esc (or a tap on the sky) brings you back to the vista.
+- Tap plain ground: you walk there (a footprint ring marks the spot). Drag sideways: you look round (also while someone leads you or talks to you). There are no step buttons on screen any more.
 - Keys still work: arrows/WASD to step and turn, E to use the nearest thing (twice to confirm), Esc for the menu.
 
 **Clear view**
@@ -35,21 +37,20 @@ Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.
 
 ---
 
-## 1. The hub at night (10 minutes)
+## 1. The hub at night: the opening vista (10 minutes)
 
-**Get there:** `-start dev.godboard -seed 7` (or F1 → Starts → `dev.godboard`). You start at night in the home camp.
+**Get there:** just start the game (or `-seed 7` for the fixed island). You open at night looking down over the home camp.
 
-**You should see, from where you start:** the temple ahead, the council's lookout tower, the dance circle with drums, Mira with her expedition gear. One turn left or right: the healer's lodge and the fenced duel ring. No menus or labels.
+**You should see, all at once:** the temple (blue dome), the council's lookout tower with villagers waiting, the dance circle with its fire and drums, the healer's thatched lodge, Mira's expedition camp at the foot of a hill with a lit cave mouth, and the fenced practice ring with sparring villagers. Rolling knolls behind. No buttons, labels or outlines. The prince welcomes you and each place lights up in turn as he names it.
 
 **Try**
-1. Turn on the spot (drag or arrows) and find all six places.
-2. Tap the ground somewhere ahead: you should walk there. Tap a person: they should react or talk, not walk you.
-3. Walk to each place and tap it once (preview), then tap elsewhere (cancel). Nothing should start.
-4. The prince greets you and leads you to Mira, then points at the temple.
+1. Tap anywhere on the screen once: the place in that part of the screen lights up and a card says what it is. Tap a different part: the other place lights instead. Nothing starts.
+2. Tap the same part again: the camera glides down to the place and its game starts (the temple's board rises; the dance begins; Mira or the healer talk to you; the referee calls Mira over; the tower opens the council, or the steward says no dispute is called yet).
+3. Leave the game (Esc in the game, or "Leave"), then press Esc again or tap the sky: back to the vista.
+4. From a place, tap the ground to walk around; drag to look. While the prince or anyone leads you, a drag still turns your view.
+5. On the keyboard: A / D in the vista light the places left to right, E or Enter goes, W steps down into the walking view.
 
-**Tell us:** Is each place obvious from its look and activity? Is anything too dark? Are the tap targets easy?
-
-**Known:** the prince's guide walks you away from the start spot; some places read dark at night.
+**Tell us:** Is each place obvious from the vista? Do the screen parts feel right (does a tap pick the place you meant)? Is the glide down too slow or fast?
 
 ---
 

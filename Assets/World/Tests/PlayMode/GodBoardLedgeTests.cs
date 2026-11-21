@@ -694,7 +694,7 @@ namespace World.Game.Tests
                 var fs = FootprintStones.Instance;
                 Assert.IsNotNull(fs, "the stones exist");
                 yield return null; yield return null;
-                Assert.IsTrue(fs.ShouldShow(), "on foot at the altar the stones show");
+                Assert.IsFalse(fs.ShouldShow(), "on foot at the altar: no step pads on the surface (opening vista), even with the setting on Always");
                 GodBoardDirector.RiseSeconds = 3f;
                 Assert.IsTrue(_d.TrySacrifice(true));
                 Step(2);
@@ -710,7 +710,7 @@ namespace World.Game.Tests
                 t0 = Time.realtimeSinceStartup;
                 while (_d.View != BoardView.Altar) { Assert.Less(Time.realtimeSinceStartup - t0, 15f); yield return null; }
                 yield return null;
-                Assert.IsTrue(fs.ShouldShow(), "back at the altar the stones return");
+                Assert.IsFalse(fs.ShouldShow(), "back at the altar: still none on the surface");
             }
             finally { FootprintStones.Mode = savedMode; }
         }

@@ -39,6 +39,11 @@ namespace World.Game
         public static VistaMode Mode = VistaMode.On;
         public static OpeningVista Instance { get; private set; }
 
+        /// <summary>Tests: fit and divide a screen of this size (pixels) instead of the real one; null = the real screen.</summary>
+        public static Vector2Int? ScreenOverride;
+        private static int SW => ScreenOverride.HasValue ? ScreenOverride.Value.x : Screen.width;
+        private static int SH => ScreenOverride.HasValue ? ScreenOverride.Value.y : Screen.height;
+
         /// <summary>True while the vista owns the camera (up, or gliding).</summary>
         public static bool Active => Instance != null && Instance.State != VistaState.Off;
         /// <summary>True while the player looks out over the camp (taps pick regions).</summary>
@@ -79,7 +84,7 @@ namespace World.Game
         private bool _fogWas; private bool _fogSaved;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStatics() => Instance = null;
+        private static void ResetStatics() { Instance = null; ScreenOverride = null; }
 
         public static OpeningVista Create(WorldBootstrap boot, Transform root, CampLayout layout)
         {
@@ -214,7 +219,7 @@ namespace World.Game
         /// <summary>Fits the pose to the screen now (aspect and drag swing), then centres the places' box on the screen.</summary>
         private void Refit()
         {
-            int w = Mathf.Max(1, Screen.width), h = Mathf.Max(1, Screen.height);
+            int w = Mathf.Max(1, SW), h = Mathf.Max(1, SH);
             if (w == _fitW && h == _fitH && Mathf.Approximately(_fitOrbit, _orbit)) return;
             _fitW = w; _fitH = h; _fitOrbit = _orbit;
             float aspect = (float)w / h, yaw = _baseYaw + _orbit;
@@ -252,23 +257,23 @@ namespace World.Game
         public Rect ScreenRect(VistaPlace p)
         {
             Refit();
-            float aspect = (float)Mathf.Max(1, Screen.width) / Mathf.Max(1, Screen.height);
+            float aspect = (float)Mathf.Max(1, SW) / Mathf.Max(1, SH);
             float x0 = float.MaxValue, x1 = float.MinValue, y0 = float.MaxValue, y1 = float.MinValue;
             foreach (var s in p.Samples())
             {
                 var v = Project(CameraPosition, CameraRotation, aspect, s);
                 x0 = Mathf.Min(x0, v.x); x1 = Mathf.Max(x1, v.x); y0 = Mathf.Min(y0, v.y); y1 = Mathf.Max(y1, v.y);
             }
-            return Rect.MinMaxRect(x0 * Screen.width, y0 * Screen.height, x1 * Screen.width, y1 * Screen.height);
+            return Rect.MinMaxRect(x0 * SW, y0 * SH, x1 * SW, y1 * SH);
         }
 
         /// <summary>A place's centre on screen (pixels, origin bottom-left).</summary>
         public Vector2 ScreenCentre(VistaPlace p)
         {
             Refit();
-            float aspect = (float)Mathf.Max(1, Screen.width) / Mathf.Max(1, Screen.height);
+            float aspect = (float)Mathf.Max(1, SW) / Mathf.Max(1, SH);
             var v = Project(CameraPosition, CameraRotation, aspect, p.Centre + Vector3.up * p.Height * 0.35f);
-            return new Vector2(v.x * Screen.width, v.y * Screen.height);
+            return new Vector2(v.x * SW, v.y * SH);
         }
 
         /// <summary>
@@ -333,7 +338,7 @@ namespace World.Game
         public void Swing(float dxPixels)
         {
             if (State != VistaState.Vista) return;
-            float o = Mathf.Clamp(_orbit - dxPixels / Mathf.Max(1f, Screen.width) * 90f, -MaxOrbit, MaxOrbit);
+            float o = Mathf.Clamp(_orbit - dxPixels / Mathf.Max(1f, SW) * 90f, -MaxOrbit, MaxOrbit);
             if (Clear(Pos(Focus, _baseYaw + o, _distance))) _orbit = o; // never swing into a hillside
         }
 
@@ -464,6 +469,13 @@ namespace World.Game
         {
             var cam = Cam;
             if (State == VistaState.Off || cam == null) return;
+            // an encounter or the god board took the camera (a duel whose opponent arrived late, say): give it up at once
+            if ((EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) || (GodBoardDirector.Instance != null && GodBoardDirector.Instance.View != BoardView.Altar)
+                || (ViewSwitcher.Instance != null && ViewSwitcher.Instance.CurrentView == ViewMode.God))
+            {
+                if (State == VistaState.Descending) { Finish(null); return; }
+                Leave(); return;
+            }
             WorldActions.NoteCameraMove(0f);
             switch (State)
             {

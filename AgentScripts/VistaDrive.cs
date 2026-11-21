@@ -112,6 +112,8 @@ public static class VistaDrive
                 }
             case "pose": v.ForcePose(float.Parse(a[1], ci), float.Parse(a[2], ci)); return "pose " + a[1] + " " + a[2];
             case "leave": v.Leave(); return "left";
+            case "abort": if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) EncounterHost.Instance.Abort(); foreach (int h in SpeechBubbles.OpenHandles()) SpeechBubbles.Close(h); if (DialoguePanel.IsOpen) DialoguePanel.Close(); WorldActions.Cancel(); return "aborted";
+            case "boardleave": GodBoardDirector.Instance.Leave(); return "board leave";
             case "back": return "back " + OpeningVista.TryReturn();
             case "open": v.Open(true); return "open";
             case "cancel": WorldActions.Cancel(); return "cancelled";
@@ -122,7 +124,9 @@ public static class VistaDrive
                 {
                     var w = PlayerWalker.Instance;
                     return "vista " + (v != null ? v.State.ToString() : "-") + " last " + (v != null && v.LastArrived != null ? v.LastArrived.Zone : "-") + " encounter " + (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning)
-                        + " board " + (GodBoardDirector.Instance != null ? GodBoardDirector.Instance.View.ToString() : "-") + " actions " + WorldActions.State + " walker " + (w != null ? w.Cell + " locked " + w.IsLocked : "");
+                        + " board " + (GodBoardDirector.Instance != null ? GodBoardDirector.Instance.View.ToString() : "-") + " actions " + WorldActions.State + " walker " + (w != null ? w.Cell + " locked " + w.IsLocked : "")
+                        + " paused " + WorldBootstrap.Instance.Clock.IsPaused + " tick " + WorldBootstrap.Instance.Sim.State.Tick + " guide " + (PrinceDirector.Instance != null ? PrinceDirector.Instance.Guide.ToString() : "-")
+                        + " welcoming " + (v != null && v.Welcoming) + " pointed " + (v != null ? string.Join(",", v.Pointed) : "");
                 }
         }
         return "unknown " + cmd;
