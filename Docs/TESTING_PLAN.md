@@ -11,7 +11,7 @@ Written 20 Nov 2026 for branch `godboard/main`. Background: `Docs/WORLD_UI_PLAN.
 **Run the game**
 - Easiest: the packaged build `..\wt-gb\Builds\Windows\WorldMVP.exe` (rebuilt at the end of this session).
 - For a phone-shaped window, start it from a command prompt in that folder:
-  `WorldMVP.exe -start dev.godboard -seed 7 -screen-fullscreen 0 -screen-width 844 -screen-height 390`
+  `.\WorldMVP.exe -start dev.godboard -seed 7 -screen-fullscreen 0 -screen-width 844 -screen-height 390` (in PowerShell the `.\` is needed; in the old Command Prompt it can be left off)
 - Or in Unity: open the `wt-gb` folder, open `Assets/Scenes/World.unity`, press Play, then F1 → Starts → `dev.godboard`.
 
 **Your music at the spires (optional)**
@@ -203,7 +203,7 @@ Run the exe at 844 × 390 (section 0), then at 1024 × 768 and 1920 × 1080. In 
 
 ## 10. Optional: the automatic smoke runs
 
-From a command prompt in `Builds\Windows`, e.g. `WorldMVP.exe -autoplay world_ui_tour -novsync -screen-fullscreen 0 -screen-width 844 -screen-height 390`. Each prints `[AutoPlay] … OK` in its log and closes. The full list is in `Docs/PLAY_GUIDE.md` ("God board smoke runs").
+From a command prompt in `Builds\Windows`, e.g. `.\WorldMVP.exe -autoplay world_ui_tour -novsync -screen-fullscreen 0 -screen-width 844 -screen-height 390`. Each prints `[AutoPlay] … OK` in its log and closes. The full list is in `Docs/PLAY_GUIDE.md` ("God board smoke runs").
 
 ---
 
