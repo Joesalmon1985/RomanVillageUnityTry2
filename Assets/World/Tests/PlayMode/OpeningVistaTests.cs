@@ -286,8 +286,9 @@ namespace World.Game.Tests
             yield return null;
             Assert.Less(w.LookOffset, -50f, "a drag to the right turns the view left while the prince leads");
             Assert.IsNotNull(w.Following, "the lead goes on while the player looks round");
+            // The body keeps turning towards the leader while led, so compare the camera with the body, not with its start.
             float camYaw1 = w.Camera.transform.eulerAngles.y;
-            Assert.Greater(Mathf.Abs(Mathf.DeltaAngle(camYaw0, camYaw1)), 40f, "the camera turned with the look (" + camYaw0 + " -> " + camYaw1 + ")");
+            Assert.Greater(Mathf.Abs(Mathf.DeltaAngle(w.Yaw, camYaw1)), 40f, "the camera looks away from the body's heading (camera " + camYaw0 + " -> " + camYaw1 + ", body " + w.Yaw + ")");
             DragLook.End();
             // locked (someone talking holds the player): the view still turns
             w.StopAuto(); prince.StopWalking();
