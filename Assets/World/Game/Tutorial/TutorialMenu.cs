@@ -24,13 +24,17 @@ namespace World.Game
                 string state = d.Active == g ? "playing now" : done ? "seen" : "not seen yet";
                 GUI.Label(new Rect(body.x, y, body.width - bw - UiStyle.Px(16), rh), "<b>" + g.Title + "</b>  <color=#BBB0A0>" + state + "</color>", st);
                 if (GUI.Button(new Rect(body.xMax - bw, y + rh * 0.08f, bw, rh * 0.84f), "Show me how again", UiStyle.Button))
-                {
-                    d.Replay(g.Id);
-                    Hud.Notice(g.Title + ": the tutorial begins when you are there.", false);
-                    close?.Invoke();
-                }
+                    Choose(d, g, close);
                 y += rh;
             }
+        }
+
+        /// <summary>"Show me how again" for one game: forget that it was done, tell the player where it begins, close the menu.</summary>
+        public static void Choose(TutorialDirector d, Tutorial g, Action close)
+        {
+            d.Replay(g.Id);
+            Hud.Notice(g.Title + ": the tutorial begins when you are there.", false);
+            close?.Invoke();
         }
     }
 }

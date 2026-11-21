@@ -53,7 +53,12 @@ namespace World.Game
             t.GameActive = () =>
             {
                 if (!InPlace()) return false;
-                if (t.Steps.Count > 0 && t.Index >= IndexOf(t, "banish-preview")) return true; // the walk to the shrines
+                if (t.Steps.Count > 0 && t.Index >= IndexOf(t, "banish-preview"))
+                {
+                    // The walk to the shrines. While no demon stands anywhere the step waits: it speaks in her yard and is silent elsewhere.
+                    if (t.Current != null && t.Current.Id == "banish-preview" && NearestDemonShrine() == null) return DistToHealer() <= StartMetres * 1.6f;
+                    return true;
+                }
                 return DistToHealer() <= StartMetres * 1.6f;
             };
             t.CanStart = () => InPlace() && DistToHealer() <= StartMetres;

@@ -731,5 +731,78 @@ namespace World.Game.Tests
             yield return Until(() => Dir.Active == null, 15f, "the tutorial ends");
             AssertFinishedAndRemembered("duel");
         }
+
+        // ------------------------------------------------------------------ the Esc menu and the council's bust
+
+        [UnityTest, Timeout(300000)]
+        public IEnumerator EscMenu_TutorialsPage_ListsEveryGame_AndShowMeHowAgainStartsIt()
+        {
+            yield return StartGodBoard();
+            var hud = Hud.Instance; Assert.IsNotNull(hud);
+            hud.OpenMenu();
+            hud.MenuPage = Hud.Page.Tutorials;
+            yield return Frames(5);
+            Assert.IsTrue(Hud.MenuOpen, "the system menu is open");
+            Assert.AreEqual(6, Dir.Games.Count, "one tutorial for each game");
+            foreach (var id in new[] { "board", "plague", "council", "rhythm", "dungeon", "duel" }) Assert.IsNotNull(Dir.Game(id), id);
+            yield return Shot("menu_tutorials");
+
+            // "Show me how again" for the board: forgets that it was done and closes the menu; the tutorial begins at the altar.
+            TutorialStore.SetDone("board", true);
+            var d = GodBoardDirector.Instance;
+            PlayerWalker.Instance.Teleport(d.OwnTemple.transform.position + new Vector3(10f, 0, 0), 270f, 8f);
+            yield return Frames(15);
+            Assert.IsNull(Dir.Active, "a finished tutorial does not start by itself");
+            TutorialMenu.Choose(Dir, Dir.Game("board"), () => hud.CloseMenu());
+            Assert.IsFalse(Hud.MenuOpen, "choosing closes the menu");
+            Assert.IsFalse(TutorialStore.IsDone("board"));
+            yield return AtStep("board", "sacrifice");
+            Assert.IsTrue(Dir.Game("board").Replay, "a replay shows every step");
+        }
+
+        [UnityTest, Timeout(600000)]
+        public IEnumerator Council_ABust_IsExplainedByTheRecorder_AndNothingElseIsBlocked()
+        {
+            yield return Load();
+            CouncilDirector.Disabled = true;
+            CouncilEncounter.AiDelay = 600f; CouncilEncounter.IntroSeconds = 0.4f;
+            Boot.Clock.Pause("TestHold");
+            int home = CouncilDirector.Instance.HomeSettlement;
+            Boot.Sim.State.Seed = 12345;
+            CouncilFixture.StageExample(Boot.Sim.State, home, 0);
+            Assert.IsTrue(EncounterDirectory.TryStart(CouncilEncounter.Id, null, home));
+            yield return new WaitForSecondsRealtime(0.6f);
+            yield return Until(() => Enc != null && Enc.Scene.Settled && !Enc.InTransition, 20f, "the council is settled");
+            var e = Enc.E;
+            try
+            {
+                yield return AtStep("council", "preview");
+                // Press on and choose until a push leaves nothing that fits (the council's own test does the same).
+                int busts0 = e.Busts;
+                for (int i = 0; i < 600 && e.Busts == busts0 && e.Phase != ElectionPhase.BustPending; i++)
+                {
+                    yield return new WaitForSecondsRealtime(0.12f);
+                    if (Enc == null || !Enc.Scene.Settled || Enc.InTransition || e.Active != e.PlayerSeat) continue;
+                    if (e.Phase == ElectionPhase.Ready) Enc.TapTargetNow("hand");
+                    else if (e.Phase == ElectionPhase.Choosing)
+                    {
+                        var props = Enc.Scene.Proposals; if (props.Count == 0) continue;
+                        int best = 0; for (int k = 0; k < props.Count; k++) if (props[k].Steps.Count > props[best].Steps.Count) best = k;
+                        Enc.TapTargetNow("note " + best);
+                    }
+                }
+                Assert.IsTrue(e.Busts > busts0 || e.Phase == ElectionPhase.BustPending, "a bust happened");
+                yield return Until(() => Dir.TipShown, 10f, "the recorder explains the bust");
+                StringAssert.Contains("bust", Dir.ShownLine.ToLowerInvariant());
+                Assert.AreEqual("The recorder", Dir.ShownTutor);
+                yield return Shot("council_bust");
+                Assert.IsTrue(EncounterHost.Instance.IsRunning, "the council goes on");
+            }
+            finally
+            {
+                CouncilEncounter.AiDelay = 0.75f; CouncilEncounter.IntroSeconds = 2.4f;
+                if (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning) EncounterHost.Instance.Abort();
+            }
+        }
     }
 }
