@@ -117,10 +117,11 @@ namespace World.Game
         /// rejected when the island's hills would hide a place or the camera would sit in a hillside; of the rest, the score favours
         /// places spread apart on screen and of similar size (near and far not too different), and a short distance.
         /// </summary>
-        private void ChooseYaw() => ChooseYaw((float)Mathf.Max(1, SW) / Mathf.Max(1, SH), null);
+        /// <summary>One bearing for every screen (chosen for 16:9), so the phone, the tablet and the desktop see the same camp; the fit adapts per screen.</summary>
+        private void ChooseYaw() => ChooseYaw(16f / 9f, null);
 
         /// <summary>
-        /// Chooses bearing and pitch for a screen shape (the real screen when the vista is built). Score: the smallest place's
+        /// Chooses bearing and pitch for a screen shape. Score: the smallest place's
         /// height on screen (every place must read, the far ones too) and the spread between places' centres (clean regions);
         /// poses where hills hide a place are skipped. <paramref name="log"/> (tuning) gets one line per pose.
         /// </summary>
@@ -130,7 +131,7 @@ namespace World.Game
             aspect = Mathf.Clamp(aspect, 1.2f, 2.4f);
             float bestScore = float.MinValue;
             _baseYaw = 0f; float bestPitch = 40f;
-            foreach (float pitch in new[] { 34f, 40f, 46f, 52f })
+            foreach (float pitch in new[] { 34f, 40f }) // oblique: a look out over the camp, not a map
             {
                 Pitch = pitch;
                 for (int i = 0; i < 24; i++)
@@ -207,7 +208,7 @@ namespace World.Game
                     var v = Project(pos, rot, aspect, w);
                     if (v.z <= 0.5f) return false;
                     // GUI-ish margins: a little room at the sides, more at the top for the cards and at the bottom for the notch band.
-                    if (v.x < 0.06f || v.x > 0.94f || v.y < 0.07f || v.y > 0.86f) return false;
+                    if (v.x < 0.06f || v.x > 0.94f || v.y < 0.11f || v.y > 0.86f) return false;
                 }
             return true;
         }
@@ -362,6 +363,7 @@ namespace World.Game
 
         private void Update()
         {
+            UpdateHint();
             if (State != VistaState.Vista || Hud.MenuOpen || MapScreen.IsOpen) return;
             if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.Keypad8)) { StepDown(); return; }
             int dir = Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow) ? 1 : Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow) ? -1 : 0;
@@ -393,6 +395,7 @@ namespace World.Game
             _orbit = 0f; _fitW = 0;
             Refit();
             var cam = Cam;
+            Debug.Log("[Vista] open over the camp: bearing " + _baseYaw + ", pitch " + Pitch + ", " + _places.Count + " places, screen " + SW + "x" + SH + (snap ? " (start)" : ""));
             if (snap || cam == null) { State = VistaState.Vista; Apply(CameraPosition, CameraRotation, FieldOfView); return; }
             _fromPos = cam.transform.position; _fromRot = cam.transform.rotation; _fromFov = cam.fieldOfView;
             _t = 0f; State = VistaState.Rising; Returns++;
@@ -476,10 +479,17 @@ namespace World.Game
         }
 
         private static bool s_hinted;
-        private void HintOnce()
+        private bool _hintPending;
+        /// <summary>The first time the player is back in the walking view after a trip (not over a game), say how to look out again.</summary>
+        private void HintOnce() { if (!s_hinted) _hintPending = true; }
+
+        private void UpdateHint()
         {
-            if (s_hinted) return;
-            s_hinted = true;
+            if (!_hintPending || State != VistaState.Off) return;
+            var w = PlayerWalker.Instance;
+            if (w == null || w.IsLocked || (EncounterHost.Instance != null && EncounterHost.Instance.IsRunning)) return;
+            if (GodBoardDirector.Instance != null && GodBoardDirector.Instance.View != BoardView.Altar) return;
+            _hintPending = false; s_hinted = true;
             Hud.Notice("Tap the sky, or press Esc, to look out over the camp again.", false);
         }
 
