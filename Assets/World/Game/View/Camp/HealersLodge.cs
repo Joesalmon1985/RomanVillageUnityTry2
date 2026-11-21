@@ -24,6 +24,8 @@ namespace World.Game
         public Vector3 RunnerRest { get; private set; }
         public int RunnerTrips { get; private set; }
         public string LastHealerLine { get; private set; }
+        /// <summary>Times the player asked "How bad is it?" (the plague tutorial reads it).</summary>
+        public int HowBadAsked { get; private set; }
         /// <summary>The plague props in front of the lodge (WU-3).</summary>
         public LodgeTable Plague { get; private set; }
 
@@ -165,7 +167,7 @@ namespace World.Game
             n.Lines.Add(LastHealerLine);
             if (PlagueRuns && Plague != null)
             {
-                n.Options.Add(DialogueOption.Do("How bad is it?", () => { ShowTo(Plague.TableCentre); SpeechBubbles.Say(Healer, OutbreakSays(), 6f); if (Plague.Post != null) WorldActions.Inspect(Plague.Post); }));
+                n.Options.Add(DialogueOption.Do("How bad is it?", () => { HowBadAsked++; ShowTo(Plague.TableCentre); SpeechBubbles.Say(Healer, OutbreakSays(), 6f); if (Plague.Post != null) WorldActions.Inspect(Plague.Post); }));
                 n.Options.Add(DialogueOption.Do("Is my charm ready?", () => { if (Plague.Charm != null) ShowTo(Plague.Charm.transform.position); SpeechBubbles.Say(Healer, CharmSays(), 5f); if (Plague.Charm != null) WorldActions.Inspect(Plague.Charm); }));
             }
             n.Options.Add(DialogueOption.Leave("Thank you"));
